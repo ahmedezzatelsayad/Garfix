@@ -110,10 +110,10 @@ export default function VercelDashboard() {
                 var invoices = invData.invoices || invData.data || [];
                 if (invoices.length > 0) {
                   var html = invoices.map(function(inv) {
-                    var num = inv.invoiceNumber || '#' + inv.id;
-                    var client = inv.clientName || '---';
-                    var total = inv.total || 0;
-                    var status = inv.status || 'draft';
+                    var num = __esc(inv.invoiceNumber || ('#' + inv.id));
+                    var client = __esc(inv.clientName || '---');
+                    var total = __esc(inv.total || 0);
+                    var status = __esc(inv.status || 'draft');
                     var statusColor = status === 'paid' ? 'text-emerald-400' : status === 'sent' ? 'text-blue-400' : 'text-white/40';
                     return '<div class="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">' +
                       '<div class="flex items-center gap-3"><span class="font-mono text-sm">' + num + '</span>' +

@@ -51,10 +51,10 @@ export default function VercelSettings() {
 
             var companies = user.companies || [];
             document.getElementById('company-info').innerHTML =
-              '<div class="flex justify-between"><span class="text-sm text-white/60">الإيميل</span><span class="text-sm">'+user.email+'</span></div>' +
-              '<div class="flex justify-between"><span class="text-sm text-white/60">الاسم</span><span class="text-sm">'+(user.displayName||'---')+'</span></div>' +
-              '<div class="flex justify-between"><span class="text-sm text-white/60">الدور</span><span class="text-sm">'+user.role+'</span></div>' +
-              '<div class="flex justify-between"><span class="text-sm text-white/60">الشركة</span><span class="text-sm">'+(companies[0]||'---')+'</span></div>' +
+              '<div class="flex justify-between"><span class="text-sm text-white/60">الإيميل</span><span class="text-sm">'+__esc(user.email)+'</span></div>' +
+              '<div class="flex justify-between"><span class="text-sm text-white/60">الاسم</span><span class="text-sm">'+__esc(user.displayName||'---')+'</span></div>' +
+              '<div class="flex justify-between"><span class="text-sm text-white/60">الدور</span><span class="text-sm">'+__esc(user.role)+'</span></div>' +
+              '<div class="flex justify-between"><span class="text-sm text-white/60">الشركة</span><span class="text-sm">'+__esc(companies[0]||'---')+'</span></div>' +
               '<div class="flex justify-between"><span class="text-sm text-white/60">المؤسس</span><span class="text-sm '+(user.isFounder?'text-emerald-400':'text-white/40')+'">'+(user.isFounder?'نعم':'لا')+'</span></div>';
 
             document.getElementById('einvoice-status').innerHTML =

@@ -57,11 +57,11 @@ export default function VercelInvoices() {
                 document.getElementById('invoices-table').innerHTML = '<div class="text-center py-12 text-white/40">لا توجد فواتير بعد. اضغط "فاتورة جديدة" لإنشاء أول فاتورة.</div>';
               } else {
                 var html = invoices.map(function(inv) {
-                  var num = inv.invoiceNumber || '#'+inv.id;
-                  var client = inv.clientName || '---';
-                  var total = inv.total || 0;
-                  var status = inv.status || 'draft';
-                  var date = inv.issueDate ? new Date(inv.issueDate).toLocaleDateString('ar-EG') : '';
+                  var num = __esc(inv.invoiceNumber || ('#'+inv.id));
+                  var client = __esc(inv.clientName || '---');
+                  var total = __esc(inv.total || 0);
+                  var status = __esc(inv.status || 'draft');
+                  var date = __esc(inv.issueDate ? new Date(inv.issueDate).toLocaleDateString('ar-EG') : '');
                   var statusColor = status==='paid' ? 'bg-emerald-500/15 text-emerald-400' : status==='sent' ? 'bg-blue-500/15 text-blue-400' : 'bg-white/[0.06] text-white/40';
                   return '<div class="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] hover:border-emerald-500/20 transition-colors">' +
                     '<div class="flex items-center gap-4"><span class="font-mono text-sm text-emerald-400">'+num+'</span>' +

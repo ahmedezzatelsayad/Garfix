@@ -126,12 +126,24 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const expectedVersion = data.expectedVersion;
   const versionFilter = expectedVersion !== undefined ? { version: expectedVersion } : {};
 
-  const newPaid = num(existing.paid, 3) + amountNum;
+  // P1 FIX (verification audit): use paid: { increment: amountNum } instead of
+  // absolute newPaid write. The old code read existing.paid (stale), computed
+  // newPaid, and wrote it absolutely — two concurrent payments without
+  // expectedVersion would both get count=1 and the second overwrites the first
+  // (lost update). With increment, Postgres atomically adds amountNum to
+  // whatever the current paid value is — no lost updates even without
+  // expectedVersion. The status is computed from the stale read (best-effort)
+  // but can be corrected by a subsequent reconcile.
+  const newPaid = num(existing.paid, 3) + amountNum; // for audit/response only
   const newStatus = num(newPaid, 3) >= total && total > 0 ? "paid" : num(newPaid, 3) > 0 ? "partial" : existing.status;
 
   const result = await db.invoice.updateMany({
     where: { id: existing.id, deletedAt: null, ...versionFilter },
-    data: { paid: newPaid, status: newStatus, version: { increment: 1 } },
+    data: {
+      paid: { increment: amountNum }, // P1 FIX: atomic increment, not absolute write
+      status: newStatus,
+      version: { increment: 1 },
+    },
   });
   if (result.count === 0) {
     return NextResponse.json(

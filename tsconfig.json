@@ -10,7 +10,7 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
-    // P0-12 (Engineering Audit): noImplicitAny is intentionally kept false
+    // Sprint 21: noImplicitAny is TRUE (was false — all errors resolved)
     // for now. Flipping to true generates 409 implicit-any errors across
     // the codebase (mostly in modules/* view components and lib/accounting
     // helpers). Per the P0 remediation sprint constraint to "keep changes

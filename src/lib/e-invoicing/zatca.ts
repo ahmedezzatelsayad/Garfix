@@ -860,18 +860,23 @@ export function signZatcaInvoice(
     if (privateKey && privateKey.includes("PRIVATE KEY")) {
       try {
         digitalSignature = sign.sign(privateKey, "base64");
-      } catch {
-        // Fallback to placeholder if real signing fails
-        logger.warn("[zatca] ECDSA signing failed with provided key — using placeholder");
-        digitalSignature = nodeCrypto.createHash("sha256")
-          .update(invoiceHash + certificate)
-          .digest("base64");
+      } catch (signErr) {
+        // P0 FIX (verification audit): NO SHA-256 fallback. Return ok:false.
+        logger.error("[zatca] ECDSA signing failed with provided key", {
+          err: signErr instanceof Error ? signErr.message : String(signErr),
+        });
+        return {
+          ok: false, signedXml: "", invoiceHash, digitalSignature: "",
+          certificateHash: "", error: "ECDSA signing failed: " + (signErr instanceof Error ? signErr.message : String(signErr)),
+        } as ZatcaSignatureResult;
       }
     } else {
-      // Placeholder signature: hash of (invoiceHash + certificate)
-      digitalSignature = nodeCrypto.createHash("sha256")
-        .update(invoiceHash + certificate)
-        .digest("base64");
+      // P0 FIX (verification audit): NO placeholder. Return ok:false.
+      logger.error("[zatca] ECDSA private key missing or invalid — refusing placeholder");
+      return {
+        ok: false, signedXml: "", invoiceHash, digitalSignature: "",
+        certificateHash: "", error: "ZATCA ECDSA private key is missing or invalid. Refusing to sign with placeholder.",
+      } as ZatcaSignatureResult;
     }
 
     // Certificate hash (SHA-256 of the certificate content)

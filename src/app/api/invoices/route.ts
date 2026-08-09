@@ -215,64 +215,87 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     num(data.discount),
   );
 
-  const invoice = await db.invoice.create({
-    data: {
-      companySlug: data.companySlug,
-      invoiceNumber: data.invoiceNumber,
-      clientId: data.clientId || null,
-      clientName: data.clientName,
-      clientEmail: data.clientEmail || null,
-      clientPhone: data.clientPhone || null,
-      clientAddress: data.clientAddress || null,
-      issueDate: new Date(data.issueDate),
-      dueDate: new Date(data.dueDate),
-      status: data.status,
-      lineItems: JSON.stringify(data.lineItems),
-      subtotal: totals.subtotal,
-      taxRate: totals.taxRate,
-      taxAmount: totals.taxAmount,
-      total: totals.total,
-      shipping: totals.shipping,
-      discount: totals.discount,
-      paid: 0,
-      notes: data.notes || null,
-      source: data.source || null,
-      createdByEmail: user.email,
-      createdByName: user.uid,
-      version: 0,
-      // Kuwait Decree 10/2026 compliance fields
-      hijriIssueDate: (enrichedData.hijriIssueDate as string) || null,
-      hijriDueDate: (enrichedData.hijriDueDate as string) || null,
-      mociNumber: (enrichedData.mociNumber as string) || null,
-      invoiceTypeAr: (enrichedData.invoiceTypeAr as string) || null,
-      invoiceTypeEn: (enrichedData.invoiceTypeEn as string) || null,
-      sellerNameAr: (enrichedData.sellerNameAr as string) || null,
-      sellerAddressAr: (enrichedData.sellerAddressAr as string) || null,
-      buyerNameAr: (enrichedData.buyerNameAr as string) || null,
-      buyerAddressAr: (enrichedData.buyerAddressAr as string) || null,
-      lineItemsAr: (enrichedData.lineItemsAr as string) || "[]",
-      notesAr: (enrichedData.notesAr as string) || null,
-      currencyDecimalPlaces: (enrichedData.currencyDecimalPlaces as number) ?? 3,
-      eInvoiceAuthority: (enrichedData.eInvoiceAuthority as string) || null,
-      // ── Branch/Warehouse support ──
-      warehouseId: data.warehouseId || null,
-    },
-  });
-
-  // Sync inventory (Task 24: oversell blocking + StockMovement ledger)
+  // P0 FIX (verification audit): wrap invoice.create + syncInventoryOnSale in
+  // ONE $transaction. Previously invoice.create was OUTSIDE the transaction —
+  // if inventory sync failed, the error was swallowed and the invoice persisted
+  // without inventory update → financial/stock drift. Now ANY failure rolls back BOTH.
   const itemsForSync = data.lineItems.map((it: any) => ({
     description: it.description,
     qty: num(it.qty),
     price: num(it.price, 3),
   }));
+
+  let invoice: any;
   let inventoryWarnings: string[] = [];
   try {
-    const syncResult = await db.$transaction(async (tx) => {
-      return await syncInventoryOnSale(tx, data.companySlug, itemsForSync, invoice.id);
+    const txResult = await db.$transaction(async (tx) => {
+      // 1. Create the invoice row INSIDE the transaction
+      const inv = await tx.invoice.create({
+        data: {
+          companySlug: data.companySlug,
+          invoiceNumber: data.invoiceNumber,
+          clientId: data.clientId || null,
+          clientName: data.clientName,
+          clientEmail: data.clientEmail || null,
+          clientPhone: data.clientPhone || null,
+          clientAddress: data.clientAddress || null,
+          issueDate: new Date(data.issueDate),
+          dueDate: new Date(data.dueDate),
+          status: data.status,
+          lineItems: JSON.stringify(data.lineItems),
+          subtotal: totals.subtotal,
+          taxRate: totals.taxRate,
+          taxAmount: totals.taxAmount,
+          total: totals.total,
+          shipping: totals.shipping,
+          discount: totals.discount,
+          paid: 0,
+          notes: data.notes || null,
+          source: data.source || null,
+          createdByEmail: user.email,
+          createdByName: user.uid,
+          version: 0,
+          hijriIssueDate: (enrichedData.hijriIssueDate as string) || null,
+          hijriDueDate: (enrichedData.hijriDueDate as string) || null,
+          mociNumber: (enrichedData.mociNumber as string) || null,
+          invoiceTypeAr: (enrichedData.invoiceTypeAr as string) || null,
+          invoiceTypeEn: (enrichedData.invoiceTypeEn as string) || null,
+          sellerNameAr: (enrichedData.sellerNameAr as string) || null,
+          sellerAddressAr: (enrichedData.sellerAddressAr as string) || null,
+          buyerNameAr: (enrichedData.buyerNameAr as string) || null,
+          buyerAddressAr: (enrichedData.buyerAddressAr as string) || null,
+          lineItemsAr: (enrichedData.lineItemsAr as string) || "[]",
+          notesAr: (enrichedData.notesAr as string) || null,
+          currencyDecimalPlaces: (enrichedData.currencyDecimalPlaces as number) ?? 3,
+          eInvoiceAuthority: (enrichedData.eInvoiceAuthority as string) || null,
+          warehouseId: data.warehouseId || null,
+        },
+      });
+
+      // 2. Sync inventory INSIDE the SAME transaction — uses `tx` not `db`
+      const syncResult = await syncInventoryOnSale(tx, data.companySlug, itemsForSync, inv.id);
+      return { invoice: inv, inventoryWarnings: syncResult.warnings };
+    }, {
+      timeout: 10_000, // generous for large invoices with many line items
+      isolationLevel: "Serializable",
     });
-    inventoryWarnings = syncResult.warnings;
-  } catch (syncErr) {
-    logger.error("[invoices] inventory sync failed", { err: syncErr instanceof Error ? syncErr.message : String(syncErr) });
+    invoice = txResult.invoice;
+    inventoryWarnings = txResult.inventoryWarnings;
+  } catch (txErr) {
+    // Transaction failed — BOTH invoice and inventory writes rolled back.
+    logger.error("[invoices] atomic create+sync failed — rolled back", {
+      err: txErr instanceof Error ? txErr.message : String(txErr),
+      invoiceNumber: data.invoiceNumber,
+      companySlug: data.companySlug,
+    });
+    return NextResponse.json(
+      {
+        error: "Invoice creation failed — inventory sync error. No invoice was created. Please retry.",
+        code: "INVOICE_ATOMIC_CREATE_FAILED",
+        detail: txErr instanceof Error ? txErr.message : String(txErr),
+      },
+      { status: 500 },
+    );
   }
   const reviewQueueWarnings = inventoryWarnings.filter((w) => w.startsWith("[REVIEW-QUEUE]") || w.startsWith("[OVERSELL]"));
   // P1 FIX (QA audit): surface ALL inventory warnings to the UI, not just review-queue ones.

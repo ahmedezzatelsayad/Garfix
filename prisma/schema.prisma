@@ -1595,6 +1595,7 @@ model EInvoiceReceipt {
   @@index([companySlug, authority])
   @@index([companySlug, receivedAt])
   @@index([externalUuid])
+  @@unique([externalUuid, authority, eventType])
   @@map("e_invoice_receipts")
 }
 

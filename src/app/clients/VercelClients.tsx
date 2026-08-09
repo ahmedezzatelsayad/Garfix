@@ -42,10 +42,10 @@ export default function VercelClients() {
                 document.getElementById('clients-grid').innerHTML = '<div class="col-span-full text-center py-12 text-white/40">لا يوجد عملاء بعد</div>';
               } else {
                 var html = clients.map(function(c) {
-                  var name = c.name || c.nameEn || '---';
-                  var email = c.email || '';
-                  var phone = c.phone || '';
-                  var taxId = c.taxId || '';
+                  var name = __esc(c.name || c.nameEn || '---');
+                  var email = __esc(c.email || '');
+                  var phone = __esc(c.phone || '');
+                  var taxId = __esc(c.taxId || '');
                   return '<div class="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08] hover:border-emerald-500/20 transition-colors">' +
                     '<div class="flex items-center gap-3 mb-2"><div class="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 font-bold">'+name.charAt(0)+'</div>' +
                     '<div><p class="font-bold text-sm">'+name+'</p>'+(email?'<p class="text-xs text-white/40">'+email+'</p>':'')+'</div></div>' +
