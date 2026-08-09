@@ -35,7 +35,9 @@ function resolveEncryptionKey(): string {
       || (process.env.NODE_ENV === "production" && typeof window === "undefined" && !process.env.RUNTIME_STARTUP);
     if (isBuildPhase) {
       console.warn("⚠️  PAYMENTS_ENC_KEY not set during build — will be validated at runtime. DO NOT deploy without setting this.");
-      return "build-placeholder-encryption-key-not-for-runtime-use-32chars!!";
+      // Phase 9 P1 fix: random placeholder instead of deterministic string.
+      const { randomBytes } = require("node:crypto");
+      return `build-placeholder-${randomBytes(32).toString("hex")}`;
     }
     if (process.env.NODE_ENV === "production") {
       throw new Error("FATAL: PAYMENTS_ENC_KEY (or VAULT_ENCRYPTION_KEY) must be set to at least 32 characters for production.");

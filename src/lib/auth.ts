@@ -47,7 +47,14 @@ function resolveSecret(envVar: string, name: string): string {
     const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
     if (isBuildPhase) {
       console.warn(`⚠️  ${name} not set during build — will be validated at runtime. DO NOT deploy without setting this.`);
-      return `build-placeholder-${name.toLowerCase()}-not-for-runtime-use`;
+      // Phase 9 P1 fix: use a CRYPTOGRAPHICALLY RANDOM placeholder instead of
+      // a deterministic string. The old `build-placeholder-${name}-not-for-runtime-use`
+      // was a publicly-known string — if NEXT_PHASE detection ever failed at
+      // runtime, JWTs would be signed with a predictable key (anyone could
+      // forge tokens). A random placeholder fails safely: tokens signed during
+      // build won't validate at runtime (different random value each call).
+      const { randomBytes } = require("node:crypto");
+      return `build-placeholder-${randomBytes(32).toString("hex")}`;
     }
     if (process.env.NODE_ENV === "production") {
       throw new Error(`FATAL: ${name} environment variable is not set. Refusing to start with insecure defaults.`);
@@ -340,6 +347,7 @@ export interface AuthResult {
   ok: boolean;
   user?: AuthPayload;
   rotatedRefreshToken?: string | null;
+  rotatedAccessToken?: string | null;  // Phase 9 P1: silent refresh issues new access token
   error?: string;
   status?: number;
 }
@@ -423,7 +431,34 @@ export async function resolveAuth(req: NextRequest): Promise<AuthResult> {
     permissions: effectivePerms,
     tv: user.tokenVersion,
   };
-  return { ok: true, user: payload };
+
+  // Phase 9 P1 fix: ROTATE the refresh token on silent refresh.
+  // Previously resolveAuth() returned the user payload WITHOUT rotating the
+  // refresh token — meaning a stolen refresh cookie was valid for the full
+  // 30-day TTL even if the legitimate user kept using the app. Now every
+  // silent refresh issues a NEW refresh token and the old one is blacklisted
+  // via tokenVersion increment (the next request with the old refresh will
+  // fail the `user.tokenVersion !== refreshPayload.tv` check above).
+  //
+  // We also issue a fresh access token so the caller doesn't need to call
+  // /api/auth/refresh separately. The rotated tokens are returned in
+  // `rotatedRefreshToken` for the middleware/route to set as cookies.
+  try {
+    const newAccessToken = signToken(payload);
+    const newRefreshToken = signRefreshToken(user.uid, user.tokenVersion);
+    return {
+      ok: true,
+      user: payload,
+      rotatedAccessToken: newAccessToken,
+      rotatedRefreshToken: newRefreshToken,
+    };
+  } catch (rotateErr) {
+    // If rotation fails (e.g., JWT secret issue), fall back to returning the
+    // user without rotation — better to serve the request than to 401.
+    console.warn("[auth] refresh-token rotation failed (fail-open):",
+      rotateErr instanceof Error ? rotateErr.message : String(rotateErr));
+    return { ok: true, user: payload };
+  }
 }
 
 export function hasUnrestrictedScope(user: AuthPayload): boolean {

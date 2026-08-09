@@ -321,8 +321,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       invoiceId, companySlug,
       err: err instanceof Error ? err.message : String(err),
     });
+    // Phase 3 P1 fix: do NOT leak upstream error messages to the client.
+    // The outer withErrorHandler masks errors, but this inner try/catch was
+    // short-circuiting it and returning err.message directly — which could
+    // expose ZATCA/ETA internal field names, HTTP status, or secrets embedded
+    // in error text. Return a generic Arabic message; the detail is logged
+    // server-side for debugging.
     return apiError(
-      err instanceof Error ? err.message : "فشل إرسال الفاتورة",
+      "فشل إرسال الفاتورة الإلكترونية. راجع سجل الخادم للتفاصيل.",
       500,
     );
   }
