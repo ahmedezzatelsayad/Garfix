@@ -1,3 +1,4 @@
+> **DEPRECATED (Phase 16 P3):** See ADR-006-e-invoicing-mena for the canonical version. This file is kept for historical reference.
 # ADR 006: Support MENA Region E-Invoicing Standards
 
 - **Status**: Accepted

@@ -1,3 +1,4 @@
+> **DEPRECATED (Phase 16 P3):** See ADR-004-multi-tenant-shared-db for the canonical version. This file is kept for historical reference.
 # ADR 004: Multi-tenant Shared Database with companySlug Isolation
 
 - **Status**: Accepted

@@ -1,3 +1,4 @@
+> **DEPRECATED (Phase 16 P3):** See ADR-001-pg-boss-queue for the canonical version. This file is kept for historical reference.
 # ADR 001: Use pg-boss as Production Queue Fallback
 
 - **Status**: Accepted

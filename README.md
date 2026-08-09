@@ -373,11 +373,11 @@ open http://localhost:${APP_PORT:-3000}
 
 ```
 Garfix/
-├── prisma/                          # Schema (102 models) + 17 migrations + seed.ts
+├── prisma/                          # Schema (104 models) + 17 migrations + seed.ts
 │   └── schema.prisma                # 2,826-line PostgreSQL schema
 ├── e2e/                             # 12 Playwright E2E specs
 ├── scripts/                         # 87 scripts: seed, bench, CLI tools, reports
-├── docs/                            # 22 docs + 14 ADRs + security audit
+├── docs/                            # 19 docs + 15 ADRs + security audit
 │   ├── ARCHITECTURE-v12.1.md
 │   ├── ROADMAP.md
 │   ├── CONSOLIDATED_STATUS.md
@@ -402,7 +402,7 @@ Garfix/
 │   ├── lib/
 │   │   ├── ai-fabric/               # 22 files — 20-phase AI cascade
 │   │   ├── invoice-brain/           # 21 files — pattern-first extraction
-│   │   ├── founder-validation/      # 1,628 tests — CTO-level pressure suite
+│   │   ├── founder-validation/      # 1,404 tests across 53 files — CTO-level pressure suite
 │   │   ├── e-invoicing/             # 11 files — 6-country MENA compliance
 │   │   ├── accounting/              # 18 files — full accounting engine
 │   │   ├── billing/                 # Subscription + pricing engine
@@ -467,7 +467,7 @@ Garfix/
                       │                                  │
             ┌─────────▼──────────┐            ┌──────────▼──────────┐
             │   PostgreSQL 17    │            │     Valkey 8.1      │
-            │   (102 models)     │            │   (cache + queue)   │
+            │   (104 models)     │            │   (cache + queue)   │
             └────────────────────┘            └─────────────────────┘
 ```
 
@@ -699,7 +699,7 @@ Seven-country MENA e-invoicing compliance suite — validation, certificate mana
 
 | الطبقة | الملفات | الوظيفة |
 |--------|---------|---------|
-| **1. Validation & generation** | `src/lib/e-invoicing/` (11 source files + 7 test files) | XML/QR generation, schema validation, per-country rules |
+| **1. Validation & generation** | `src/lib/e-invoicing/` (17 source files + 7 test files) | XML/QR generation, schema validation, per-country rules |
 | **2. Client UI & credentials** | `src/modules/settings/EInvoicingSettings.tsx` + `src/lib/integrations/einvoice_*.ts` (6 providers) | Per-country settings UI, encrypted credential storage, real `testConnection()` calls, webhook URL helper |
 | **3. Dashboard & webhooks** | `src/app/founder-panel/e-invoicing/` + `src/app/api/e-invoicing/webhooks/` + `src/lib/e-invoicing/webhooks.ts` | Founder dashboard, per-company timeline, 7 public webhook receivers |
 
@@ -1146,7 +1146,7 @@ function Dashboard() {
 | Category | Count | Location |
 |----------|-------|----------|
 | **Unit/Integration tests** | 1,740 files | `src/**/__tests__/` (1,716) + `__tests__/` (1) |
-| **Founder Validation Suite** | 1,628 tests | `src/lib/founder-validation/__tests__/` (1,421 in `deep/`) |
+| **Founder Validation Suite** | 1,404 tests across 53 files | `src/lib/founder-validation/__tests__/` (1,421 in `deep/`) |
 | **AI Fabric tests** | 14 files | `src/lib/ai-fabric/__tests__/` |
 | **Accounting tests** | 19 files | `src/lib/accounting/__tests__/` |
 | **E-invoicing tests** | 7 files | `src/lib/e-invoicing/__tests__/` (one per country) |
@@ -1304,7 +1304,7 @@ docker compose exec app bun run seed  # optional: demo data
 
 ### CI/CD Pipeline
 
-7 GitHub Actions workflows (8 total with cd.yml.DEPRECATED) orchestrate the full delivery:
+7 active GitHub Actions workflows (8 total) (8 total with cd.yml.DEPRECATED) orchestrate the full delivery:
 
 ```
 PR opened  ─►  pr-checks.yml (lint + typecheck + build)
@@ -1335,7 +1335,7 @@ nightly schedule ─► performance-nightly.yml (Lighthouse + budget enforcement
 | [`docs/Decision-Log.md`](docs/Decision-Log.md) | Historical decision log |
 | [`docs/Feature-Freeze-and-Milestones.md`](docs/Feature-Freeze-and-Milestones.md) | Feature freeze gates |
 
-### Architecture Decision Records (14 ADRs)
+### Architecture Decision Records (15 ADRs)
 
 | ADR | Title |
 |-----|-------|

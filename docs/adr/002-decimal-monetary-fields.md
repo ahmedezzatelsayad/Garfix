@@ -1,3 +1,4 @@
+> **DEPRECATED (Phase 16 P3):** See ADR-002-decimal-monetary-fields for the canonical version. This file is kept for historical reference.
 # ADR 002: Migrate Monetary Fields from String to Decimal
 
 - **Status**: Proposed
