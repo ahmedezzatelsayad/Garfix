@@ -98,12 +98,35 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const cursorObj = cursorId && !isNaN(cursorId) ? { id: cursorId } : undefined;
   const take = limit + 1; // Fetch one extra to check if there's a next page
 
+  // Phase 6 P1 fix: add select projection to drop heavy columns from the
+  // list response. The old query returned ALL ~50 columns per invoice
+  // including `lineItems` JSON (~5KB for a 50-line invoice), Kuwait-compliance
+  // Arabic fields, notesAr, etc. The list view only needs ~12 columns.
+  // This reduces a 100-invoice response from ~300KB to ~30KB.
   const invoices = await db.invoice.findMany({
     where,
     orderBy: { createdAt: "desc" },
     take,
     cursor: cursorObj,
     skip: cursor ? 1 : 0,
+    select: {
+      id: true,
+      invoiceNumber: true,
+      companySlug: true,
+      clientId: true,
+      clientName: true,
+      clientEmail: true,
+      issueDate: true,
+      dueDate: true,
+      status: true,
+      total: true,
+      paid: true,
+      subtotal: true,
+      taxAmount: true,
+      createdAt: true,
+      // Note: lineItems, notes, Kuwait-compliance fields, currency, etc. are NOT
+      // selected — clients that need them should use GET /api/invoices/[id].
+    },
   });
 
   // Check if there's a next page
@@ -114,14 +137,11 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   return NextResponse.json({
     invoices: items.map((inv) => ({
       ...inv,
-      lineItems: parseJsonField(inv.lineItems, []),
+      // Phase 6 P1: lineItems NOT included in list view (use GET /api/invoices/[id] for full record)
       subtotal: num(inv.subtotal, 3),
-      taxRate: num(inv.taxRate),
       taxAmount: num(inv.taxAmount, 3),
       total: num(inv.total, 3),
-      shipping: num(inv.shipping, 3),
       paid: num(inv.paid, 3),
-      discount: num(inv.discount, 3),
     })),
     nextCursor,
   });

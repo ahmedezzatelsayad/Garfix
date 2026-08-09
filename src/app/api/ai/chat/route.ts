@@ -196,6 +196,46 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
   const data = parsed.data;
 
+  // Phase 8 P1 fix: per-company AI rate limiting via Valkey.
+  // The per-user limiter above protects against a single user spamming.
+  // This per-company limiter enforces the founder-configured chatRateLimitRpm
+  // from CompanyAIConfig — so a company on the "starter" plan (60 RPM) can't
+  // exceed their quota even with 10 active users. Falls back gracefully if
+  // Valkey is unavailable (per-instance in-memory limiter).
+  if (data.companySlug) {
+    try {
+      const { checkAndRecordRateLimit } = await import("@/lib/ai/valkey-rate-limiter");
+      // Look up the company's configured RPM (default 60 if not set)
+      // CompanyAIConfig uses companyId (not companySlug) as the unique key.
+      const company = await db.company.findUnique({
+        where: { slug: data.companySlug },
+        select: { id: true },
+      }).catch(() => null);
+      if (company) {
+        const companyAiConfig = await db.companyAIConfig.findUnique({
+          where: { companyId: company.id },
+          select: { chatRateLimitRpm: true },
+        }).catch(() => null);
+        const rpm = companyAiConfig?.chatRateLimitRpm || 60;
+        const rateCheck = await checkAndRecordRateLimit(company.id, "chat", rpm);
+        if (!rateCheck.allowed) {
+          const retryAfterSec = Math.ceil((rateCheck.retryAfterMs || 60_000) / 1000);
+          return NextResponse.json(
+            { error: `تم تجاوز حد الطلبات للشركة (${rpm} طلب/دقيقة). حاول مرة أخرى بعد ${retryAfterSec} ثانية.` },
+            { status: 429, headers: { "Retry-After": String(retryAfterSec) } },
+          );
+        }
+      }
+    } catch (rlErr) {
+      // Per-company limiter failed (Valkey down, DB error) — fall through to
+      // the per-user limiter which already passed. Don't block the request.
+      logger.warn("[ai/chat] per-company rate limit check failed (fail-open)", {
+        companySlug: data.companySlug,
+        err: rlErr instanceof Error ? rlErr.message : String(rlErr),
+      });
+    }
+  }
+
   // Authorization: AI can access financial data, so require view_invoices permission
   if (data.companySlug) {
     const access = await requirePermissionForCompany(req, "view_invoices", data.companySlug);

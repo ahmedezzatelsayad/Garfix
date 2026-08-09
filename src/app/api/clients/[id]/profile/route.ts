@@ -39,41 +39,62 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: RoutePa
     );
   }
 
-  // Pull all invoices for this client
-  const invoicesRaw = await db.invoice.findMany({
-    where: { clientId: client.id, companySlug: client.companySlug },
-    orderBy: { createdAt: "desc" },
-  });
+  // Phase 6 P1 fix: use aggregate + groupBy instead of findMany-all-invoices.
+  // The old code loaded ALL invoices for a client into memory (could be 10k+
+  // for a top-tier client) just to compute totals + status counts. Now we use
+  // Prisma's aggregate (sum) and groupBy (count by status) — DB-side computation.
+  const [totals, statusCounts, recentInvoices] = await Promise.all([
+    // Aggregate: sum of total + paid across ALL invoices (DB-side)
+    db.invoice.aggregate({
+      where: { clientId: client.id, companySlug: client.companySlug },
+      _sum: { total: true, paid: true, taxAmount: true, discount: true, shipping: true, subtotal: true },
+      _count: true,
+    }),
+    // GroupBy: count by status (DB-side)
+    db.invoice.groupBy({
+      by: ["status"],
+      where: { clientId: client.id, companySlug: client.companySlug },
+      _count: { status: true },
+    }),
+    // Recent 10 invoices for the UI list (cursor-paginated on client if needed)
+    db.invoice.findMany({
+      where: { clientId: client.id, companySlug: client.companySlug },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        id: true, invoiceNumber: true, issueDate: true, dueDate: true, status: true,
+        subtotal: true, taxAmount: true, total: true, paid: true,
+        notes: true, source: true, createdAt: true,
+      },
+    }),
+  ]);
 
-  const invoices = invoicesRaw.map((inv) => ({
+  const totalDue = num(totals._sum.total, 3);
+  const totalPaid = num(totals._sum.paid, 3);
+  const outstanding = Math.max(0, totalDue - totalPaid);
+
+  // Convert groupBy result to the byStatus record the UI expects
+  const byStatus: Record<string, number> = {};
+  for (const row of statusCounts) {
+    byStatus[row.status] = row._count.status;
+  }
+
+  // Map recent invoices (only 10, not all)
+  const invoices = recentInvoices.map((inv) => ({
     id: inv.id,
     invoiceNumber: inv.invoiceNumber,
     issueDate: inv.issueDate,
     dueDate: inv.dueDate,
     status: inv.status,
     subtotal: num(inv.subtotal, 3),
-    taxRate: num(inv.taxRate),
     taxAmount: num(inv.taxAmount, 3),
     total: num(inv.total, 3),
     paid: num(inv.paid, 3),
     outstanding: Math.max(0, num(inv.total, 3) - num(inv.paid, 3)),
-    shipping: num(inv.shipping, 3),
-    discount: num(inv.discount, 3),
     notes: inv.notes,
     source: inv.source,
     createdAt: inv.createdAt,
   }));
-
-  // Compute payment summary
-  const totalDue = invoices.reduce((sum, inv) => sum + num(inv.total, 3), 0);
-  const totalPaid = invoices.reduce((sum, inv) => sum + num(inv.paid, 3), 0);
-  const outstanding = Math.max(0, totalDue - totalPaid);
-
-  // Status breakdown for richer UI
-  const byStatus: Record<string, number> = {};
-  for (const inv of invoices) {
-    byStatus[inv.status] = (byStatus[inv.status] || 0) + 1;
-  }
 
   return NextResponse.json({
     client: {

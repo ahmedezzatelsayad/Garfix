@@ -48,13 +48,20 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const access = await requirePermissionForCompany(req, "reports_access", companySlug);
   if ("error" in access) return access.error;
 
-  // Fetch invoices in date range
+  // Phase 6 P1 fix: reduced take from 5000 → 1000 + added cursor pagination.
+  // The old `take: 5000` loaded up to 5000 invoices + 5000 purchases into
+  // memory simultaneously (~10MB per request). Now we cap at 1000 per page
+  // and return a nextCursor for the client to fetch the next batch.
+  // The client passes ?cursor=<id> to get the next page.
+  const cursor = req.nextUrl.searchParams.get("cursor");
+  const PAGE_SIZE = 1000;
+
   const invoices = await db.invoice.findMany({
     where: {
       companySlug,
       issueDate: { gte: from, lte: to },
     },
-    orderBy: { issueDate: "asc" },
+    orderBy: { id: "asc" },
     select: {
       id: true, invoiceNumber: true, clientName: true, clientEmail: true,
       issueDate: true, dueDate: true, status: true,
@@ -62,7 +69,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       total: true, shipping: true, discount: true, paid: true,
       lineItems: true, createdAt: true,
     },
-    take: 5000,
+    take: PAGE_SIZE + 1, // +1 to detect if there's a next page
+    ...(cursor ? { cursor: { id: parseInt(cursor, 10) }, skip: 1 } : {}),
   });
 
   // Fetch purchase invoices in the same range
@@ -73,14 +81,19 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     },
     orderBy: { date: "asc" },
     select: { id: true, num: true, date: true, supplier: true, items: true, totalQty: true, notes: true },
-    take: 5000,
+    take: PAGE_SIZE,
   });
+
+  // Detect if there are more invoices (for pagination)
+  const hasMore = invoices.length > PAGE_SIZE;
+  const invoicesPage = hasMore ? invoices.slice(0, PAGE_SIZE) : invoices;
+  const nextCursor = hasMore ? String(invoicesPage[invoicesPage.length - 1].id) : null;
 
   let reportData: Record<string, unknown>[] = [];
   let summary: Record<string, unknown> = {};
 
   if (type === "sales") {
-    reportData = invoices.map((inv) => ({
+    reportData = invoicesPage.map((inv) => ({
       invoiceNumber: inv.invoiceNumber,
       clientName: inv.clientName,
       issueDate: inv.issueDate,
@@ -97,15 +110,15 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
     summary = {
       totalInvoices: invoices.length,
-      totalRevenue: invoices.reduce((s, i) => s + num(i.total, 3), 0),
-      totalPaid: invoices.reduce((s, i) => s + num(i.paid, 3), 0),
-      totalOutstanding: invoices.reduce((s, i) => s + Math.max(0, num(i.total, 3) - num(i.paid, 3)), 0),
-      totalTax: invoices.reduce((s, i) => s + num(i.taxAmount, 3), 0),
-      totalDiscount: invoices.reduce((s, i) => s + num(i.discount, 3), 0),
+      totalRevenue: invoicesPage.reduce((s, i) => s + num(i.total, 3), 0),
+      totalPaid: invoicesPage.reduce((s, i) => s + num(i.paid, 3), 0),
+      totalOutstanding: invoicesPage.reduce((s, i) => s + Math.max(0, num(i.total, 3) - num(i.paid, 3)), 0),
+      totalTax: invoicesPage.reduce((s, i) => s + num(i.taxAmount, 3), 0),
+      totalDiscount: invoicesPage.reduce((s, i) => s + num(i.discount, 3), 0),
     };
   } else if (type === "profit") {
     // Revenue - COGS (purchase cost)
-    const totalRevenue = invoices.reduce((s, i) => s + num(i.subtotal, 3), 0);
+    const totalRevenue = invoicesPage.reduce((s, i) => s + num(i.subtotal, 3), 0);
     // Estimate COGS from purchase invoices (simplified — real COGS needs inventory tracking)
     const totalCogs = purchases.reduce((s, p) => {
       const items = parseJsonField<Array<{ qty?: number; price?: number }>>(p.items, []);
@@ -131,21 +144,21 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     };
   } else if (type === "cashflow") {
     // Cash inflow = paid amounts, outflow = purchases
-    const inflow = invoices.reduce((s, i) => s + num(i.paid, 3), 0);
+    const inflow = invoicesPage.reduce((s, i) => s + num(i.paid, 3), 0);
     const outflow = purchases.reduce((s, p) => {
       const items = parseJsonField<Array<{ qty?: number; price?: number }>>(p.items, []);
       return s + items.reduce((cs, it) => cs + num(it.qty) * num(it.price, 3), 0);
     }, 0);
 
     reportData = [
-      { metric: "التدفق الداخل (Cash Inflow)", amount: inflow, count: invoices.filter((i) => num(i.paid, 3) > 0).length },
+      { metric: "التدفق الداخل (Cash Inflow)", amount: inflow, count: invoicesPage.filter((i) => num(i.paid, 3) > 0).length },
       { metric: "التدفق الخارج (Cash Outflow)", amount: outflow, count: purchases.length },
       { metric: "صافي التدفق (Net Cash Flow)", amount: inflow - outflow, count: 0 },
     ];
 
     summary = { inflow, outflow, netCashFlow: inflow - outflow };
   } else if (type === "tax") {
-    reportData = invoices.map((inv) => ({
+    reportData = invoicesPage.map((inv) => ({
       invoiceNumber: inv.invoiceNumber,
       clientName: inv.clientName,
       issueDate: inv.issueDate,
@@ -156,9 +169,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     }));
 
     summary = {
-      totalSubtotal: invoices.reduce((s, i) => s + num(i.subtotal, 3), 0),
-      totalTax: invoices.reduce((s, i) => s + num(i.taxAmount, 3), 0),
-      totalWithTax: invoices.reduce((s, i) => s + num(i.total, 3), 0),
+      totalSubtotal: invoicesPage.reduce((s, i) => s + num(i.subtotal, 3), 0),
+      totalTax: invoicesPage.reduce((s, i) => s + num(i.taxAmount, 3), 0),
+      totalWithTax: invoicesPage.reduce((s, i) => s + num(i.total, 3), 0),
       invoiceCount: invoices.length,
     };
   }
@@ -182,5 +195,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     summary,
     rows: reportData,
     count: reportData.length,
+    // Phase 6 P1: cursor pagination — client passes ?cursor=<id> for next page
+    nextCursor,
+    hasMore,
   });
 });

@@ -215,6 +215,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Phase 8 P1 fix: per-company AI rate limiting (same as non-streaming chat).
+  // Enforces the founder-configured chatRateLimitRpm from CompanyAIConfig.
+  if (data.companySlug) {
+    try {
+      const { checkAndRecordRateLimit } = await import("@/lib/ai/valkey-rate-limiter");
+      const { dbTyped: db } = await import("@/lib/db");
+      const company = await db.company.findUnique({
+        where: { slug: data.companySlug },
+        select: { id: true },
+      }).catch(() => null);
+      if (company) {
+        const companyAiConfig = await db.companyAIConfig.findUnique({
+          where: { companyId: company.id },
+          select: { chatRateLimitRpm: true },
+        }).catch(() => null);
+        const rpm = companyAiConfig?.chatRateLimitRpm || 60;
+        const rateCheck = await checkAndRecordRateLimit(company.id, "chat", rpm);
+        if (!rateCheck.allowed) {
+          const retryAfterSec = Math.ceil((rateCheck.retryAfterMs || 60_000) / 1000);
+          return NextResponse.json(
+            { error: `تم تجاوز حد الطلبات للشركة (${rpm} طلب/دقيقة)` },
+            { status: 429, headers: { "Retry-After": String(retryAfterSec) } },
+          );
+        }
+      }
+    } catch {
+      // fail-open — per-user limiter already passed
+    }
+  }
+
   const conversationId = data.conversationId || randomUUID();
 
   // SEC-H7C4 (Cycle 4): strip role:"system" from user-supplied messages
