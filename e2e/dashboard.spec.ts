@@ -22,7 +22,9 @@ test.describe("Dashboard", () => {
       // Dashboard should have some stat cards
       const count = await statsElements.count();
       // Even if no stats found, the page should load without errors
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     }
   });
 

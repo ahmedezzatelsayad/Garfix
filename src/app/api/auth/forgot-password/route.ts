@@ -15,7 +15,7 @@
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
-import { randomInt } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import { dbTyped as db } from "@/lib/db";
 import { hashToken } from "@/lib/cryptoVault";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
@@ -54,7 +54,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       data: {
         email: user.email,
         userId: user.uid,
-        code,
+        code: `REDACTED-${randomUUID()}`,
         codeHash,
         purpose: "password_reset",
         expiresAt,

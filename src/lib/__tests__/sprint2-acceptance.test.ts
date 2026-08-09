@@ -13,7 +13,7 @@
  *   P1-6: CI/CD Pipeline — GitHub Actions workflow with lint → typecheck → build → tests
  */
 
-import { describe, test, expect } from "vitest";
+import { describe, test, expect } from "bun:test";
 import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import path from "path";

@@ -68,21 +68,32 @@ async function callAI(systemPrompt: string, userText: string): Promise<{
   processingMs: number;
 }> {
   const t0 = Date.now();
-  const ZAI = (await import("z-ai-web-dev-sdk")).default;
-  const ai = await ZAI.create();
-  const completion = await ai.chat.completions.create({
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userText },
-    ],
-    temperature: 0.1,
-    max_tokens: 4000,
-  });
-  return {
-    content: completion.choices?.[0]?.message?.content || "{}",
-    usage: completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-    processingMs: Date.now() - t0,
-  };
+  try {
+    const { callAIWithFallback } = await import("@/lib/ai/smartRouter");
+    const aiConfig = await import("@/lib/aiConfig").then((m) => m.getGlobalAiConfig());
+    const result = await callAIWithFallback({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userText },
+      ],
+      temperature: 0.1,
+      maxTokens: Math.min(aiConfig.maxTokens, 4000),
+      capability: "invoice-extraction",
+    });
+    const usage = result.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    return { content: result.content || "{}", usage: { prompt_tokens: usage.prompt_tokens || 0, completion_tokens: usage.completion_tokens || 0, total_tokens: usage.total_tokens || 0 }, processingMs: Date.now() - t0 };
+  } catch (fallbackErr) {
+    try {
+      const ZAI = (await import("z-ai-web-dev-sdk")).default;
+      const ai = await ZAI.create();
+      const completion = await ai.chat.completions.create({
+        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userText }],
+        temperature: 0.1,
+        max_tokens: 4000,
+      });
+      return { content: completion.choices?.[0]?.message?.content || "{}", usage: completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, processingMs: Date.now() - t0 };
+    } catch { throw fallbackErr; }
+  }
 }
 
 function stripFences(text: string): string {

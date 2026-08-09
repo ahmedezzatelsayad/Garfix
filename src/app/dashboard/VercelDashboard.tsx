@@ -3,6 +3,7 @@
  */
 "use client";
 
+import { VERCEL_ESCAPE_HELPER_JS } from "@/lib/vercel-html-utils";
 import Link from "next/link";
 
 export default function VercelDashboard() {
@@ -76,7 +77,7 @@ export default function VercelDashboard() {
         </div>
       </div>
 
-      <script dangerouslySetInnerHTML={{ __html: `
+      <script dangerouslySetInnerHTML={{ __html: VERCEL_ESCAPE_HELPER_JS + `
         (async function() {
           try {
             var res = await fetch('/api/auth/me', { credentials: 'include' });

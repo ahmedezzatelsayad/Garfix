@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
 import { requirePermission } from "@/lib/middleware";
 import { withErrorHandler } from "@/lib/api";
-import { PrismaPatternStore } from "@/lib/invoice-brain";
+import { PrismaPatternStore } from "@/lib/invoice-brain/patternStore";
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const access = await requirePermission(req, "bulk_input");

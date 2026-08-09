@@ -101,12 +101,7 @@ function StaticLanding() {
 }
 
 export default function Home() {
-  // Vercel: use static HTML (no React hydration)
-  if (process.env.VERCEL === "1") {
-    return <StaticLanding />;
-  }
-
-  // AWS/Docker: full React app with AppShell
+  const isVercel = process.env.VERCEL === "1";
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -122,6 +117,10 @@ export default function Home() {
     () => ({ onLogin: handleLogin, onRegister: handleRegister }),
     [handleLogin, handleRegister],
   );
+
+  if (isVercel) {
+    return <StaticLanding />;
+  }
 
   // Authenticated → AppShell (full dashboard with 18 modules)
   if (!loading && user) {

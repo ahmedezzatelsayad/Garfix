@@ -37,10 +37,10 @@ CREATE INDEX "clients_companySlug_idx" ON "clients"("companySlug");
 CREATE INDEX "clients_companyId_idx" ON "clients"("companyId");
 
 -- CreateIndex
-CREATE INDEX "Supplier_companySlug_idx" ON "Supplier"("companySlug");
+CREATE INDEX "Supplier_companySlug_idx" ON "suppliers"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "Supplier_companyId_idx" ON "Supplier"("companyId");
+CREATE INDEX "Supplier_companyId_idx" ON "suppliers"("companyId");
 
 -- CreateIndex
 CREATE INDEX "product_catalog_companySlug_idx" ON "product_catalog"("companySlug");
@@ -85,7 +85,7 @@ CREATE INDEX "opening_balance_entries_companySlug_idx" ON "opening_balance_entri
 CREATE INDEX "opening_balance_entries_companyId_idx" ON "opening_balance_entries"("companyId");
 
 -- CreateIndex
-CREATE INDEX "ProfitDistribution_companyId_idx" ON "ProfitDistribution"("companyId");
+CREATE INDEX "ProfitDistribution_companyId_idx" ON "profit_distributions"("companyId");
 
 -- CreateIndex
 CREATE INDEX "letters_of_credit_companyId_idx" ON "letters_of_credit"("companyId");
@@ -178,10 +178,10 @@ CREATE INDEX "payment_transactions_companySlug_idx" ON "payment_transactions"("c
 CREATE INDEX "payment_transactions_companyId_idx" ON "payment_transactions"("companyId");
 
 -- CreateIndex
-CREATE INDEX "RefundTransaction_companySlug_idx" ON "RefundTransaction"("companySlug");
+CREATE INDEX "RefundTransaction_companySlug_idx" ON "refund_transactions"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "RefundTransaction_companyId_idx" ON "RefundTransaction"("companyId");
+CREATE INDEX "RefundTransaction_companyId_idx" ON "refund_transactions"("companyId");
 
 -- CreateIndex
 CREATE INDEX "post_dated_checks_companySlug_idx" ON "post_dated_checks"("companySlug");
@@ -268,7 +268,7 @@ CREATE INDEX "invoice_templates_companySlug_idx" ON "invoice_templates"("company
 CREATE INDEX "chat_history_companySlug_idx" ON "chat_history"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "SubscriptionSchedule_companySlug_idx" ON "SubscriptionSchedule"("companySlug");
+CREATE INDEX "SubscriptionSchedule_companySlug_idx" ON "subscription_schedules"("companySlug");
 
 -- CreateIndex
 CREATE INDEX "wps_files_companySlug_idx" ON "wps_files"("companySlug");

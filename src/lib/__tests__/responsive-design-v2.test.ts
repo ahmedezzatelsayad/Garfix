@@ -6,7 +6,7 @@
  * and that inline style={{}} usage has been significantly reduced.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "bun:test";
 import { readFileSync } from 'fs';
 import { join } from 'path';
 

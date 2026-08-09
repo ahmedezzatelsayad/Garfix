@@ -7,7 +7,7 @@
  * and checks for responsive prefix patterns. It does NOT render components.
  */
 
-import { describe, test, expect, beforeAll } from "vitest";
+import { describe, test, expect, beforeAll } from "bun:test";
 import fs from "fs";
 import path from "path";
 

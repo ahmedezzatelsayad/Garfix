@@ -9,7 +9,7 @@
  * for styles that cannot be converted (dynamic values, CSS variables, etc.)
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import * as fs from "fs";
 import * as path from "path";
 

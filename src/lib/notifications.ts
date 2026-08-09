@@ -157,12 +157,7 @@ export async function scanExpiringResidences(): Promise<number> {
   // NOTE: Employee schema has no `residenceExpiry` field — this scan is a no-op
   // until a migration adds the column. Preserved as a stub so callers (e.g.
   // runNotificationScan) keep working without type errors.
-  try {
-    return 0;
-  } catch (err) {
-    logger.error("[notifications] scanExpiringResidences failed", { err: err instanceof Error ? err.message : String(err) });
-    return 0;
-  }
+  return 0;
 }
 
 /**

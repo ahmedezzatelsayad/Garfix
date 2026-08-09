@@ -45,7 +45,9 @@ test.describe("Settings Module", () => {
         "[role='tab'][aria-selected='true'], [class*='tab'][class*='primary'], [class*='tab'][class*='emerald']"
       );
       const count = await activeTab.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
 
     test("should switch tabs on click", async ({ page }) => {
@@ -80,7 +82,9 @@ test.describe("Settings Module", () => {
     test("should have gold KPI for completion/premium metric", async ({ page }) => {
       const goldKpi = page.locator(".kpi-card-gold");
       const count = await goldKpi.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
   });
 
@@ -97,7 +101,9 @@ test.describe("Settings Module", () => {
     test("should have focus-ring on form inputs", async ({ page }) => {
       const focusInputs = page.locator("input.focus-ring, textarea.focus-ring");
       const count = await focusInputs.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
 
     test("should show focus ring on input focus", async ({ page }) => {
@@ -136,7 +142,9 @@ test.describe("Settings Module", () => {
         "button:has-text('إلغاء'), button:has-text('cancel'), button[type='reset']"
       );
       const count = await cancelButton.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
   });
 
@@ -146,7 +154,9 @@ test.describe("Settings Module", () => {
         "[class*='template'][class*='grid'], [class*='template'][class*='grid']"
       );
       const count = await templateGrid.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
 
     test("should have template cards with hover effect", async ({ page }) => {
@@ -154,7 +164,9 @@ test.describe("Settings Module", () => {
         ".hover-lift[class*='template'], [class*='template'].hover-lift"
       );
       const count = await templateCards.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
   });
 
@@ -162,7 +174,9 @@ test.describe("Settings Module", () => {
     test("should render template table with enterprise styling", async ({ page }) => {
       const table = page.locator(".table-enterprise, table[class*='enterprise']");
       const count = await table.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
 
     test("should have search/filter functionality", async ({ page }) => {
@@ -170,7 +184,9 @@ test.describe("Settings Module", () => {
         "input[placeholder*='بحث'], input[placeholder*='search'], input[type='search']"
       );
       const count = await searchInput.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
 
     test("should have template action buttons", async ({ page }) => {
@@ -178,7 +194,9 @@ test.describe("Settings Module", () => {
         "button:has-text('تعديل'), button:has-text('حذف'), button:has-text('نسخ')"
       );
       const count = await actionButtons.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
   });
 
@@ -187,7 +205,9 @@ test.describe("Settings Module", () => {
       // This test assumes there's validation - we check the infrastructure exists
       const requiredFields = page.locator("[required], [aria-required='true']");
       const count = await requiredFields.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
 
     test("should show success state after save", async ({ page }) => {
@@ -215,7 +235,9 @@ test.describe("Settings Module", () => {
         "[class*='collapsible'], [class*='accordion'], details summary"
       );
       const count = await collapsibleHeaders.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
 
     test("should expand/collapse sections smoothly", async ({ page }) => {
@@ -281,7 +303,9 @@ test.describe("Settings Module", () => {
       // Tabs might become scrollable or dropdown on mobile
       const tabs = page.locator("[role='tab'], [class*='tab']");
       const count = await tabs.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
   });
 
@@ -297,7 +321,9 @@ test.describe("Settings Module", () => {
     test("should use brand shadows on cards", async ({ page }) => {
       const brandShadows = page.locator("[class*='shadow-brand']");
       const count = await brandShadows.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
 
     test("should have consistent spacing", async ({ page }) => {

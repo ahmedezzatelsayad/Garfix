@@ -4,7 +4,7 @@
  * with Tailwind CSS classes.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "bun:test";
 import { readFileSync } from 'fs';
 import { join } from 'path';
 

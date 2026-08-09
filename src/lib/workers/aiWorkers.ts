@@ -31,7 +31,8 @@ export type AIWorkerType =
   | "ai-smart-parse"     // Smart document parsing
   | "ai-agent-accounting"// Accounting specialist
   | "ai-agent-sales"     // Sales specialist  
-  | "ai-agent-inventory"; // Inventory specialist
+  | "ai-agent-inventory" // Inventory specialist
+  | "ai-product-match-resolve"; // Phase 7 P0 fix
 
 export interface AIJobPayload {
   type: AIWorkerType;

@@ -8,7 +8,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
-import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
+import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
 import { hasPermission } from "@/lib/middleware";
 import { withErrorHandler } from "@/lib/api";
 import { parseCursorParams, buildCursorResponse, buildCursorPrismaQuery } from "@/lib/cursor-pagination-server";
@@ -33,6 +33,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const where: Record<string, unknown> = { isActive: true };
   if (companySlug) {
     where.companySlug = companySlug;
+  } else if (!hasUnrestrictedScope(user)) {
+    where.companySlug = { in: user.companies };
   }
   if (search) {
     where.OR = [

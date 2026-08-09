@@ -15,7 +15,7 @@
  * P0-8: Row Versioning — optimistic locking on JournalEntry
  */
 
-import { describe, test, expect } from "vitest";
+import { describe, test, expect } from "bun:test";
 import { PrismaClient } from "@prisma/client";
 
 // ── P0-1: Prisma Schema Sync ──────────────────────────────────────────

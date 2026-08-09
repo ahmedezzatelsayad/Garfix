@@ -38,6 +38,7 @@
  */
 'use node';
 
+import { createHash } from "node:crypto";
 import { dbTyped as db } from "./db";
 import { logger } from "./logger";
 import { VALKEY_CONFIGURED, getValkeyClient } from "./valkey";
@@ -460,6 +461,12 @@ export async function clearDeadLettersAsync(queue?: QueueName): Promise<void> {
   }
 }
 
+
+function computeJobId(queue: QueueName, payload: JobPayload): string {
+  const stable = JSON.stringify({ q: queue, t: payload.type, d: payload.data ?? null });
+  return createHash("sha256").update(stable).digest("hex").slice(0, 32);
+}
+
 /**
  * Enqueue a job asynchronously — caller awaits the result, with retries.
  */
@@ -470,9 +477,8 @@ export async function enqueueAsync(queue: QueueName, payload: JobPayload): Promi
     if (ready) {
       const bullQueue = bullQueues.get(queue);
       if (bullQueue) {
-        await bullQueue.add(payload.type, payload, {
-          attempts: payload.attempts ?? MAX_RETRIES,
-        });
+        const jobId = computeJobId(queue, payload);
+        await bullQueue.add(payload.type, payload, { jobId, attempts: payload.attempts ?? MAX_RETRIES });
         logger.debug("[queues] BullMQ job enqueued (async)", { queue, type: payload.type });
         return;
       }
@@ -485,7 +491,8 @@ export async function enqueueAsync(queue: QueueName, payload: JobPayload): Promi
     const pgboss = await loadPgBossModule();
     if (pgboss) {
       try {
-        await pgboss.enqueueAsync(queue, payload);
+        const singletonKey = computeJobId(queue, payload);
+        await pgboss.enqueueAsync(queue, payload, { singletonKey });
         return;
       } catch (err) {
         logger.warn("[queues] pg-boss enqueueAsync failed — falling back to in-process", {
@@ -511,9 +518,8 @@ export function enqueueBackground(queue: QueueName, payload: JobPayload): void {
         const bullQueue = bullQueues.get(queue);
         if (bullQueue) {
           try {
-            await bullQueue.add(payload.type, payload, {
-              attempts: payload.attempts ?? MAX_RETRIES,
-            });
+            const jobId = computeJobId(queue, payload);
+        await bullQueue.add(payload.type, payload, { jobId, attempts: payload.attempts ?? MAX_RETRIES });
             logger.debug("[queues] BullMQ job enqueued (background)", { queue, type: payload.type });
             return;
           } catch (err) {

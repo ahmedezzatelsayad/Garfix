@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "bun:test";
 import { Prisma } from '@prisma/client';
 import { addMoney, subtractMoney, multiplyMoney, divideMoney, roundMoney, formatMoney, isZero, calculatePercentage } from '@/lib/money';
 

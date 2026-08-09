@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { hashPassword } from '@/lib/auth'
 import { Prisma } from '@prisma/client'
 
 /**
@@ -29,7 +30,7 @@ async function seed() {
     create: {
       uid: 'admin-001',
       email: 'admin@garfix.com',
-      passwordHash: '$2a$10$dummyhashnotforproduction',
+      passwordHash: await hashPassword(process.env.SEED_ADMIN_PASSWORD || 'ChangeMe!2024'),
       displayName: 'Admin User',
       role: 'admin',
       companies: JSON.stringify([company.slug]),

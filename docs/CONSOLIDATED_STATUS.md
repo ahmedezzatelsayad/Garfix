@@ -1,4 +1,4 @@
-# GarfiX EOS — Consolidated Status Document (v15 Final)
+# GarfiX EOS — Consolidated Status Document (v0.2.0 — see package.json)
 
 **Date:** 2026-07-16
 **Version:** v15 (post all 9 prompt files)

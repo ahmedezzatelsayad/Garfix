@@ -1,29 +1,33 @@
 name: Deploy to AWS EC2
-
 on:
-  push:
-    branches: [main]
-
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit SHA, tag, or branch to deploy"
+        required: false
+        default: "main"
+  release:
+    types: [published]
+concurrency:
+  group: deploy-aws-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: production
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
+          ref: ${{ github.event.inputs.ref || github.ref }}
       - name: Build Docker image
-        run: docker build -t garfix:${{ github.sha }} .
-
+        run: |
+          docker build -t garfix:${{ github.sha }} .
+          docker tag garfix:${{ github.sha }} garfix:latest
       - name: Save image
         run: docker save garfix:${{ github.sha }} | gzip > /tmp/garfix.tar.gz
-
-      - name: Copy image to EC2
+      - name: Copy to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -32,7 +36,6 @@ jobs:
           source: /tmp/garfix.tar.gz
           target: /home/ubuntu/
           strip_components: 1
-
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -40,45 +43,31 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -euo pipefail
             cd /home/ubuntu/Garfix
-            git pull origin main
-
-            # Load new image
+            git fetch --all
+            git checkout --force ${{ github.event.inputs.ref || github.sha || 'main' }}
             docker load < /home/ubuntu/garfix.tar.gz
             rm /home/ubuntu/garfix.tar.gz
-
-            # Fetch secrets from SSM (no printing)
+            CURRENT=$(docker ps --filter "name=garfix-app" --format '{{.Image}}' | head -1 || echo "")
+            if [ -n "$CURRENT" ]; then docker tag "$CURRENT" garfix:previous || true; fi
             ./scripts/fetch-secrets.sh
-
-            # Deploy
-            docker compose -f docker-compose.prod.yml up -d --build
-
-            # Wait for health check
-            sleep 15
-            HEALTH=$(curl -sf http://localhost:3000/api/health | jq -r '.status' 2>/dev/null || echo "failed")
-
-            if [ "$HEALTH" != "ok" ]; then
-              echo "❌ Health check failed: $HEALTH"
-              echo "Rolling back..."
-              docker compose -f docker-compose.prod.yml restart app
-              sleep 10
-              HEALTH_RETRY=$(curl -sf http://localhost:3000/api/health | jq -r '.status' 2>/dev/null || echo "failed")
-              if [ "$HEALTH_RETRY" != "ok" ]; then
-                echo "❌ Rollback also failed — manual intervention required"
-                exit 1
-              fi
-              echo "⚠️ Rolled back successfully (previous container)"
-            else
-              echo "✅ Deploy successful — health check passed"
+            export GARFIX_IMAGE_TAG=garfix:${{ github.sha }}
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --no-build
+            for i in $(seq 1 30); do
+              H=$(curl -sf http://localhost:3000/api/health 2>/dev/null | jq -r '.status' 2>/dev/null || echo "failed")
+              if [ "$H" = "ok" ]; then echo "Deploy OK"; docker image prune -f; exit 0; fi
+              sleep 2
+            done
+            if docker image inspect garfix:previous >/dev/null 2>&1; then
+              export GARFIX_IMAGE_TAG=garfix:previous
+              docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --no-build
             fi
-
-            # Cleanup old images
-            docker image prune -f
-
+            exit 1
       - name: Notify on failure
         if: failure()
-        uses: aws-actions/aws-sns-publish@v1
+        uses: aws-actions/aws-sns-publish@v2.0.0
         with:
           topic-arn: ${{ secrets.SNS_TOPIC_ARN }}
-          message: "GarfiX deployment FAILED on commit ${{ github.sha }}"
-          subject: "❌ GarfiX Deploy Failed"
+          message: "GarfiX deploy FAILED on ${{ github.sha }}"
+          subject: "GarfiX Deploy Failed"

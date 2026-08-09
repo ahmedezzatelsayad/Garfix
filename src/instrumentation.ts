@@ -118,6 +118,12 @@ export async function register(): Promise<void> {
   // AWS/Docker: run full startup (DB init, background tasks, etc.)
   logger.info("[instrumentation] Running full startup (AWS/Docker mode)");
 
+  if (process.env.NODE_ENV === "production" && !process.env.VALKEY_URL && !process.env.REDIS_URL) {
+    const msg = "[instrumentation] FATAL: VALKEY_URL is not set in production. Refusing to start.";
+    logger.error(msg);
+    throw new Error("VALKEY_URL is required in production (Phase 19 P0 fail-fast).");
+  }
+
   try {
     // ── TIER 1: BLOCKING STARTUP ─────────────────────────────────────────
     // These MUST complete before any request can be served. Keep this list

@@ -1,4 +1,4 @@
-# 🚀 GarfiX EOS v12.0 - Deployment & Operations Guide
+# 🚀 GarfiX EOS v0.2.0 - Deployment & Operations Guide
 
 ## 📋 Table of Contents
 
@@ -20,10 +20,10 @@
 ### Minimum Requirements
 | Component | Minimum | Recommended |
 |-----------|---------|-------------|
-| **Node.js** | 18.x | 20.x LTS |
-| **Bun** | 1.x | Latest |
-| **Database** | PostgreSQL 14+ | PostgreSQL 16 |
-| **Redis** | 6.x | 7.x (Valkey compatible) |
+| **Node.js** | 22.x | 22.x LTS |
+| **Bun** | 1.3.14 | Latest 1.3.x |
+| **Database** | PostgreSQL 17 | PostgreSQL 17 |
+| **Cache/Queue** | Valkey 8.1 | Valkey 8.1 |
 | **RAM** | 2 GB | 4 GB+ |
 | **CPU** | 2 cores | 4 cores |
 | **Storage** | 10 GB SSD | 20 GB NVMe |
@@ -31,12 +31,12 @@
 ### Software Dependencies
 ```bash
 # Core Runtime
-node --version   # >= 18.0.0
-bun --version    # >= 1.0.0
+node --version   # >= 22.0.0
+bun --version    # >= 1.3.14
 
 # Databases
-psql --version    # PostgreSQL >= 14
-redis-server --version  # Redis >= 6
+psql --version            # PostgreSQL >= 17
+valkey-server --version   # Valkey >= 8.1
 ```
 
 ---
@@ -141,7 +141,7 @@ bun run db:push
 
 ### Schema Overview
 
-GarfiX uses **72 Prisma models** including:
+GarfiX uses **103 Prisma models** including:
 
 | Category | Models | Description |
 |----------|--------|-------------|
@@ -301,7 +301,7 @@ curl https://your-domain.vercel.app/api/health
 
 ```bash
 # Build image
-docker build -t garfix-eos:v12 .
+docker build -t garfix-eos:v0.2.0 .
 
 # Run container
 docker run -d \
@@ -311,7 +311,7 @@ docker run -d \
   -e JWT_SECRET="your-secret" \
   -e JWT_REFRESH_SECRET="your-secret" \
   -e PAYMENTS_ENC_KEY="your-key" \
-  garfix-eos:v12
+  garfix-eos:v0.2.0
 ```
 
 ### Docker Compose
@@ -508,5 +508,5 @@ bun run dev
 
 Copyright © 2026 GarfiX EOS. All rights reserved.
 
-**Version:** 12.0.0  
+**Version:** 0.2.0 (see package.json)  
 **Last Updated:** 2026-07-21

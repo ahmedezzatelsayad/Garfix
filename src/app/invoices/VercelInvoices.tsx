@@ -1,4 +1,5 @@
 "use client";
+import { VERCEL_ESCAPE_HELPER_JS } from "@/lib/vercel-html-utils";
 import Link from "next/link";
 
 export default function VercelInvoices() {
@@ -35,7 +36,7 @@ export default function VercelInvoices() {
         </div>
       </div>
 
-      <script dangerouslySetInnerHTML={{ __html: `
+      <script dangerouslySetInnerHTML={{ __html: VERCEL_ESCAPE_HELPER_JS + `
         (async function() {
           try {
             var res = await fetch('/api/auth/me', { credentials: 'include' });

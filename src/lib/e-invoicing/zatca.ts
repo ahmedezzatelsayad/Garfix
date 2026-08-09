@@ -174,6 +174,8 @@ export interface ZatcaSignatureResult {
   invoiceHash: string;
   digitalSignature: string;
   certificateHash: string;
+  ok?: boolean;
+  error?: string;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -827,13 +829,12 @@ export function signZatcaInvoice(
   certificate: string,
   privateKey: string,
 ): ZatcaSignatureResult {
-  logger.info("[zatca] signing invoice with ECDSA", {
-    certificateLength: certificate?.length || 0,
-    privateKeyAvailable: !!privateKey,
-  });
-
+  if (!privateKey || !privateKey.includes("PRIVATE KEY")) {
+    logger.error("[zatca] ECDSA private key missing — refusing placeholder");
+    return { ok: false, signedXml: "", invoiceHash: computeInvoiceHash(xml), digitalSignature: "", certificateHash: "", error: "ZATCA ECDSA private key missing. Refusing placeholder." };
+  }
+  logger.info("[zatca] signing invoice with ECDSA", { certificateLength: certificate?.length || 0 });
   const invoiceHash = computeInvoiceHash(xml);
-
   try {
     // ── Placeholder ECDSA signing ──────────────────────────────────────
     // In production, this would:
@@ -903,31 +904,8 @@ export function signZatcaInvoice(
       certificateHash,
     };
   } catch (err) {
-    logger.warn("[zatca] signing using node:crypto failed — generating placeholder", {
-      err: err instanceof Error ? err.message : String(err),
-    });
-
-    // Fallback placeholder for environments without node:crypto
-    const digitalSignature = Buffer.from(invoiceHash + certificate).toString("base64");
-    const certificateHash = invoiceHash.slice(0, 64); // Placeholder
-
-    const signedXml = xml.replace(
-      /<cbc:URI>#ECDSA-Signature<\/cbc:URI>/,
-      `<cbc:URI>#ECDSA-Signature</cbc:URI>\n        <cbc:Reference>${invoiceHash}</cbc:Reference>`
-    ).replace(
-      /<\/cac:DigitalSignatureAttachment>/,
-      `</cac:DigitalSignatureAttachment>
-      <cac:Certificate>
-        <cbc:CertificateHash>${certificateHash}</cbc:CertificateHash>
-      </cac:Certificate>`
-    );
-
-    return {
-      signedXml,
-      invoiceHash,
-      digitalSignature,
-      certificateHash,
-    };
+    logger.error("[zatca] signing pipeline threw — refusing placeholder", { err: err instanceof Error ? err.message : String(err) });
+    return { ok: false, signedXml: "", invoiceHash, digitalSignature: "", certificateHash: "", error: "ZATCA signing pipeline failed: " + (err instanceof Error ? err.message : String(err)) };
   }
 }
 
@@ -954,6 +932,7 @@ export async function submitZatcaInvoice(
   invoiceType: ZatcaInvoiceType,
   certificate: string,
   companySlug: string,
+  invoiceId?: number,
 ): Promise<ZatcaSubmissionResult> {
   logger.info("[zatca] submitting invoice to ZATCA portal", {
     invoiceType,
@@ -1010,15 +989,14 @@ export async function submitZatcaInvoice(
       });
 
       // Create EInvoice record with rejected status
-      const existingInvoice = await db.invoice.findFirst({
-        where: { companySlug, deletedAt: null },
-        orderBy: { createdAt: "desc" },
-      });
-      if (existingInvoice) {
+      const invoiceRecord = invoiceId
+        ? await db.invoice.findUnique({ where: { id: invoiceId } }).catch(() => null)
+        : null;
+      if (invoiceRecord) {
         await db.eInvoice.create({
           data: {
             companySlug,
-            invoiceId: existingInvoice.id, invoiceNumber: existingInvoice.invoiceNumber,
+            invoiceId: invoiceRecord.id, invoiceNumber: invoiceRecord.invoiceNumber,
             authority: "zatca", authorityType: "zatca",
             submissionStatus: "rejected", status: "rejected",
             qrCodeBase64: null,
@@ -1049,27 +1027,17 @@ export async function submitZatcaInvoice(
     const qrCodeData = zatcaResult.qrCode || null;
     const submissionId = zatcaResult.submissionId || null;
 
-    // Create EInvoice record
-    const existingInvoice = await db.invoice.findFirst({
-      where: {
-        companySlug,
-        status: "draft",
-        deletedAt: null,
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    if (!existingInvoice) {
-      logger.warn("[zatca] no matching invoice found for submission", { companySlug });
-      // Still create a record for the submission attempt
+    // Phase 14 P0 fix: use the EXPLICIT invoiceId passed by the caller.
+    if (!invoiceId) {
+      return { ok: false, submissionStatus: "rejected", error: "invoiceId required", invoiceHash };
     }
-
-    const invoiceId = existingInvoice?.id || 0;
+    const existingInvoice = await db.invoice.findUnique({ where: { id: invoiceId } }).catch(() => null);
+    const resolvedInvoiceId = existingInvoice?.id || invoiceId;
 
     // Create or update EInvoice record
-    if (invoiceId > 0) {
+    if (resolvedInvoiceId) {
       const existingEInvoice = await db.eInvoice.findUnique({
-        where: { invoiceId },
+        where: { invoiceId: resolvedInvoiceId },
       });
 
       if (existingEInvoice) {
@@ -1089,7 +1057,7 @@ export async function submitZatcaInvoice(
 
         // Update invoice status
         await db.invoice.update({
-          where: { id: invoiceId },
+          where: { id: resolvedInvoiceId },
           data: {
             eInvoiceAuthority: ZATCA_AUTHORITY,
           },
@@ -1105,11 +1073,11 @@ export async function submitZatcaInvoice(
       }
     }
 
-    // Create new EInvoice record (only if we have a valid invoiceId)
-    if (invoiceId > 0) {
+    // Create new EInvoice record (Phase 14 P0: resolvedInvoiceId is always set here)
+    if (resolvedInvoiceId) {
       const eInvoice = await db.eInvoice.create({
         data: {
-          invoiceId,
+          invoiceId: resolvedInvoiceId,
           companySlug,
           authorityType: ZATCA_AUTHORITY,
           submissionStatus,
@@ -1126,7 +1094,7 @@ export async function submitZatcaInvoice(
 
       // Update invoice status
       await db.invoice.update({
-        where: { id: invoiceId },
+        where: { id: resolvedInvoiceId },
         data: {
           eInvoiceAuthority: ZATCA_AUTHORITY,
         },

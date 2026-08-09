@@ -158,6 +158,21 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
       invoiceId,
     });
     companySlug = "_unknown";
+    try {
+      const { logAudit } = await import("@/lib/audit");
+      const { FOUNDER_EMAIL } = await import("@/lib/founder");
+      void logAudit({
+        userEmail: FOUNDER_EMAIL,
+        userUid: "system",
+        action: "einvoice_webhook_unknown_tenant",
+        entity: "einvoice_receipt",
+        entityId: input.externalUuid || String(invoiceId || "unknown"),
+        companySlug: "_unknown",
+        details: { authority: input.authority, externalUuid: input.externalUuid, invoiceId, alert: "FOUNDER_REVIEW_REQUIRED" },
+      });
+    } catch (alertErr) {
+      logger.error("[e-invoicing:webhooks] failed to emit founder alert", { err: alertErr instanceof Error ? alertErr.message : String(alertErr) });
+    }
   }
 
   // ── 3. Truncate rawPayload if too large (DoS protection) ────────────

@@ -1,0 +1,56 @@
+services:
+  valkey:
+    networks: [garfix-net]
+    deploy:
+      resources:
+        limits: { memory: 1G }
+  postgres:
+    networks: [garfix-net]
+    deploy:
+      resources:
+        limits: { memory: 2G, cpus: "2.0" }
+  app:
+    image: ${GARFIX_IMAGE_TAG:-garfix:latest}
+    container_name: garfix-app-prod
+    restart: always
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    networks: [garfix-net]
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      DATABASE_URL: postgresql://${DB_USER:-garfix}:${DB_PASS:?DB_PASS}@postgres:5432/${DB_NAME:-garfix}?schema=public&connection_limit=20&pool_timeout=30
+      DATABASE_DIRECT_URL: postgresql://${DB_USER:-garfix}:${DB_PASS:?DB_PASS}@postgres:5432/${DB_NAME:-garfix}
+      VALKEY_URL: valkey://:${VALKEY_PASSWORD:?VALKEY_PASSWORD}@valkey:6379
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET}
+      FOUNDER_EMAIL: ${FOUNDER_EMAIL:?FOUNDER_EMAIL}
+      PAYMENTS_ENC_KEY: ${PAYMENTS_ENC_KEY:?PAYMENTS_ENC_KEY}
+      BACKUP_DIR: /app/storage/backups
+      SESSION_REGISTRY_ENFORCED: "true"
+    volumes: [app-storage:/app/storage]
+    read_only: true
+    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=128m]
+    deploy:
+      resources:
+        limits: { memory: 4G, cpus: "2.0" }
+        reservations: { memory: 1G, cpus: "0.5" }
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      postgres: { condition: service_healthy }
+      valkey: { condition: service_healthy }
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "10" }
+networks:
+  garfix-net:
+    driver: bridge
+    name: garfix-net
+volumes:
+  app-storage:
+    driver: local

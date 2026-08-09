@@ -31,7 +31,7 @@ const PaymentSchema = z.object({
   // H5 FIX: optional client-supplied idempotency key. UUID/v4 recommended.
   // If provided, the same key+invoiceId combination will not record a second
   // payment within IDEMPOTENCY_TTL_HOURS — the original response is returned.
-  idempotencyKey: z.string().min(8).max(128).optional(),
+  idempotencyKey: z.string().min(8).max(128),
 });
 
 const IDEMPOTENCY_TTL_HOURS = 24;
@@ -67,6 +67,12 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const amountNum = num(data.amount, 3);
   if (!(amountNum > 0)) {
     return apiError("Payment amount must be greater than zero", 400);
+  }
+  const total = num(existing.total, 3);
+  const currentPaid = num(existing.paid, 3);
+  const remaining = total - currentPaid;
+  if (total > 0 && amountNum > remaining + 0.001) {
+    return apiError("Payment (" + amountNum.toFixed(3) + ") exceeds remaining (" + remaining.toFixed(3) + "). Over-payment not allowed.", 400);
   }
 
   // ── H5 FIX: Idempotency check ────────────────────────────────────────────
@@ -121,7 +127,6 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const versionFilter = expectedVersion !== undefined ? { version: expectedVersion } : {};
 
   const newPaid = num(existing.paid, 3) + amountNum;
-  const total = num(existing.total, 3);
   const newStatus = num(newPaid, 3) >= total && total > 0 ? "paid" : num(newPaid, 3) > 0 ? "partial" : existing.status;
 
   const result = await db.invoice.updateMany({

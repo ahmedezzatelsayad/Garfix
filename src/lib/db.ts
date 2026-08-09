@@ -45,6 +45,7 @@ const poolSize = isDev
 // P0-3: Models that support soft-delete (must have deletedAt field in schema)
 const SOFT_DELETE_MODELS = new Set([
   'Company', 'Client', 'Invoice',
+  'Supplier', 'Employee', 'PurchaseInvoice', 'JournalEntry', 'PaymentTransaction', 'EInvoice',
 ]);
 
 // Create base client
@@ -54,6 +55,22 @@ const basePrisma = new PrismaClient({
     ? appendPoolParams(process.env.DATABASE_URL, poolSize)
     : undefined,
 });
+
+let lastConnectionError: { code: string; message: string; at: Date } | null = null;
+try {
+  basePrisma.$on('error' as any, (e: any) => {
+    if (e?.code === 'P1017' || e?.code === 'P1011' || e?.code === 'P1001') {
+      lastConnectionError = { code: e.code, message: e.message || 'DB connection lost', at: new Date() };
+      console.error('[db] connection error (likely RDS failover)', { code: e.code });
+    }
+  });
+} catch {}
+
+export async function reconnectDb(): Promise<void> {
+  try { await basePrisma.$disconnect(); } catch {}
+  lastConnectionError = null;
+}
+export function getLastDbConnectionError() { return lastConnectionError; }
 
 // P0-3: Extend with soft-delete filtering
 // Uses $extends with query-level hooks that inject deletedAt: null

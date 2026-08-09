@@ -174,7 +174,7 @@
 
 **مفتاح OpenRouter العملاني:**
 ```
-sk-or-v1-321cfb... (مخزن في .env.local)
+يُخزَّن في AWS SSM Parameter Store /garfix/prod/OPENROUTER_API_KEY
 ```
 
 ---

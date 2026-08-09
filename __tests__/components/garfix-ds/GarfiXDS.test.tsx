@@ -24,7 +24,7 @@
  * ═════════════════════════════════════════════════════════════
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach , mock} from "bun:test";
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -33,15 +33,15 @@ import userEvent from '@testing-library/user-event';
 // Mock window.matchMedia for reduced motion tests
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: mock().mockImplementation(query => ({
     matches: false,
     media: query,
     onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
+    addListener: mock(),
+    removeListener: mock(),
+    addEventListener: mock(),
+    removeEventListener: mock(),
+    dispatchEvent: mock(),
   })),
 });
 
@@ -110,7 +110,7 @@ describe('GarfiX DS Core Components', () => {
     
     it('handles click events', async () => {
       const { GarfixButton } = await import('@/components/garfix-ds/core/GarfixButton');
-      const handleClick = vi.fn();
+      const handleClick = mock();
       
       render(<GarfixButton onClick={handleClick}>Click</GarfixButton>);
       
@@ -258,7 +258,7 @@ describe('GarfiX DS Core Components', () => {
     
     it('handles value changes', async () => {
       const { GarfixInput } = await import('@/components/garfix-ds/core/GarfixInput');
-      const handleChange = vi.fn();
+      const handleChange = mock();
       
       render(<GarfixInput onChange={handleChange} />);
       
@@ -329,7 +329,7 @@ describe('GarfiX DS Core Components', () => {
     
     it('is removable', async () => {
       const { GarfixBadge } = await import('@/components/garfix-ds/core/GarfixBadge');
-      const onRemove = vi.fn();
+      const onRemove = mock();
       
       render(<GarfixBadge removable onRemove={onRemove}>Removable</GarfixBadge>);
       
@@ -529,7 +529,7 @@ describe('GarfiX DS Data Components', () => {
     
     it('enables row selection', async () => {
       const { GarfixDataTable } = await import('@/components/garfix-ds/data/GarfixDataTable');
-      const onSelectionChange = vi.fn();
+      const onSelectionChange = mock();
       
       render(
         <GarfixDataTable
@@ -781,7 +781,7 @@ describe('GarfiX DS Overlay Components', () => {
     });
     
     it('closes on escape key', async () => {
-      const onClose = vi.fn();
+      const onClose = mock();
       const { GarfixModal } = await import('@/components/garfix-ds/overlay/GarfixModal');
       
       render(
@@ -1048,15 +1048,15 @@ describe('GarfiX DS Animation Components', () => {
     
     it('respects reduced motion preference', async () => {
       // Mock prefers-reduced-motion
-      window.matchMedia = vi.fn().mockImplementation(query => ({
+      window.matchMedia = mock().mockImplementation(query => ({
         matches: query.includes('reduced-motion'),
         media: query,
         onchange: null,
-        addListener: vi.fn(),
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
+        addListener: mock(),
+        removeListener: mock(),
+        addEventListener: mock(),
+        removeEventListener: mock(),
+        dispatchEvent: mock(),
       }));
       
       const { GarfixAnimatedContainer } = await import('@/components/garfix-ds/animations/GarfixAnimatedContainer');

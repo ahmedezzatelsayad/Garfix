@@ -131,11 +131,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     );
 
     // ── 8. Submit to ZATCA ───────────────────────────────────────────────
+    if (signResult.ok === false) {
+      return NextResponse.json({ ok: false, error: signResult.error, code: "ZATCA_SIGNING_FAILED" }, { status: 422 });
+    }
     const submission = await submitZatcaInvoice(
       signResult.signedXml,
       invoiceType,
       signingCert.certificateData || "",
       companySlug,
+      invoiceId,
     );
 
     // ── 9. Persist result to EInvoice ────────────────────────────────────

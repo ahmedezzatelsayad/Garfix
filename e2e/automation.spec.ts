@@ -41,7 +41,9 @@ test.describe("Automation Module", () => {
       const sparklines = page.locator("[class*='sparkline']");
       const count = await sparklines.count();
       
-      expect(count).toBeGreaterThanOrEqual(0); // May be 0 if no data
+      // Phase 13 P0: strengthened
+      expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0); // May be 0 if no data
     });
   });
 
@@ -50,20 +52,26 @@ test.describe("Automation Module", () => {
       const ruleCards = page.locator(".hover-lift");
       // Rule cards should have hover animation class
       const count = await ruleCards.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
 
     test("should show active rules with emerald border", async ({ page }) => {
       // Active rules should have emerald left border
       const activeRules = page.locator(".border-l-emerald-500");
       const count = await activeRules.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
 
     test("should have toggle buttons with active-press class", async ({ page }) => {
       const toggleButtons = page.locator(".active-press");
       const count = await toggleButtons.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
 
     test("should toggle rule status when clicked", async ({ page }) => {
@@ -101,25 +109,33 @@ test.describe("Automation Module", () => {
     test("should render AI card component", async ({ page }) => {
       const aiCard = page.locator(".ai-card");
       const count = await aiCard.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
 
     test("should display AI badge premium if present", async ({ page }) => {
       const aiBadge = page.locator(".ai-badge-premium");
       const count = await aiBadge.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
 
     test("should show AI suggestion items", async ({ page }) => {
       const suggestions = page.locator(".ai-suggestion");
       const count = await suggestions.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
 
     test("should display confidence scores", async ({ page }) => {
       const confidenceBars = page.locator(".ai-confidence");
       const count = await confidenceBars.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
   });
 
@@ -139,7 +155,9 @@ test.describe("Automation Module", () => {
       // Empty state might show if no rules exist
       const emptyState = page.locator(".state-empty, [class*='empty-state']");
       const count = await emptyState.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
   });
 
@@ -201,7 +219,9 @@ test.describe("Automation Module", () => {
     test("should use shadow-brand classes", async ({ page }) => {
       const brandShadows = page.locator("[class*='shadow-brand']");
       const count = await brandShadows.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     });
   });
 });

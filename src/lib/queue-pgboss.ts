@@ -298,7 +298,11 @@ export function registerWorker(queue: QueueName, handler: JobHandler): void {
 /**
  * Enqueue a job asynchronously — caller awaits the result, with retries.
  */
-export async function enqueueAsync(queue: QueueName, payload: JobPayload): Promise<void> {
+export async function enqueueAsync(
+  queue: QueueName,
+  payload: JobPayload,
+  opts?: { singletonKey?: string },
+): Promise<void> {
   const ready = await startPgBoss();
   if (!ready || !boss) {
     throw new Error("[queue-pgboss] pg-boss not available — cannot enqueueAsync");
@@ -311,6 +315,7 @@ export async function enqueueAsync(queue: QueueName, payload: JobPayload): Promi
     retryBackoff: config.retryBackoff,
     expireInSeconds: config.expireInSeconds,
     deadLetter: config.deadLetter,
+    ...(opts?.singletonKey ? { singletonKey: opts.singletonKey } : {}),
   });
 
   if (jobId) {

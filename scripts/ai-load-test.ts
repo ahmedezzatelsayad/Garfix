@@ -841,8 +841,7 @@ function generateReport(
 ): string {
   
   const timestamp = new Date().toISOString();
-  
-  return `
+  let report = `
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║              GarfiX EOS Enterprise AI System - Load Test Report             ║
 ║                       Generated: ${timestamp}                    ║

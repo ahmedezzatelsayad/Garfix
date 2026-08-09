@@ -9,7 +9,7 @@
  *   5. The migration SQL correctly casts existing string data to Decimal
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import { num, calcInvoiceTotals, addNums, subNums, mulNums, fmtMoney } from "../money";
 
 // ── Mock Prisma Decimal (decimal.js) ────────────────────────────────────

@@ -99,7 +99,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   });
   if (!voucher) return apiError("Voucher not found", 404);
 
-  const companySlug = data.companySlug ?? (voucher.companySlug ?? '');
+  const companySlug = voucher.companySlug ?? '';
   const access = await requirePermissionForCompany(req, "finance_access", companySlug);
   if ("error" in access) return access.error;
   const user = access.user;

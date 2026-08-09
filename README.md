@@ -4,7 +4,7 @@
 
 > Enterprise-grade multi-tenant SaaS ERP/Invoicing platform with a 20-phase AI cost-optimization cascade — Arabic-first, MENA-focused, production-hardened.
 
-**الإصدار:** 13.0.0 · **المؤسس:** `ahmedezzatelsayad` · **الترخيص:** Proprietary — All rights reserved
+**الإصدار:** 0.2.0 (see package.json — single source of truth) · **المؤسس:** `ahmedezzatelsayad` · **الترخيص:** Proprietary — All rights reserved
 
 > ⚠️ **تنبيه سرّي:** هذا المستودع ملكية خاصة (proprietary) ومحمي بحقوق الملكية الفكرية. لا يُسمح بنسخه أو توزيعه أو استخدامه خارج نطاق الفريق المعتمد. المستودع حالياً عام (public) مؤقتاً لأغراض التطوير والصيانة فقط، وسيُعاد إلى خاص (private) لاحقاً.
 
@@ -1010,7 +1010,7 @@ All required variables are documented in `.env.example`. The `bun run verify:env
 | `JWT_SECRET` | Access token signing secret (≥32 chars, high-entropy) |
 | `JWT_REFRESH_SECRET` | Refresh token secret (must differ from `JWT_SECRET`) |
 | `PAYMENTS_ENC_KEY` | AES-256 encryption key for payments/secrets + AI API keys at rest (≥32 chars) |
-| `VAULT_ENCRYPTION_KEY` | Encryption for sensitive `PlatformSettings` |
+| `VAULT_ENCRYPTION_KEY` | **OPTIONAL** legacy alias for `PAYMENTS_ENC_KEY`. Use `PAYMENTS_ENC_KEY` instead. |
 | `FOUNDER_EMAIL` | Founder account email |
 | `VALKEY_URL` | Valkey connection string — **بسيط بدون user/password**: `valkey://localhost:6379` |
 
@@ -1183,7 +1183,7 @@ nightly schedule ─► performance-nightly.yml (Lighthouse + budget enforcement
 - **Coverage**: 240+ endpoints across 20+ tags (Auth, Invoices, Clients, Catalog, Inventory, Accounting, HR, AI, Dashboard, Settings, Automation, Webhooks, SaaS, Reports, Health, Companies, Permissions, Founder Validation, **E-Invoicing**, **Founder-Panel E-Invoicing**)
 - **Features**: JWT Bearer auth via HttpOnly cookies, multi-tenant scoping (`companySlug` query param or `X-Company-Slug` header), Arabic field names with RTL support, RBAC permission tags per endpoint, error response schemas
 
-#### E-Invoicing Endpoints (v13.0.0)
+#### E-Invoicing Endpoints (v0.2.0)
 
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|

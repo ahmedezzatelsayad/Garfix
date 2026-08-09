@@ -142,10 +142,10 @@ export async function bootstrapRuntime(): Promise<BootstrapResult> {
 
     // 1d. AI Product Match Worker (AI-powered invoice line item resolution)
     try {
-      const { registerAIProductMatchWorker } = await import("@/lib/workers/aiProductMatchWorker");
-      registerAIProductMatchWorker();
-      workersRegistered.push("ai-product-match");
-      logger.info("[bootstrap] ✓ AI Product Match worker registered");
+      const { registerAIWorkers } = await import("@/lib/workers/aiWorkers");
+      registerAIWorkers();
+      workersRegistered.push("ai-workers");
+      logger.info("[bootstrap] ✓ AI workers registered");
     } catch (err) {
       const msg = `Failed to register AI product match worker: ${err instanceof Error ? err.message : String(err)}`;
       errors.push(msg);

@@ -156,7 +156,7 @@ model Account {
   currency          String?
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
-  company           Company               @relation(fields: [companyId], references: [id])
+  company           Company               @relation(fields: [companyId], references: [id], onDelete: Restrict)
   parent            Account?              @relation("AccountHierarchy", fields: [parentId], references: [id])
   children          Account[]             @relation("AccountHierarchy")
   openingBalances   OpeningBalanceEntry[]
@@ -192,10 +192,11 @@ model Client {
   deletedAt       DateTime? // P0-3: Soft Delete
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-  company         Company?         @relation(fields: [companyId], references: [id])
+  company         Company?         @relation(fields: [companyId], references: [id], onDelete: Restrict)
   paymentVouchers PaymentVoucher[]
   invoices        Invoice[]
   quotations      Quotation[]
+  version           Int                @default(0) // Phase 15 P0: Optimistic Locking
 
   @@index([companySlug])
   @@index([companyId])
@@ -229,10 +230,11 @@ model Supplier {
   deletedAt        DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-  company          Company           @relation(fields: [companyId], references: [id])
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Restrict)
   paymentVouchers  PaymentVoucher[]
   lettersOfCredit  LetterOfCredit[]
   purchaseInvoices PurchaseInvoice[]
+  version           Int                @default(0) // Phase 15 P0: Optimistic Locking
 
   @@unique([code, companyId])
   @@index([companySlug])
@@ -244,6 +246,8 @@ model Supplier {
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
   nameEn                       String?
+
+  @@map("suppliers")
 }
 
 // ─── Product Catalog (matches db.productCatalog) ───
@@ -263,7 +267,7 @@ model ProductCatalog {
   isActive           Boolean             @default(true)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
-  company            Company?            @relation(fields: [companyId], references: [id])
+  company            Company?            @relation(fields: [companyId], references: [id], onDelete: Restrict)
   inventoryItems     InventoryItem[]
   productAliases     ProductAlias[]
   productMatchAudits ProductMatchAudit[]
@@ -297,7 +301,7 @@ model InventoryItem {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   product      ProductCatalog @relation(fields: [productId], references: [id])
-  company      Company?       @relation(fields: [companyId], references: [id])
+  company      Company?       @relation(fields: [companyId], references: [id], onDelete: Restrict)
   warehouseRef Warehouse?     @relation(fields: [warehouseId], references: [id])
 
   @@index([companySlug])
@@ -327,7 +331,7 @@ model Warehouse {
   /// ── Branch/Warehouse support: invoices + users linked to this branch ──
   invoices       Invoice[]
   defaultUsers   AppUser[]       @relation("UserDefaultWarehouse")
-  company        Company?        @relation(fields: [companyId], references: [id])
+  company        Company?        @relation(fields: [companyId], references: [id], onDelete: Restrict)
 
   @@index([companySlug])
   @@index([companyId])
@@ -355,7 +359,7 @@ model FiscalPeriod {
   closedAt        DateTime?
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
-  company         Company               @relation(fields: [companyId], references: [id])
+  company         Company               @relation(fields: [companyId], references: [id], onDelete: Restrict)
   openingBalances OpeningBalanceEntry[]
 
   @@unique([name, companyId])
@@ -393,7 +397,7 @@ model JournalEntry {
   deletedAt   DateTime? // P0-3: Soft Delete
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
-  company     Company            @relation(fields: [companyId], references: [id])
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
   lines       JournalEntryLine[]
   // P0-05/P0-06: back-relations for OpeningBalanceEntry.journalEntryId and
   // PaymentVoucher.journalEntryId.
@@ -480,13 +484,14 @@ model PaymentVoucher {
   approvedBy           String?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
-  client               Client?               @relation(fields: [clientId], references: [id])
-  supplier             Supplier?             @relation(fields: [supplierId], references: [id])
-  company              Company               @relation(fields: [companyId], references: [id])
+  client               Client?               @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  supplier             Supplier?             @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  company              Company               @relation(fields: [companyId], references: [id], onDelete: Restrict)
   bankAccount          BankAccount?          @relation(fields: [bankAccountId], references: [id])
   glAccount            Account?              @relation("PaymentVoucherGLAccount", fields: [glAccountId], references: [id])
   journalEntry         JournalEntry?         @relation(fields: [journalEntryId], references: [id])
   installmentSchedules InstallmentSchedule[]
+  version           Int                @default(0) // Phase 15 P0: Optimistic Locking
 
   @@unique([number, companyId])
   @@index([companySlug])
@@ -508,6 +513,8 @@ model InstallmentSchedule {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   paymentVoucher   PaymentVoucher @relation(fields: [paymentVoucherId], references: [id], onDelete: Cascade)
+
+  @@map("installment_schedules")
 }
 
 // ─── Opening Balance Entry (matches db.openingBalanceEntry) ───
@@ -530,7 +537,7 @@ model OpeningBalanceEntry {
   updatedAt   DateTime     @updatedAt
   account     Account      @relation(fields: [accountId], references: [id])
   period      FiscalPeriod @relation(fields: [periodId], references: [id])
-  company     Company      @relation(fields: [companyId], references: [id])
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
   journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
 
   @@unique([accountId, periodId])
@@ -557,13 +564,15 @@ model ProfitDistribution {
   companyId        String
   createdAt        DateTime                  @default(now())
   updatedAt        DateTime                  @updatedAt
-  company          Company                   @relation(fields: [companyId], references: [id])
+  company          Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict)
   entries          ProfitDistributionEntry[]
 
   @@index([companyId])
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
   companySlug                  String
+
+  @@map("profit_distributions")
 }
 
 model ProfitDistributionEntry {
@@ -575,6 +584,8 @@ model ProfitDistributionEntry {
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   distribution   ProfitDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+
+  @@map("profit_distribution_entries")
 }
 
 // ─── Letter of Credit (matches db.letterOfCredit) ───
@@ -596,8 +607,8 @@ model LetterOfCredit {
   companyId   String
   createdAt   DateTime                 @default(now())
   updatedAt   DateTime                 @updatedAt
-  supplier    Supplier?                @relation(fields: [supplierId], references: [id])
-  company     Company                  @relation(fields: [companyId], references: [id])
+  supplier    Supplier?                @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  company     Company                  @relation(fields: [companyId], references: [id], onDelete: Restrict)
   bankAccount BankAccount?             @relation("LetterOfCreditBankAccount", fields: [bankAccountId], references: [id])
   lcDocuments LetterOfCreditDocument[]
 
@@ -624,6 +635,8 @@ model LetterOfCreditDocument {
   fileUrl          String?
   uploadedAt       DateTime       @default(now())
   letterOfCredit   LetterOfCredit @relation(fields: [letterOfCreditId], references: [id], onDelete: Cascade)
+
+  @@map("letter_of_credit_documents")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -646,7 +659,7 @@ model BankAccount {
   isActive            Boolean              @default(true)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
-  company             Company              @relation(fields: [companyId], references: [id])
+  company             Company              @relation(fields: [companyId], references: [id], onDelete: Restrict)
   bankTransactions    BankTransaction[]
   bankReconciliations BankReconciliation[]
   // P0-06: back-relation for PaymentVoucher.bankAccountId
@@ -758,7 +771,7 @@ model FixedAsset {
   companySlug             String              @default("default")
   createdAt               DateTime            @default(now())
   updatedAt               DateTime            @updatedAt
-  company                 Company             @relation(fields: [companyId], references: [id])
+  company                 Company             @relation(fields: [companyId], references: [id], onDelete: Restrict)
   depreciationEntries     DepreciationEntry[]
 
   @@unique([code, companyId])
@@ -826,8 +839,9 @@ model Budget {
   companySlug String       @default("default")
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  company     Company      @relation(fields: [companyId], references: [id])
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
   budgetLines BudgetLine[]
+  version           Int                @default(0) // Phase 15 P0: Optimistic Locking
 
   @@index([companySlug])
   @@index([companyId])
@@ -878,7 +892,7 @@ model CostCenter {
   isActive    Boolean      @default(true)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  company     Company      @relation(fields: [companyId], references: [id])
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
   budgetLines BudgetLine[]
   budgets     Budget[]                 @relation("BudgetCostCenter")
   journalEntryLines           JournalEntryLine[]
@@ -1026,7 +1040,7 @@ model Employee {
   isActive      Boolean          @default(true)
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
-  company       Company          @relation(fields: [companyId], references: [id])
+  company       Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
   salaries      HRSalary[]
   commissions   HRCommission[]
   attendances   HRAttendance[]
@@ -1208,8 +1222,8 @@ model Invoice {
   warehouseId           String?
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
-  company               Company?             @relation(fields: [companyId], references: [id])
-  client                Client?              @relation(fields: [clientId], references: [id])
+  company               Company?             @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  client                Client?              @relation(fields: [clientId], references: [id], onDelete: Restrict)
   eInvoice              EInvoice?
   eInvoiceReceipts      EInvoiceReceipt[]
   paymentTransactions   PaymentTransaction[]
@@ -1256,7 +1270,8 @@ model PurchaseInvoice {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   supplierRel      Supplier? @relation(fields: [supplierId], references: [id])
-  company          Company?  @relation(fields: [companyId], references: [id])
+  company          Company?  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  version           Int                @default(0) // Phase 15 P0: Optimistic Locking
 
   @@index([companySlug])
   @@index([companyId])
@@ -1292,8 +1307,8 @@ model Quotation {
   companyId   String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  company     Company?  @relation(fields: [companyId], references: [id])
-  client      Client?   @relation(fields: [clientId], references: [id])
+  company     Company?  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  client      Client?   @relation(fields: [clientId], references: [id], onDelete: Restrict)
 
   @@index([companySlug])
   @@index([companyId])
@@ -1327,7 +1342,7 @@ model PurchaseOrder {
   companyId        String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
-  company          Company?  @relation(fields: [companyId], references: [id])
+  company          Company?  @relation(fields: [companyId], references: [id], onDelete: Restrict)
 
   @@index([companySlug])
   @@index([companyId])
@@ -1405,6 +1420,7 @@ model PaymentTransaction {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   invoice           Invoice? @relation(fields: [invoiceId], references: [id])
+  version           Int                @default(0) // Phase 15 P0: Optimistic Locking
 
   @@index([companySlug])
   @@index([companyId])
@@ -1531,6 +1547,7 @@ model EInvoice {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   invoice          Invoice   @relation(fields: [invoiceId], references: [id])
+  version           Int                @default(0) // Phase 15 P0: Optimistic Locking
 
   @@index([companySlug])
   @@map("e_invoices")
@@ -2825,7 +2842,7 @@ model RecurringJournalEntry {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
-  company         Company  @relation(fields: [companyId], references: [id])
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
   
   @@index([companySlug])
   @@index([companyId, isActive])
@@ -2855,7 +2872,7 @@ model FiscalYearClose {
   
   createdAt       DateTime @default(now())
   
-  company         Company  @relation(fields: [companyId], references: [id])
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
   
   @@unique([companyId, year])
   @@index([companySlug])
@@ -2864,3 +2881,20 @@ model FiscalYearClose {
 }
 
 // ─── Outbox Event ───
+
+model PromptTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  version     Int      @default(1)
+  content     String   @db.Text
+  changeLog   String?
+  active      Boolean  @default(true)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([name, version])
+  @@index([name, active])
+  @@index([active])
+  @@map("prompt_templates")
+}

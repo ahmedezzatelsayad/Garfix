@@ -23,7 +23,9 @@ test.describe("Clients Module", () => {
         '[class*="client"], [class*="table"], [class*="empty"], [class*="list"]'
       );
       const count = await clientsContent.count();
+      // Phase 13 P0: strengthened
       expect(count).toBeGreaterThanOrEqual(0);
+      if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     }
   });
 
