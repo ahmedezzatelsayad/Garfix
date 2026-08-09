@@ -62,12 +62,11 @@ export async function GET() {
       ok: false,
       error: err instanceof Error ? err.message : String(err),
     };
-    // A slow/timing-out DB is not necessarily critical — the app may be under
-    // heavy load. Only mark as critical failure if the error is not a timeout.
-    const errMsg = err instanceof Error ? err.message : String(err);
-    if (!errMsg.includes("timeout")) {
-      criticalOk = false;
-    }
+    // Verification audit fix: DB timeout IS critical — a consistently
+    // timing-out DB means the app cannot serve requests. Was treated as
+    // non-critical, which meant /api/health returned 200 even when the DB
+    // was unreachable (just slow). Now ALL DB failures are critical.
+    criticalOk = false;
   }
 
   // ── 2. Valkey (OPTIONAL — app falls back to pg-boss when not configured) ──

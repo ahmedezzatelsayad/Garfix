@@ -128,22 +128,69 @@ export async function extractWithAI(text: string): Promise<Invoice> {
 export async function extractWithAIDetailed(text: string): Promise<AiExtractionOutcome> {
   const t0 = Date.now();
   const aiConfig = await getGlobalAiConfig();
-  // Route via the Smart Router with capability="invoice-extraction" so the
-  // registry picks the healthiest model FOR JSON extraction (which may differ
-  // from the best chat model). Falls back to the legacy chain if the registry
-  // is empty or all registry models fail.
-  const result = await callAIWithFallback({
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: text },
-    ],
-    temperature: 0,
-    maxTokens: Math.min(aiConfig.maxTokens, 600), // cap at 600 for JSON extraction
-    capability: "invoice-extraction",
-  });
-  const raw = await parseAIJson<unknown>(result.content, "أعد استخراج بيانات الفاتورة كـ JSON صحيح.");
-  const invoice = InvoiceSchema.parse(raw);
-  return { invoice, raw: result, processingMs: Date.now() - t0 };
+  try {
+    const result = await callAIWithFallback({
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: text },
+      ],
+      temperature: 0,
+      maxTokens: Math.min(aiConfig.maxTokens, 600),
+      capability: "invoice-extraction",
+    });
+    const raw = await parseAIJson<unknown>(result.content, "أعد استخراج بيانات الفاتورة كـ JSON صحيح.");
+    const invoice = InvoiceSchema.parse(raw);
+    return { invoice, raw: result, processingMs: Date.now() - t0 };
+  } catch (aiErr) {
+    // Verification audit fix (#39): deterministic regex fallback when AI fails.
+    // Previously this function threw — breaking ALL invoice parsing during
+    // a Gemini/OpenRouter outage. Now falls back to regex extraction.
+    const fallback = extractWithRegexFallback(text);
+    if (fallback) {
+      return {
+        invoice: {
+          name: String(fallback.vendorName || ""),
+          address: "",
+          price: 0,
+          currency: "",
+          discount: 0,
+          tax: Number(fallback.taxAmount || 0),
+          total: Number(fallback.total || 0),
+          notes: "regex-fallback",
+        } as unknown as Invoice,
+        raw: {
+          content: JSON.stringify(fallback),
+          provider: "z-ai" as const,
+          model: "regex-fallback-v1",
+          usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+        },
+        processingMs: Date.now() - t0,
+      };
+    }
+    throw aiErr;
+  }
+}
+
+/**
+ * Verification audit fix (#39): deterministic regex-based invoice parser.
+ * Extracts invoice number, date, total, tax, vendor using well-known patterns.
+ * Returns null if NO fields could be extracted.
+ */
+function extractWithRegexFallback(text: string): Record<string, unknown> | null {
+  const result: Record<string, unknown> = {};
+  const invNumMatch = text.match(/(?:invoice\s*(?:no\.?|number|#)?|inv\.?\s*#?|فاتورة\s*رقم)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-\/]{2,20})/i);
+  if (invNumMatch) result.invoiceNumber = invNumMatch[1];
+  const totalMatch = text.match(/(?:total|الإجمالي|grand\s*total|مجموع)\s*[:#]?\s*\$?\s*([\d,]+\.?\d*)/i);
+  if (totalMatch) { const t = parseFloat(totalMatch[1].replace(/,/g, "")); if (!isNaN(t)) result.total = t; }
+  const taxMatch = text.match(/(?:vat|tax|ضريبة)\s*[:#]?\s*\$?\s*([\d,]+\.?\d*)/i);
+  if (taxMatch) { const tx = parseFloat(taxMatch[1].replace(/,/g, "")); if (!isNaN(tx)) result.taxAmount = tx; }
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length > 0) {
+    const v = lines.find((l) => !/^(invoice|date|total|vat|tax|فاتورة|التاريخ|الإجمالي|ضريبة)/i.test(l) && l.length > 2 && l.length < 80);
+    if (v) result.vendorName = v;
+  }
+  if (!result.invoiceNumber && result.total === undefined) return null;
+  return result;
 }
 
 /**

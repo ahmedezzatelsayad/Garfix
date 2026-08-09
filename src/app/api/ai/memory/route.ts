@@ -67,7 +67,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       id: n.id,
       companySlug: n.companySlug,
       entityType: n.category,
-      entityId: (n as any).entityId || null,
+      entityId: (n as Record<string, unknown>)?.entityId || null,
       note: n.content,
       createdBy: null,
       createdAt: n.createdAt,

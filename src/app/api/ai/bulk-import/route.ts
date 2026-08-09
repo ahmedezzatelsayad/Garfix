@@ -272,7 +272,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // Aggregate [REVIEW-QUEUE] + [OVERSELL] warnings for UI banner
   const reviewQueueWarnings: string[] = [];
   for (const c of created) {
-    const w = (c as any).warnings as string[] | undefined;
+    const w = (c as Record<string, unknown>)?.warnings as string[] | undefined;
     if (w && w.length > 0) {
       reviewQueueWarnings.push(...w.filter((x) => x.startsWith("[REVIEW-QUEUE]") || x.startsWith("[OVERSELL]")));
     }

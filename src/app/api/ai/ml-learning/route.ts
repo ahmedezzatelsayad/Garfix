@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
       
       default:
         return NextResponse.json(
-          { error: `إجراء غير معروف: ${(body as any).action}` },
+          { error: `إجراء غير معروف: ${(body as Record<string, unknown>)?.action}` },
           { status: 400 }
         );
     }
