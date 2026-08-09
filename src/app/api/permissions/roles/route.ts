@@ -6,6 +6,7 @@
  * DELETE — Delete a custom role.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { isFounderEmail } from "@/lib/founder";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, parseJsonBody, apiError, apiOk, validateBody } from "@/lib/api";
 import {
@@ -34,7 +35,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
 
   // Only admin/founder can view role definitions
-  const isFounder = result.user.email === process.env.FOUNDER_EMAIL;
+  const isFounder = isFounderEmail(result.user.email);
   if (result.user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can view roles", 403);
   }
@@ -87,7 +88,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const isFounder = result.user.email === process.env.FOUNDER_EMAIL;
+  const isFounder = isFounderEmail(result.user.email);
   if (result.user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can create roles", 403);
   }
@@ -160,7 +161,7 @@ export const PUT = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const isFounder = result.user.email === process.env.FOUNDER_EMAIL;
+  const isFounder = isFounderEmail(result.user.email);
   if (result.user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can modify roles", 403);
   }
@@ -204,7 +205,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const isFounder = result.user.email === process.env.FOUNDER_EMAIL;
+  const isFounder = isFounderEmail(result.user.email);
   if (result.user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can delete roles", 403);
   }

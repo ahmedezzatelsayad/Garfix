@@ -5,6 +5,7 @@
  * DELETE — Delete a webhook endpoint.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { isFounderEmail } from "@/lib/founder";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, parseJsonBody, apiError, apiOk, validateBody } from "@/lib/api";
 import { logAudit } from "@/lib/audit";
@@ -24,7 +25,7 @@ export const GET = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
 
   const { id } = await ctx.params;
   const companySlug = result.user.companies?.[0];
-  const isFounder = result.user.email === process.env.FOUNDER_EMAIL;
+  const isFounder = isFounderEmail(result.user.email);
   // IDOR fix: tenant filter in WHERE; founder bypasses via findUnique
   const endpoint = isFounder
     ? await db.webhookEndpoint.findUnique({ where: { id: id } })
@@ -58,7 +59,7 @@ export const PUT = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
 
   const { id } = await ctx.params;
   const companySlug = result.user.companies?.[0];
-  const isFounder = result.user.email === process.env.FOUNDER_EMAIL;
+  const isFounder = isFounderEmail(result.user.email);
   if (result.user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can manage webhooks", 403);
   }
@@ -112,7 +113,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, ctx: RouteContex
 
   const { id } = await ctx.params;
   const companySlug = result.user.companies?.[0];
-  const isFounder = result.user.email === process.env.FOUNDER_EMAIL;
+  const isFounder = isFounderEmail(result.user.email);
   if (result.user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can manage webhooks", 403);
   }

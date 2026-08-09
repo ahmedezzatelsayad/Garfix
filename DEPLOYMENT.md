@@ -192,7 +192,7 @@ bun run dev
 | **Seed** | `bun run seed` | Seed test data |
 
 ### Hot Reload
-- ✅ Next.js Turbopack enabled
+- ❌ Turbopack disabled — using webpack (stable, battle-tested)
 - ✅ React Fast Refresh
 - ✅ Auto-restart on file changes
 
@@ -228,7 +228,7 @@ bunx tsc --noEmit -p tsconfig.prod.json  # Should show 0 errors
 bun run lint  # Should show 0 errors
 
 # Test production build locally
-NODE_ENV=production bun .next/standalone/server.js
+NODE_ENV=production node .next/standalone/server.js
 ```
 
 ---

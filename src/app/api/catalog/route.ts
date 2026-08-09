@@ -49,7 +49,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   // on the response. Previously the code did `parseJsonField(p.code, [])` which
   // tried to parse the product CODE ("SKU-123") as JSON — always returned [].
   // ProductCatalog.id is a String (cuid) — override cursor to use the string id.
-  const allProducts: any[] = await db.productCatalog.findMany({
+  const allProducts = await db.productCatalog.findMany({
     where,
     take: pagination.take,
     skip: pagination.skip,
@@ -58,8 +58,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     include: { productAliases: { select: { alias: true } } },
   });
 
-  const { items, nextCursor } = buildCursorResponse(allProducts, limit);
-  const products: any[] = items;
+  const { items: productItems, nextCursor } = buildCursorResponse(allProducts as any[], limit);
+  const products = productItems as typeof allProducts;
 
   return NextResponse.json({
     products: products.map((p) => ({

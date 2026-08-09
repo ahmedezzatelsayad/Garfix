@@ -40,6 +40,7 @@ const nextConfig: NextConfig = {
     "ioredis",
     "jsonwebtoken",
     "bcryptjs",
+    "exceljs",  // Phase 6 P3: externalize to reduce bundle
   ],
   experimental: {
     // P3.7 (Cycle 5): added all 26 @radix-ui/react-* packages actually

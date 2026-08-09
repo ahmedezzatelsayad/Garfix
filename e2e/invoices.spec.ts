@@ -23,7 +23,8 @@ test.describe("Invoices Module", () => {
       );
       const count = await invoicesContent.count();
       // Phase 13 P0: strengthened
-      expect(count).toBeGreaterThanOrEqual(0);
+      // Phase 13 P3: was toBeGreaterThanOrEqual(0) — always passes
+      expect(typeof count).toBe("number");
       if (!page.url().includes("login")) expect(count).toBeGreaterThan(0);
     }
   });
@@ -115,7 +116,8 @@ test.describe("Invoices Module", () => {
         await page.waitForTimeout(1000);
         // Page state should change (may not change URL)
         // Phase 13 P0: strengthened
-    expect(true).toBeTruthy(); // Interaction succeeded
+    // Phase 13 P3: removed tautological expect(true).toBeTruthy()
+        // The test passes if it reaches this point without throwing
       }
     }
   });

@@ -14,8 +14,14 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const user = result.user;
 
+  // Phase 4 P2 fix: filter by companySlug when provided (was returning
+  // notifications from ALL companies the user belongs to).
+  const companySlug = req.nextUrl.searchParams.get("companySlug") || undefined;
+  const where: Record<string, unknown> = { userUid: user.uid };
+  if (companySlug) where.companySlug = companySlug;
+
   const notifications = await db.notification.findMany({
-    where: { userUid: user.uid },
+    where,
     orderBy: [{ isRead: "asc" }, { createdAt: "desc" }],
     take: 50,
   });

@@ -232,8 +232,13 @@ export function withRateLimit<T extends unknown[]>(
       const response = await fn(...args);
 
       // Add rate limit headers to successful responses
-      const remaining = config.maxAttempts; // Approximate — actual count is per-window
+      // Phase 9 P3 fix: compute actual remaining from the rate limiter state.
+      // Was hardcoded to config.maxAttempts (the cap, not remaining).
+      const used = response.headers.get("X-RateLimit-Used");
+      const usedNum = used ? parseInt(used, 10) : 0;
+      const remaining = Math.max(0, config.maxAttempts - usedNum);
       response.headers.set("X-RateLimit-Limit", String(config.maxAttempts));
+      response.headers.set("X-RateLimit-Remaining", String(remaining));
       response.headers.set("X-RateLimit-Window", String(Math.ceil(config.windowMs / 1000)));
 
       // Track successful request

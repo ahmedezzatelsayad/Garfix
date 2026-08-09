@@ -167,7 +167,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const user = result.user;
   const sp = req.nextUrl.searchParams;
   const companySlug = sp.get("companySlug") || undefined;
-  const bypassCache = sp.get("fresh") === "1";
+  // Phase 9 P2 fix: bypassCache requires founder/admin — was open to any user,
+  // allowing cache-bypass abuse (DoS amplifier via repeated fresh DB queries).
+  const bypassCache = sp.get("fresh") === "1" && hasUnrestrictedScope(user);
 
   if (companySlug && !assertCompanyAccess(user, companySlug)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });

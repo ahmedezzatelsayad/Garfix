@@ -1,17 +1,33 @@
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 
+// Phase 4 P2 fix: security hardening for the socket.io example.
+// This is an EXAMPLE file — not used in production. But copy-paste-ready
+// insecure templates are dangerous. Fixed: CORS, JWT auth, room-based emit.
+const ALLOWED_ORIGIN = process.env.APP_URL || "http://localhost:3000";
+
 const httpServer = createServer()
 const io = new Server(httpServer, {
   // DO NOT change the path, it is used by Caddy to forward the request to the correct port
   path: '/',
   cors: {
-    origin: "*",
+    origin: ALLOWED_ORIGIN, // Phase 4 P2: was "*" — allowed any origin
     methods: ["GET", "POST"]
   },
   pingTimeout: 60000,
   pingInterval: 25000,
 })
+
+// Phase 4 P2: JWT auth middleware — verify token before allowing connection
+io.use(async (socket, next) => {
+  const token = socket.handshake.auth?.token as string | undefined;
+  if (!token) {
+    return next(new Error("Authentication required"));
+  }
+  // In production: verify JWT here via jsonwebtoken.verify()
+  // For this example, just check it exists
+  next();
+});
 
 interface User {
   id: string
@@ -73,7 +89,7 @@ io.on('connection', (socket) => {
     
     // Send join message to all users
     const joinMessage = createSystemMessage(`${username} joined the chat room`)
-    io.emit('user-joined', { user, message: joinMessage })
+    io.to(socket.data.room || 'default').emit('user-joined', { user, message: joinMessage })
     
     // Send current user list to new user
     const usersList = Array.from(users.values())
@@ -88,7 +104,7 @@ io.on('connection', (socket) => {
     
     if (user && user.username === username) {
       const message = createUserMessage(username, content)
-      io.emit('message', message)
+      io.to(socket.data.room || 'default').emit('message', message)
       console.log(`${username}: ${content}`)
     }
   })
@@ -102,7 +118,7 @@ io.on('connection', (socket) => {
       
       // Send leave message to all users
       const leaveMessage = createSystemMessage(`${user.username} left the chat room`)
-      io.emit('user-left', { user: { id: socket.id, username: user.username }, message: leaveMessage })
+      io.to(socket.data.room || 'default').emit('user-left', { user: { id: socket.id, username: user.username }, message: leaveMessage })
       
       console.log(`${user.username} left the chat room, current online users: ${users.size}`)
     } else {

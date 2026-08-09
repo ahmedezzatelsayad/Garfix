@@ -4,6 +4,7 @@
  * POST — Retry a failed delivery.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { isFounderEmail } from "@/lib/founder";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, parseJsonBody, apiError, apiOk, getQuery } from "@/lib/api";
 import { dbTyped as db } from "@/lib/db";
@@ -21,7 +22,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const companySlug = user.companies?.[0];
   if (!companySlug) return apiError("No company associated", 400);
 
-  const isFounder = user.email === process.env.FOUNDER_EMAIL;
+  const isFounder = isFounderEmail(user.email);
   if (user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can view webhook deliveries", 403);
   }
@@ -78,7 +79,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const companySlug = user.companies?.[0];
   if (!companySlug) return apiError("No company associated", 400);
 
-  const isFounder = user.email === process.env.FOUNDER_EMAIL;
+  const isFounder = isFounderEmail(user.email);
   if (user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can retry deliveries", 403);
   }

@@ -4,6 +4,7 @@
  * POST — Register a new webhook endpoint.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { isFounderEmail } from "@/lib/founder";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, parseJsonBody, apiError, apiOk, validateBody } from "@/lib/api";
 import { registerWebhook } from "@/lib/webhooks";
@@ -27,7 +28,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
 
   // Only admin/founder can manage webhooks
-  const isFounder = user.email === process.env.FOUNDER_EMAIL;
+  const isFounder = isFounderEmail(user.email);
   if (user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can manage webhooks", 403);
   }
@@ -69,7 +70,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError("No company associated with this user", 400);
   }
 
-  const isFounder = user.email === process.env.FOUNDER_EMAIL;
+  const isFounder = isFounderEmail(user.email);
   if (user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can manage webhooks", 403);
   }

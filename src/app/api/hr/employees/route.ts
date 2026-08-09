@@ -50,7 +50,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
   const pagination = buildCursorPrismaQuery(cursor, limit, "createdAt", "desc");
   // Employee.id is a String (cuid) — override cursor to use the string id.
-  const allEmployees: any[] = await db.employee.findMany({
+  const allEmployees = await db.employee.findMany({
     where,
     take: pagination.take,
     skip: pagination.skip,
@@ -58,8 +58,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     orderBy: pagination.orderBy,
   });
 
-  const { items, nextCursor } = buildCursorResponse(allEmployees, limit);
-  const employees: any[] = items;
+  const { items, nextCursor } = buildCursorResponse(allEmployees as any[], limit);
+  const employees = items;
 
   return NextResponse.json({
     employees: employees.map((e) => ({

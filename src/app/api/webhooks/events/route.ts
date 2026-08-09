@@ -4,6 +4,7 @@
  * POST — Trigger a test event (ping) to verify an endpoint is working.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { isFounderEmail } from "@/lib/founder";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, parseJsonBody, apiError, apiOk, validateBody } from "@/lib/api";
 import { dispatchWebhook, WebhookPayload } from "@/lib/webhooks";
@@ -89,7 +90,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const companySlug = user.companies?.[0];
   if (!companySlug) return apiError("No company associated", 400);
 
-  const isFounder = user.email === process.env.FOUNDER_EMAIL;
+  const isFounder = isFounderEmail(user.email);
   if (user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can trigger test events", 403);
   }

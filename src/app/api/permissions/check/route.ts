@@ -6,6 +6,7 @@
  * Response: { allowed: boolean, reason?: string }
  */
 import { NextRequest, NextResponse } from "next/server";
+import { isFounderEmail } from "@/lib/founder";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, parseJsonBody, apiError, apiOk } from "@/lib/api";
 import { checkPermission, PermissionScope, getEffectivePermissions, validatePermissionChange } from "@/lib/rbac";
@@ -39,7 +40,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   else if (scope === "platform") permScope = PermissionScope.platform;
 
   const user = result.user;
-  const isFounder = user.email === process.env.FOUNDER_EMAIL;
+  const isFounder = isFounderEmail(user.email);
 
   // Get user's effective permissions
   const effective = getEffectivePermissions(

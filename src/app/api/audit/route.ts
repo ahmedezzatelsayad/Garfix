@@ -21,7 +21,15 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
   const where: Record<string, unknown> = {};
   if (companySlug) where.companySlug = companySlug;
-  else if (!hasUnrestrictedScope(user)) where.companySlug = { in: user.companies };
+  else if (!hasUnrestrictedScope(user)) {
+    // Phase 4 P3 fix: also include auth events (companySlug IS NULL) for
+    // the requesting user's own uid — was excluded because null slugs
+    // don't match { in: user.companies }. Now uses OR to include both.
+    where.OR = [
+      { companySlug: { in: user.companies } },
+      { userUid: user.uid, companySlug: null },  // auth events for this user
+    ];
+  }
   if (action) where.action = action;
 
   const logs = await db.auditLog.findMany({ where, orderBy: { createdAt: "desc" }, take: limit });
