@@ -176,6 +176,18 @@ export async function bootstrapRuntime(): Promise<BootstrapResult> {
       logger.error(`[bootstrap] ✗ ${msg}`);
     }
 
+    // 1g. Events Worker (transactional outbox consumer — Phase 7 P1 fix)
+    try {
+      const { registerEventsWorker } = await import("@/lib/workers/eventsWorker");
+      registerEventsWorker();
+      workersRegistered.push("events");
+      logger.info("[bootstrap] ✓ Events worker registered");
+    } catch (err) {
+      const msg = `Failed to register Events worker: ${err instanceof Error ? err.message : String(err)}`;
+      errors.push(msg);
+      logger.error(`[bootstrap] ✗ ${msg}`);
+    }
+
     // ── Step 2: Recover Pending Jobs ──────────────────────────────────────
     // Re-enqueue jobs that were in-progress when the server stopped.
 

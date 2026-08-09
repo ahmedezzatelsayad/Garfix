@@ -63,13 +63,23 @@ export async function getValkeyClient(): Promise<RedisClient | null> {
 
   try {
     const Redis = (await import("ioredis")).default;
+    // Phase 7 P1 fix: use DB index 0 for cache/session/rate-limit (shared).
+    // BullMQ queues use connection.duplicate() which inherits the db index —
+    // to isolate queues, pass db: 1 in the VALKEY_URL for BullMQ specifically.
+    // For now, the shared client uses db 0 (default) with key prefixes:
+    //   cache:    "cache:" prefix (cache.ts)
+    //   rate-limit: "ai:rl:" prefix (valkey-rate-limiter.ts)
+    //   session:  "session:" prefix (passwordPolicy.ts)
+    //   BullMQ:   no prefix (BullMQ manages its own keyspace)
     sharedClient = new Redis(url, {
       lazyConnect: true,
       maxRetriesPerRequest: 3,
       enableReadyCheck: true,
       reconnectOnError: (err: Error) => err.message.includes("READONLY"),
-      // Friendly name for monitoring
       connectionName: "garfix-shared",
+      // Phase 7 P1: use db 0 for app cache/session/rate-limit
+      // BullMQ queues should use db 1 via VALKEY_QUEUE_URL env var (if set)
+      db: 0,
     });
 
     sharedClient.on("error", (err) => {

@@ -391,7 +391,15 @@ ${isFounder ? "- هذا المستخدم هو مؤسس المنصة — ساعد
     }
   }
 
-  const outcome = await callAI(systemPrompt, sanitizedMessages);
+  // Phase 8 P1 fix: trim conversation history to fit the model's context window.
+  // Previously messages were passed verbatim — a 50-message conversation with
+  // 8000 chars each = ~200K tokens, exceeding gpt-4o-mini's 128K context.
+  // trimHistory removes oldest messages until the total fits the budget.
+  const { trimHistory, calculateBudget } = await import("@/lib/ai/contextWindow");
+  const budget = calculateBudget();
+  const trimmedMessages = trimHistory(sanitizedMessages, budget.history);
+
+  const outcome = await callAI(systemPrompt, trimmedMessages);
   const reply = outcome.reply;
 
   // Store the reply in the cache for future identical prompts (1h TTL)

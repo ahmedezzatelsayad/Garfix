@@ -45,12 +45,17 @@ const AI_FALLBACK_THRESHOLD = 0.5;
  * 0.15 = 15% tolerance, accommodating tax, rounding, and discounts not captured
  * in the schema fields.
  *
- * FIX: Reduced from 0.25 (25%) to 0.15 (15%) for stricter validation.
- * The previous tolerance was too permissive and could pass invoices with
- * significant extraction errors as "verified". 15% is still generous enough
- * for legitimate tax/rounding variations while catching more real errors.
+ * Phase 8 P1 fix: Reduced from 0.15 (15%) to 0.05 (5%) for monetary fields.
+ * 15% tolerance on a $10,000 invoice = $1,500 miscalculation — material for
+ * accounting software. 5% is tight enough to catch real extraction errors
+ * while still accommodating minor tax/rounding variations (most jurisdictions
+ * round to 2 decimal places; 5% of any amount > rounding error).
+ * For quantity detection (non-monetary), we keep the original 15% tolerance
+ * via QUANTITY_TOLERANCE — quantities can have legitimate unit-conversion
+ * differences (e.g., 12 pieces vs 1 dozen).
  */
-const RELATIVE_TOLERANCE = 0.15;
+const RELATIVE_TOLERANCE = 0.05;    // monetary fields (total, tax, subtotal)
+const QUANTITY_TOLERANCE = 0.15;    // quantity fields (qty, unit count)
 
 /** Minimum number of digits for something to look like a phone number. */
 const PHONE_MIN_DIGITS = 7;
@@ -255,7 +260,7 @@ export function verifyExtractedFields(
   const detectedQty = detectQuantity(rawText);
   if (detectedQty !== null && detectedQty > 1 && price > 0 && total > 0) {
     const expectedWithQty = detectedQty * price + tax - discount;
-    if (expectedWithQty > 0 && !approxEqual(total, expectedWithQty, RELATIVE_TOLERANCE)) {
+    if (expectedWithQty > 0 && !approxEqual(total, expectedWithQty, QUANTITY_TOLERANCE)) {
       const diff = Math.abs(total - expectedWithQty);
       const pctOff = ((diff / Math.max(Math.abs(total), Math.abs(expectedWithQty))) * 100).toFixed(1);
       issues.push(

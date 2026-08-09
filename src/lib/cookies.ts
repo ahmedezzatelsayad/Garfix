@@ -36,11 +36,23 @@ export const REFRESH_COOKIE_OPTS = {
   maxAge: REFRESH_TTL,
 } as const;
 
-/** CSRF cookie is NOT httpOnly — JS must read it to echo in X-CSRF-Token header. */
+/**
+ * CSRF cookie is NOT httpOnly — JS must read it to echo in X-CSRF-Token header.
+ *
+ * Phase 9 P1 fix: CSRF cookie uses sameSite: "strict" (was "lax"). With "lax",
+ * the cookie is sent on top-level navigations from external sites — sufficient
+ * for double-submit but weaker if any subdomain can write the cookie. "strict"
+ * blocks ALL cross-site sends including top-level navigations. Since the CSRF
+ * token is only needed for same-origin API calls (not navigations), "strict"
+ * is the correct choice.
+ *
+ * Note: ACCESS_COOKIE and REFRESH_COOKIE stay "lax" to allow SSO flows
+ * (e.g., redirect from email link → /dashboard after login).
+ */
 export const CSRF_COOKIE_OPTS = {
   httpOnly: false,
   secure: SECURE,
-  sameSite: SAME_SITE,
+  sameSite: "strict" as const,  // Phase 9 P1: strict (was lax)
   path: "/",
   maxAge: CSRF_TTL,
 } as const;

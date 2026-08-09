@@ -430,10 +430,15 @@ function createProvider(config: AiProviderConfig): AiProvider | null {
 export async function callAI(options: ChatOptions): Promise<ChatResult> {
   const providers = await getAiProviders();
 
-  // Build the effective chain: configured providers + z-ai as last resort
-  // (deduped — if z-ai is already in the chain, don't duplicate it)
+  // Phase 8 P1 fix: z-ai fallback is now CONDITIONAL. Previously it was
+  // always appended — if z-ai SDK was unconfigured in prod, every AI call
+  // wasted time trying it before failing. Now z-ai is only appended when:
+  //   (1) ZAI_ENABLED env var is "1" (explicit opt-in for sandbox/dev), OR
+  //   (2) NODE_ENV !== "production" (dev/preview gets z-ai automatically)
+  // In production with real providers configured, z-ai is NOT appended.
   const hasZai = providers.some(p => p.provider === "z-ai" && p.isEnabled);
-  const effectiveChain = hasZai
+  const zaiEnabled = process.env.ZAI_ENABLED === "1" || process.env.NODE_ENV !== "production";
+  const effectiveChain = (hasZai || !zaiEnabled)
     ? providers
     : [
         ...providers,

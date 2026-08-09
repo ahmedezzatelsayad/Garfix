@@ -70,21 +70,14 @@ function sweepIfNeeded(): void {
 }
 
 async function sha256(s: string): Promise<string> {
-  // Cache keys don't need cryptographic strength — collisions just mean a
-  // cache miss. Use a fast non-crypto hash (djb2 + FNV mix) to avoid pulling
-  // in the webcrypto subsystem, which can crash Turbopack in some sandboxed
-  // runtimes. 16-byte hex output is plenty for deduping prompts.
-  let h1 = 5381;
-  let h2 = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    const c = s.charCodeAt(i);
-    h1 = ((h1 << 5) + h1 + c) | 0;
-    h2 = Math.imul(h2 ^ c, 16777619) | 0;
-  }
-  return (
-    (h1 >>> 0).toString(16).padStart(8, "0") +
-    (h2 >>> 0).toString(16).padStart(8, "0")
-  );
+  // Phase 8 P1 fix: use REAL SHA-256 instead of djb2+FNV non-crypto hash.
+  // The old 16-byte (64-bit) hash had birthday-paradox collision risk at
+  // ~4 billion prompts — unlikely but not impossible for a high-volume SaaS.
+  // A collision would return one user's cached AI reply to another user.
+  // node:crypto.createHash is available in Node.js runtime (this module is
+  // server-only — not imported by any client component).
+  const { createHash } = await import("node:crypto");
+  return createHash("sha256").update(s).digest("hex");
 }
 
 export function getCachedReply(cacheKey: string): string | null {

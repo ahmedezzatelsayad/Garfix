@@ -23,6 +23,7 @@ import { resolveAuth, assertCompanyAccess, type AuthPayload } from "./auth";
 import { canAccessCompany } from "./tenantScope";
 import { logAudit } from "./audit";
 import { logger } from "./logger";
+import { parseJsonBody } from "./api";  // Phase 9 P1: body-size guard
 import { z, ZodError } from "zod";
 
 // Note: isFounderEmail is imported later in the file (near requireFounder)
@@ -219,9 +220,14 @@ export function withValidation<T>(
   handler: (req: NextRequest, ctx: { body: T }) => Promise<NextResponse>,
 ): (req: NextRequest) => Promise<NextResponse> {
   return async (req: NextRequest) => {
+    // Phase 9 P1 fix: use parseJsonBody (enforces 1 MiB limit) instead of
+    // raw req.json() which bypassed the body-size guard.
     let body: unknown;
     try {
-      body = await req.json();
+      body = await parseJsonBody(req);
+      if (body === null) {
+        return NextResponse.json({ error: "صيغة JSON غير صحيحة أو حجم كبير جداً" }, { status: 400 });
+      }
     } catch {
       return NextResponse.json({ error: "صيغة JSON غير صحيحة" }, { status: 400 });
     }
@@ -262,8 +268,12 @@ export function withAuth<T = unknown>(
 
     let body: T | undefined;
     if (options.schema) {
+      // Phase 9 P1 fix: use parseJsonBody (enforces 1 MiB limit)
       try {
-        body = await req.json();
+        body = await parseJsonBody(req) as T;
+        if (body === null) {
+          return NextResponse.json({ error: "صيغة JSON غير صحيحة أو حجم كبير جداً" }, { status: 400 });
+        }
       } catch {
         return NextResponse.json({ error: "صيغة JSON غير صحيحة" }, { status: 400 });
       }

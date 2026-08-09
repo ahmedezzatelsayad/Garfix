@@ -203,6 +203,11 @@ async function createBullWorker(
 
   const ttl = QUEUE_TTL[name] ?? 30_000;
 
+  // Phase 6 P1 fix: concurrency is now env-configurable per queue.
+  const defaultConcurrency = name === QUEUE_NAMES.AI ? 2 : 5;
+  const envKey = `BULLMQ_CONCURRENCY_${name.toUpperCase().replace(/-/g, "_")}`;
+  const concurrency = parseInt(process.env[envKey] || "", 10) || defaultConcurrency;
+
   const worker = new Worker(name, async (job: BullMQJob) => {
     logger.debug("[queues] BullMQ processing job", { queue: name, jobId: job.id, type: job.data.type });
     // Timeout guard
@@ -214,7 +219,8 @@ async function createBullWorker(
     ]);
   }, {
     connection: connection.duplicate(),
-    concurrency: name === QUEUE_NAMES.AI ? 2 : 5,
+    // Phase 6 P1 fix: concurrency is now env-configurable per queue.
+    concurrency,
     autorun: true,
     // Phase 7 P1 fix: stalled job recovery config
     stalledInterval: 30_000,  // check every 30s for stalled jobs

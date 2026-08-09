@@ -127,11 +127,20 @@ async function callAIStream(
         }
         if (chunk.usage) streamUsage = chunk.usage;
       }
-      // Some providers attach usage to the final chunk; most streaming
-      // responses do NOT include it — log 0 honestly in that case.
+      // Phase 8 P1 fix: capture usage from final chunk. If the provider
+      // doesn't emit usage (some don't), estimate tokensOut from the reply
+      // length (~4 chars per token for Arabic/English mixed text). This
+      // prevents the cost dashboard from underreporting streaming calls
+      // (was logging 0 tokens for ALL streaming → $0 cost shown).
       if (streamUsage) {
         tokensIn = streamUsage.prompt_tokens || 0;
         tokensOut = streamUsage.completion_tokens || 0;
+      } else {
+        // Estimate: ~4 chars per token (industry standard approximation)
+        tokensOut = Math.ceil(fullReply.length / 4);
+        // tokensIn: estimate from system prompt + messages (~4 chars/token)
+        const inputText = systemPrompt + messages.map((m) => m.content).join("");
+        tokensIn = Math.ceil(inputText.length / 4);
       }
     } else {
       // Fallback: non-streaming call, emit as a single token
