@@ -1240,6 +1240,7 @@ model Invoice {
   // ordering used by GET /api/invoices. Without it Postgres picked the
   // single-column companySlug index and sorted in memory.
   @@index([companySlug, createdAt])
+  @@index([clientId])
   @@map("invoices")
 }
 
@@ -1429,6 +1430,7 @@ model PaymentTransaction {
   // P5-M1: composite (companySlug, createdAt) backs the tenant+time-range
   // list ordering used by GET /api/payments.
   @@index([companySlug, createdAt])
+  @@index([invoiceId])
   @@map("payment_transactions")
 }
 

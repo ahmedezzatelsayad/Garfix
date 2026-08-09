@@ -112,17 +112,35 @@ export async function consolidateGroup(
   const bsAccountMap = new Map<string, ConsolidatedAccount>();
   const pnlAccountMap = new Map<string, ConsolidatedAccount>();
 
-  for (const companySlug of companySlugs) {
-    // Get accounts for this company
-    const accounts = await db.account.findMany({
-      where: { companySlug, isActive: true },
-    });
+  // Phase 5 P1 fix: batch fetch ALL accounts + entries for ALL companies in
+  // 2 queries instead of 2N (N = number of company slugs). Original code did
+  // 2 sequential queries per company inside the for-loop → 2N round-trips.
+  const slugArray = Array.from(companySlugs);
+  const allAccounts = await db.account.findMany({
+    where: { companySlug: { in: slugArray }, isActive: true },
+  });
+  const allEntries = await db.journalEntry.findMany({
+    where: { companySlug: { in: slugArray }, date: { lte: asOfDate }, status: "posted" },
+    include: { lines: true },
+  });
 
-    // Get posted journal entries up to asOfDate
-    const entries = await db.journalEntry.findMany({
-      where: { companySlug, date: { lte: asOfDate }, status: "posted" },
-      include: { lines: true },
-    });
+  // Group by companySlug for the per-company processing below
+  const accountsByCompany = new Map<string, typeof allAccounts>();
+  for (const acc of allAccounts) {
+    const arr = accountsByCompany.get(acc.companySlug) || [];
+    arr.push(acc);
+    accountsByCompany.set(acc.companySlug, arr);
+  }
+  const entriesByCompany = new Map<string, typeof allEntries>();
+  for (const entry of allEntries) {
+    const arr = entriesByCompany.get(entry.companySlug) || [];
+    arr.push(entry);
+    entriesByCompany.set(entry.companySlug, arr);
+  }
+
+  for (const companySlug of companySlugs) {
+    const accounts = accountsByCompany.get(companySlug) || [];
+    const entries = entriesByCompany.get(companySlug) || [];
 
     // Calculate balance per account from journal lines
     const balanceMap = new Map<string, number>();

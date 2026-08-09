@@ -85,9 +85,15 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
-        {/* VERCEL FIX: removed themeInitScript — it was causing hydration
-            race conditions on Vercel. next-themes handles theme init on
-            the client side via the ThemeProvider in Providers.tsx. */}
+        {/* Phase 2 P1 fix: re-added themeInitScript to prevent FOUC (flash of
+            unstyled content) when enableSystem=true. The script runs BEFORE
+            React hydration, reading localStorage + OS preference and setting
+            the `dark` class on <html>. suppressHydrationWarning on <html>
+            (line 86) absorbs the className mismatch — standard next-themes
+            pattern. The original "hydration race condition" was actually
+            caused by the old html:not([data-theme]) { visibility: hidden }
+            CSS rule (now removed), NOT by this script. */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body
         className={`${cairo.variable} font-cairo antialiased bg-background text-foreground`}

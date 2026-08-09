@@ -14,6 +14,188 @@
 
 ---
 
+## 🚀 Quick Start — خطوات التشغيل السريع
+
+<div dir="rtl">
+
+### المتطلبات الأساسية (Prerequisites)
+
+| الأداة | الإصدار المطلوب | السبب |
+|-------|----------------|-------|
+| **Node.js** | ≥ 22.0.0 | مطابق لـ `Dockerfile` (`node:22-alpine`) |
+| **Bun** | ≥ 1.3.14 | مُدير الحزم الأساسي (مطابق لـ `oven/bun:1.3.14`) |
+| **PostgreSQL** | ≥ 17 | قاعدة البيانات الأساسية |
+| **Valkey** | ≥ 8.1 | بديل Redis للـ cache + queues + rate limiting |
+
+### 1️⃣ التشغيل المحلي (Development)
+
+```bash
+# استنساخ المستودع
+git clone https://github.com/ahmedezzatelsayad/Garfix.git
+cd Garfix
+
+# تثبيت الحزم (Bun إلزامي)
+bun install
+
+# نسخ ملف البيئة وتعبئته
+cp .env.example .env.local
+# عدّل .env.local وأدخل:
+#   DATABASE_URL=postgresql://user:pass@localhost:5432/garfix
+#   VALKEY_URL=valkey://localhost:6379
+#   JWT_SECRET=<32+ chars random>
+#   JWT_REFRESH_SECRET=<32+ chars random, different from JWT_SECRET>
+#   FOUNDER_EMAIL=founder@garfix.app
+#   PAYMENTS_ENC_KEY=<32+ chars random>
+#   SEED_ADMIN_PASSWORD=<strong password for admin@garfix.com>
+
+# توليد عميل Prisma
+bunx prisma generate
+
+# تشغيل الـ migrations على قاعدة البيانات
+bunx prisma migrate deploy
+
+# (اختياري) بذر بيانات أولية (admin user + chart of accounts)
+SEED_ADMIN_PASSWORD=ChangeMe!2024 bun run seed
+
+# تشغيل خادم التطوير
+bun run dev
+# ← التطبيق متاح على http://localhost:3000
+```
+
+### 2️⃣ التشغيل بـ Docker (Production-like محلياً)
+
+```bash
+# أنشئ .env.prod بمتغيرات الإنتاج
+cp .env.example .env.prod
+
+# شغّل كل الخدمات (app + postgres + valkey)
+docker compose up -d --build
+
+# راجع السجل
+docker compose logs -f app
+
+# أوقف الخدمات
+docker compose down
+```
+
+### 3️⃣ النشر على AWS EC2 (Production)
+
+#### المتطلبات على EC2:
+- **EC2**: `t3.large` (2 vCPU, 8 GB RAM) كحد أدنى
+- **RDS**: PostgreSQL 17 (`db.t3.medium` كحد أدنى، Multi-AZ موصى به)
+- **Valkey**: حاوية Docker على نفس EC2 (أو ElastiCache للإنتاج الحقيقي)
+- **Nginx**: reverse proxy على EC2 (port 443 → 127.0.0.1:3000)
+- **SSM Parameter Store**: لتخزين الأسرار
+
+#### خطوات النشر:
+
+```bash
+# 1. على EC2: استنسخ المستودع
+cd /home/ubuntu
+git clone https://github.com/ahmedezzatelsayad/Garfix.git
+cd Garfix
+
+# 2. اجلب الأسرار من SSM (لا يطبع القيم)
+./scripts/fetch-secrets.sh
+# ← يُنشئ .env.prod تلقائياً
+
+# 3. شغّل الـ 3 migrations الجديدة (إلزامي قبل أول deploy!)
+bunx prisma migrate deploy
+# ← يجب أن ترى:
+#   ✓ 20260809000000_add_prompt_templates
+#   ✓ 20260809100000_add_optimistic_locking_version
+#   ✓ 20260809110000_add_ondelete_restrict
+
+# 4. شغّل التطبيق بالإنتاج
+export GARFIX_IMAGE_TAG=garfix:latest
+docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+  --env-file .env.prod up -d --no-build
+
+# 5. تحقق من الصحة
+curl http://localhost:3000/api/health
+# ← يجب أن يرجع: {"status":"ok","checks":{"db":{"ok":true},"valkey":{"ok":true},...}}
+```
+
+#### النشر عبر CI/CD (GitHub Actions):
+
+```bash
+# الـ deploy يتم عبر workflow_dispatch (يدوي) أو release: published
+# 1. اذهب إلى: GitHub → Actions → "Deploy to AWS EC2"
+# 2. اضغط "Run workflow"
+# 3. اختر branch (main) أو commit SHA
+# 4. اضغط "Run workflow" (يتطلب موافقة من founder عبر environment: production)
+```
+
+### 4️⃣ الـ Migrations الجديدة (إلزامي قبل أول deploy بعد التحديث)
+
+هذا التحديث أضاف **3 migrations جديدة** يجب تشغيلها على قاعدة البيانات:
+
+| Migration | الوصف |
+|-----------|-------|
+| `20260809000000_add_prompt_templates` | جدول `prompt_templates` لتخزين الـ AI prompts + seed لـ 5 prompts |
+| `20260809100000_add_optimistic_locking_version` | عمود `version` (optimistic locking) على 7 نماذج مالية |
+| `20260809110000_add_ondelete_restrict` | `ON DELETE RESTRICT` على 25 FK حرج |
+
+```bash
+# على EC2 بعد git pull:
+bunx prisma migrate deploy
+# إن لم ينجح، راجع السجل:
+bunx prisma migrate status
+```
+
+### 5️⃣ متغيرات البيئة المطلوبة (Production)
+
+| المتغير | مطلوب | الوصف |
+|---------|-------|-------|
+| `DATABASE_URL` | ✅ | PostgreSQL connection string (مع `connection_limit=20&pool_timeout=30`) |
+| `DATABASE_DIRECT_URL` | ✅ | اتصال مباشر لـ Prisma migrations (بدون pgbouncer) |
+| `VALKEY_URL` | ✅ | `valkey://:password@valkey:6379` — **إلزامي في الإنتاج** (fail-fast إن غاب) |
+| `JWT_SECRET` | ✅ | سر توقيع access tokens (≥ 32 chars) |
+| `JWT_REFRESH_SECRET` | ✅ | سر توقيع refresh tokens (مختلف عن JWT_SECRET) |
+| `FOUNDER_EMAIL` | ✅ | إيميل المؤسس (للصلاحيات الإدارية) |
+| `PAYMENTS_ENC_KEY` | ✅ | مفتاح AES-256 لتشفير الـ API keys وبيانات الدفع (≥ 32 chars) |
+| `SEED_ADMIN_PASSWORD` | ⚠️ | كلمة مرور admin@garfix.com (مطلوب فقط لـ `bun run seed`) |
+| `OPENROUTER_API_KEY` | اختياري | مفتاح OpenRouter للـ AI fallback chain |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | اختياري | مفتاح Gemini للـ AI |
+| `SENTRY_DSN` | اختياري | لمراقبة الأخطاء |
+
+### 6️⃣ فحص الصحة (Health Check)
+
+```bash
+# فحص سريع
+curl -sf http://localhost:3000/api/health | jq '.status'
+# ← "ok" أو "degraded"
+
+# فحص مفصل
+curl -s http://localhost:3000/api/health | jq
+# {
+#   "status": "ok",
+#   "version": "0.2.0",
+#   "checks": {
+#     "db": { "ok": true },
+#     "valkey": { "ok": true, "configured": true },
+#     "queues": { "mode": "bullmq", "bullmq": true },
+#     "memory": { "rssMB": 156, "heapMB": 88 },
+#     "disk": { "ok": true }
+#   }
+# }
+```
+
+### 7️⃣ استكشاف الأخطاء (Troubleshooting)
+
+| المشكلة | الحل |
+|---------|------|
+| `VALKEY_URL is required in production` | الإنتاج يرفض البدء بدون Valkey — اضبط `VALKEY_URL` في `.env.prod` |
+| `relation "Supplier" does not exist` | الـ `@@map` missing — شغّل `bunx prisma migrate deploy` |
+| `ZATCA_SIGNING_FAILED` | مفتاح ZATCA ECDSA الخاص مفقود — حمّله في `CompanyEInvoicingConfig` |
+| `INVOICE_ATOMIC_CREATE_FAILED` | فشل في إنشاء الفاتورة + المخابر — راجع السجل وأعد المحاولة |
+| `Over-payment not allowed` | المبلغ المُدفع يتجاوز المتبقي على الفاتورة — استخدم `/api/accounting/advances` |
+| `idempotencyKey` required | كل دفعة يجب أن تحمل UUID فريد — استخدم `crypto.randomUUID()` |
+
+</div>
+
+---
+
 ## Table of Contents / فهرس المحتويات
 
 - [CI/CD Status](#cicd-status)

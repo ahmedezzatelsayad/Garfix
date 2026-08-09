@@ -128,7 +128,13 @@ function handle401(): void {
   // them to /login creates a loop and breaks the landing page.
   if (typeof window !== "undefined") {
     const path = window.location.pathname;
-    const publicPaths = ["/", "/login", "/signup", "/dashboard", "/help", "/status", "/privacy", "/terms", "/cookies", "/contact", "/partners", "/refund", "/api-docs"];
+    // Phase 2 P2 fix: removed "/dashboard" from publicPaths. /dashboard is a
+    // protected route — if the session expires while viewing it, the global
+    // 401 handler SHOULD redirect to /login (not silently stay on stale data).
+    // On Vercel, VercelDashboard does its own auth check via /api/auth/me and
+    // redirects client-side, but that's a separate concern from the global
+    // 401 handler.
+    const publicPaths = ["/", "/login", "/signup", "/help", "/status", "/privacy", "/terms", "/cookies", "/contact", "/partners", "/refund", "/api-docs"];
     if (publicPaths.includes(path)) return;
   }
   isRedirectingToLogin = true;
