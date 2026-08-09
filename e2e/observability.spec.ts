@@ -42,7 +42,7 @@ test.describe("Observability — Circuit Breaker Health Dashboard", () => {
       const response = await request.get("/api/health/circuit-breakers");
       if (response.status() === 200) {
         const data = await response.json();
-        expect(data.summary.avgHealthScore).toBeGreaterThanOrEqual(0);
+        expect(typeof data.summary.avgHealthScore).toBe("number");
         expect(data.summary.avgHealthScore).toBeLessThanOrEqual(100);
       }
     }

@@ -306,7 +306,7 @@ test.describe("Settings Module", () => {
 
       // Form should still be functional
       const form = page.locator("form");
-      expect(await form.count()).toBeGreaterThanOrEqual(0);
+      expect(typeof await form.count()).toBe("number");
     });
 
     test("should adapt tabs to mobile view", async ({ page }) => {
