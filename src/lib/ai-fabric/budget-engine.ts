@@ -62,7 +62,7 @@ export async function recordSpend(
     where: { companySlug },
     create: {
       companySlug,
-      monthlyBudgetUsd: 0,
+      monthlyBudgetUsd: 50,
       currentSpendUsd: costUsd,
       alertThresholdPct: 80,
       hardStopEnabled: false,

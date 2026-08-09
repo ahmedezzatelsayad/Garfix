@@ -165,7 +165,13 @@ export function parseJsonField<T = unknown>(s: string | null | undefined, fallba
   if (!s) return fallback;
   try {
     return JSON.parse(s) as T;
-  } catch {
+  } catch (err) {
+    // Phase 9 P2 fix: log when DB-stored JSON is malformed (was silently
+    // swallowed — masked data corruption). Ops can detect drift via logs.
+    console.warn("[api] parseJsonField: malformed JSON, using fallback", {
+      preview: s.slice(0, 100),
+      err: err instanceof Error ? err.message : String(err),
+    });
     return fallback;
   }
 }

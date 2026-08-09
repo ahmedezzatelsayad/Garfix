@@ -246,7 +246,7 @@ The project includes `vercel.json` with optimal settings:
 
 ```json
 {
-  "buildCommand": "bun run build",
+  "buildCommand": "bunx prisma generate && next build --webpack",
   "installCommand": "bun install",
   "functions": {
     "src/app/api/**/*.ts": { "maxDuration": 60 },

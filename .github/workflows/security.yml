@@ -218,7 +218,7 @@ jobs:
         # The `continue-on-error` here is scoped to the SARIF UPLOAD step only,
         # NOT to the analysis itself. If CodeQL queries fail to RUN, that still
         # fails the job.
-        continue-on-error: true
+        ## continue-on-error removed (Phase 12 P2 fix)
 
       - name: Upload CodeQL SARIF as artifact (offline review)
         if: always()
@@ -440,11 +440,12 @@ jobs:
           sarif_file: trivy-results.sarif
           category: "trivy-container-scan"
         # GHAS LIMITATION: Same as CodeQL — upload-sarif requires GitHub
-        # Advanced Security (GHAS) on private repos. This repo is private
-        # and does not have GHAS purchased. The SARIF file itself is
-        # uploaded as a CI artifact (next step) for offline review.
-        # Trivy itself still runs and fails the job on real CVE findings.
-        continue-on-error: true
+        # Phase 12 P2 fix: removed continue-on-error. Trivy SARIF upload
+        # failure should surface — if the upload fails, engineers need to
+        # know (the artifact is still uploaded in the next step as backup).
+        # The SARIF upload to GitHub Security tab requires GHAS (not available
+        # on private repos without a license), but the upload step itself
+        # should not silently fail.
 
       - name: Upload Trivy scan results as artifact
         if: always() && hashFiles('trivy-results.sarif') != ''

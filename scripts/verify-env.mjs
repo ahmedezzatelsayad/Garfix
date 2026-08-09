@@ -50,13 +50,32 @@ const REQUIRED = [
     minLength: 16,
     description: "Secret used to sign refresh JWTs (≥ 16 chars, must differ from JWT_SECRET)",
   },
+  // Phase 11 P2 fix: added missing REQUIRED vars
+  {
+    name: "FOUNDER_EMAIL",
+    pattern: /^[^@]+@[^@]+\.[^@]+$/,
+    placeholderPrefix: "build-placeholder-",
+    minLength: 5,
+    description: "Founder email for founder-panel access (must be valid email)",
+  },
+  {
+    name: "PAYMENTS_ENC_KEY",
+    pattern: null,
+    placeholderPrefix: "build-placeholder-",
+    minLength: 32,
+    description: "AES-256 encryption key for payments/secrets (≥ 32 chars)",
+  },
 ];
 
 // ── Recommended env vars (warn if missing, don't fail) ─────────────────────
 const RECOMMENDED = [
   { name: "NEXT_PUBLIC_APP_URL", description: "Public app URL for SEO/canonical links" },
-  { name: "FOUNDER_EMAIL", description: "Founder email for founder-panel access" },
-  { name: "VALKEY_URL", description: "Redis-compatible URL for rate limiting + token blacklist" },
+  { name: "VALKEY_URL", description: "Redis-compatible URL for rate limiting + token blacklist + BullMQ" },
+  { name: "DATABASE_DIRECT_URL", description: "Direct PostgreSQL URL for Prisma migrations (no pgbouncer)" },
+  { name: "OPENROUTER_API_KEY", description: "OpenRouter API key for AI fallback chain" },
+  { name: "GOOGLE_GENERATIVE_AI_API_KEY", description: "Gemini API key for AI" },
+  { name: "SENTRY_DSN", description: "Sentry DSN for error monitoring" },
+  { name: "SEED_ADMIN_PASSWORD", description: "Admin password for seed script (required only for bun run seed)" },
 ];
 
 function fail(msg) {

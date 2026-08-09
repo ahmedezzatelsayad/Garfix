@@ -161,26 +161,16 @@ export default function GlobalError({
         </p>
       </div>
 
-      {/* Inline Animations */}
-      <style jsx>{`
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.8; transform: scale(0.98); }
-        }
-        
-        @keyframes bounce-slow {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-4px); }
-        }
-        
-        .animate-pulse-slow {
-          animation: pulse-slow 2s ease-in-out infinite;
-        }
-        
-        .animate-bounce-slow {
-          animation: bounce-slow 1.5s ease-in-out infinite;
-        }
-      `}</style>
+      {/* Phase 2 P2 fix: replaced style-jsx with a regular style tag.
+          styled-jsx adds ~5KB to this page's bundle and is unusual in a
+          Tailwind 4 codebase. Regular <style> with dangerouslySetInnerHTML
+          achieves the same result without the styled-jsx runtime. */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes pulse-slow { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(0.98); } }
+        @keyframes bounce-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+        .animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
+        .animate-bounce-slow { animation: bounce-slow 1.5s ease-in-out infinite; }
+      `}} />
     </div>
   );
 }

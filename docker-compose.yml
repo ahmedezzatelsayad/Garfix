@@ -103,8 +103,8 @@ services:
       VALKEY_URL: valkey://:${VALKEY_PASSWORD:?VALKEY_PASSWORD must be set}@valkey:6379
 
       # JWT
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET must be set}
 
       # Direct URL (required by Prisma schema directUrl field)
       DATABASE_DIRECT_URL: postgresql://${DB_USER:-garfix}:${DB_PASS:?DB_PASS must be set}@postgres:5432/${DB_NAME:-garfix}

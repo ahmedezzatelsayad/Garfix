@@ -152,7 +152,7 @@ export async function startPgBoss(): Promise<boolean> {
       supervise: true,
       migrate: true,
       // pg-boss manages its own pool; use a reasonable size
-      max: 5,
+      max: 10,
       // Maintenance intervals (reasonable for production)
       maintenanceIntervalSeconds: 60,
       superviseIntervalSeconds: 120,

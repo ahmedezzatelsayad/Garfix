@@ -1,5 +1,7 @@
 # GarfiX EOS — Consolidated Status Document (v0.2.0 — see package.json)
 
+>
+> **⚠️ DEPRECATED (Phase 16 P2):** This document is stale. CI green badge is the source of truth. Last verified: 2026-07-16.
 **Date:** 2026-07-16
 **Version:** v15 (post all 9 prompt files)
 **Baseline:** v12-fixed.zip (131 tsc errors, 0 tests) → v13 → v14 → **v15** (44 tsc errors, 85 tests)

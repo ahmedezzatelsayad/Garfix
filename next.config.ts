@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
   // Enable standalone output for Docker/AWS deployments.
   // Vercel has its own build flow (detected via VERCEL env var).
   ...(process.env.VERCEL !== "1" ? { output: "standalone" as const } : {}),
-  reactStrictMode: false,
+  reactStrictMode: true,
   // Expose build metadata to both server and client runtime.
   env: {
     COMMIT_SHA: commitSha,
