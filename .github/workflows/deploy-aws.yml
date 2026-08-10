@@ -1,4 +1,5 @@
 name: Deploy to AWS EC2
+
 on:
   workflow_dispatch:
     inputs:
@@ -6,28 +7,137 @@ on:
         description: "Commit SHA, tag, or branch to deploy"
         required: false
         default: "main"
+      target:
+        description: "Deploy target"
+        required: true
+        type: choice
+        default: "staging"
+        options:
+          - staging
+          - production
   release:
     types: [published]
+
 concurrency:
-  group: deploy-aws-${{ github.ref }}
+  group: deploy-aws-${{ github.ref }}-${{ github.event.inputs.target || 'staging' }}
   cancel-in-progress: false
+
 jobs:
-  deploy:
+  # ═════════════════════════════════════════════════════════════
+  # Job 1: Staging Deploy (always runs first)
+  # ═════════════════════════════════════════════════════════════
+  deploy-staging:
+    name: 🟡 Deploy to Staging
     runs-on: ubuntu-latest
     environment:
-      name: production
+      name: staging
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
+
       - name: Build Docker image
         run: |
           docker build -t garfix:${{ github.sha }} .
           docker tag garfix:${{ github.sha }} garfix:latest
+
       - name: Save image
         run: docker save garfix:${{ github.sha }} | gzip > /tmp/garfix.tar.gz
-      - name: Copy to EC2
+
+      - name: Copy to EC2 (staging)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST_STAGING }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: /tmp/garfix.tar.gz
+          target: /home/ubuntu/
+          strip_components: 1
+
+      - name: Deploy on EC2 (staging) + run migrations
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST_STAGING }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /home/ubuntu/Garfix
+            git fetch --all
+            git checkout --force ${{ github.event.inputs.ref || github.sha || 'main' }}
+            docker load < /home/ubuntu/garfix.tar.gz
+            rm /home/ubuntu/garfix.tar.gz
+
+            # P2 FIX: Save current image as rollback target
+            CURRENT=$(docker ps --filter "name=garfix-app" --format '{{.Image}}' | head -1 || echo "")
+            if [ -n "$CURRENT" ]; then docker tag "$CURRENT" garfix:previous || true; fi
+
+            # Fetch secrets from AWS SSM
+            ./scripts/fetch-secrets.sh
+
+            # P2 FIX: Run Prisma migrations BEFORE deploying new app version
+            # This ensures the DB schema is updated before the new code tries to use it
+            export GARFIX_IMAGE_TAG=garfix:${{ github.sha }}
+            echo "Running database migrations..."
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod run --rm app bunx prisma migrate deploy
+            MIGRATION_EXIT=$?
+            if [ $MIGRATION_EXIT -ne 0 ]; then
+              echo "❌ Migration failed — aborting deploy"
+              exit 1
+            fi
+            echo "✅ Migrations applied successfully"
+
+            # Deploy the new app version
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --no-build
+
+            # Health check with rollback
+            for i in $(seq 1 30); do
+              H=$(curl -sf http://localhost:3000/api/health 2>/dev/null | jq -r '.status' 2>/dev/null || echo "failed")
+              if [ "$H" = "ok" ]; then
+                echo "✅ Staging deploy OK"
+                docker image prune -f
+                exit 0
+              fi
+              sleep 2
+            done
+
+            # Health check failed — rollback
+            echo "❌ Health check failed — rolling back to previous image"
+            if docker image inspect garfix:previous >/dev/null 2>&1; then
+              export GARFIX_IMAGE_TAG=garfix:previous
+              docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --no-build
+            fi
+            exit 1
+
+  # ═════════════════════════════════════════════════════════════
+  # Job 2: Production Deploy (only if staging succeeded + manual approval)
+  # ═════════════════════════════════════════════════════════════
+  deploy-production:
+    name: 🔴 Deploy to Production
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      # P2 FIX: requires manual approval via GitHub Environment protection
+      # (configured in repo Settings → Environments → production → Required reviewers)
+    timeout-minutes: 20
+    needs: deploy-staging
+    if: ${{ github.event.inputs.target == 'production' || github.event_name == 'release' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t garfix:${{ github.sha }} .
+          docker tag garfix:${{ github.sha }} garfix:latest
+
+      - name: Save image
+        run: docker save garfix:${{ github.sha }} | gzip > /tmp/garfix.tar.gz
+
+      - name: Copy to EC2 (production)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -36,7 +146,8 @@ jobs:
           source: /tmp/garfix.tar.gz
           target: /home/ubuntu/
           strip_components: 1
-      - name: Deploy on EC2
+
+      - name: Deploy on EC2 (production) + run migrations
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -49,33 +160,66 @@ jobs:
             git checkout --force ${{ github.event.inputs.ref || github.sha || 'main' }}
             docker load < /home/ubuntu/garfix.tar.gz
             rm /home/ubuntu/garfix.tar.gz
+
+            # Save current image as rollback target
             CURRENT=$(docker ps --filter "name=garfix-app" --format '{{.Image}}' | head -1 || echo "")
             if [ -n "$CURRENT" ]; then docker tag "$CURRENT" garfix:previous || true; fi
+
             ./scripts/fetch-secrets.sh
+
+            # P2 FIX: Run Prisma migrations BEFORE deploying new app version
             export GARFIX_IMAGE_TAG=garfix:${{ github.sha }}
+            echo "Running database migrations on PRODUCTION..."
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod run --rm app bunx prisma migrate deploy
+            MIGRATION_EXIT=$?
+            if [ $MIGRATION_EXIT -ne 0 ]; then
+              echo "❌ Migration failed — aborting production deploy"
+              exit 1
+            fi
+            echo "✅ Migrations applied successfully"
+
+            # Deploy the new app version
             docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --no-build
+
+            # Health check with rollback
             for i in $(seq 1 30); do
               H=$(curl -sf http://localhost:3000/api/health 2>/dev/null | jq -r '.status' 2>/dev/null || echo "failed")
-              if [ "$H" = "ok" ]; then echo "Deploy OK"; docker image prune -f; exit 0; fi
+              if [ "$H" = "ok" ]; then
+                echo "✅ Production deploy OK"
+                docker image prune -f
+                exit 0
+              fi
               sleep 2
             done
+
+            # Health check failed — rollback to previous image
+            echo "❌ Health check failed — rolling back to previous image"
             if docker image inspect garfix:previous >/dev/null 2>&1; then
               export GARFIX_IMAGE_TAG=garfix:previous
               docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --no-build
             fi
             exit 1
+
       - name: Notify on failure
         if: failure()
         uses: aws-actions/aws-sns-publish@v2.0.0
         with:
           topic-arn: ${{ secrets.SNS_TOPIC_ARN }}
-          message: "GarfiX deploy FAILED on ${{ github.sha }}"
-          subject: "GarfiX Deploy Failed"
+          message: "GarfiX PRODUCTION deploy FAILED on ${{ github.sha }}"
+          subject: "🚨 GarfiX Production Deploy Failed"
 
       - name: Notify Slack on failure
         if: failure()
         uses: slackapi/slack-github-action@v1.26.0
         with:
-          slack-message: "GarfiX deploy FAILED on commit ${{ github.sha }}. Check: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          slack-message: "🚨 GarfiX PRODUCTION deploy FAILED on commit ${{ github.sha }}. Check: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          slack-message: "✅ GarfiX PRODUCTION deploy succeeded on commit ${{ github.sha }}"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
