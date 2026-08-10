@@ -28,6 +28,7 @@ mock.module("@/lib/db", () => ({
     findMany: mock(() => Promise.resolve([])),
     findUnique: mock(() => Promise.resolve(null)),
   },
+  get dbTyped() { return this.db; },
 }));
 
 // ─── Real imports (tenantScope is pure, no DB needed) ────────────────────

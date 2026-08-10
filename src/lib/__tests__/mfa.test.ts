@@ -48,6 +48,7 @@ mock.module("@/lib/db", () => ({
     company: { findMany: mock(() => Promise.resolve([])) },
     notification: { create: mock(() => Promise.resolve({})) },
   },
+  get dbTyped() { return this.db; },
 }));
 
 mock.module("@/lib/logger", () => ({

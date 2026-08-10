@@ -126,7 +126,7 @@ export function PurchasesView() {
     });
   };
 
-  if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
+  if (!activeCompany) return <div className="p-8 md:block md:p-12 text-center text-muted-foreground">اختر شركة</div>;
   if (showForm) return <PurchaseForm company={activeCompany} onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); refetch(); }} />;
 
   return (

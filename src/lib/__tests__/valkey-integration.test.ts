@@ -34,6 +34,7 @@ mock.module("@/lib/db", () => ({
     },
     auditLog: { create: mock(() => Promise.resolve({ id: "mock-audit" })) },
   },
+  get dbTyped() { return this.db; },
 }));
 
 mock.module("@/lib/queue-pgboss", () => ({

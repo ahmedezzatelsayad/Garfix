@@ -21,6 +21,7 @@ const mockValkeyClient = {
 
 mock.module("@/lib/valkey", () => ({
   getValkeyClient: mock(() => Promise.resolve(null)),
+  getValkeySubscriber: mock(() => Promise.resolve(null)),
   VALKEY_CONFIGURED: false,
 }));
 

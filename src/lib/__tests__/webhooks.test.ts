@@ -60,11 +60,26 @@ mock.module("@/lib/db", () => ({
     company: { findMany: mock(() => Promise.resolve([])) },
     notification: { create: mock(() => Promise.resolve({})) },
   },
+  get dbTyped() { return this.db; },
 }));
 
 mock.module("@/lib/logger", () => ({
   logger: { info: mock(() => {}), warn: mock(() => {}), error: mock(() => {}), debug: mock(() => {}) },
 }));
+
+// Mock dns.lookup so fetchSafe's DNS validation succeeds without real DNS.
+// Returns a safe public IP for any hostname (prevents SSRF validation from blocking tests).
+const dns = require("node:dns");
+dns.lookup = function(hostname: string, opts: any, cb?: any) {
+  const ip = "93.184.216.34"; // example.com's real IP
+  if (typeof opts === "function") {
+    opts(null, { address: ip, family: 4 });
+  } else if (cb) {
+    cb(null, { address: ip, family: 4 });
+  } else {
+    return Promise.resolve({ address: ip, family: 4 });
+  }
+};
 
 // Mock global fetch
 (globalThis as any).fetch = mockFetch;
@@ -302,6 +317,7 @@ describe("Webhooks Module", () => {
       id: "del-1",
       endpointId: "ep-1",
       eventType: "invoice.created",
+      event: "invoice.created",
       payload: JSON.stringify({
         event: "invoice.created",
         companySlug: "acme",
@@ -312,6 +328,15 @@ describe("Webhooks Module", () => {
       maxAttempts: 3,
       status: "pending",
       nextRetryAt: new Date(),
+      // Code uses include: { endpoint: true } — endpoint is nested on delivery
+      endpoint: {
+        id: "ep-1",
+        companySlug: "acme",
+        url: "https://example.com/webhook",
+        events: JSON.stringify(["invoice.created"]),
+        secret: encryptSecret("wh-secret-123"),
+        isActive: true,
+      },
     };
 
     it("returns 0 processed when no pending deliveries", async () => {
@@ -336,7 +361,7 @@ describe("Webhooks Module", () => {
     });
 
     it("marks as failed when endpoint not found", async () => {
-      mockWHDeliveryFindMany.mockResolvedValueOnce([baseDelivery]);
+      mockWHDeliveryFindMany.mockResolvedValueOnce([{ ...baseDelivery, endpoint: null }]);
       mockWHEndpointFindUnique.mockResolvedValueOnce(null);
       const result = await processPendingDeliveries();
       expect(result.failed).toBe(1);
@@ -434,12 +459,14 @@ describe("Webhooks Module", () => {
     it("queries pending deliveries with nextRetryAt <= now", async () => {
       mockWHDeliveryFindMany.mockResolvedValueOnce([]);
       await processPendingDeliveries();
+      // Code uses include: { endpoint: true } for batch-fetch (Phase 6 P1 fix)
       expect(mockWHDeliveryFindMany).toHaveBeenCalledWith({
         where: expect.objectContaining({
           status: "pending",
           nextRetryAt: { lte: expect.any(Date) },
         }),
         take: 50,
+        include: { endpoint: true },
       });
     });
   });
@@ -613,11 +640,13 @@ describe("Webhooks Module", () => {
           id: "del-1",
           endpointId: "ep-1",
           eventType: "invoice.created",
+          event: "invoice.created",
           payload: "{}",
           attempts: 0,
           maxAttempts: 3,
           status: "pending",
           nextRetryAt: new Date(),
+          endpoint: makeEndpoint(),
         },
       ]);
       mockWHEndpointFindUnique.mockResolvedValueOnce(makeEndpoint());

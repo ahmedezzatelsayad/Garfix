@@ -22,6 +22,7 @@ mock.module("@/lib/logger", () => ({
 
 mock.module("@/lib/db", () => ({
   db: { findMany: mock(() => Promise.resolve([])), findUnique: mock(() => Promise.resolve(null)) },
+  get dbTyped() { return this.db; },
 }));
 
 // ─── Pure logic helpers ────────────────────────────────────────────────────

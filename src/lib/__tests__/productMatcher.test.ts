@@ -68,7 +68,7 @@ const dbMock = {
   },
 };
 
-mock.module("@/lib/db", () => ({ db: dbMock }));
+mock.module("@/lib/db", () => ({ db: dbMock, dbTyped: dbMock }));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

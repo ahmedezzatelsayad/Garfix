@@ -36,6 +36,7 @@ mock.module("@/lib/db", () => ({
       update: mock(() => Promise.resolve({})),
     },
   },
+  get dbTyped() { return this.db; },
 }));
 
 mock.module("@/lib/founder", () => ({

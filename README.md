@@ -128,13 +128,15 @@ curl http://localhost:3000/api/health
 
 ### 4️⃣ الـ Migrations الجديدة (إلزامي قبل أول deploy بعد التحديث)
 
-هذا التحديث أضاف **3 migrations جديدة** يجب تشغيلها على قاعدة البيانات:
+هذا التحديث أضاف **5 migrations جديدة** يجب تشغيلها على قاعدة البيانات:
 
 | Migration | الوصف |
 |-----------|-------|
 | `20260809000000_add_prompt_templates` | جدول `prompt_templates` لتخزين الـ AI prompts + seed لـ 5 prompts |
 | `20260809100000_add_optimistic_locking_version` | عمود `version` (optimistic locking) على 7 نماذج مالية |
 | `20260809110000_add_ondelete_restrict` | `ON DELETE RESTRICT` على 25 FK حرج |
+| `20260810120000_add_mfa_recovery_codes` | أعمدة `recoveryCodes`, `enabled`, `verifiedAt`, `lastUsedAt` على `MFASecret` |
+| `20260810130000_add_admin_audit_flat_fields` | أعمدة مسطّرة على `AdminAuditLog` للفلترة (`targetType`, `targetId`, `changes`, `ipAddress`, `userAgent`) |
 
 ```bash
 # على EC2 بعد git pull:
@@ -142,6 +144,136 @@ bunx prisma migrate deploy
 # إن لم ينجح، راجع السجل:
 bunx prisma migrate status
 ```
+
+### 4.5️⃣ إنشاء حساب المؤسس (Founder Account) — إلزامي قبل أول تشغيل
+
+> **مهم**: حساب المؤسس هو الـ superuser — يقدر يدخل أي شركة، يعدّل أي إعداد، يضيف/يحذف مستخدمين.
+
+#### الطريقة الأولى: عبر متغيرات البيئة (موصى بها للإنتاج)
+
+```bash
+# 1. اضبط متغيرات البيئة في .env:
+FOUNDER_EMAIL=founder@yourcompany.com
+FOUNDER_PASSWORD=Your-Strong-Password-2026!
+
+# 2. شغّل الـ migrations:
+bunx prisma migrate deploy
+
+# 3. شغّل الـ seed (ينشئ حساب المؤسس + شركة تجريبية):
+bunx prisma db seed
+
+# 4. سجّل دخول على /login بـ:
+#    Email:    founder@yourcompany.com
+#    Password: Your-Strong-Password-2026!
+```
+
+#### الطريقة الثانية: عبر الـ SQL (للحالات الطارئة)
+
+```sql
+-- أنشئ حساب مؤسس مباشرة في الـ DB:
+-- (الـ password hash لازم يكون bcrypt cost 12 — استخدم أداة خارجية لتوليده)
+INSERT INTO "AppUser" (uid, email, "passwordHash", "displayName", role, companies, permissions, "emailVerified", "tokenVersion")
+VALUES (
+  gen_random_uuid(),
+  'founder@yourcompany.com',
+  '$2a$12$...bcrypt-hash-here...',
+  'Founder',
+  'admin',  -- role='admin' + FOUNDER_EMAIL match = founder privileges
+  '[]',
+  '{}',
+  true,
+  0
+);
+```
+
+#### كيف يعمل نظام المؤسس؟
+
+1. **`FOUNDER_EMAIL`** في `.env` هو المرجع الوحيد (single source of truth)
+2. أي مستخدم بإيميل يطابق `FOUNDER_EMAIL` يحصل تلقائياً على صلاحيات المؤسس
+3. المؤسس:
+   - ✅ يتخطّى كل فحوصات الصلاحيات (superuser)
+   - ✅ يقدر يدخل لوحة المؤسس على `/founder-panel/*`
+   - ✅ يقدر يضيف/يحذف شركات ومستخدمين
+   - ✅ يقدر يدير مفاتيح الـ AI (API Key Pool)
+   - ✅ يقدر يشوف كل الفواتير الإلكترونية عبر كل الشركات
+4. **لتغيير إيميل المؤسس**: عدّل `FOUNDER_EMAIL` في `.env` وأعِد تشغيل التطبيق — الإيميل القديم يفقد الصلاحيات فوراً.
+
+#### أمان حساب المؤسس
+
+- ✅ كلمة المرور تُخزّن bcrypt-hashed (cost 12) — لا تُخزّن نصّياً
+- ✅ مطلوب MFA على حساب المؤسس (يُفعّل من الإعدادات بعد أول دخول)
+- ✅ كل عملية حساسة تُسجّل في `AdminAuditLog` مع IP + User-Agent
+- ✅ الـ session يُسجّل في `SessionRegistry` مع إمكانية إنهاء كل الجلسات بضغطة زر
+- ⚠️ **لا تشارك كلمة مرور المؤسس مع أحد** — أنشئ مستخدمين admin منفصلين لفريقك
+
+### 4.6️⃣ إعداد DeepSeek API (مزود الذكاء الاصطناعي الافتراضي)
+
+> **اعتباراً من 2026-08-10**: DeepSeek هو المزود الافتراضي للذكاء الاصطناعي في GarfiX
+> (لأنه الأرخص + الأسرع + يدعم العربية ممتاز — 10x أرخص من GPT-4o).
+
+#### احصل على مفتاح DeepSeek API
+
+1. اذهب لـ: https://platform.deepseek.com/api_keys
+2. أنشئ حساب (سجل بإيميلك + كلمة مرور)
+3. اضغط **Create API Key**
+4. انسخ المفتاح (يبدأ بـ `sk-`)
+5. أضف رصيد: الحد الأدنى $5 (يكفي لـ ~35 مليون token — يكفي لـ 50 عميل لشهر)
+
+#### الطريقة الأولى: مفتاح واحد عبر `.env`
+
+```bash
+# في .env:
+DEEPSEEK_API_KEY=sk-your-deepseek-key-here
+DEEPSEEK_MODEL=deepseek-chat  # افتراضي
+```
+
+#### الطريقة الثانية: مفاتيح متعددة عبر `.env` (load balancing)
+
+```bash
+# في .env:
+DEEPSEEK_API_KEYS=
+  sk-key1:Account-Founder,
+  sk-key2:Account-Backup1,
+  sk-key3:Account-Backup2
+```
+
+كل مفتاح يحصل على ~60 RPM → 3 مفاتيح = 180 RPM إجمالي.
+
+#### الطريقة الثالثة: لوحة المؤسس (موصى بها للإنتاج) ⭐
+
+1. سجّل دخول كـ founder
+2. اذهب لـ: **/founder-panel/api-key-pool**
+3. اضغط **"إضافة مفتاح جديد"**
+4. اختر:
+   - **Provider**: DeepSeek
+   - **Model**: deepseek-chat (افتراضي)
+   - **API Key**: الصق مفتاحك
+   - **RPM Limit**: 60 (افتراضي DeepSeek)
+   - **Daily Limit**: 1000 (اختياري)
+5. المفتاح يُخزّن مشفّراً (AES-256) في قاعدة البيانات
+6. النظام يوزّعه round-robin على كل الشركات
+7. تقدر تضيف عدد غير محدود من المفاتيح
+
+#### تكلفة DeepSeek المتوقعة
+
+| عدد العملاء | فواتير/شهر | tokens/شهر | التكلفة/شهر |
+|------------|-----------|-----------|------------|
+| 10 | 1,000 | ~5M tokens | ~$1 |
+| 50 | 5,000 | ~25M tokens | ~$5 |
+| 200 | 20,000 | ~100M tokens | ~$20 |
+| 1,000 | 100,000 | ~500M tokens | ~$100 |
+
+**التسعير (2026-08)**: $0.14 / 1M input tokens · $0.28 / 1M output tokens
+
+#### لماذا DeepSeek وليس OpenAI/Gemini؟
+
+| المعيار | DeepSeek | GPT-4o | Gemini Pro |
+|---------|---------|--------|-----------|
+| السعر (input) | $0.14/M | $2.50/M | $1.25/M |
+| السعر (output) | $0.28/M | $10.00/M | $5.00/M |
+| دعم العربية | ممتاز (native) | جيد | ممتاز |
+| السرعة | سريع | متوسط | سريع |
+| استخلاص الفواتير | ⭐ ممتاز | جيد | جيد |
 
 ### 5️⃣ متغيرات البيئة المطلوبة (Production)
 
@@ -153,10 +285,13 @@ bunx prisma migrate status
 | `JWT_SECRET` | ✅ | سر توقيع access tokens (≥ 32 chars) |
 | `JWT_REFRESH_SECRET` | ✅ | سر توقيع refresh tokens (مختلف عن JWT_SECRET) |
 | `FOUNDER_EMAIL` | ✅ | إيميل المؤسس (للصلاحيات الإدارية) |
+| `FOUNDER_PASSWORD` | ✅ | كلمة مرور المؤسس (≥ 8 chars — مطلوبة للـ seed في الإنتاج) |
 | `PAYMENTS_ENC_KEY` | ✅ | مفتاح AES-256 لتشفير الـ API keys وبيانات الدفع (≥ 32 chars) |
+| `DEEPSEEK_API_KEY` | ✅ | مفتاح DeepSeek API (المزود الافتراضي للذكاء الاصطناعي) |
+| `DEEPSEEK_API_KEYS` | ⚠️ | مفاتيح متعددة (load balancing) — بديل عن DEEPSEEK_API_KEY |
 | `SEED_ADMIN_PASSWORD` | ⚠️ | كلمة مرور admin@garfix.com (مطلوب فقط لـ `bun run seed`) |
-| `OPENROUTER_API_KEY` | اختياري | مفتاح OpenRouter للـ AI fallback chain |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | اختياري | مفتاح Gemini للـ AI |
+| `GEMINI_API_KEY` | اختياري | مفتاح Gemini (احتياطي عند تعطّل DeepSeek) |
+| `OPENROUTER_API_KEY` | اختياري | مفتاح OpenRouter (للموديلات غير DeepSeek) |
 | `SENTRY_DSN` | اختياري | لمراقبة الأخطاء |
 
 ### 6️⃣ فحص الصحة (Health Check)

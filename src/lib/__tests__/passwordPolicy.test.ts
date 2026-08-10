@@ -52,6 +52,7 @@ mock.module("@/lib/db", () => ({
     company: { findMany: mock(() => Promise.resolve([])) },
     notification: { create: mock(() => Promise.resolve({})) },
   },
+  get dbTyped() { return this.db; },
 }));
 
 mock.module("@/lib/logger", () => ({
@@ -435,8 +436,10 @@ describe("Password Policy Module", () => {
     it("queries sessions ordered by createdAt asc for eviction", async () => {
       mockSessionFindMany.mockResolvedValueOnce([]);
       await registerSession({ userUid: "user-1", jti: "jti-new", ttlSeconds: 3600 });
+      // Phase 9 P2 fix: filter includes expiresAt > now so expired sessions
+      // don't count against MAX_SESSIONS_PER_USER
       expect(mockSessionFindMany).toHaveBeenCalledWith({
-        where: { userUid: "user-1" },
+        where: { userUid: "user-1", expiresAt: expect.any(Object) },
         orderBy: { createdAt: "asc" },
       });
     });

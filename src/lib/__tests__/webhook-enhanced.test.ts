@@ -57,6 +57,7 @@ mock.module("@/lib/db", () => ({
     adminAuditLog: { create: mockAdminAuditLogCreate },
     user: { findUnique: mock(() => Promise.resolve(null)), findMany: mock(() => Promise.resolve([])) },
   },
+  get dbTyped() { return this.db; },
 }));
 
 mock.module("@/lib/cryptoVault", () => ({
@@ -300,12 +301,13 @@ describe("processPendingDeliveries — retry mechanism", () => {
 
   it("successful delivery gets marked as success", async () => {
     const secret = crypto.randomBytes(32).toString("hex");
-    mockWHDeliveryFindMany.mockImplementation(() => Promise.resolve([
-      { id: "del-1", endpointId: "ep-1", eventType: "invoice.created", payload: JSON.stringify({ event: "invoice.created" }), status: "pending", attempts: 0, maxAttempts: 3, nextRetryAt: new Date() },
-    ]));
-    mockWHEndpointFindUnique.mockImplementation(() => Promise.resolve({
+    const endpoint = {
       id: "ep-1", url: "https://example.com/hook", secret: secret, events: JSON.stringify(["invoice.created"]),
-    }));
+    };
+    mockWHDeliveryFindMany.mockImplementation(() => Promise.resolve([
+      { id: "del-1", endpointId: "ep-1", eventType: "invoice.created", event: "invoice.created", payload: JSON.stringify({ event: "invoice.created" }), status: "pending", attempts: 0, maxAttempts: 3, nextRetryAt: new Date(), endpoint },
+    ]));
+    mockWHEndpointFindUnique.mockImplementation(() => Promise.resolve(endpoint));
     // Mock fetch as successful
     global.fetch = mockFetch;
     mockFetch.mockImplementation(() => Promise.resolve({ ok: true, status: 200 }));

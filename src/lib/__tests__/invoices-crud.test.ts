@@ -109,10 +109,21 @@ const invoiceCount = mock(async () => 0);
 // H5 FIX: IdempotencyKey mock — backed by an in-memory Map keyed on
 // `${companySlug}|${endpoint}|${key}`. findUnique + upsert both consult it.
 const idempotencyFindUnique = mock(async (args: any) => {
+  // Support both composite-key lookup (companySlug_endpoint_key) and
+  // single-key lookup (key) — the payment route uses `where: { key: ... }`
   const w = args.where?.companySlug_endpoint_key;
-  if (!w) return null;
-  const k = `${w.companySlug}|${w.endpoint}|${w.key}`;
-  return idempotencyStore.get(k) ?? null;
+  if (w) {
+    const k = `${w.companySlug}|${w.endpoint}|${w.key}`;
+    return idempotencyStore.get(k) ?? null;
+  }
+  // Single-key lookup: search the store for a matching `key` field
+  const singleKey = args.where?.key;
+  if (singleKey) {
+    for (const record of idempotencyStore.values()) {
+      if (record.key === singleKey) return record;
+    }
+  }
+  return null;
 });
 const idempotencyUpsert = mock(async (args: any) => {
   lastIdempotencyUpsertArgs = args;
@@ -149,6 +160,22 @@ const idempotencyUpsert = mock(async (args: any) => {
 // so the route's response includes reviewQueueWarnings: [].
 
 const RICH_TX = {
+  // Invoice model — POST route does tx.invoice.create inside $transaction
+  invoice: {
+    create: async () => ({ id: 1, invoiceNumber: "INV-001", companySlug: "test-co", version: 1, status: "sent", total: "1.500", paid: "0.000" }),
+    findUnique: async () => null,
+    findFirst: async () => null,
+    findMany: async () => [],
+    update: async () => ({}),
+    updateMany: async () => ({ count: 1 }),
+    delete: async () => ({}),
+    count: async () => 0,
+  },
+  invoiceItem: {
+    create: async () => ({}),
+    createMany: async () => ({ count: 1 }),
+    deleteMany: async () => ({ count: 0 }),
+  },
   warehouse: { findFirst: async () => ({ id: 1, name: "Main Warehouse", companySlug: "test-co" }) },
   productAlias: {
     findUnique: async () => ({
@@ -170,14 +197,14 @@ const RICH_TX = {
   },
   stockMovement: { create: async () => ({}) },
   // Support appendToChain (called by logAudit after db.auditLog.create):
-  // appendToChain wraps findFirst + create in a $transaction, so the fake
-  // tx must support tamperEvidenceChain operations.
   tamperEvidenceChain: {
     findFirst: async () => null,
     create: async () => ({ id: "mock-chain" }),
   },
-  // Support logAudit's db.auditLog.create inside $transaction (if used)
+  // Support logAudit's db.auditLog.create inside $transaction
   auditLog: { create: async () => ({ id: "mock-audit-id", createdAt: new Date() }) },
+  // Outbox support
+  outboxEvent: { create: async () => ({ id: "evt-1", status: "pending" }) },
 };
 
 // ─── Register mock.module for non-conflicting modules ────────────────────────
@@ -587,14 +614,15 @@ describe("GET /api/invoices/[id]", () => {
     expect(body.error).toBeDefined();
   });
 
-  it("9. 403 cross-tenant — invoice exists but belongs to a different company", async () => {
+  it("9. 404 cross-tenant (IDOR mitigation) — invoice exists but belongs to a different company", async () => {
+    // IDOR mitigation: return 404 (not 403) to avoid confirming the resource exists
     authUser = TENANT_USER; // staff with access only to "test-co"
     invoiceById = baseInvoice({ id: 7, companySlug: "other-co" });
     const res = await singleGET(
       makeGetRequest("https://example.com/api/invoices/7"),
       makeIdCtx("7"),
     );
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.error).toBeDefined();
   });
@@ -714,10 +742,12 @@ describe("DELETE /api/invoices/[id]", () => {
     expect(lastUpdateArgs.data.deletedAt).toBeInstanceOf(Date);
   });
 
-  it("11b. delete on already-deleted invoice → 400", async () => {
+  it("11b. delete on already-deleted invoice → 404 (soft-deleted = not found)", async () => {
+    // Soft-deleted invoices are filtered out by the deletedAt check, returning 404.
+    // This is correct IDOR-mitigation behavior (don't reveal the invoice existed).
     invoiceById = baseInvoice({ id: 12, deletedAt: new Date("2024-01-01") });
     const res = await invoicesDELETE(makeDeleteRequest("12"), makeIdCtx("12"));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.error).toBeDefined();
   });
@@ -746,13 +776,13 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       id: 20, version: 1, status: "sent", total: "100.000", paid: "0.000",
     });
     const res = await paymentPATCH(
-      makePatchRequest("20", { amount: 30, method: "cash", expectedVersion: 1 }),
+      makePatchRequest("20", { amount: 30, method: "cash", expectedVersion: 1, idempotencyKey: "pay-key-20-001" }),
       makeIdCtx("20"),
     );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    expect(lastUpdateManyArgs.data.paid).toBe(30);
+    expect(lastUpdateManyArgs.data.paid).toEqual({ increment: 30 }); // P1 FIX: atomic increment
     expect(lastUpdateManyArgs.data.status).toBe("partial");
     // C1 FIX: version is now `{ increment: 1 }`, not a literal
     expect(lastUpdateManyArgs.data.version).toEqual({ increment: 1 });
@@ -764,11 +794,11 @@ describe("PATCH /api/invoices/[id]/payment", () => {
     });
     // Remaining balance 40; pay 40 → total paid = 100 → status "paid".
     const res = await paymentPATCH(
-      makePatchRequest("21", { amount: 40, method: "card", expectedVersion: 1 }),
+      makePatchRequest("21", { amount: 40, method: "card", expectedVersion: 1, idempotencyKey: "pay-key-21-001" }),
       makeIdCtx("21"),
     );
     expect(res.status).toBe(200);
-    expect(lastUpdateManyArgs.data.paid).toBe(100);
+    expect(lastUpdateManyArgs.data.paid).toEqual({ increment: 40 }); // P1 FIX: atomic increment (40 + 60 = 100)
     expect(lastUpdateManyArgs.data.status).toBe("paid");
   });
 
@@ -777,7 +807,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       id: 22, version: 1, status: "draft", total: "0.000", paid: "0.000",
     });
     const res = await paymentPATCH(
-      makePatchRequest("22", { amount: 0, method: "cash", expectedVersion: 1 }),
+      makePatchRequest("22", { amount: 0, method: "cash", expectedVersion: 1, idempotencyKey: "pay-key-22-001" }),
       makeIdCtx("22"),
     );
     // amount=0 is now rejected up front (H5 adjacent fix — non-positive amounts
@@ -790,7 +820,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       id: 23, version: 1, status: "sent", total: "100.000", paid: "50.000",
     });
     const res = await paymentPATCH(
-      makePatchRequest("23", { amount: -50, method: "cash", expectedVersion: 1 }),
+      makePatchRequest("23", { amount: -50, method: "cash", expectedVersion: 1, idempotencyKey: "pay-key-23-001" }),
       makeIdCtx("23"),
     );
     expect(res.status).toBe(400);
@@ -803,7 +833,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       deletedAt: new Date("2024-01-01"),
     });
     const res = await paymentPATCH(
-      makePatchRequest("24", { amount: 50, method: "cash", expectedVersion: 1 }),
+      makePatchRequest("24", { amount: 50, method: "cash", expectedVersion: 1, idempotencyKey: "pay-key-24-001" }),
       makeIdCtx("24"),
     );
     expect(res.status).toBe(404);
@@ -820,7 +850,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
     });
     nextUpdateManyCount = 0; // simulate B's where(v=1) finding count=0
     const res = await paymentPATCH(
-      makePatchRequest("25", { amount: 30, method: "cash", expectedVersion: 1 }),
+      makePatchRequest("25", { amount: 30, method: "cash", expectedVersion: 1, idempotencyKey: "pay-key-25-001" }),
       makeIdCtx("25"),
     );
     expect(res.status).toBe(409);
@@ -865,6 +895,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       endpoint: "invoice-payment",
       key: "inv-26:abc-123-456",
       requestHash: "26:25:card",
+      responseBody: JSON.stringify({ ok: true, invoice: invoiceById }),
       responseJson: JSON.stringify({ ok: true, invoice: invoiceById }),
       status: 200,
       createdAt: new Date(),
@@ -906,7 +937,8 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       makeIdCtx("27"),
     );
     expect(res2.status).toBe(200);
-    expect(lastUpdateManyArgs.data.paid).toBe(50); // 25 + 25 = 50
+    // P1 FIX: payment route uses atomic increment instead of absolute write
+    expect(lastUpdateManyArgs.data.paid).toEqual({ increment: 25 }); // 25 + 25 = 50
   });
 });
 

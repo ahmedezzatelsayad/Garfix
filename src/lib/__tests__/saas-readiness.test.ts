@@ -27,6 +27,7 @@ mock.module("@/lib/db", () => ({
     invoice: { findMany: mock(() => Promise.resolve([])), count: mock(() => Promise.resolve(5)) },
     notification: { create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])) },
   },
+  get dbTyped() { return this.db; },
 }));
 
 // ─── Pure logic (imported) ─────────────────────────────────────────────────

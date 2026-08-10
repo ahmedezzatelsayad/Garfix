@@ -101,7 +101,7 @@ export function InventoryView() {
     });
   };
 
-  if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
+  if (!activeCompany) return <div className="p-8 md:block md:p-12 text-center text-muted-foreground">اختر شركة</div>;
 
   const tabs: Array<{ key: Tab; label: string }> = [
     { key: "warehouses", label: `المستودعات (${warehouses.length})` },

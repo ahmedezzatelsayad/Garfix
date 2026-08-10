@@ -64,6 +64,7 @@ describe("P2.1: computeCallCostUsd + costTracker wiring", () => {
     // Mock Valkey so the scoring module doesn't try to persist
     mock.module("@/lib/valkey", () => ({
       getValkeyClient: mock(async () => null),
+      getValkeySubscriber: mock(() => Promise.resolve(null)),
       VALKEY_CONFIGURED: false,
     }));
     const { recordProviderOutcome, getProviderScore } = await import(
@@ -85,6 +86,7 @@ describe("P2.1: computeCallCostUsd + costTracker wiring", () => {
   it("recordProviderOutcome preserves prior avgCostUsd when costUsd is omitted (cold-start preservation)", async () => {
     mock.module("@/lib/valkey", () => ({
       getValkeyClient: mock(async () => null),
+      getValkeySubscriber: mock(() => Promise.resolve(null)),
       VALKEY_CONFIGURED: false,
     }));
     const { recordProviderOutcome, getProviderScore } = await import(
@@ -143,6 +145,7 @@ describe("P2.2 + P2.3: maintenance crons", () => {
           }),
         },
       },
+      get dbTyped() { return this.db; },
     }));
 
     const { runSessionSweep } = await import("@/lib/maintenance-cron");
@@ -157,6 +160,7 @@ describe("P2.2 + P2.3: maintenance crons", () => {
   it("startSessionSweepCron is idempotent (multiple calls start one timer)", async () => {
     mock.module("@/lib/db", () => ({
       db: { sessionRegistry: { deleteMany: mock(async () => ({ count: 0 })) } },
+      get dbTyped() { return this.db; },
     }));
     const { startSessionSweepCron, stopSessionSweepCron } = await import(
       "@/lib/maintenance-cron"
@@ -175,6 +179,7 @@ describe("P2.2 + P2.3: maintenance crons", () => {
     process.env.MAINTENANCE_DISABLED = "1";
     mock.module("@/lib/db", () => ({
       db: { sessionRegistry: { deleteMany: mock(async () => ({ count: 99 })) } },
+      get dbTyped() { return this.db; },
     }));
     const { startSessionSweepCron, stopSessionSweepCron } = await import(
       "@/lib/maintenance-cron"
@@ -195,6 +200,7 @@ describe("P2.2 + P2.3: maintenance crons", () => {
           deleteMany: mock(async () => ({ count: 3 })),
         },
       },
+      get dbTyped() { return this.db; },
     }));
     const { runSessionSweep } = await import("@/lib/maintenance-cron");
     const results = await Promise.all([runSessionSweep(), runSessionSweep(), runSessionSweep()]);
@@ -218,6 +224,7 @@ describe("P2.2 + P2.3: maintenance crons", () => {
           }),
         },
       },
+      get dbTyped() { return this.db; },
     }));
 
     const { runOutboxPurge } = await import("@/lib/maintenance-cron");
@@ -241,6 +248,7 @@ describe("P2.2 + P2.3: maintenance crons", () => {
           }),
         },
       },
+      get dbTyped() { return this.db; },
     }));
     const { runOutboxPurge } = await import("@/lib/maintenance-cron");
     await runOutboxPurge();
@@ -250,6 +258,7 @@ describe("P2.2 + P2.3: maintenance crons", () => {
   it("startOutboxPurgeCron is idempotent", async () => {
     mock.module("@/lib/db", () => ({
       db: { outboxEvent: { deleteMany: mock(async () => ({ count: 0 })) } },
+      get dbTyped() { return this.db; },
     }));
     const { startOutboxPurgeCron, stopOutboxPurgeCron } = await import(
       "@/lib/maintenance-cron"
@@ -265,6 +274,7 @@ describe("P2.2 + P2.3: maintenance crons", () => {
     process.env.MAINTENANCE_DISABLED = "1";
     mock.module("@/lib/db", () => ({
       db: { outboxEvent: { deleteMany: mock(async () => ({ count: 99 })) } },
+      get dbTyped() { return this.db; },
     }));
     const { startOutboxPurgeCron, stopOutboxPurgeCron } = await import(
       "@/lib/maintenance-cron"
@@ -282,6 +292,7 @@ describe("P2.2 + P2.3: maintenance crons", () => {
         sessionRegistry: { deleteMany: mock(async () => ({ count: 0 })) },
         outboxEvent: { deleteMany: mock(async () => ({ count: 0 })) },
       },
+      get dbTyped() { return this.db; },
     }));
     const { startMaintenanceCrons, stopMaintenanceCrons } = await import(
       "@/lib/maintenance-cron"
@@ -306,6 +317,7 @@ describe("P2.2 + P2.3: maintenance crons", () => {
           }),
         },
       },
+      get dbTyped() { return this.db; },
     }));
     // Re-import outbox fresh so it picks up the mock
     const { purgePublishedOutbox } = await import("@/lib/outbox");
@@ -335,6 +347,7 @@ describe("P2.1: callWithProviderRouting feeds real costUsd into recordProviderOu
     // Verify the math end-to-end:
     mock.module("@/lib/valkey", () => ({
       getValkeyClient: mock(async () => null),
+      getValkeySubscriber: mock(() => Promise.resolve(null)),
       VALKEY_CONFIGURED: false,
     }));
 
@@ -364,6 +377,7 @@ describe("P2.1: callWithProviderRouting feeds real costUsd into recordProviderOu
   it("records costUsd = 0 when a free-tier model is used", async () => {
     mock.module("@/lib/valkey", () => ({
       getValkeyClient: mock(async () => null),
+      getValkeySubscriber: mock(() => Promise.resolve(null)),
       VALKEY_CONFIGURED: false,
     }));
 
@@ -392,6 +406,7 @@ describe("P2.1: callWithProviderRouting feeds real costUsd into recordProviderOu
   it("omits confidence on failure (cold-start preservation)", async () => {
     mock.module("@/lib/valkey", () => ({
       getValkeyClient: mock(async () => null),
+      getValkeySubscriber: mock(() => Promise.resolve(null)),
       VALKEY_CONFIGURED: false,
     }));
 

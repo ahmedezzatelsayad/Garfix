@@ -88,11 +88,17 @@ export async function setupMFA(userUid: string): Promise<{ secret: string; uri: 
       id: `mfa-${userUid}`,
       userId: userUid,
       secret: encryptedSecret,
-      verified: false, // Not enabled until verified
+      recoveryCodes: encryptedCodes,
+      enabled: false, // Not enabled until verified
+      verified: false, // backward compat
+      verifiedAt: null, // cleared on (re-)setup
     },
     update: {
       secret: encryptedSecret,
+      recoveryCodes: encryptedCodes,
+      enabled: false,
       verified: false,
+      verifiedAt: null, // cleared on re-setup
     },
   });
 
@@ -133,18 +139,58 @@ export async function validateMFA(userUid: string, code: string): Promise<boolea
   return valid;
 }
 
-/** Use a recovery code (one-time use). */
-export async function useRecoveryCode(userUid: string, _code: string): Promise<boolean> {
-  // Recovery codes are not persisted — MFASecret schema has no `recoveryCodes`
-  // column. Function preserved as a stub for callers; always returns false
-  // until a migration adds the column.
-  return false;
+/**
+ * Parse the encrypted recovery codes blob and return the array of hashed codes.
+ * Returns empty array if the blob is missing or corrupt.
+ */
+function parseRecoveryCodes(encryptedBlob: string | null): string[] {
+  if (!encryptedBlob) return [];
+  try {
+    const decrypted = decryptSecret(encryptedBlob);
+    const parsed = JSON.parse(decrypted);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Use a recovery code (one-time use).
+ * Hashes the input code and compares against stored hashes.
+ * If found, removes the used code from the pool and persists the update.
+ * Returns true if the code was valid and consumed, false otherwise.
+ */
+export async function useRecoveryCode(userUid: string, code: string): Promise<boolean> {
+  const record = await db.mFASecret.findUnique({ where: { id: `mfa-${userUid}` } });
+  if (!record || !record.recoveryCodes) return false;
+  // Must be enabled first
+  if (!record.enabled && !record.verified) return false;
+
+  const hashedCodes = parseRecoveryCodes(record.recoveryCodes);
+  if (hashedCodes.length === 0) return false;
+
+  const inputHash = hashToken(code);
+  const idx = hashedCodes.indexOf(inputHash);
+  if (idx === -1) return false;
+
+  // Remove the used code from the pool
+  hashedCodes.splice(idx, 1);
+  const updatedBlob = encryptSecret(JSON.stringify(hashedCodes));
+
+  await db.mFASecret.update({
+    where: { id: `mfa-${userUid}` },
+    data: { recoveryCodes: updatedBlob },
+  });
+
+  logger.info("[mfa] recovery code used", { userUid, remaining: hashedCodes.length });
+  return true;
 }
 
 /** Check if MFA is enabled for a user. */
 export async function isMFAEnabled(userUid: string): Promise<boolean> {
   const record = await db.mFASecret.findUnique({ where: { id: `mfa-${userUid}` } });
-  return record?.verified === true;
+  // Check `enabled` (new field) OR `verified` (backward compat)
+  return record?.enabled === true || record?.verified === true;
 }
 
 /** Check if MFA is required (admin/founder roles). */
@@ -192,10 +238,12 @@ export async function disableMFA(userUid: string): Promise<void> {
   logger.info("[mfa] MFA disabled for user", { userUid });
 }
 
-/** Get remaining recovery code count. */
+/**
+ * Get remaining recovery code count.
+ * Decrypts the stored blob and returns the number of unused codes.
+ */
 export async function getRecoveryCodeCount(userUid: string): Promise<number> {
-  // Recovery codes are not persisted — MFASecret schema has no `recoveryCodes`
-  // column. Always returns 0 until a migration adds the column.
-  void userUid;
-  return 0;
+  const record = await db.mFASecret.findUnique({ where: { id: `mfa-${userUid}` } });
+  if (!record || !record.recoveryCodes) return 0;
+  return parseRecoveryCodes(record.recoveryCodes).length;
 }

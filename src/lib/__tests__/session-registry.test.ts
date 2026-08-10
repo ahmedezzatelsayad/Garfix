@@ -126,7 +126,7 @@ const dbMock = {
   },
 };
 
-mock.module("@/lib/db", () => ({ db: dbMock }));
+mock.module("@/lib/db", () => ({ db: dbMock, dbTyped: dbMock }));
 
 // Import AFTER mock is set up so the module captures our mocked db.
 const {

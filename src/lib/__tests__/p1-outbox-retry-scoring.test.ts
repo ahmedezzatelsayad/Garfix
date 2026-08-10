@@ -47,7 +47,7 @@ describe("P1.1: Outbox pattern", () => {
       },
       _store: store,
     };
-    mock.module("@/lib/db", () => ({ db: dbMock }));
+    mock.module("@/lib/db", () => ({ db: dbMock, dbTyped: dbMock }));
     // Mock queues.enqueue
     mock.module("@/lib/queues", () => ({
       enqueue: mock(async () => ({ id: "job-1" })),
@@ -276,6 +276,7 @@ describe("P1.4: AI provider scoring + circuit breaker", () => {
     // Reset module state between tests
     mock.module("@/lib/valkey", () => ({
       getValkeyClient: mock(async () => null), // no Valkey in tests
+      getValkeySubscriber: mock(() => Promise.resolve(null)),
       VALKEY_CONFIGURED: false,
     }));
   });

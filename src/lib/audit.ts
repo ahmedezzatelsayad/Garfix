@@ -112,13 +112,18 @@ export async function logAdminAction(input: {
       data: {
         adminEmail: input.adminEmail,
         action: input.action,
-        targetSlug: input.targetId ?? null,
+        targetType: input.targetType ?? null,
+        targetId: input.targetId ?? null,
+        targetSlug: input.targetId ?? null, // backward compat (old callers used targetSlug)
+        changes: redactedChanges ? JSON.stringify(redactedChanges) : null,
         details: JSON.stringify({
           targetType: input.targetType ?? null,
           changes: redactedChanges,
           ipAddress: input.ipAddress ?? null,
           userAgent: input.userAgent ?? null,
         }),
+        ipAddress: input.ipAddress ?? null,
+        userAgent: input.userAgent ?? null,
       },
     });
   } catch (err) {

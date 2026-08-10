@@ -1697,13 +1697,17 @@ model MatchOverride {
 // ─── MFA Secret (matches db.mFASecret) ───
 
 model MFASecret {
-  id        String   @id @default(cuid())
-  userId    String
-  secret    String
-  verified  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      AppUser  @relation(fields: [userId], references: [uid], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  userId         String
+  secret         String
+  recoveryCodes  String?  // P1 FIX: encrypted blob of hashed recovery codes
+  enabled        Boolean  @default(false) // alias for verified (test-facing name)
+  verified       Boolean  @default(false) // backward compat
+  verifiedAt     DateTime? // cleared on re-setup
+  lastUsedAt     DateTime? // updated on successful validation
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           AppUser  @relation(fields: [userId], references: [uid], onDelete: Cascade)
 
   @@unique([userId])
 }
@@ -1963,8 +1967,13 @@ model AdminAuditLog {
   id         Int      @id @default(autoincrement())
   adminEmail String
   action     String
+  targetType String?
+  targetId   String?
   targetSlug String?
+  changes    String?
   details    String?
+  ipAddress  String?
+  userAgent  String?
   createdAt  DateTime @default(now())
 
   // P1-3: AdminAuditLog had NO indexes at all. Platform admin panel filters
@@ -1972,6 +1981,7 @@ model AdminAuditLog {
   @@index([adminEmail])
   @@index([createdAt])
   @@index([targetSlug])
+  @@index([targetType])
   @@map("admin_audit_logs")
 }
 

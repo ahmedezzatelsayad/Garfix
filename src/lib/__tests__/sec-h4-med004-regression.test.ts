@@ -35,6 +35,7 @@ describe("SEC-H4: issueSession 3-arg signature + registerSession", () => {
           findUnique: mock(async () => null),
         },
       },
+      get dbTyped() { return this.db; },
     }));
   });
 

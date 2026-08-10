@@ -58,6 +58,7 @@ mock.module("@/lib/db", () => {
       ...dbMock,
       $transaction: mock((cb: (tx: typeof dbMock) => Promise<unknown>) => cb(dbMock)),
     },
+    get dbTyped() { return this.db; },
   };
 });
 

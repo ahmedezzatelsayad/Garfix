@@ -245,7 +245,7 @@ export function HRView() {
   // ─── Guard ────────────────────────────────────────────────────────────
 
   if (!activeCompany) return (
-    <div className="p-8 md:p-12 text-center">
+    <div className="p-8 md:block md:p-12 text-center">
       <GarfixEmptyState 
         title="اختر شركة"
         description="يرجى اختيار شركة لعرض بيانات الموارد البشرية"

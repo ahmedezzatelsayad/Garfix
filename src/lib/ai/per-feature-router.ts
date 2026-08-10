@@ -402,25 +402,46 @@ export function detectProvider(apiKey: string, model: string): AIProvider {
     return 'gemini';
   }
   
-  // Default fallback
-  return 'openai';
+  // Default fallback — DeepSeek (cheapest + fastest for invoice parsing per founder decision 2026-08)
+  return 'deepseek';
 }
 
 /**
  * Get default model for a provider
+ *
+ * P1 DECISION (2026-08-10): DeepSeek is the DEFAULT AI provider for GarfiX.
+ *   - Invoice parsing (bulk input): deepseek-chat (cheap, fast, Arabic-fluent)
+ *   - Learning / pattern recognition: deepseek-chat
+ *   - Reasoning tasks (rare): deepseek-reasoner
+ *   - Fallback only: Gemini Flash (when DeepSeek rate-limited)
  */
 export function getDefaultModel(provider: AIProvider): string {
   switch (provider) {
     case 'gemini':
-      return 'gemini-2.0-flash';
+      return 'gemini-2.0-flash'; // fallback only
     case 'deepseek':
-      return 'deepseek-chat'; // Direct DeepSeek — no OpenRouter prefix
+      return 'deepseek-chat'; // PRIMARY — Direct DeepSeek API (no OpenRouter intermediary)
     case 'openrouter':
-      return 'deepseek/deepseek-chat-v3-0324'; // DeepSeek via OpenRouter
+      return 'deepseek/deepseek-chat-v3-0324'; // DeepSeek via OpenRouter (legacy path)
     case 'openai':
     default:
-      return 'gpt-4o-mini';
+      return 'deepseek-chat'; // default to DeepSeek (was gpt-4o-mini)
   }
+}
+
+/**
+ * Get the DEFAULT provider for a feature.
+ *
+ * P1 DECISION (2026-08-10): All features default to DeepSeek direct API.
+ *   - chat:     deepseek-chat   (cheap, conversational)
+ *   - invoice:  deepseek-chat   (bulk invoice parsing — primary use case)
+ *   - parse:    deepseek-chat   (structured extraction)
+ *   - memory:   deepseek-chat   (pattern learning)
+ *
+ * Fallback chain: DeepSeek → Gemini Flash → heuristic (no external call)
+ */
+export function getDefaultProviderForFeature(_feature: FeatureType): AIProvider {
+  return 'deepseek';
 }
 
 // ── OpenAI/OpenRouter API Integration ──────────────────────

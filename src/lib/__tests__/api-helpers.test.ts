@@ -47,6 +47,7 @@ mock.module("@/lib/db", () => ({
       },
     })),
   },
+  get dbTyped() { return this.db; },
 }));
 
 mock.module("@/lib/logger", () => ({
