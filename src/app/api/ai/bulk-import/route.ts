@@ -261,7 +261,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         return await syncInventoryOnSale(tx, companySlug, items, invoice.id);
       });
       const syncWarnings = syncResult.warnings || [];
-      (created[created.length - 1] as any).warnings = syncWarnings;
+      (created[created.length - 1] as { warnings?: string[] }).warnings = syncWarnings;
     } catch (err) {
       const msg = "خطأ في إنشاء الفاتورة";
       logger.error("[bulk-import] order failed", { err: err instanceof Error ? err.message : String(err), index: i, order: order.clientName });
