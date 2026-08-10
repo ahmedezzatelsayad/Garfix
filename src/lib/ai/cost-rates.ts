@@ -33,6 +33,11 @@ export const COST_PER_1K_TOKENS: Record<string, { input: number; output: number 
   "deepseek/deepseek-chat:free": { input: 0, output: 0 },               // free tier
   "deepseek/deepseek-r1": { input: 0.00055, output: 0.00219 },          // DeepSeek R1 — $0.55/$2.19 per 1M
   "deepseek/deepseek-r1:free": { input: 0, output: 0 },                 // free tier
+  // ── DeepSeek DIRECT API (P1 — 2026-08-10: primary provider) ──
+  // Same pricing as via OpenRouter, but no intermediary fees
+  "deepseek-chat": { input: 0.00014, output: 0.00028 },                // Direct API — primary
+  "deepseek-reasoner": { input: 0.00055, output: 0.00219 },            // Direct API — reasoning
+  "deepseek-coder": { input: 0.00014, output: 0.00028 },               // Direct API — code generation
   // ── OpenAI ──
   "gpt-4o-mini": { input: 0.00015, output: 0.0006 },
   "gpt-4o": { input: 0.005, output: 0.015 },

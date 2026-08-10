@@ -254,16 +254,28 @@ DEEPSEEK_API_KEYS=
 6. النظام يوزّعه round-robin على كل الشركات
 7. تقدر تضيف عدد غير محدود من المفاتيح
 
-#### تكلفة DeepSeek المتوقعة
+#### تكلفة DeepSeek المتوقعة (مع 5-stage cascade)
 
-| عدد العملاء | فواتير/شهر | tokens/شهر | التكلفة/شهر |
-|------------|-----------|-----------|------------|
-| 10 | 1,000 | ~5M tokens | ~$1 |
-| 50 | 5,000 | ~25M tokens | ~$5 |
-| 200 | 20,000 | ~100M tokens | ~$20 |
-| 1,000 | 100,000 | ~500M tokens | ~$100 |
+> **مهم**: GarfiX مش بيستدعي AI لكل فاتورة! الـ AI Fabric Gateway بيطبّق 5 مراحل
+> قبل ما يوصل للـ AI المباشر:
+> 1. **Cache** (نفس الفاتورة قبل كده) → $0
+> 2. **Pattern** (نفس template/تنسيق) → $0.000007 (verify only)
+> 3. **Rule** (قواعد ثابتة) → $0
+> 4. **Memory** (قرارات سابقة مشابهة) → $0
+> 5. **AI Runtime** (فاتورة جديدة كلياً) → ~$0.00042
+
+**نسبة الـ AI calls الفعلية** (بعد الـ cascade): 15-30% من إجمالي الفواتير
+
+| عدد العملاء | فواتير/شهر | AI calls فعلية (~20%) | tokens/شهر | التكلفة/شهر |
+|------------|-----------|----------------------|-----------|------------|
+| 10 | 1,000 | ~300 | ~750K tokens | **~$0.13** |
+| 50 | 5,000 | ~1,250 | ~3M tokens | **~$0.52** |
+| 200 | 20,000 | ~4,000 | ~10M tokens | **~$1.68** |
+| 1,000 | 100,000 | ~15,000 | ~37M tokens | **~$6.30** |
 
 **التسعير (2026-08)**: $0.14 / 1M input tokens · $0.28 / 1M output tokens
+
+**للتحقق من التكلفة الفعلية**: راجع `src/lib/ai-fabric/cost-per-invoice.ts` و `src/lib/ai/costTracker.ts` — كل استدعاء AI مُسجّل في `AIRequestLog` مع التكلفة الفعلية.
 
 #### لماذا DeepSeek وليس OpenAI/Gemini؟
 
@@ -274,6 +286,60 @@ DEEPSEEK_API_KEYS=
 | دعم العربية | ممتاز (native) | جيد | ممتاز |
 | السرعة | سريع | متوسط | سريع |
 | استخلاص الفواتير | ⭐ ممتاز | جيد | جيد |
+
+#### إعداد DeepSeek كـ default provider (للإنتاج)
+
+بعد الحصول على مفتاح DeepSeek، شغّل هذه السكربتات لتفعيله كـ default:
+
+```bash
+# 1. تأكد إن DEEPSEEK_API_KEY موجود في .env
+echo $DEEPSEEK_API_KEY  # لازم يبدأ بـ sk-
+
+# 2. شغّل الـ migrations (لو لسه ما اشتغلتش):
+bunx prisma migrate deploy
+
+# 3. اضبط DeepSeek كـ default في PlatformSettings:
+bun run scripts/seed-deepseek-default.ts
+
+# 4. اختبر الاتصال:
+bun run scripts/test-deepseek-connection.ts
+# Expected: ✅ DeepSeek API connection successful!
+
+# 5. (اختياري) اضبط الـ Model Registry:
+bun run scripts/seed-model-registry.ts
+```
+
+**كيف يعمل الـ routing بعد الإعداد:**
+
+```
+طلب AI (مثلاً: تحليل فاتورة)
+    ↓
+AI Fabric Gateway (5-stage cascade)
+    ├─ 1. Cache hit?  → ارجع من الـ cache ($0)
+    ├─ 2. Pattern?    → استخدم الـ pattern ($0.000007)
+    ├─ 3. Rule?       → طبّق القاعدة ($0)
+    ├─ 4. Memory?     → استخدم القرار السابق ($0)
+    └─ 5. AI Runtime  → callAI() في aiProvider.ts
+                         ↓
+                     getAiProviders() من PlatformSettings
+                         ↓
+                     ┌─────────────────────────────────────┐
+                     │ 1. DeepSeek (deepseek-chat) ⭐       │
+                     │   baseUrl: api.deepseek.com/v1      │
+                     │   فشل؟ → انتقل للتالي                │
+                     ├─────────────────────────────────────┤
+                     │ 2. Gemini (gemini-2.0-flash)        │
+                     │   fallback (لو مُفعّل)                │
+                     ├─────────────────────────────────────┤
+                     │ 999. z-ai (sandbox)                 │
+                     │   dev-only last resort              │
+                     └─────────────────────────────────────┘
+```
+
+**التحقق من التكلفة الفعلية:**
+- كل استدعاء AI مُسجّل في `AIRequestLog` مع: provider, model, tokens, costUsd
+- لوحة المؤسس → `/founder-panel/ai-dashboard` تعرض الإحصائيات اللحظية
+- `src/lib/ai-fabric/cost-per-invoice.ts` يحسب التكلفة لكل فاتورة
 
 ### 5️⃣ متغيرات البيئة المطلوبة (Production)
 
