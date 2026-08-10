@@ -127,7 +127,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
 
   // Handle 404 / 403 errors from the profile query — navigate back
   useEffect(() => {
-    const status = (profileError as any)?.status;
+    const status = (profileError as unknown as { status?: number })?.status;
     if (status === 404) { toast.error("العميل غير موجود"); onBack(); }
     else if (status === 403) { toast.error("ليس لديك صلاحية لعرض هذا العميل"); onBack(); }
   }, [profileError, onBack]);

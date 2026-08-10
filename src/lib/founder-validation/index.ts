@@ -741,7 +741,7 @@ export function getDefaultSeederConfig(companyCount: 10 | 100 | 1000 | 5000 | 10
 export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { companyCount: SeederConfig['companyCount'] } | number, seedOrUndefined?: number): SyntheticCompany[] {
   let fullConfig: SeederConfig;
   if (typeof configOrCount === 'number') {
-    fullConfig = { ...getDefaultSeederConfig(configOrCount as any), seed: seedOrUndefined ?? 42 };
+    fullConfig = { ...getDefaultSeederConfig(configOrCount as unknown as 10 | 1000 | 100 | 5000 | 10000 | 25000), seed: seedOrUndefined ?? 42 };
   } else {
     fullConfig = { ...getDefaultSeederConfig(configOrCount.companyCount), ...configOrCount };
   }
@@ -1601,7 +1601,7 @@ export function calculateMetrics(companiesOrTelemetry: SyntheticCompany[] | Tele
     companies = [];
     telemetry = [];
   } else {
-    const first = companiesOrTelemetry[0] as any;
+    const first = companiesOrTelemetry[0] as unknown as Record<string, unknown>;
     if (first && ('slug' in first || 'invoices' in first)) {
       // First arg is companies
       companies = companiesOrTelemetry as SyntheticCompany[];

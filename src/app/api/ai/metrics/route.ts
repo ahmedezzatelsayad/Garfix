@@ -161,6 +161,16 @@ function getPoolStatus(utilizationPct: number, healthyRatio: number): 'healthy' 
 
 // ── Main Endpoint ───────────────────────────────────────────
 
+// Sprint 28: typed interface for AIMetricsCollector private field access.
+// The 'metrics' field is private but we need to read it for the dashboard.
+// This interface documents the expected shape — cast through 'unknown' to access.
+interface AIMetricsInternal {
+  metrics: {
+    workers?: Map<string, { activeJobs?: number; processedToday?: number; completedCount?: number; totalLatency?: number }>;
+    pool?: { totalRequests?: number; totalTokens?: number; totalFailures?: number; rejectedJobs?: number };
+  };
+}
+
 export const GET = async (req: NextRequest) => {
   try {
     // Auth check
@@ -240,22 +250,22 @@ export const GET = async (req: NextRequest) => {
           lastError: key.lastError,
           lastUsed: key.lastSuccessTime?.toISOString(),
         })),
-        workers: (Array.from((aiMetrics as any).metrics?.workers?.entries() || []) as [string, any][]).map(([type, m]) => ({
+        workers: (Array.from((aiMetrics as unknown as AIMetricsInternal).metrics?.workers?.entries() || []) as [string, { activeJobs?: number; processedToday?: number; completedCount?: number; totalLatency?: number }][]).map(([type, m]) => ({
           type: type as string,
-          activeJobs: m?.activeJobs,
-          processedToday: m?.processedToday,
-          avgLatencyMs: (m?.completedCount || 0) > 0 ? Math.round(m?.totalLatency / m?.completedCount) : 0,
+          activeJobs: m?.activeJobs ?? 0,
+          processedToday: m?.processedToday ?? 0,
+          avgLatencyMs: (m?.completedCount || 0) > 0 ? Math.round((m?.totalLatency || 0) / (m?.completedCount || 1)) : 0,
         })),
         queue: {
           ...queueStats,
           estimatedWaitTimeMs: lbMetrics?.estimatedWaitTimeMs || 0,
         },
         today: {
-          totalRequests: (aiMetrics as any).metrics?.pool?.totalRequests || 0,
-          totalTokens: (aiMetrics as any).metrics?.pool?.totalTokens || 0,
-          totalFailures: (aiMetrics as any).metrics?.pool?.totalFailures || 0,
-          rejectionRate: ((aiMetrics as any).metrics?.pool?.totalRequests || 0) > 0 
-            ? Math.round((((aiMetrics as any).metrics?.pool?.rejectedJobs || 0) / ((aiMetrics as any).metrics?.pool?.totalRequests || 1)) * 100)
+          totalRequests: (aiMetrics as unknown as AIMetricsInternal).metrics?.pool?.totalRequests || 0,
+          totalTokens: (aiMetrics as unknown as AIMetricsInternal).metrics?.pool?.totalTokens || 0,
+          totalFailures: (aiMetrics as unknown as AIMetricsInternal).metrics?.pool?.totalFailures || 0,
+          rejectionRate: ((aiMetrics as unknown as AIMetricsInternal).metrics?.pool?.totalRequests || 0) > 0 
+            ? Math.round((((aiMetrics as unknown as AIMetricsInternal).metrics?.pool?.rejectedJobs || 0) / ((aiMetrics as unknown as AIMetricsInternal).metrics?.pool?.totalRequests || 1)) * 100)
             : 0,
         },
         alerts: generateAlerts(lbMetrics),

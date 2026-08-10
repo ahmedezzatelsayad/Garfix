@@ -58,9 +58,9 @@ const basePrisma = new PrismaClient({
 
 let lastConnectionError: { code: string; message: string; at: Date } | null = null;
 try {
-  basePrisma.$on('error' as any, (e: any) => {
+  basePrisma.$on('error' as 'error', (e: { code?: string; message?: string }) => {
     if (e?.code === 'P1017' || e?.code === 'P1011' || e?.code === 'P1001') {
-      lastConnectionError = { code: e.code, message: e.message || 'DB connection lost', at: new Date() };
+      lastConnectionError = { code: e.code, message: e.message || String(e) || String(e) || 'DB connection lost', at: new Date() };
       console.error('[db] connection error (likely RDS failover)', { code: e.code });
     }
   });

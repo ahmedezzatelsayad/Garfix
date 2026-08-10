@@ -58,7 +58,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     orderBy: pagination.orderBy,
   });
 
-  const { items, nextCursor } = buildCursorResponse(allEmployees as any[], limit);
+  const { items, nextCursor } = buildCursorResponse(allEmployees, limit);
   const employees = items;
 
   return NextResponse.json({

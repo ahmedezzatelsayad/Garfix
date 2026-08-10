@@ -410,7 +410,7 @@ async function handleChatJob(data: Record<string, unknown>): Promise<void> {
   const d = data as Record<string, unknown>;
   const companySlug = String(d.companySlug || "");
   const userId = String(d.userId || "");
-  const messages = (d.messages as any[]) || [];
+  const messages = (d.messages as unknown as { role: "user" | "assistant" | "system"; content: string }[]) || [];
   const conversationId = String(d.conversationId || "");
   
   aiMetrics.recordJobStart('ai-chat');
@@ -574,7 +574,7 @@ async function handleSpecialistAgentJob(data: Record<string, unknown>): Promise<
   const agentType = String(d.agentType || "accounting");
   const companySlug = String(d.companySlug || "");
   const message = String(d.message || "");
-  const context = (d.context as any[]) || [];
+  const context = (d.context as unknown as { role: "user" | "assistant" | "system"; content: string }[]) || [];
   const workerType = `ai-agent-${agentType}` as AIWorkerType;
 
   aiMetrics.recordJobStart(workerType);
@@ -583,7 +583,7 @@ async function handleSpecialistAgentJob(data: Record<string, unknown>): Promise<
   try {
     // Load agent config
     const { AGENTS } = await import('@/lib/aiAgents');
-    const agent = (AGENTS as any)[agentType];
+    const agent = (AGENTS as unknown as Record<string, { systemPrompt: string; name: string; tools?: string[] }>)[agentType];
     
     if (!agent) throw new Error(`Unknown agent type: ${agentType}`);
 

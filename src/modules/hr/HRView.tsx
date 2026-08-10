@@ -95,12 +95,12 @@ export function HRView() {
   const deleteLeaveMutation = useDeleteLeave();
   const deletePerformanceMutation = useDeletePerformance();
 
-  const employees = (employeesQuery.data as any)?.employees ?? [] as Employee[];
-  const attendance = (attendanceQuery.data as any)?.attendance ?? [] as Attendance[];
-  const salaries = (salariesQuery.data as any)?.salaries ?? [] as Salary[];
-  const commissions = (commissionsQuery.data as any)?.commissions ?? [] as Commission[];
-  const leaves = (leavesQuery.data as any)?.leaves ?? [] as LeaveRequest[];
-  const performances = (performanceQuery.data as any)?.performance ?? [] as Performance[];
+  const employees = (employeesQuery.data as unknown as { employees?: Employee[] })?.employees ?? [] as Employee[];
+  const attendance = (attendanceQuery.data as unknown as { attendance?: Attendance[] })?.attendance ?? [] as Attendance[];
+  const salaries = (salariesQuery.data as unknown as { salaries?: Salary[] })?.salaries ?? [] as Salary[];
+  const commissions = (commissionsQuery.data as unknown as { commissions?: Commission[] })?.commissions ?? [] as Commission[];
+  const leaves = (leavesQuery.data as unknown as { leaves?: LeaveRequest[] })?.leaves ?? [] as LeaveRequest[];
+  const performances = (performanceQuery.data as unknown as { performance?: Performance[] })?.performance ?? [] as Performance[];
   
   const loading = employeesQuery.isLoading;
   const error = employeesQuery.isError;

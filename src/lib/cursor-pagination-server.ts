@@ -52,7 +52,7 @@ export function parseCursorParams(req: { nextUrl: URL }) {
  *   const allItems = await db.model.findMany({ where, orderBy: { id: "desc" }, take: limit + 1, ... });
  *   return buildCursorResponse(allItems, limit);
  */
-export function buildCursorResponse<T extends { id: number }>(
+export function buildCursorResponse<T extends { id: number | string }>(
   allItems: T[],
   limit: number,
   totalCount?: number,

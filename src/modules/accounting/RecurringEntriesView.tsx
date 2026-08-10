@@ -139,7 +139,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
     setActionLoading(id);
     try {
       const response = await apiPost(`/api/accounting/recurring/${id}/run`, {});
-      toast.success((response as any).message || "تم تشغيل القيد بنجاح");
+      toast.success((response as unknown as { message?: string }).message || "تم تشغيل القيد بنجاح");
       fetchEntries();
     } catch (err) {
       toast.error("خطأ في تشغيل القيد");
@@ -298,7 +298,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
         <div className="flex gap-2">
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
+            onChange={(e) => setStatusFilter(e.target.value as "active" | "all" | "paused")}
             className={cn(
               "px-4 py-2 rounded-lg",
               "border border-gray-200 dark:border-gray-600",

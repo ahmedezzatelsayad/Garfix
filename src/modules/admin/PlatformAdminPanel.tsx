@@ -82,7 +82,7 @@ export function PlatformAdminPanel() {
   // Applied filters for TanStack Query — only updated on button click.
   const [stockLedgerApplied, setStockLedgerApplied] = useState<{ companySlug: string; productName?: string; from?: string; to?: string } | null>(null);
   const stockMovementsQuery = useInventoryMovementsFiltered(stockLedgerApplied ?? { companySlug: "" });
-  const stockMovements = (stockMovementsQuery.data as any)?.movements ?? [] as StockMovement[];
+  const stockMovements = (stockMovementsQuery.data as unknown as { movements?: StockMovement[] })?.movements ?? [] as StockMovement[];
   const [reviewQueueSlug, setReviewQueueSlug] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Tenant | null>(null);
   const [deleting, setDeleting] = useState(false);

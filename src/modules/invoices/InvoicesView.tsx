@@ -65,7 +65,7 @@ export function InvoicesView() {
   const recordPaymentMutation = useRecordPayment();
   const updateStatusMutation = useUpdateInvoiceStatus();
 
-  const allInvoices = ((invoicesQuery.data as any)?.invoices ?? []) as Invoice[];
+  const allInvoices = ((invoicesQuery.data as unknown as { invoices?: Invoice[] })?.invoices ?? []) as Invoice[];
   const loading = invoicesQuery.isLoading;
 
   // Local UI state
@@ -1304,7 +1304,7 @@ function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoic
             )}
             <div className="flex justify-between py-2.5 border-t-2 border-[#047857] mt-1.5 text-[16px] font-black text-[#047857]">
               <span>الإجمالي</span>
-              <span className="[direction:ltr]">{invoice.total.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} {(invoice as any).currency || company.currency}</span>
+              <span className="[direction:ltr]">{invoice.total.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} {(invoice as unknown as { currency?: string }).currency || company.currency}</span>
             </div>
             {invoice.paid > 0 && (
               <>

@@ -190,6 +190,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // decoding + auto-product-add + DB writes).
     const aiT0 = Date.now();
     const completion = await ai.chat.completions.createVision({
+      model: "z-ai-glm",
       messages: [
         { role: "system", content: buildVisionPrompt() },
         {
@@ -203,7 +204,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
           ],
         },
       ],
-    } as any);
+    });
     const aiMs = Date.now() - aiT0;
 
     const content = completion.choices?.[0]?.message?.content || "{}";

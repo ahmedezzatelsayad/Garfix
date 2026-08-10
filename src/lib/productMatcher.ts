@@ -1238,7 +1238,7 @@ async function buildResult(args: BuildResultArgs): Promise<MatchResult> {
     matchedAlias,
     confidence: breakdown.finalConfidence,
     tier,
-    action: action as any,
+    action: action as unknown as "auto-matched" | "queued-for-review" | "auto-created" | "ai-auto-matched" | "ai-auto-created" | "ai-queued-for-review" | "collision-recovery-skipped",
     isNewProduct: false,
     method,
     rankScore,

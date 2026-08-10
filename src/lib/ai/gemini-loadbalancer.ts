@@ -93,7 +93,7 @@ class GeminiKeyPool {
     // Initialize the Google Generative AI client
     const genAI = new GoogleGenerativeAI(fullConfig.apiKey);
     
-    this.keys.set(fullConfig.id, { ...fullConfig, genAI } as any);
+    this.keys.set(fullConfig.id, { ...fullConfig, genAI } as unknown as AIProviderConfig & { genAI: GoogleGenerativeAI });
     
     logger.info("[GarfiX AI] Added key to pool", { keyId: fullConfig.id, total: this.keys.size });
   }
@@ -156,7 +156,7 @@ class GeminiKeyPool {
     selectedKey._requestCount = (selectedKey._requestCount || 0) + 1;
     selectedKey._lastUsed = Date.now();
 
-    return selectedKey as any;
+    return selectedKey as unknown as (AIProviderConfig & { genAI: GoogleGenerativeAI }) | null;
   }
 
   /**
