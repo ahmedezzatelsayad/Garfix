@@ -12,6 +12,7 @@
  *        is the source of truth for payment state). Added audit logging on
  *        successful PaymentTransaction updates.
  */
+import { fetchSafe } from "@/lib/ssrf";
 import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
 import { getIntegrationConfig } from "@/lib/integrations/registry";
@@ -65,7 +66,7 @@ export const GET = async (req: NextRequest) => {
     }
 
     // Verify payment status with MyFatoorah
-    const res = await fetch(
+    const res = await fetchSafe(
       `${cfg.base_url.replace(/\/+$/, "")}/api/v2/GetPaymentStatus`,
       {
         method: "POST",

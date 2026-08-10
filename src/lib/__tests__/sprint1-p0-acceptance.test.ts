@@ -211,17 +211,11 @@ describe("P0-7: ZATCA QR Code / TLV Encoding", () => {
 
 describe("P0-6: CSP + HSTS Security Headers", () => {
   test("SECURITY_HEADERS object contains CSP and HSTS", async () => {
-    // Read the middleware source and verify CSP + HSTS are defined
-    const middlewareSource = await import("@/middleware");
-    // The middleware exports config and the middleware function
-    // We verify the SECURITY_HEADERS constant exists by checking
-    // that the middleware file has been updated with CSP.
-    // Direct verification happens via HTTP response headers at runtime.
-    // For this test, we verify the source code contains the expected headers.
-
+    // P0 FIX: middleware moved from src/middleware.ts to root middleware.ts
+    // (Next.js 16 requires it at root). Read file directly instead of importing.
     const fs = await import("fs");
     const path = await import("path");
-    const middlewarePath = path.join(process.cwd(), "src/middleware.ts");
+    const middlewarePath = path.join(process.cwd(), "middleware.ts");
     const content = fs.readFileSync(middlewarePath, "utf-8");
 
     expect(content).toContain("Content-Security-Policy");
@@ -234,7 +228,7 @@ describe("P0-6: CSP + HSTS Security Headers", () => {
   test("CSP includes required directives", async () => {
     const fs = await import("fs");
     const path = await import("path");
-    const middlewarePath = path.join(process.cwd(), "src/middleware.ts");
+    const middlewarePath = path.join(process.cwd(), "middleware.ts");
     const content = fs.readFileSync(middlewarePath, "utf-8");
 
     // Key CSP directives for an ERP application
@@ -249,7 +243,7 @@ describe("P0-6: CSP + HSTS Security Headers", () => {
   test("Middleware matcher covers ALL routes (not just /api/*)", async () => {
     const fs = await import("fs");
     const path = await import("path");
-    const middlewarePath = path.join(process.cwd(), "src/middleware.ts");
+    const middlewarePath = path.join(process.cwd(), "middleware.ts");
     const content = fs.readFileSync(middlewarePath, "utf-8");
 
     // P0-6: Matcher should cover all routes, not just /api/*

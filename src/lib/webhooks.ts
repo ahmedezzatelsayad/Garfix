@@ -222,7 +222,15 @@ export function verifyWebhookSignature(
     .createHmac("sha256", secret)
     .update(payload)
     .digest("hex");
-  return signature === `sha256=${expected}`;
+  const expectedWithPrefix = `sha256=${expected}`;
+  // P0 FIX (audit): Use timingSafeEqual instead of === to prevent timing attacks.
+  // Length check is required before timingSafeEqual (throws on mismatched lengths).
+  if (signature.length !== expectedWithPrefix.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedWithPrefix));
+  } catch {
+    return false;
+  }
 }
 
 /** Get webhook stats for a tenant. */

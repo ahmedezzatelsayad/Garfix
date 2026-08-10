@@ -23,24 +23,34 @@ import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── Types ───────────────────────────────────────────────────
 
-type AIProvider = 'openrouter' | 'gemini' | 'openai';
+type AIProvider = 'openrouter' | 'gemini' | 'openai' | 'deepseek';
 
 // ── Schemas ─────────────────────────────────────────────────
 
+// P0 FIX: Added 'deepseek' to enum (was missing — DeepSeek keys couldn't be added)
 const AddKeysSchema = z.object({
-  keys: z.array(z.string().min(10)).max(100), // Max 100 keys at once
-  provider: z.enum(['openrouter', 'gemini', 'openai']).default('openrouter'),
-  model: z.string().default('deepseek/deepseek-chat-v3-0324'),
+  keys: z.array(z.string().min(10)).max(100),
+  provider: z.enum(['openrouter', 'gemini', 'openai', 'deepseek']).default('deepseek'),
+  model: z.string().default('deepseek-chat'), // P1: DeepSeek Direct API is default
   notes: z.string().optional(),
 });
 
 // ── Provider Detection ─────────────────────────────────────
 
-function detectProviderFromKey(key: string): AIProvider {
+// P0 FIX: DeepSeek keys (sk- without -or- prefix) are now detected correctly.
+// Note: DeepSeek and OpenAI both use 'sk-' prefix — we can't distinguish them
+// from the key alone. The caller must pass provider='deepseek' explicitly
+// when adding DeepSeek keys. detectProviderFromKey is a best-effort fallback.
+function detectProviderFromKey(key: string, explicitProvider?: AIProvider): AIProvider {
+  // If caller specified provider explicitly, use that (trusted input from founder)
+  if (explicitProvider) return explicitProvider;
+  // Auto-detect from key format
   if (key.startsWith('sk-or-')) return 'openrouter';
-  if (key.startsWith('sk-')) return 'openai';
   if (key.startsWith('AI') || key.includes('google')) return 'gemini';
-  return 'openrouter'; // default
+  // sk- without -or- could be OpenAI OR DeepSeek — default to deepseek
+  // since that's GarfiX's primary provider (P1 decision 2026-08)
+  if (key.startsWith('sk-')) return 'deepseek';
+  return 'deepseek'; // default
 }
 
 // ── Helper Functions ────────────────────────────────────────
@@ -48,9 +58,11 @@ function detectProviderFromKey(key: string): AIProvider {
 /**
  * Mask API key for display
  */
+// P2 FIX: Always mask, even for short keys (was returning full key for <=12 chars)
 function maskKey(key: string): string {
-  if (!key || key.length <= 12) return key || '';
-  return `${key.substring(0, 8)}${'•'.repeat(12)}${key.substring(key.length - 4)}`;
+  if (!key) return '';
+  if (key.length <= 8) return '•'.repeat(key.length);
+  return `${key.substring(0, 4)}${'•'.repeat(Math.min(key.length - 8, 16))}${key.substring(key.length - 4)}`;
 }
 
 /**
@@ -122,9 +134,12 @@ async function assignKeyToUser(userId: string, companyId?: string) {
 
     logger.info(`[ApiKeyPool] Assigned key ${updatedKey.id} to user ${userId}`);
 
+    // P0 FIX: Never return plaintext keyValue in API response.
+    // The assignKeyToUser helper is dead code (not exported as a route)
+    // but if ever wired up, it must not leak the key.
     return { 
       success: true, 
-      keyValue: updatedKey.keyValue,
+      keyValue: undefined, // P0: never return plaintext key
       provider: updatedKey.provider,
       model: updatedKey.model,
       keyId: updatedKey.id,
@@ -163,15 +178,26 @@ export async function GET(request: NextRequest) {
     // Calculate stats
     const stats = await calculatePoolStats();
 
-    // Format response (mask keys)
-    const formattedKeys = keys.map(key => ({
-      ...key,
-      keyValue: maskKey(key.keyValue),
-      assignedToUserName: key.assignedUser?.displayName || key.assignedUser?.email,
-      assignedToCompanyName: key.assignedCompany?.nameAr || key.assignedCompany?.name,
-      timesUsed: Number(key.timesUsed),
-      usedToday: Number(key.usedToday),
-    }));
+    // P0 FIX: Keys are now stored encrypted. Decrypt then mask for display.
+    const { decryptSecret } = await import('@/lib/cryptoVault');
+    const formattedKeys = keys.map(key => {
+      let maskedKey = '••••';
+      try {
+        const decrypted = decryptSecret(key.keyValue);
+        maskedKey = maskKey(decrypted);
+      } catch {
+        // Decryption failed (corrupted or legacy plaintext) — mask raw
+        maskedKey = maskKey(key.keyValue);
+      }
+      return {
+        ...key,
+        keyValue: maskedKey,
+        assignedToUserName: key.assignedUser?.displayName || key.assignedUser?.email,
+        assignedToCompanyName: key.assignedCompany?.nameAr || key.assignedCompany?.name,
+        timesUsed: Number(key.timesUsed),
+        usedToday: Number(key.usedToday),
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -207,36 +233,45 @@ export async function POST(request: NextRequest) {
 
     const { keys, provider, model, notes } = validated.data;
 
-    // Check for duplicates
+    // P0 FIX: Check for duplicates by encrypting input keys and comparing.
+    // Since keys are now stored encrypted, we must encrypt the input keys
+    // with the same algorithm to find duplicates.
+    const { encryptSecret: encryptForDupCheck } = await import('@/lib/cryptoVault');
+    const encryptedInputKeys = keys.map(k => encryptForDupCheck(k));
     const existingKeys = await db.apiKeyPool.findMany({
-      where: { keyValue: { in: keys } },
+      where: { keyValue: { in: encryptedInputKeys } },
       select: { keyValue: true },
     });
     
     const existingKeyValues = new Set(existingKeys.map(k => k.keyValue));
-    const newKeys = keys.filter(k => !existingKeyValues.has(k));
+    const newKeys = keys.filter((k, i) => !existingKeyValues.has(encryptedInputKeys[i]));
 
     if (newKeys.length === 0) {
       return apiError('All keys already exist in pool', 409);
     }
 
-    // Create key records
+    // P0 FIX: Encrypt keys at rest before storing in DB.
+    // Previously keys were stored in plaintext — anyone with DB read access
+    // could steal all API keys. Now they're AES-256-GCM encrypted via cryptoVault.
+    const { encryptSecret } = await import('@/lib/cryptoVault');
     const createdKeys = await Promise.all(
-      newKeys.map(key =>
-        db.apiKeyPool.create({
+      newKeys.map(async key => {
+        const detectedProvider = detectProviderFromKey(key, provider);
+        const encryptedKey = encryptSecret(key);
+        return db.apiKeyPool.create({
           data: {
-            keyValue: key,
-            provider: detectProviderFromKey(key), // Auto-detect from key format
+            keyValue: encryptedKey, // P0: encrypted at rest
+            provider: detectedProvider,
             model,
             status: 'available',
             addedBy: user.uid,
             notes,
-            rpmLimit: getRpmLimitForProvider(detectProviderFromKey(key)),
-            dailyLimit: getDailyLimitForProvider(detectProviderFromKey(key)),
+            rpmLimit: getRpmLimitForProvider(detectedProvider),
+            dailyLimit: getDailyLimitForProvider(detectedProvider),
             resetAt: getNextDayReset(),
           },
-        })
-      )
+        });
+      })
     );
 
     logger.info(`[ApiKeyPool] Added ${createdKeys.length} keys by founder ${user.email}`);
@@ -299,12 +334,14 @@ async function ASSIGN_KEY_API(request: NextRequest) {
 
 function getRpmLimitForProvider(provider: AIProvider): number {
   switch (provider) {
+    case 'deepseek':
+      return 60; // DeepSeek default RPM
     case 'openrouter':
-      return 60; // OpenRouter typically allows 60 RPM
+      return 60;
     case 'gemini':
-      return 60; // Gemini Flash free tier
+      return 60;
     case 'openai':
-      return 500; // OpenAI higher limits for paid
+      return 500;
     default:
       return 60;
   }
@@ -312,12 +349,14 @@ function getRpmLimitForProvider(provider: AIProvider): number {
 
 function getDailyLimitForProvider(provider: AIProvider): number {
   switch (provider) {
+    case 'deepseek':
+      return 1000; // DeepSeek daily limit
     case 'openrouter':
-      return 1000; // Generous limit
+      return 1000;
     case 'gemini':
-      return 1500; // Free tier daily
+      return 1500;
     case 'openai':
-      return 10000; // Paid tier
+      return 10000;
     default:
       return 1000;
   }

@@ -16,6 +16,7 @@
  * - Rate limiting to prevent alert storms
  */
 
+import { fetchSafe } from "@/lib/ssrf";
 import { EventEmitter } from 'events';
 import { logger } from "@/lib/logger";
 
@@ -742,7 +743,7 @@ export class AIAlertManager extends EventEmitter {
       ]
     };
 
-    const response = await fetch(config.webhookConfig.url, {
+    const response = await fetchSafe(config.webhookConfig.url, {
       method: config.webhookConfig.method || 'POST',
       headers: {
         'Content-Type': 'application/json',

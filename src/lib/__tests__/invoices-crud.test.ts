@@ -144,6 +144,58 @@ const idempotencyUpsert = mock(async (args: any) => {
   return record;
 });
 
+// P0 FIX: Mock create + update for the new atomic idempotency pattern
+// (create-before-payment as lock, update-after-payment with response)
+let lastIdempotencyCreateArgs: any = null;
+let lastIdempotencyUpdateArgs: any = null;
+
+const idempotencyCreate = mock(async (args: any) => {
+  lastIdempotencyCreateArgs = args;
+  const key = args.data?.key;
+  if (!key) return null;
+  // Check if already exists (simulate unique constraint)
+  for (const record of idempotencyStore.values()) {
+    if (record.key === key) {
+      const err: any = new Error("Unique constraint violation");
+      err.code = "P2002";
+      throw err;
+    }
+  }
+  const record = {
+    key,
+    companySlug: args.data?.companySlug ?? "default",
+    endpoint: args.data?.endpoint ?? null,
+    responseBody: args.data?.responseBody ?? null,
+    responseJson: args.data?.responseJson ?? null,
+    statusCode: args.data?.statusCode ?? 200,
+    createdAt: new Date(),
+  };
+  idempotencyStore.set(key, record);
+  return record;
+});
+
+const idempotencyUpdate = mock(async (args: any) => {
+  lastIdempotencyUpdateArgs = args;
+  const key = args.where?.key;
+  if (!key) return null;
+  const record = idempotencyStore.get(key);
+  if (!record) return null;
+  Object.assign(record, args.data ?? {});
+  // Also set lastIdempotencyUpsertArgs so tests checking for it still pass
+  lastIdempotencyUpsertArgs = {
+    where: { key },
+    create: { endpoint: record.endpoint, key },
+    update: args.data,
+  };
+  return record;
+});
+
+const idempotencyDelete = mock(async (args: any) => {
+  const key = args.where?.key;
+  if (key) idempotencyStore.delete(key);
+  return {};
+});
+
 // ─── Rich fake tx for db.$transaction ─────────────────────────────────────────
 //
 // The POST happy path wraps syncInventoryOnSale in db.$transaction. The
@@ -371,6 +423,9 @@ beforeAll(() => {
   (db as any).idempotencyKey = {
     findUnique: idempotencyFindUnique,
     upsert: idempotencyUpsert,
+    create: idempotencyCreate,
+    update: idempotencyUpdate,
+    delete: idempotencyDelete,
   };
   // Audit support: logAdminAction uses db.adminAuditLog.create
   (db as any).adminAuditLog = { create: mock(async () => ({ id: "mock-admin-audit" })) };
@@ -491,6 +546,8 @@ beforeEach(() => {
   lastUpdateManyArgs = null;
   nextUpdateManyCount = null;
   lastIdempotencyUpsertArgs = null;
+  lastIdempotencyCreateArgs = null;
+  lastIdempotencyUpdateArgs = null;
   idempotencyStore = new Map();
   invoiceFindUnique.mockClear();
   invoiceFindMany.mockClear();
@@ -500,6 +557,9 @@ beforeEach(() => {
   invoiceCount.mockClear();
   idempotencyFindUnique.mockClear();
   idempotencyUpsert.mockClear();
+  idempotencyCreate.mockClear();
+  idempotencyUpdate.mockClear();
+  idempotencyDelete.mockClear();
 });
 
 // ─── POST /api/invoices ───────────────────────────────────────────────────────
@@ -889,7 +949,9 @@ describe("PATCH /api/invoices/[id]/payment", () => {
     // succeeds, so the cached responseJson always has the post-update state.
     // Our mock findUnique returned the pre-update fixture at the time of the
     // first call, so we re-populate the cache here to mirror production.)
-    const cachedKey = "test-co|invoice-payment|inv-26:abc-123-456";
+    // P0 FIX: Use the same Map key as the create mock (just the `key` field)
+    // so this overwrites the entry created by the first request's create call.
+    const cachedKey = "inv-26:abc-123-456";
     idempotencyStore.set(cachedKey, {
       companySlug: "test-co",
       endpoint: "invoice-payment",
@@ -897,6 +959,7 @@ describe("PATCH /api/invoices/[id]/payment", () => {
       requestHash: "26:25:card",
       responseBody: JSON.stringify({ ok: true, invoice: invoiceById }),
       responseJson: JSON.stringify({ ok: true, invoice: invoiceById }),
+      statusCode: 200,
       status: 200,
       createdAt: new Date(),
     });

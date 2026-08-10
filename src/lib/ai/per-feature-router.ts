@@ -26,6 +26,7 @@
  * ═════════════════════════════════════════════════════════════
  */
 
+import { fetchSafe } from "@/lib/ssrf";
 import { dbTyped as db } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { decryptApiKey } from './keyVault';
@@ -287,7 +288,7 @@ async function callGeminiAPI(
       requestBody.generationConfig.responseMimeType = 'application/json';
     }
     
-    const response = await fetch(url, {
+    const response = await fetchSafe(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
@@ -462,7 +463,7 @@ async function callOpenAIAPI(
     // Determine endpoint based on provider
     const url = `${baseUrl}/chat/completions`;
     
-    const response = await fetch(url, {
+    const response = await fetchSafe(url, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',

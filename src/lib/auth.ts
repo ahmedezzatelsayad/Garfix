@@ -138,8 +138,13 @@ export function signToken(payload: AuthPayload): string {
   return jwt.sign({ ...payload, jti, type: "access" }, getJwtSecret(), { expiresIn: ACCESS_TTL });
 }
 
+// P0 FIX (audit): Added JTI to refresh tokens so they can be blacklisted.
+// Previously signRefreshToken did NOT include a jti claim, so stolen refresh
+// tokens remained valid for 30 days with no way to revoke them. Now each
+// refresh token gets a unique JTI that can be blacklisted via blacklistToken().
 export function signRefreshToken(uid: string, tv: number): string {
-  return jwt.sign({ uid, tv, type: "refresh" }, getJwtRefreshSecret(), { expiresIn: REFRESH_TTL });
+  const jti = crypto.randomUUID();
+  return jwt.sign({ uid, tv, jti, type: "refresh" }, getJwtRefreshSecret(), { expiresIn: REFRESH_TTL });
 }
 
 export function verifyToken(token: string): AuthPayload | null {

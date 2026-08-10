@@ -19,6 +19,7 @@
  */
 'use node';
 
+import { fetchSafe } from "@/lib/ssrf";
 import { logger } from '@/lib/logger';
 import type { IntegrationProvider } from './types';
 import { getIntegrationConfig, setIntegrationConfig, disconnectIntegration } from './registry';
@@ -75,7 +76,7 @@ class EtaEgyptProvider implements IntegrationProvider {
 
     try {
       // ETA's lightweight endpoint — returns the most recent document
-      const res = await fetch(`${base}/api/v1/documents/recent/1`, {
+      const res = await fetchSafe(`${base}/api/v1/documents/recent/1`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${cfg.api_token}`,

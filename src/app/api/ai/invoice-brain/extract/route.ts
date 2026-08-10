@@ -242,7 +242,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (usedAI && totalTokensUsed > 0) {
     try {
       const { recordSpend } = await import("@/lib/ai-fabric/budget-engine");
-      const estimatedCost = (totalTokensUsed / 1000) * 0.0003;
+      const { computeCallCostUsd } = await import("@/lib/ai/cost-rates");
+      // P1 FIX (audit): Use actual cost rates from cost-rates.ts instead of
+      // hardcoded $0.0003/1K. DeepSeek is $0.14/$0.28 per 1M — the hardcoded
+      // value was underestimating cost by ~2x for DeepSeek.
+      // Split total tokens ~60/40 between input/output (typical invoice extraction ratio).
+      const promptTokens = Math.round(totalTokensUsed * 0.6);
+      const completionTokens = totalTokensUsed - promptTokens;
+      const estimatedCost = computeCallCostUsd("deepseek-chat", promptTokens, completionTokens);
       await recordSpend(companySlug, estimatedCost);
     } catch (spendErr) {
       logger.warn("[invoice-brain-v2] failed to record AI spend", {

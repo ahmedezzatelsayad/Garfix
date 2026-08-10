@@ -78,13 +78,12 @@ function nodeRequire<T = unknown>(modulePath: string): T {
   return req(modulePath) as T;
 }
 
-// Pin instrumentation to Node.js runtime only. Without this, Next.js 16
-// also compiles an Edge Runtime variant of instrumentation.ts, which fails
-// because register() uses process.on(), process.exit(), and dynamically
-// imports Node-only modules (node:fs, node:crypto, node:child_process).
-export const config = {
-  runtime: "nodejs",
-} as const;
+// NOTE: Next.js 16 does NOT support `export const config` in instrumentation.ts.
+// The Node.js runtime is already the default for instrumentation. The previous
+// `export const config = { runtime: "nodejs" }` caused "Invalid segment
+// configuration export" build errors and has been removed.
+// To force Node runtime, use `export const runtime = "nodejs"` in route handlers
+// or set `serverExternalPackages` in next.config.ts (already done).
 
 /**
  * register — Called by Next.js on server startup.

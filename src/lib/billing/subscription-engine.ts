@@ -22,6 +22,7 @@
  */
 'use node';
 
+import { fetchSafe } from "@/lib/ssrf";
 import { dbTyped as db } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { enqueueBackground, QUEUE_NAMES } from '@/lib/queues';
@@ -510,7 +511,7 @@ async function initiateProviderCharge(
       const apiKey = cfg.api_key || '';
 
       // Initiate payment
-      const initiateRes = await fetch(`${baseUrl}/api/v2/InitiatePayment`, {
+      const initiateRes = await fetchSafe(`${baseUrl}/api/v2/InitiatePayment`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -538,7 +539,7 @@ async function initiateProviderCharge(
         : 1;
 
       // Execute payment
-      const executeRes = await fetch(`${baseUrl}/api/v2/ExecutePayment`, {
+      const executeRes = await fetchSafe(`${baseUrl}/api/v2/ExecutePayment`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -614,7 +615,7 @@ async function initiateProviderCharge(
       const apiKey = cfg.api_key || '';
 
       // Auth token
-      const authRes = await fetch('https://accept.paymob.com/api/auth/tokens', {
+      const authRes = await fetchSafe('https://accept.paymob.com/api/auth/tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ api_key: apiKey }),
@@ -631,7 +632,7 @@ async function initiateProviderCharge(
       const authToken = authData.token;
 
       // Create order
-      const orderRes = await fetch('https://accept.paymob.com/api/ecommerce/orders', {
+      const orderRes = await fetchSafe('https://accept.paymob.com/api/ecommerce/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -662,7 +663,7 @@ async function initiateProviderCharge(
       const orderId = orderData.id;
 
       // Payment key
-      const payKeyRes = await fetch('https://accept.paymob.com/api/acceptance/payment_keys', {
+      const payKeyRes = await fetchSafe('https://accept.paymob.com/api/acceptance/payment_keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

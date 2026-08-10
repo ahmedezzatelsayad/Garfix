@@ -16,6 +16,7 @@
  * Security: MyFatoorah/Paymob base_url is validated at connect time (SSRF protection).
  *           This route only reads the stored, validated config.
  */
+import { fetchSafe } from "@/lib/ssrf";
 import { NextRequest, NextResponse } from "next/server";
 import { parseJsonBody } from "@/lib/api";
 import { resolveAuth } from "@/lib/auth";
@@ -43,7 +44,7 @@ async function callMyFatoorah(
 ): Promise<{ ok: boolean; data?: any; error?: string }> {
   try {
     const url = `${baseUrl.replace(/\/+$/, "")}${path}`;
-    const res = await fetch(url, {
+    const res = await fetchSafe(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
