@@ -29,11 +29,17 @@ env:
   # PostgreSQL (Unified for all environments)
   DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public&connection_limit=5"
   DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
+  # Valkey (for cache + rate limiting + queues)
+  VALKEY_URL: "valkey://localhost:6379"
   # Auth secrets (test values)
   JWT_SECRET: "ci-test-jwt-secret-at-least-32-characters-long!!"
   JWT_REFRESH_SECRET: "ci-test-refresh-secret-at-least-32-chars!!"
   FOUNDER_EMAIL: "founder@test.com"
+  FOUNDER_PASSWORD: "CiTestFounderPassword2026!"
   PAYMENTS_ENC_KEY: "ci-test-encryption-key-at-least-32-characters!"
+  # DeepSeek (test placeholder — real key set via secrets in production deploys)
+  DEEPSEEK_API_KEY: "sk-ci-test-placeholder-deepseek-key"
+  DEEPSEEK_MODEL: "deepseek-chat"
 
 jobs:
   # ── Job 1: Lint & Code Quality ──────────────────────────────────────────
@@ -301,7 +307,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: garfix_test
           POSTGRES_PASSWORD: garfix_test_pass
@@ -310,6 +316,15 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      valkey:
+        image: valkey/valkey:8.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -343,6 +358,18 @@ jobs:
           for i in $(seq 1 10); do
             if pg_isready -h localhost -p 5432 -U garfix_test 2>/dev/null; then
               echo "✅ PostgreSQL is ready"
+              break
+            fi
+            echo "Attempt $i/10 - waiting..."
+            sleep 2
+          done
+
+      - name: Wait for Valkey to be ready
+        run: |
+          echo "Waiting for Valkey..."
+          for i in $(seq 1 10); do
+            if (echo > /dev/tcp/localhost/6379) 2>/dev/null; then
+              echo "✅ Valkey is ready"
               break
             fi
             echo "Attempt $i/10 - waiting..."
@@ -400,7 +427,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: garfix_test
           POSTGRES_PASSWORD: garfix_test_pass
@@ -409,6 +436,15 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      valkey:
+        image: valkey/valkey:8.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -442,6 +478,18 @@ jobs:
           for i in $(seq 1 10); do
             if pg_isready -h localhost -p 5432 -U garfix_test 2>/dev/null; then
               echo "✅ PostgreSQL is ready"
+              break
+            fi
+            echo "Attempt $i/10 - waiting..."
+            sleep 2
+          done
+
+      - name: Wait for Valkey to be ready
+        run: |
+          echo "Waiting for Valkey..."
+          for i in $(seq 1 10); do
+            if (echo > /dev/tcp/localhost/6379) 2>/dev/null; then
+              echo "✅ Valkey is ready"
               break
             fi
             echo "Attempt $i/10 - waiting..."

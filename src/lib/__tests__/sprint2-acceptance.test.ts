@@ -193,8 +193,11 @@ describe("P1-6: CI/CD Pipeline", () => {
 
   test("CI uses PostgreSQL service for tests", async () => {
     const ciContent = fs.readFileSync(path.join(PROJECT_ROOT, ".github/workflows/ci.yml"), "utf-8");
-    expect(ciContent).toContain("postgres:16-alpine");
+    // Upgraded to PostgreSQL 17 + added Valkey 8.1 (P1 2026-08-10)
+    expect(ciContent).toContain("postgres:17-alpine");
+    expect(ciContent).toContain("valkey/valkey:8.1-alpine");
     expect(ciContent).toContain("DATABASE_URL");
+    expect(ciContent).toContain("VALKEY_URL");
   });
 
   test("CI typecheck step checks production code only", async () => {
