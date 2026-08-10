@@ -23,13 +23,19 @@ import { logAudit } from "@/lib/audit";
 import { rateLimitResponse, clearRateLimit, getClientIp, LIMITS } from "@/lib/rateLimit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { isMFAEnabled, validateMFA } from "@/lib/mfa";
 
 // SEC-M2 FIX (Cycle 1): pin to Node.js runtime — Prisma + bcrypt + Valkey.
 export const runtime = "nodejs";
 
+// P1 FIX (audit): Added optional mfaCode field for MFA-protected accounts.
+// If the user has MFA enabled, the first login attempt (without mfaCode)
+// returns { mfaRequired: true } so the frontend can prompt for the code.
+// The second attempt includes mfaCode and validates it before issuing session.
 const LoginSchema = z.object({
   email: z.string().email("صيغة البريد الإلكتروني غير صحيحة"),
   password: z.string().min(1, "كلمة المرور مطلوبة"),
+  mfaCode: z.string().optional(), // P1 FIX: MFA code for MFA-protected accounts
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
@@ -43,7 +49,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (!parsed.success) {
     return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
   }
-  const { email, password } = parsed.data;
+  const { email, password, mfaCode } = parsed.data;
   const normalizedEmail = email.trim().toLowerCase();
 
   // SEC-M1 FIX (Cycle 1): per-email rate limit. We check this AFTER parsing
@@ -92,6 +98,30 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // who fat-fingered their password a few times isn't penalized.
   await clearRateLimit("auth:login", ip);
   await clearRateLimit("auth:login-email", normalizedEmail);
+
+  // P1 FIX (audit): MFA check — if the user has MFA enabled, require a valid
+  // TOTP code before issuing the session. This prevents password-only login
+  // for admin/founder accounts.
+  const mfaEnabled = await isMFAEnabled(user.uid).catch(() => false);
+  if (mfaEnabled) {
+    if (!mfaCode) {
+      // First attempt — tell the frontend to prompt for MFA code.
+      // Return 200 (not 401) to avoid revealing that password was correct.
+      return NextResponse.json({ mfaRequired: true, email: normalizedEmail });
+    }
+    // Validate the MFA code
+    const mfaValid = await validateMFA(user.uid, mfaCode).catch(() => false);
+    if (!mfaValid) {
+      await logAudit({
+        userEmail: normalizedEmail,
+        userUid: user.uid,
+        action: "mfa_failure",
+        entity: "auth",
+        details: { ip },
+      });
+      return apiError("رمز التحقق الثنائي غير صحيح", 401);
+    }
+  }
 
   const founder = isFounderEmail(user.email);
   const role = founder ? "admin" : user.role;

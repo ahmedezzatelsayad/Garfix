@@ -103,29 +103,42 @@ async function handleVerifyBackup(data: VerifyBackupJobData): Promise<void> {
     throw new Error(`backupWorker.verify-backup: backup too small (${stat.size} bytes) — likely corrupt`);
   }
 
-  // Open the backup as a separate SQLite connection and run integrity_check.
-  // We use Prisma's $executeRawUnsafe on the main DB connection — but to
-  // verify a DIFFERENT file, we'd need a separate connection. The simplest
-  // cross-process check is `sqlite3 backupPath 'PRAGMA integrity_check;'`
-  // — but we may not have the sqlite3 CLI in the sandbox. Instead we read
-  // the file header (first 16 bytes) to confirm it's a valid SQLite file.
+  // P1 FIX (audit): Previous code checked for "SQLite format 3" header, but
+  // backups are encrypted Postgres SQL dumps (.sql.enc). The check always
+  // failed because the header is AES-GCM ciphertext, never matching SQLite magic.
   //
-  // A full integrity_check would require opening a second Prisma client
-  // pointing at the backup file — deferred to a future hardening pass.
-  const handle = await fs.open(backupPath, "r");
+  // New approach: read the file, decrypt it, and verify it contains valid
+  // PostgreSQL SQL statements (e.g., "CREATE TABLE", "INSERT", "COPY", "SET").
+  const { decryptSecret } = await import("@/lib/cryptoVault");
+  const encryptedContent = await fs.readFile(backupPath, "utf8");
+  let decryptedContent: string;
   try {
-    const buf = Buffer.alloc(16);
-    await handle.read(buf, 0, 16, 0);
-    const header = buf.toString("utf8");
-    // SQLite file magic: "SQLite format 3\0"
-    if (!header.startsWith("SQLite format 3")) {
-      throw new Error(`backupWorker.verify-backup: bad SQLite header in "${target.name}" — got "${header.replace(/\0/g, "?")}"`);
-    }
-  } finally {
-    await handle.close();
+    decryptedContent = decryptSecret(encryptedContent);
+  } catch (err) {
+    throw new Error(
+      `backupWorker.verify-backup: failed to decrypt "${target.name}" — ` +
+      `check PAYMENTS_ENC_KEY is correct. Original error: ` +
+      (err instanceof Error ? err.message : String(err))
+    );
   }
 
-  logger.info("[backup-worker] verify-backup: OK", {
+  // Verify the decrypted content looks like valid PostgreSQL SQL
+  const sqlLower = decryptedContent.toLowerCase();
+  const hasValidSqlPatterns =
+    sqlLower.includes("create table") ||
+    sqlLower.includes("insert into") ||
+    sqlLower.includes("copy ") ||
+    sqlLower.includes("set ") ||
+    sqlLower.includes("alter table") ||
+    sqlLower.includes("postgresql database dump");
+  if (!hasValidSqlPatterns) {
+    throw new Error(
+      `backupWorker.verify-backup: decrypted content of "${target.name}" ` +
+      `does not contain valid PostgreSQL SQL statements — likely corrupt`
+    );
+  }
+
+  logger.info("[backup-worker] verify-backup: OK (PostgreSQL encrypted dump verified)", {
     name: target.name, sizeMB: (target.size / 1024 / 1024).toFixed(2),
   });
 }

@@ -158,17 +158,20 @@ export async function register(): Promise<void> {
       if (!startupResult.ok && startupResult.fatal.length > 0) {
         const isRealProd = process.env.NODE_ENV === "production" && !process.env.CI && !process.env.GITHUB_ACTIONS;
         if (isRealProd) {
-          // DEPLOYMENT FIX: don't throw — log loudly and continue. The
-          // server will still start; API routes that need the missing
-          // secrets will return specific 500 errors. This is better UX
-          // than a blank screen with no indication of what's wrong.
-          logger.error("[instrumentation] ⚠️ ENVIRONMENT CHECK FAILED — server starting in DEGRADED mode", {
+          // P1 FIX (audit): Previously the server continued in "degraded mode"
+          // when required env vars were missing. This is dangerous — a
+          // misconfigured production server would serve traffic with broken
+          // API routes (500 errors on every request that needs a secret).
+          // Now we HARD-FAIL: the server refuses to start, forcing the
+          // operator to fix the env vars before any traffic is served.
+          logger.error("[instrumentation] 🔴 ENVIRONMENT CHECK FAILED — refusing to start in production", {
             errors: startupResult.fatal,
-            impact: "API routes requiring these vars will return 500. Static pages will render. Fix the env vars and redeploy.",
+            fix: "Set the missing environment variables and redeploy. The server will not start until all required vars are present.",
           });
-          // Set a global flag so route handlers can check if the server
-          // is in a degraded state and return a helpful error.
-          (globalThis as Record<string, unknown>).__GARFIX_STARTUP_ERRORS = startupResult.fatal;
+          throw new Error(
+            "FATAL: Production environment check failed. Missing required env vars: " +
+            startupResult.fatal.join("; ")
+          );
         } else {
           logger.warn("[instrumentation] Continuing despite warnings in CI/test mode", {
             warnings: startupResult.fatal,

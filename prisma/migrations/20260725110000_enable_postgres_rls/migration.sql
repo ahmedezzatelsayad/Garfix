@@ -106,11 +106,11 @@ BEGIN
       CREATE POLICY tenant_isolation ON %I
       USING (
         current_setting('app.current_company_slug', true) = '__ALL__'
-        OR company_slug = current_setting('app.current_company_slug', true)
+        OR "companySlug" = current_setting('app.current_company_slug', true)
       )
       WITH CHECK (
         current_setting('app.current_company_slug', true) = '__ALL__'
-        OR company_slug = current_setting('app.current_company_slug', true)
+        OR "companySlug" = current_setting('app.current_company_slug', true)
       )
     $f$, t);
   END LOOP;
