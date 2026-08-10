@@ -62,7 +62,13 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-debugger": "error",
     "no-unreachable": "error",
     "no-fallthrough": "error",
-    "no-undef": "warn",
+    // Sprint 28: 'no-undef' is OFF for TypeScript files — REDUNDANT.
+    // tsc already checks undefined variables with full type information
+    // (including .d.ts global declarations). ESLint's no-undef doesn't
+    // understand TypeScript globals → 178 false-positive warnings for
+    // React, RequestInit, NodeJS, EventListener, BodyInit, Bun, etc.
+    // Source: https://typescript-eslint.io/troubleshooting/#no-undef
+    "no-undef": "off",
   },
 }, {
   ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
