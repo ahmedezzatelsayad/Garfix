@@ -475,9 +475,24 @@ export async function callAI(options: ChatOptions): Promise<ChatResult> {
     const provider = createProvider(config);
     if (!provider) continue;
 
+    // P3 FIX (audit): Wrap AI calls in circuit breaker for server-side
+    // fault tolerance. If a provider returns sustained 5xx, the breaker
+    // trips OPEN and fast-fails subsequent requests — no more infinite
+    // retries on every request. Breaker auto-recovers after resetTimeout.
+    const breakerName = config.provider as string;
+    let breaker: { execute: (fn: () => Promise<unknown>) => Promise<unknown> } | null = null;
+    try {
+      const { externalBreakers } = await import("@/lib/circuit-breaker");
+      breaker = (externalBreakers as Record<string, { execute: (fn: () => Promise<unknown>) => Promise<unknown> }>)[breakerName] || null;
+    } catch {
+      // circuit-breaker module not available — proceed without breaker
+    }
+
     try {
       logger.debug("[aiProvider] calling provider", { provider: config.provider, model: config.model });
-      const result = await provider.chat(options);
+      const result = breaker
+        ? await breaker.execute(() => provider.chat(options)) as Awaited<ReturnType<typeof provider.chat>>
+        : await provider.chat(options);
       logger.info("[aiProvider] success", { provider: result.provider, tokens: result.usage.total_tokens });
       return result;
     } catch (err) {
