@@ -10,8 +10,8 @@ CREATE TABLE "app_users" (
     "permissions" TEXT NOT NULL DEFAULT '{}',
     "tokenVersion" INTEGER NOT NULL DEFAULT 0,
     "emailVerified" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
@@ -22,15 +22,15 @@ CREATE TABLE "email_verifications" (
     "codeHash" TEXT,
     "purpose" TEXT NOT NULL DEFAULT 'email_verify',
     "attempts" INTEGER NOT NULL DEFAULT 0,
-    "expiresAt" DATETIME NOT NULL,
-    "usedAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "usedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "email_verifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "app_users" ("uid") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "companies" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "logoBase64" TEXT,
@@ -52,7 +52,7 @@ CREATE TABLE "companies" (
     "openrouterModel" TEXT NOT NULL DEFAULT 'anthropic/claude-3.5-haiku',
     "plan" TEXT NOT NULL DEFAULT 'trial',
     "subscriptionStatus" TEXT NOT NULL DEFAULT 'active',
-    "trialEndsAt" DATETIME,
+    "trialEndsAt" TIMESTAMP(3),
     "stripeCustomerId" TEXT,
     "stripeSubscriptionId" TEXT,
     "whatsappEnabled" BOOLEAN NOT NULL DEFAULT false,
@@ -62,27 +62,27 @@ CREATE TABLE "companies" (
     "whatsappAppSecretEnc" TEXT,
     "whatsappVerifyTokenHash" TEXT,
     "whatsappGreeting" TEXT,
-    "whatsappCredentialsUpdatedAt" DATETIME,
-    "deletedAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "whatsappCredentialsUpdatedAt" TIMESTAMP(3),
+    "deletedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
 CREATE TABLE "setup_wizard_progress" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "currentStep" INTEGER NOT NULL DEFAULT 1,
     "completed" BOOLEAN NOT NULL DEFAULT false,
     "data" TEXT NOT NULL DEFAULT '{}',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "setup_wizard_progress_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "clients" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "email" TEXT,
     "phone" TEXT,
@@ -90,16 +90,16 @@ CREATE TABLE "clients" (
     "address" TEXT,
     "notes" TEXT,
     "companySlug" TEXT NOT NULL,
-    "deletedAt" DATETIME,
+    "deletedAt" TIMESTAMP(3),
     "deletedBy" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "clients_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "invoices" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "invoiceNumber" TEXT NOT NULL,
     "companySlug" TEXT NOT NULL,
     "clientId" INTEGER,
@@ -128,17 +128,17 @@ CREATE TABLE "invoices" (
     "eInvoiceStatus" TEXT,
     "deliveryMethod" TEXT,
     "version" INTEGER NOT NULL DEFAULT 0,
-    "deletedAt" DATETIME,
+    "deletedAt" TIMESTAMP(3),
     "deletedBy" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "invoices_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "invoices_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "clients" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "product_catalog" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "code" TEXT,
     "name" TEXT NOT NULL,
     "aliases" TEXT NOT NULL DEFAULT '[]',
@@ -146,27 +146,27 @@ CREATE TABLE "product_catalog" (
     "sellingPrice" TEXT,
     "wholesalePrice" TEXT,
     "companySlug" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "product_catalog_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "warehouses" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "code" TEXT NOT NULL,
     "address" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "warehouses_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "inventory_items" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "warehouseId" INTEGER NOT NULL,
     "productId" INTEGER NOT NULL,
@@ -175,8 +175,8 @@ CREATE TABLE "inventory_items" (
     "reorderQty" TEXT NOT NULL DEFAULT '0',
     "batchNumber" TEXT,
     "expiryDate" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "inventory_items_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "warehouses" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "inventory_items_productId_fkey" FOREIGN KEY ("productId") REFERENCES "product_catalog" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "inventory_items_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
@@ -184,7 +184,7 @@ CREATE TABLE "inventory_items" (
 
 -- CreateTable
 CREATE TABLE "stock_movements" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "productId" INTEGER,
     "warehouseId" INTEGER NOT NULL,
@@ -193,7 +193,7 @@ CREATE TABLE "stock_movements" (
     "sourceId" INTEGER,
     "note" TEXT,
     "createdBy" TEXT NOT NULL DEFAULT 'system',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "stock_movements_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "stock_movements_productId_fkey" FOREIGN KEY ("productId") REFERENCES "product_catalog" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "stock_movements_warehouseId_fkey" FOREIGN KEY ("warehouseId") REFERENCES "warehouses" ("id") ON DELETE CASCADE ON UPDATE CASCADE
@@ -201,7 +201,7 @@ CREATE TABLE "stock_movements" (
 
 -- CreateTable
 CREATE TABLE "purchase_invoices" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "num" TEXT NOT NULL,
     "date" TEXT NOT NULL,
     "supplier" TEXT NOT NULL DEFAULT '',
@@ -210,15 +210,15 @@ CREATE TABLE "purchase_invoices" (
     "sourceInvoiceIds" TEXT NOT NULL DEFAULT '[]',
     "totalQty" INTEGER NOT NULL DEFAULT 0,
     "notes" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "deletedAt" DATETIME,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deletedAt" TIMESTAMP(3),
     "deletedBy" TEXT,
     CONSTRAINT "purchase_invoices_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "hr_employees" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "nameEn" TEXT,
@@ -238,14 +238,14 @@ CREATE TABLE "hr_employees" (
     "residenceExpiry" TEXT,
     "passportNumber" TEXT,
     "bankAccount" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "hr_employees_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "hr_attendance" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "employeeId" INTEGER NOT NULL,
     "date" TEXT NOT NULL,
@@ -253,13 +253,13 @@ CREATE TABLE "hr_attendance" (
     "checkIn" TEXT,
     "checkOut" TEXT,
     "notes" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "hr_attendance_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "hr_employees" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "hr_salaries" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "employeeId" INTEGER NOT NULL,
     "month" TEXT NOT NULL,
@@ -269,15 +269,15 @@ CREATE TABLE "hr_salaries" (
     "bonus" TEXT NOT NULL DEFAULT '0',
     "netSalary" TEXT NOT NULL DEFAULT '0',
     "isPaid" BOOLEAN NOT NULL DEFAULT false,
-    "paidAt" DATETIME,
+    "paidAt" TIMESTAMP(3),
     "notes" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "hr_salaries_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "hr_employees" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "hr_commissions" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "employeeId" INTEGER NOT NULL,
     "date" TEXT NOT NULL,
@@ -285,13 +285,13 @@ CREATE TABLE "hr_commissions" (
     "description" TEXT,
     "amount" TEXT NOT NULL DEFAULT '0',
     "isPaid" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "hr_commissions_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "hr_employees" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "hr_leave_requests" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "employeeId" INTEGER NOT NULL,
     "type" TEXT NOT NULL DEFAULT 'annual',
@@ -301,13 +301,13 @@ CREATE TABLE "hr_leave_requests" (
     "reason" TEXT,
     "status" TEXT NOT NULL DEFAULT 'pending',
     "approvedBy" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "hr_leave_requests_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "hr_employees" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "hr_performance" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "employeeId" INTEGER NOT NULL,
     "period" TEXT NOT NULL,
@@ -319,13 +319,13 @@ CREATE TABLE "hr_performance" (
     "strengths" TEXT,
     "improvements" TEXT,
     "reviewerNote" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "hr_performance_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "hr_employees" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "accounts" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "code" TEXT NOT NULL,
     "nameAr" TEXT NOT NULL,
     "nameEn" TEXT,
@@ -335,15 +335,15 @@ CREATE TABLE "accounts" (
     "balance" TEXT NOT NULL DEFAULT '0',
     "currency" TEXT NOT NULL DEFAULT 'KWD',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "accounts_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "accounts" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "accounts_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "journal_entries" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "date" TEXT NOT NULL,
     "description" TEXT,
     "reference" TEXT,
@@ -352,29 +352,29 @@ CREATE TABLE "journal_entries" (
     "status" TEXT NOT NULL DEFAULT 'draft',
     "sourceType" TEXT,
     "sourceId" INTEGER,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "deletedAt" DATETIME,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
     "deletedBy" TEXT,
     CONSTRAINT "journal_entries_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "journal_entry_lines" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "entryId" INTEGER NOT NULL,
     "accountId" INTEGER NOT NULL,
     "debit" TEXT NOT NULL DEFAULT '0',
     "credit" TEXT NOT NULL DEFAULT '0',
     "description" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "journal_entry_lines_entryId_fkey" FOREIGN KEY ("entryId") REFERENCES "journal_entries" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "journal_entry_lines_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "accounts" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "e_invoices" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "invoiceId" INTEGER NOT NULL,
     "companySlug" TEXT NOT NULL,
     "authorityType" TEXT NOT NULL DEFAULT 'none',
@@ -384,13 +384,13 @@ CREATE TABLE "e_invoices" (
     "signedXml" TEXT,
     "rawXml" TEXT,
     "rejectionReason" TEXT,
-    "submittedAt" DATETIME,
-    "approvedAt" DATETIME,
+    "submittedAt" TIMESTAMP(3),
+    "approvedAt" TIMESTAMP(3),
     "retryCount" INTEGER NOT NULL DEFAULT 0,
-    "lastRetryAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "deletedAt" DATETIME,
+    "lastRetryAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
     "deletedBy" TEXT,
     CONSTRAINT "e_invoices_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "invoices" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "e_invoices_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
@@ -398,20 +398,20 @@ CREATE TABLE "e_invoices" (
 
 -- CreateTable
 CREATE TABLE "order_deliveries" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "invoiceId" INTEGER,
     "companySlug" TEXT NOT NULL,
     "clientName" TEXT,
     "clientPhone" TEXT,
     "address" TEXT,
     "locationUrl" TEXT,
-    "preferredTime" DATETIME,
+    "preferredTime" TIMESTAMP(3),
     "deliveryFee" TEXT NOT NULL DEFAULT '0',
     "status" TEXT NOT NULL DEFAULT 'Pending',
     "driverId" TEXT,
     "notes" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "order_deliveries_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "order_deliveries_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "invoices" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "order_deliveries_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "app_users" ("id") ON DELETE SET NULL ON UPDATE CASCADE
@@ -422,15 +422,15 @@ CREATE TABLE "payment_provider_configs" (
     "provider" TEXT NOT NULL PRIMARY KEY,
     "encryptedCredentials" TEXT,
     "publicConfig" TEXT,
-    "credentialsUpdatedAt" DATETIME,
+    "credentialsUpdatedAt" TIMESTAMP(3),
     "updatedBy" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
 CREATE TABLE "payment_transactions" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "plan" TEXT NOT NULL,
     "method" TEXT NOT NULL,
@@ -445,9 +445,9 @@ CREATE TABLE "payment_transactions" (
     "failureReason" TEXT,
     "metadata" TEXT,
     "createdBy" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "deletedAt" DATETIME,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deletedAt" TIMESTAMP(3),
     "deletedBy" TEXT,
     CONSTRAINT "payment_transactions_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
 );
@@ -461,37 +461,37 @@ CREATE TABLE "payments_vault" (
     "fingerprint" TEXT NOT NULL,
     "algo" TEXT NOT NULL DEFAULT 'aes-256-gcm',
     "createdBy" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "rotatedAt" DATETIME,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "rotatedAt" TIMESTAMP(3),
     "rotatedBy" TEXT
 );
 
 -- CreateTable
 CREATE TABLE "permissions" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "key" TEXT NOT NULL,
     "labelAr" TEXT NOT NULL,
     "labelEn" TEXT,
     "category" TEXT NOT NULL DEFAULT 'general',
     "description" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
 CREATE TABLE "role_permissions" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "role" TEXT NOT NULL,
     "permissionKey" TEXT NOT NULL,
     "companySlug" TEXT,
     "value" INTEGER NOT NULL DEFAULT 1,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "role_permissions_permissionKey_fkey" FOREIGN KEY ("permissionKey") REFERENCES "permissions" ("key") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "audit_logs" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "userEmail" TEXT NOT NULL,
     "userUid" TEXT NOT NULL,
     "action" TEXT NOT NULL,
@@ -499,7 +499,7 @@ CREATE TABLE "audit_logs" (
     "entityId" TEXT,
     "companySlug" TEXT,
     "details" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "audit_logs_userUid_fkey" FOREIGN KEY ("userUid") REFERENCES "app_users" ("uid") ON DELETE NO ACTION ON UPDATE CASCADE
 );
 
@@ -513,7 +513,7 @@ CREATE TABLE "admin_audit_logs" (
     "changes" TEXT,
     "ipAddress" TEXT,
     "userAgent" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
@@ -523,11 +523,11 @@ CREATE TABLE "announcements" (
     "body" TEXT NOT NULL,
     "type" TEXT NOT NULL DEFAULT 'info',
     "targetPlans" TEXT NOT NULL DEFAULT '[]',
-    "startsAt" DATETIME,
-    "endsAt" DATETIME,
+    "startsAt" TIMESTAMP(3),
+    "endsAt" TIMESTAMP(3),
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdBy" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
@@ -539,8 +539,8 @@ CREATE TABLE "support_tickets" (
     "body" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'open',
     "priority" TEXT NOT NULL DEFAULT 'normal',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
@@ -550,7 +550,7 @@ CREATE TABLE "ticket_replies" (
     "senderEmail" TEXT NOT NULL,
     "senderRole" TEXT NOT NULL,
     "body" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "ticket_replies_ticketId_fkey" FOREIGN KEY ("ticketId") REFERENCES "support_tickets" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -562,39 +562,39 @@ CREATE TABLE "platform_settings" (
     "value" TEXT NOT NULL,
     "description" TEXT,
     "updatedBy" TEXT,
-    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
 CREATE TABLE "platform_settings_history" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "settingKey" TEXT NOT NULL,
     "oldValue" TEXT,
     "newValue" TEXT,
     "changedBy" TEXT,
     "changedByEmail" TEXT,
-    "changedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "changedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "platform_settings_history_settingKey_fkey" FOREIGN KEY ("settingKey") REFERENCES "platform_settings" ("key") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "modules" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "identifier" TEXT NOT NULL,
     "version" TEXT,
     "description" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT false,
     "settings" TEXT NOT NULL DEFAULT '{}',
-    "installedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "installedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
 CREATE TABLE "chat_history" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "userUid" TEXT NOT NULL,
     "companySlug" TEXT,
     "role" TEXT NOT NULL DEFAULT 'user',
@@ -605,13 +605,13 @@ CREATE TABLE "chat_history" (
     "tokensUsed" INTEGER,
     "model" TEXT,
     "conversationId" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "chat_history_userUid_fkey" FOREIGN KEY ("userUid") REFERENCES "app_users" ("uid") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "ai_processing_logs" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT,
     "endpoint" TEXT NOT NULL,
     "model" TEXT,
@@ -624,25 +624,25 @@ CREATE TABLE "ai_processing_logs" (
     "totalTokens" INTEGER NOT NULL DEFAULT 0,
     "retried" BOOLEAN NOT NULL DEFAULT false,
     "success" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "ai_processing_logs_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "idempotency_keys" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "endpoint" TEXT NOT NULL,
     "key" TEXT NOT NULL,
     "requestHash" TEXT NOT NULL,
     "responseJson" TEXT,
     "status" INTEGER NOT NULL DEFAULT 200,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
 CREATE TABLE "notifications" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "userUid" TEXT NOT NULL,
     "companySlug" TEXT,
     "type" TEXT NOT NULL,
@@ -650,13 +650,13 @@ CREATE TABLE "notifications" (
     "body" TEXT NOT NULL,
     "link" TEXT,
     "isRead" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "readAt" DATETIME
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "readAt" TIMESTAMP(3)
 );
 
 -- CreateTable
 CREATE TABLE "invoice_templates" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "isDefault" BOOLEAN NOT NULL DEFAULT false,
@@ -670,14 +670,14 @@ CREATE TABLE "invoice_templates" (
     "footerText" TEXT,
     "termsAndConditions" TEXT,
     "paperSize" TEXT NOT NULL DEFAULT 'A4',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "invoice_templates_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "invoice_template_settings" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "templateId" TEXT NOT NULL DEFAULT 'modern',
     "primaryColor" TEXT NOT NULL DEFAULT '#7C3AED',
@@ -688,14 +688,14 @@ CREATE TABLE "invoice_template_settings" (
     "showPaymentInfo" BOOLEAN NOT NULL DEFAULT true,
     "showStamp" BOOLEAN NOT NULL DEFAULT false,
     "invoiceTypes" TEXT NOT NULL DEFAULT 'sales,purchase,quote',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "invoice_template_settings_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "ai_usage_logs" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT,
     "userUid" TEXT,
     "provider" TEXT NOT NULL,
@@ -708,63 +708,63 @@ CREATE TABLE "ai_usage_logs" (
     "processingMs" INTEGER,
     "success" BOOLEAN NOT NULL DEFAULT true,
     "errorMessage" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
 CREATE TABLE "landing_content" (
     "key" TEXT NOT NULL PRIMARY KEY,
     "value" TEXT NOT NULL,
-    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedBy" TEXT
 );
 
 -- CreateTable
 CREATE TABLE "automation_rules" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "trigger" TEXT NOT NULL,
     "condition" TEXT NOT NULL DEFAULT '{}',
     "actions" TEXT NOT NULL DEFAULT '[]',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
 CREATE TABLE "automation_execution_logs" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "ruleId" INTEGER NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'pending',
     "triggerData" TEXT,
     "error" TEXT,
     "durationMs" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "automation_execution_logs_ruleId_fkey" FOREIGN KEY ("ruleId") REFERENCES "automation_rules" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "ai_memory_notes" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "entityType" TEXT NOT NULL,
     "entityId" INTEGER NOT NULL,
     "note" TEXT NOT NULL,
     "createdBy" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
 CREATE TABLE "feature_flags" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "key" TEXT NOT NULL,
     "label" TEXT NOT NULL,
     "description" TEXT,
     "plans" TEXT NOT NULL DEFAULT '[]',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
@@ -773,7 +773,7 @@ CREATE TABLE "user_workspace_state" (
     "pinnedViews" TEXT NOT NULL DEFAULT '[]',
     "lastActiveView" TEXT NOT NULL DEFAULT 'dash',
     "widgetOrder" TEXT NOT NULL DEFAULT '[]',
-    "updatedAt" DATETIME NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
@@ -781,8 +781,8 @@ CREATE TABLE "invoice_brain_templates" (
     "fingerprint" TEXT NOT NULL PRIMARY KEY,
     "fields" TEXT NOT NULL,
     "sampleCount" INTEGER NOT NULL DEFAULT 1,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "lastUsedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastUsedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
@@ -790,13 +790,13 @@ CREATE TABLE "invoice_brain_header_maps" (
     "headerFingerprint" TEXT NOT NULL PRIMARY KEY,
     "mapping" TEXT NOT NULL,
     "sampleCount" INTEGER NOT NULL DEFAULT 1,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "lastUsedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastUsedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
 CREATE TABLE "product_aliases" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "productCatalogId" INTEGER NOT NULL,
     "companySlug" TEXT NOT NULL,
     "alias" TEXT NOT NULL,
@@ -805,15 +805,15 @@ CREATE TABLE "product_aliases" (
     "confidence" REAL NOT NULL DEFAULT 1.0,
     "isVerified" BOOLEAN NOT NULL DEFAULT false,
     "createdBy" TEXT NOT NULL DEFAULT 'system',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "product_aliases_productCatalogId_fkey" FOREIGN KEY ("productCatalogId") REFERENCES "product_catalog" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "product_aliases_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "product_match_audit" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "inputText" TEXT NOT NULL,
     "matchedProductId" INTEGER,
@@ -823,10 +823,10 @@ CREATE TABLE "product_match_audit" (
     "action" TEXT NOT NULL,
     "isUndone" BOOLEAN NOT NULL DEFAULT false,
     "undoneBy" TEXT,
-    "undoneAt" DATETIME,
+    "undoneAt" TIMESTAMP(3),
     "invoiceId" INTEGER,
     "createdBy" TEXT NOT NULL DEFAULT 'system',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "resolvedBy" TEXT,
     "aiReasoning" TEXT,
     "aiModel" TEXT,
@@ -835,7 +835,7 @@ CREATE TABLE "product_match_audit" (
 
 -- CreateTable
 CREATE TABLE "match_overrides" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "inputText" TEXT NOT NULL,
     "inputNormalized" TEXT NOT NULL,
@@ -845,13 +845,13 @@ CREATE TABLE "match_overrides" (
     "auditId" INTEGER,
     "reason" TEXT,
     "overriddenBy" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "match_overrides_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "job_queue" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "queue" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "data" TEXT NOT NULL,
@@ -859,17 +859,17 @@ CREATE TABLE "job_queue" (
     "attempts" INTEGER NOT NULL DEFAULT 0,
     "maxAttempts" INTEGER NOT NULL DEFAULT 3,
     "lastError" TEXT,
-    "lockedAt" DATETIME,
+    "lockedAt" TIMESTAMP(3),
     "lockedBy" TEXT,
-    "scheduledAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "startedAt" DATETIME,
-    "completedAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "scheduledAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "startedAt" TIMESTAMP(3),
+    "completedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
 CREATE TABLE "ai_model_registry" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "provider" TEXT NOT NULL,
     "model" TEXT NOT NULL,
     "displayName" TEXT NOT NULL,
@@ -887,15 +887,15 @@ CREATE TABLE "ai_model_registry" (
     "p95LatencyMs" INTEGER NOT NULL DEFAULT 0,
     "avgQualityScore" REAL NOT NULL DEFAULT 0,
     "totalBenchmarks" INTEGER NOT NULL DEFAULT 0,
-    "lastBenchmarkAt" DATETIME,
+    "lastBenchmarkAt" TIMESTAMP(3),
     "lastError" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
 CREATE TABLE "ai_benchmark_results" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "modelRegistryId" INTEGER NOT NULL,
     "capability" TEXT NOT NULL,
     "success" BOOLEAN NOT NULL,
@@ -905,24 +905,24 @@ CREATE TABLE "ai_benchmark_results" (
     "responseQuality" REAL NOT NULL DEFAULT 0,
     "responseSample" TEXT,
     "errorMessage" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "ai_benchmark_results_modelRegistryId_fkey" FOREIGN KEY ("modelRegistryId") REFERENCES "ai_model_registry" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "company_runtimes" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companyId" INTEGER NOT NULL,
     "workerPoolSize" INTEGER NOT NULL DEFAULT 2,
     "status" TEXT NOT NULL DEFAULT 'active',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "company_runtimes_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
 CREATE TABLE "ai_request_logs" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "requestType" TEXT NOT NULL,
     "resolvedBy" TEXT NOT NULL,
@@ -930,66 +930,66 @@ CREATE TABLE "ai_request_logs" (
     "tokensUsed" INTEGER,
     "costUsd" REAL NOT NULL DEFAULT 0,
     "latencyMs" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
 CREATE TABLE "ai_fabric_cache_entries" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "key" TEXT NOT NULL,
     "companySlug" TEXT NOT NULL,
     "value" TEXT NOT NULL,
     "hitCount" INTEGER NOT NULL DEFAULT 0,
-    "expiresAt" DATETIME NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
 CREATE TABLE "budget_configs" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "monthlyBudgetUsd" REAL NOT NULL,
     "currentSpendUsd" REAL NOT NULL DEFAULT 0,
     "alertThresholdPct" INTEGER NOT NULL DEFAULT 80,
     "hardStopEnabled" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
 CREATE TABLE "provider_configs" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "taskType" TEXT NOT NULL,
     "primaryProvider" TEXT NOT NULL,
     "fallbackProvider" TEXT NOT NULL,
     "costPerRequestUsd" REAL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
 CREATE TABLE "ai_memory_entries" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "category" TEXT NOT NULL,
     "content" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "lastAccessedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastAccessedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
 CREATE TABLE "profit_snapshots" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
-    "periodStart" DATETIME NOT NULL,
-    "periodEnd" DATETIME NOT NULL,
+    "periodStart" TIMESTAMP(3) NOT NULL,
+    "periodEnd" TIMESTAMP(3) NOT NULL,
     "revenueUsd" REAL NOT NULL DEFAULT 0,
     "infraCostUsd" REAL NOT NULL DEFAULT 0,
     "aiCostUsd" REAL NOT NULL DEFAULT 0,
     "workerCostUsd" REAL NOT NULL DEFAULT 0,
     "profitUsd" REAL NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateIndex

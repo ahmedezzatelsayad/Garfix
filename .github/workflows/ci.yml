@@ -378,19 +378,18 @@ jobs:
 
       - name: Sync database schema
         run: |
-          echo "Pushing database schema via prisma db push..."
-          # P1 FIX (audit): CI was trying 'prisma migrate deploy' first, which
-          # fails because early migrations use SQLite syntax (AUTOINCREMENT,
-          # DATETIME). The failed migration leaves the DB in an error state
-          # (P3018) that prevents 'db push' from running as fallback.
-          # Fix: use 'db push' only — it reads schema.prisma directly and
-          # syncs to PostgreSQL without running migration files.
-          if ! bunx prisma db push --accept-data-loss 2>&1 | tee migrate-output.txt; then
-            echo "❌ Prisma db push FAILED — database schema is not ready for tests"
+          echo "Running prisma migrate deploy on fresh PostgreSQL..."
+          # P1 FIX (audit): Migrations are now PostgreSQL-compatible (SQLite
+          # syntax fixed: AUTOINCREMENT→SERIAL, DATETIME→TIMESTAMP(3)).
+          # CI uses 'prisma migrate deploy' to verify all 29 migrations run
+          # from scratch on a fresh PostgreSQL 17 database — this is the
+          # same command production deploy uses.
+          if ! bunx prisma migrate deploy 2>&1 | tee migrate-output.txt; then
+            echo "❌ prisma migrate deploy FAILED — migrations are not PostgreSQL-compatible"
             echo "Review migrate-output.txt for details"
             exit 1
           fi
-          echo "✅ Database schema synced successfully"
+          echo "✅ All migrations applied successfully via prisma migrate deploy"
 
       - name: Run unit tests (all test files)
         run: |
@@ -501,14 +500,14 @@ jobs:
 
       - name: Sync database schema
         run: |
-          echo "Pushing database schema via prisma db push..."
-          # P1 FIX: same fix as unit-tests job — db push only, no migrate deploy
-          if ! bunx prisma db push --accept-data-loss 2>&1 | tee migrate-output.txt; then
-            echo "❌ Prisma db push FAILED — database schema is not ready for tests"
+          echo "Running prisma migrate deploy on fresh PostgreSQL..."
+          # P1 FIX: same as unit-tests — migrate deploy (not db push)
+          if ! bunx prisma migrate deploy 2>&1 | tee migrate-output.txt; then
+            echo "❌ prisma migrate deploy FAILED"
             echo "Review migrate-output.txt for details"
             exit 1
           fi
-          echo "✅ Database schema synced successfully"
+          echo "✅ All migrations applied successfully"
 
       - name: Seed test database
         run: bun run seed 2>&1 || echo "Seed completed with warnings"

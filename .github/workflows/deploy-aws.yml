@@ -80,7 +80,7 @@ jobs:
             # This ensures the DB schema is updated before the new code tries to use it
             export GARFIX_IMAGE_TAG=garfix:${{ github.sha }}
             echo "Running database migrations..."
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod run --rm app bunx prisma migrate deploy 2>&1 || bunx prisma db push --accept-data-loss
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod run --rm app bunx prisma migrate deploy
             MIGRATION_EXIT=$?
             if [ $MIGRATION_EXIT -ne 0 ]; then
               echo "❌ Migration failed — aborting deploy"
@@ -170,7 +170,7 @@ jobs:
             # P2 FIX: Run Prisma migrations BEFORE deploying new app version
             export GARFIX_IMAGE_TAG=garfix:${{ github.sha }}
             echo "Running database migrations on PRODUCTION..."
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod run --rm app bunx prisma migrate deploy 2>&1 || bunx prisma db push --accept-data-loss
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod run --rm app bunx prisma migrate deploy
             MIGRATION_EXIT=$?
             if [ $MIGRATION_EXIT -ne 0 ]; then
               echo "❌ Migration failed — aborting production deploy"
