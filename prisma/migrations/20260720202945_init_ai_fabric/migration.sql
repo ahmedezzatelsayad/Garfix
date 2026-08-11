@@ -13,6 +13,11 @@ CREATE TABLE "app_users" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL
 );
+CREATE UNIQUE INDEX "app_users_uid_key" ON "app_users"("uid");
+CREATE UNIQUE INDEX "app_users_email_key" ON "app_users"("email");
+CREATE INDEX "app_users_role_idx" ON "app_users"("role");
+
+
 
 -- CreateTable
 CREATE TABLE "email_verifications" (
@@ -993,13 +998,10 @@ CREATE TABLE "profit_snapshots" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "app_users_uid_key" ON "app_users"("uid");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "app_users_email_key" ON "app_users"("email");
 
 -- CreateIndex
-CREATE INDEX "app_users_role_idx" ON "app_users"("role");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "email_verifications_token_key" ON "email_verifications"("token");
