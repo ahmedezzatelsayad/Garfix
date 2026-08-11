@@ -995,8 +995,10 @@ export async function submitUaeFtaInvoice(
 
     const invoiceHash = computeUaeFtaInvoiceHash(signedXml);
 
-    // Simulate Peppol response
-    const isSimulation = true; // Placeholder flag — will be false in production
+    // P1 FIX (audit): isSimulation was hardcoded to true. Now controlled by env var.
+    // In production with a real Peppol Access Point contract, set UAE_FTA_PRODUCTION_MODE=true.
+    // Until then, submissions are simulated (UAE FTA Peppol AP requires a commercial contract).
+    const isSimulation = process.env.UAE_FTA_PRODUCTION_MODE !== "true";
     const submissionStatus = isSimulation
       ? (invoiceType === "standard" ? "cleared" : "accepted")
       : "pending";

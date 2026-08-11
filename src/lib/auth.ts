@@ -63,8 +63,10 @@ function resolveSecret(envVar: string, name: string): string {
     console.warn(`⚠️  ${name} not set — using dev default. DO NOT use in production.`);
     return `dev-only-${name.toLowerCase()}-not-for-production-static-key`;
   }
-  if (val.length < 16) {
-    throw new Error(`FATAL: ${name} must be at least 16 characters.`);
+  // P1 FIX (audit): Minimum 32 chars (was 16) per OWASP 2025 recommendation.
+  // HS256 with <32 bytes of key material is vulnerable to brute-force.
+  if (val.length < 32) {
+    throw new Error(`FATAL: ${name} must be at least 32 characters (got ${val.length}). Use: openssl rand -hex 64`);
   }
   return val;
 }

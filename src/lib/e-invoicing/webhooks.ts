@@ -182,19 +182,45 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
       : input.rawPayload;
 
   // ── 4. Persist the receipt row ──────────────────────────────────────
-  const receipt = await db.eInvoiceReceipt.create({
-    data: {
-      companySlug,
-      invoiceId,
-      authority: input.authority,
-      eventType: input.eventType,
-      externalUuid: input.externalUuid || null,
-      status: input.status,
-      rawPayload: truncatedPayload,
-      signatureValid: input.signatureValid ?? null,
-      rejectionReason: input.rejectionReason || null,
-    },
-  });
+  // P1 FIX (audit): Previously findFirst → create with no race protection.
+  // Two concurrent duplicate webhooks both passed the findFirst, both called
+  // create, the second hit the @@unique constraint and threw 500.
+  // Now we catch P2002 and re-fetch the existing receipt.
+  let receipt;
+  try {
+    receipt = await db.eInvoiceReceipt.create({
+      data: {
+        companySlug,
+        invoiceId,
+        authority: input.authority,
+        eventType: input.eventType,
+        externalUuid: input.externalUuid || null,
+        status: input.status,
+        rawPayload: truncatedPayload,
+        signatureValid: input.signatureValid ?? null,
+        rejectionReason: input.rejectionReason || null,
+      },
+    });
+  } catch (err: any) {
+    // P2002 = unique constraint violation = duplicate webhook already processed
+    if (err?.code === "P2002" && input.externalUuid) {
+      logger.info("[e-invoicing:webhooks] duplicate receipt caught via P2002 — re-fetching existing", {
+        authority: input.authority,
+        externalUuid: input.externalUuid,
+        eventType: input.eventType,
+      });
+      const existing = await db.eInvoiceReceipt.findFirst({
+        where: {
+          externalUuid: input.externalUuid,
+          authority: input.authority,
+          eventType: input.eventType,
+        },
+      });
+      if (existing) return existing;
+      // If we can't find it (edge case), re-throw the original error
+    }
+    throw err;
+  }
 
   // ── 5. Update EInvoice ONLY if signature is valid ───────────────────
   // FIX #2 (CRITICAL): gate EInvoice mutation on signatureValid === true.

@@ -378,11 +378,11 @@ jobs:
 
       - name: Sync database schema
         run: |
-          echo "Pushing database schema (prisma db push)..."
+          echo "Pushing database schema (prisma migrate deploy, fallback to db push)..."
           # Use db:push instead of migrate deploy because the migration files
           # were generated for SQLite (AUTOINCREMENT syntax) and fail on PostgreSQL.
           # db:push reads the Prisma schema directly and syncs it to the database.
-          if ! bunx prisma db push --accept-data-loss 2>&1 | tee migrate-output.txt; then
+          if ! bunx prisma migrate deploy 2>&1 || bunx prisma db push --accept-data-loss 2>&1 | tee migrate-output.txt; then
             echo "❌ Prisma db push FAILED — database schema is not ready for tests"
             echo "Review migrate-output.txt for details"
             exit 1
@@ -498,10 +498,10 @@ jobs:
 
       - name: Sync database schema
         run: |
-          echo "Pushing database schema (prisma db push)..."
+          echo "Pushing database schema (prisma migrate deploy, fallback to db push)..."
           # Use db:push instead of migrate deploy because the migration files
           # were generated for SQLite (AUTOINCREMENT syntax) and fail on PostgreSQL.
-          if ! bunx prisma db push --accept-data-loss 2>&1 | tee migrate-output.txt; then
+          if ! bunx prisma migrate deploy 2>&1 || bunx prisma db push --accept-data-loss 2>&1 | tee migrate-output.txt; then
             echo "❌ Prisma db push FAILED — database schema is not ready for tests"
             echo "Review migrate-output.txt for details"
             exit 1

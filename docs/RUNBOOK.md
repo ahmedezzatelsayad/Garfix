@@ -80,11 +80,36 @@ curl -sf http://localhost:3000/api/health | jq '.status'
 
 ### Database Backup
 
-```bash
-# Manual backup
-pg_dump $DATABASE_URL | gzip > /backups/garfix-$(date +%Y%m%d-%H%M%S).sql.gz
+The system creates **encrypted** PostgreSQL backups automatically (every 24h via
+the scheduler worker). Backups are stored as `.sql.enc` files (AES-256-GCM
+encrypted via `PAYMENTS_ENC_KEY`).
 
-# Restore
+```bash
+# ── Manual backup (plaintext .sql) ──
+pg_dump $DATABASE_URL > /tmp/garfix-manual.sql
+
+# ── Restore from ENCRYPTED system backup (.sql.enc) ──
+# P1 FIX (audit): Previous docs showed gunzip on .sql.gz — but system backups
+# are encrypted .sql.enc, not gzipped. The correct restore procedure is:
+
+# 1. Decrypt the backup file
+#    (requires PAYMENTS_ENC_KEY to match the one used at backup time)
+node -e "
+  const { decryptSecret } = require('./src/lib/cryptoVault');
+  const fs = require('fs');
+  const encrypted = fs.readFileSync('/app/storage/backups/garfix-20260809.sql.enc', 'utf8');
+  const decrypted = decryptSecret(encrypted);
+  fs.writeFileSync('/tmp/garfix-decrypted.sql', decrypted);
+  console.log('Decrypted to /tmp/garfix-decrypted.sql');
+"
+
+# 2. Restore to PostgreSQL
+psql $DATABASE_URL < /tmp/garfix-decrypted.sql
+
+# 3. Clean up the decrypted file (security)
+shred -u /tmp/garfix-decrypted.sql
+
+# ── Restore from MANUAL backup (.sql.gz) ──
 gunzip < /backups/garfix-20260809-120000.sql.gz | psql $DATABASE_URL
 ```
 

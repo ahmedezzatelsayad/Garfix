@@ -3,8 +3,10 @@
  */
 import { test, expect } from "@playwright/test";
 
-const TEST_EMAIL = "admin@garfix.app";
-const TEST_PASSWORD = "admin123";
+// P0 FIX (audit): Use env vars so CI (which sets FOUNDER_EMAIL + FOUNDER_PASSWORD
+// in the e2e workflow) uses the correct seed credentials.
+const TEST_EMAIL = process.env.FOUNDER_EMAIL || "founder@garfix.app";
+const TEST_PASSWORD = process.env.FOUNDER_PASSWORD || "E2eTestPassword2026!";
 
 test.describe("Authentication", () => {
   test("should show login page for unauthenticated users", async ({ page }) => {

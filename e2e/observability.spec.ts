@@ -35,7 +35,7 @@ test.describe("Observability — Circuit Breaker Health Dashboard", () => {
   test("Circuit breaker health score is 0-100", async ({ request }) => {
     // First login to get auth cookie
     const loginRes = await request.post("/api/auth/login", {
-      data: { email: "founder@garfix.io", password: "test_password" },
+      data: { email: process.env.FOUNDER_EMAIL || "founder@garfix.app", password: process.env.FOUNDER_PASSWORD || "E2eTestPassword2026!" },
     });
 
     if (loginRes.status() === 200) {
@@ -50,7 +50,7 @@ test.describe("Observability — Circuit Breaker Health Dashboard", () => {
 
   test("POST /api/health/circuit-breakers — reset action requires valid breaker name", async ({ request }) => {
     const loginRes = await request.post("/api/auth/login", {
-      data: { email: "founder@garfix.io", password: "test_password" },
+      data: { email: process.env.FOUNDER_EMAIL || "founder@garfix.app", password: process.env.FOUNDER_PASSWORD || "E2eTestPassword2026!" },
     });
 
     if (loginRes.status() === 200) {
@@ -78,7 +78,7 @@ test.describe("Observability — Circuit Breaker Health Dashboard", () => {
 test.describe("Observability — Audit Trail", () => {
   test("GET /api/health/audit-trail returns audit events", async ({ request }) => {
     const loginRes = await request.post("/api/auth/login", {
-      data: { email: "founder@garfix.io", password: "test_password" },
+      data: { email: process.env.FOUNDER_EMAIL || "founder@garfix.app", password: process.env.FOUNDER_PASSWORD || "E2eTestPassword2026!" },
     });
 
     if (loginRes.status() === 200) {
@@ -95,7 +95,7 @@ test.describe("Observability — Audit Trail", () => {
 
   test("GET /api/health/audit-trail supports channel filter", async ({ request }) => {
     const loginRes = await request.post("/api/auth/login", {
-      data: { email: "founder@garfix.io", password: "test_password" },
+      data: { email: process.env.FOUNDER_EMAIL || "founder@garfix.app", password: process.env.FOUNDER_PASSWORD || "E2eTestPassword2026!" },
     });
 
     if (loginRes.status() === 200) {
@@ -110,7 +110,7 @@ test.describe("Observability — Audit Trail", () => {
 
   test("Audit trail events have required fields", async ({ request }) => {
     const loginRes = await request.post("/api/auth/login", {
-      data: { email: "founder@garfix.io", password: "test_password" },
+      data: { email: process.env.FOUNDER_EMAIL || "founder@garfix.app", password: process.env.FOUNDER_PASSWORD || "E2eTestPassword2026!" },
     });
 
     if (loginRes.status() === 200) {
@@ -144,7 +144,7 @@ test.describe("Observability — System Health", () => {
 
   test("GET /api/metrics returns system metrics", async ({ request }) => {
     const loginRes = await request.post("/api/auth/login", {
-      data: { email: "founder@garfix.io", password: "test_password" },
+      data: { email: process.env.FOUNDER_EMAIL || "founder@garfix.app", password: process.env.FOUNDER_PASSWORD || "E2eTestPassword2026!" },
     });
 
     if (loginRes.status() === 200) {
@@ -157,7 +157,7 @@ test.describe("Observability — System Health", () => {
 test.describe("Observability — Startup Check", () => {
   test("GET /api/startup-check returns environment validation", async ({ request }) => {
     const loginRes = await request.post("/api/auth/login", {
-      data: { email: "founder@garfix.io", password: "test_password" },
+      data: { email: process.env.FOUNDER_EMAIL || "founder@garfix.app", password: process.env.FOUNDER_PASSWORD || "E2eTestPassword2026!" },
     });
 
     if (loginRes.status() === 200) {
