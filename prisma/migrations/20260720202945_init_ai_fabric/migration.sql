@@ -31,7 +31,9 @@ CREATE TABLE "email_verifications" (
     "expiresAt" TIMESTAMP(3) NOT NULL,
     "usedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "email_verifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "app_users" ("uid") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "email_verifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "app_users" ("uid") ON DELETE CASCADE ON UPDATE CASCADE,
+    
+    CONSTRAINT "email_verifications_token_key" UNIQUE ("token")
 );
 
 -- CreateTable
@@ -85,7 +87,9 @@ CREATE TABLE "setup_wizard_progress" (
     "data" TEXT NOT NULL DEFAULT '{}',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "setup_wizard_progress_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "setup_wizard_progress_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE,
+    
+    CONSTRAINT "setup_wizard_progress_companySlug_key" UNIQUE ("companySlug")
 );
 
 -- CreateTable
@@ -401,7 +405,9 @@ CREATE TABLE "e_invoices" (
     "deletedAt" TIMESTAMP(3),
     "deletedBy" TEXT,
     CONSTRAINT "e_invoices_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "invoices" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "e_invoices_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "e_invoices_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE,
+    
+    CONSTRAINT "e_invoices_invoiceId_key" UNIQUE ("invoiceId")
 );
 
 -- CreateTable
@@ -422,7 +428,9 @@ CREATE TABLE "order_deliveries" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "order_deliveries_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "order_deliveries_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "invoices" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "order_deliveries_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "app_users" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    CONSTRAINT "order_deliveries_driverId_fkey" FOREIGN KEY ("driverId") REFERENCES "app_users" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    
+    CONSTRAINT "order_deliveries_invoiceId_key" UNIQUE ("invoiceId")
 );
 
 -- CreateTable
@@ -482,7 +490,9 @@ CREATE TABLE "permissions" (
     "labelEn" TEXT,
     "category" TEXT NOT NULL DEFAULT 'general',
     "description" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT "permissions_key_key" UNIQUE ("key")
 );
 
 -- CreateTable
@@ -597,7 +607,9 @@ CREATE TABLE "modules" (
     "settings" TEXT NOT NULL DEFAULT '{}',
     "installedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    
+    CONSTRAINT "modules_identifier_key" UNIQUE ("identifier")
 );
 
 -- CreateTable
@@ -698,7 +710,9 @@ CREATE TABLE "invoice_template_settings" (
     "invoiceTypes" TEXT NOT NULL DEFAULT 'sales,purchase,quote',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "invoice_template_settings_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "invoice_template_settings_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE,
+    
+    CONSTRAINT "invoice_template_settings_companySlug_key" UNIQUE ("companySlug")
 );
 
 -- CreateTable
@@ -772,7 +786,9 @@ CREATE TABLE "feature_flags" (
     "plans" TEXT NOT NULL DEFAULT '[]',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    
+    CONSTRAINT "feature_flags_key_key" UNIQUE ("key")
 );
 
 -- CreateTable
@@ -925,7 +941,9 @@ CREATE TABLE "company_runtimes" (
     "status" TEXT NOT NULL DEFAULT 'active',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "company_runtimes_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "company_runtimes_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    
+    CONSTRAINT "company_runtimes_companyId_key" UNIQUE ("companyId")
 );
 
 -- CreateTable
@@ -950,7 +968,9 @@ CREATE TABLE "ai_fabric_cache_entries" (
     "hitCount" INTEGER NOT NULL DEFAULT 0,
     "expiresAt" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    
+    CONSTRAINT "ai_fabric_cache_entries_key_key" UNIQUE ("key")
 );
 
 -- CreateTable
@@ -962,7 +982,9 @@ CREATE TABLE "budget_configs" (
     "alertThresholdPct" INTEGER NOT NULL DEFAULT 80,
     "hardStopEnabled" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    
+    CONSTRAINT "budget_configs_companySlug_key" UNIQUE ("companySlug")
 );
 
 -- CreateTable
@@ -973,7 +995,9 @@ CREATE TABLE "provider_configs" (
     "fallbackProvider" TEXT NOT NULL,
     "costPerRequestUsd" REAL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    
+    CONSTRAINT "provider_configs_taskType_key" UNIQUE ("taskType")
 );
 
 -- CreateTable
@@ -1007,7 +1031,6 @@ CREATE TABLE "profit_snapshots" (
 -- CreateIndex
 
 -- CreateIndex
-CREATE UNIQUE INDEX "email_verifications_token_key" ON "email_verifications"("token");
 
 -- CreateIndex
 CREATE INDEX "email_verifications_userId_purpose_createdAt_idx" ON "email_verifications"("userId", "purpose", "createdAt");
@@ -1030,7 +1053,6 @@ CREATE INDEX "companies_plan_idx" ON "companies"("plan");
 CREATE INDEX "companies_deletedAt_idx" ON "companies"("deletedAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "setup_wizard_progress_companySlug_key" ON "setup_wizard_progress"("companySlug");
 
 -- CreateIndex
 CREATE INDEX "clients_companySlug_idx" ON "clients"("companySlug");
@@ -1231,7 +1253,6 @@ CREATE INDEX "journal_entry_lines_entryId_idx" ON "journal_entry_lines"("entryId
 CREATE INDEX "journal_entry_lines_accountId_idx" ON "journal_entry_lines"("accountId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "e_invoices_invoiceId_key" ON "e_invoices"("invoiceId");
 
 -- CreateIndex
 CREATE INDEX "e_invoices_invoiceId_idx" ON "e_invoices"("invoiceId");
@@ -1246,7 +1267,6 @@ CREATE INDEX "e_invoices_companySlug_submissionStatus_idx" ON "e_invoices"("comp
 CREATE INDEX "e_invoices_companySlug_deletedAt_idx" ON "e_invoices"("companySlug", "deletedAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "order_deliveries_invoiceId_key" ON "order_deliveries"("invoiceId");
 
 -- CreateIndex
 CREATE INDEX "order_deliveries_companySlug_idx" ON "order_deliveries"("companySlug");
@@ -1282,7 +1302,6 @@ CREATE INDEX "payment_transactions_provider_idx" ON "payment_transactions"("prov
 CREATE UNIQUE INDEX "payment_transactions_provider_providerEventId_key" ON "payment_transactions"("provider", "providerEventId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "permissions_key_key" ON "permissions"("key");
 
 -- CreateIndex
 CREATE INDEX "permissions_category_idx" ON "permissions"("category");
@@ -1360,7 +1379,6 @@ CREATE INDEX "platform_settings_history_settingKey_idx" ON "platform_settings_hi
 CREATE INDEX "platform_settings_history_changedAt_idx" ON "platform_settings_history"("changedAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "modules_identifier_key" ON "modules"("identifier");
 
 -- CreateIndex
 CREATE INDEX "modules_isActive_idx" ON "modules"("isActive");
@@ -1396,7 +1414,6 @@ CREATE INDEX "notifications_companySlug_idx" ON "notifications"("companySlug");
 CREATE INDEX "invoice_templates_companySlug_idx" ON "invoice_templates"("companySlug");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "invoice_template_settings_companySlug_key" ON "invoice_template_settings"("companySlug");
 
 -- CreateIndex
 CREATE INDEX "ai_usage_logs_companySlug_createdAt_idx" ON "ai_usage_logs"("companySlug", "createdAt");
@@ -1429,7 +1446,6 @@ CREATE INDEX "ai_memory_notes_companySlug_entityType_entityId_idx" ON "ai_memory
 CREATE INDEX "ai_memory_notes_companySlug_createdAt_idx" ON "ai_memory_notes"("companySlug", "createdAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "feature_flags_key_key" ON "feature_flags"("key");
 
 -- CreateIndex
 CREATE INDEX "feature_flags_isActive_idx" ON "feature_flags"("isActive");
@@ -1480,7 +1496,6 @@ CREATE INDEX "ai_benchmark_results_modelRegistryId_createdAt_idx" ON "ai_benchma
 CREATE INDEX "ai_benchmark_results_capability_createdAt_idx" ON "ai_benchmark_results"("capability", "createdAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "company_runtimes_companyId_key" ON "company_runtimes"("companyId");
 
 -- CreateIndex
 CREATE INDEX "company_runtimes_status_idx" ON "company_runtimes"("status");
@@ -1498,7 +1513,6 @@ CREATE INDEX "ai_request_logs_requestType_resolvedBy_createdAt_idx" ON "ai_reque
 CREATE INDEX "ai_request_logs_resolvedBy_createdAt_idx" ON "ai_request_logs"("resolvedBy", "createdAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ai_fabric_cache_entries_key_key" ON "ai_fabric_cache_entries"("key");
 
 -- CreateIndex
 CREATE INDEX "ai_fabric_cache_entries_companySlug_idx" ON "ai_fabric_cache_entries"("companySlug");
@@ -1507,13 +1521,11 @@ CREATE INDEX "ai_fabric_cache_entries_companySlug_idx" ON "ai_fabric_cache_entri
 CREATE INDEX "ai_fabric_cache_entries_expiresAt_idx" ON "ai_fabric_cache_entries"("expiresAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "budget_configs_companySlug_key" ON "budget_configs"("companySlug");
 
 -- CreateIndex
 CREATE INDEX "budget_configs_companySlug_idx" ON "budget_configs"("companySlug");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "provider_configs_taskType_key" ON "provider_configs"("taskType");
 
 -- CreateIndex
 CREATE INDEX "ai_memory_entries_companySlug_category_idx" ON "ai_memory_entries"("companySlug", "category");
