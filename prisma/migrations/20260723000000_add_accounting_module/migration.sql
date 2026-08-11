@@ -22,6 +22,23 @@ ALTER TABLE "journal_entry_lines" ADD COLUMN "costCenterId" INTEGER;
 
 -- ── FiscalPeriod (فترات مالية) ──────────────────────────────────────────────
 
+-- ─── suppliers (moved from 20260729000000 — must exist before FK references) ───
+CREATE TABLE IF NOT EXISTS "suppliers" (
+    "id" SERIAL PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "nameAr" TEXT,
+    "contactPerson" TEXT,
+    "email" TEXT,
+    "phone" TEXT,
+    "address" TEXT,
+    "taxId" TEXT,
+    "paymentTerms" TEXT,
+    "companySlug" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "suppliers_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
 CREATE TABLE "fiscal_periods" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
