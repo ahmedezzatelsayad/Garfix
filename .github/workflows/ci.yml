@@ -378,11 +378,14 @@ jobs:
 
       - name: Sync database schema
         run: |
-          echo "Pushing database schema (prisma migrate deploy, fallback to db push)..."
-          # Use db:push instead of migrate deploy because the migration files
-          # were generated for SQLite (AUTOINCREMENT syntax) and fail on PostgreSQL.
-          # db:push reads the Prisma schema directly and syncs it to the database.
-          if ! bunx prisma migrate deploy 2>&1 || bunx prisma db push --accept-data-loss 2>&1 | tee migrate-output.txt; then
+          echo "Pushing database schema via prisma db push..."
+          # P1 FIX (audit): CI was trying 'prisma migrate deploy' first, which
+          # fails because early migrations use SQLite syntax (AUTOINCREMENT,
+          # DATETIME). The failed migration leaves the DB in an error state
+          # (P3018) that prevents 'db push' from running as fallback.
+          # Fix: use 'db push' only — it reads schema.prisma directly and
+          # syncs to PostgreSQL without running migration files.
+          if ! bunx prisma db push --accept-data-loss 2>&1 | tee migrate-output.txt; then
             echo "❌ Prisma db push FAILED — database schema is not ready for tests"
             echo "Review migrate-output.txt for details"
             exit 1
@@ -498,10 +501,9 @@ jobs:
 
       - name: Sync database schema
         run: |
-          echo "Pushing database schema (prisma migrate deploy, fallback to db push)..."
-          # Use db:push instead of migrate deploy because the migration files
-          # were generated for SQLite (AUTOINCREMENT syntax) and fail on PostgreSQL.
-          if ! bunx prisma migrate deploy 2>&1 || bunx prisma db push --accept-data-loss 2>&1 | tee migrate-output.txt; then
+          echo "Pushing database schema via prisma db push..."
+          # P1 FIX: same fix as unit-tests job — db push only, no migrate deploy
+          if ! bunx prisma db push --accept-data-loss 2>&1 | tee migrate-output.txt; then
             echo "❌ Prisma db push FAILED — database schema is not ready for tests"
             echo "Review migrate-output.txt for details"
             exit 1
