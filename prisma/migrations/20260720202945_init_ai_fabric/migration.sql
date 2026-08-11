@@ -11,10 +11,11 @@ CREATE TABLE "app_users" (
     "tokenVersion" INTEGER NOT NULL DEFAULT 0,
     "emailVerified" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    
+    CONSTRAINT "app_users_uid_key" UNIQUE ("uid"),
+    CONSTRAINT "app_users_email_key" UNIQUE ("email")
 );
-CREATE UNIQUE INDEX "app_users_uid_key" ON "app_users"("uid");
-CREATE UNIQUE INDEX "app_users_email_key" ON "app_users"("email");
 CREATE INDEX "app_users_role_idx" ON "app_users"("role");
 
 
@@ -70,7 +71,9 @@ CREATE TABLE "companies" (
     "whatsappCredentialsUpdatedAt" TIMESTAMP(3),
     "deletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    
+    CONSTRAINT "companies_slug_key" UNIQUE ("slug")
 );
 
 -- CreateTable
@@ -1010,7 +1013,6 @@ CREATE UNIQUE INDEX "email_verifications_token_key" ON "email_verifications"("to
 CREATE INDEX "email_verifications_userId_purpose_createdAt_idx" ON "email_verifications"("userId", "purpose", "createdAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "companies_slug_key" ON "companies"("slug");
 
 -- CreateIndex
 CREATE INDEX "companies_stripeCustomerId_idx" ON "companies"("stripeCustomerId");
