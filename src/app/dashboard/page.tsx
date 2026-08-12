@@ -3,7 +3,10 @@
  *
  * AWS/Docker: redirects to / (AppShell loads dashboard view).
  * Vercel: pure HTML dashboard with inline JS.
+ *
+ * DEPLOYMENT FIX: force-dynamic prevents prerender failure.
  */
+export const dynamic = 'force-dynamic';
 import { redirect } from "next/navigation";
 import VercelDashboard from "./VercelDashboard";
 

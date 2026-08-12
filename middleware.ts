@@ -222,4 +222,4 @@ export function middleware(req: NextRequest): NextResponse {
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|_next/data|favicon.ico|robots.txt|manifest.json|icons|sw.js).*)"],
-} as const;
+};

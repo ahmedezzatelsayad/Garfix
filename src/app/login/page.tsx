@@ -3,7 +3,10 @@
  *
  * AWS/Docker: full React login form with AuthContext.
  * Vercel: pure HTML form with inline JS (no hydration needed).
+ *
+ * DEPLOYMENT FIX: force-dynamic prevents prerender failure.
  */
+export const dynamic = 'force-dynamic';
 import { LoginForm } from "./LoginForm";
 import { VercelLoginForm } from "./VercelLoginForm";
 

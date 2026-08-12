@@ -2,7 +2,11 @@
  * /invoices — Pure HTML invoices page (Vercel) / AppShell view (AWS).
  * Vercel: fetches /api/invoices and renders table with inline JS.
  * AWS: redirects to / (AppShell loads invoices view).
+ *
+ * DEPLOYMENT FIX: force-dynamic prevents prerender failure when
+ * process.env.VERCEL is undefined during next build.
  */
+export const dynamic = 'force-dynamic';
 import { redirect } from "next/navigation";
 import VercelInvoices from "./VercelInvoices";
 
