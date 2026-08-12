@@ -85,11 +85,6 @@ function getJwtRefreshSecret(): string {
   return _jwtRefreshSecret;
 }
 
-// Backward-compatible getters: most code references JWT_SECRET / JWT_REFRESH_SECRET
-// as if they were const — these getters return the resolved value lazily.
-// Token signing/verification functions below use getJwtSecret()/getJwtRefreshSecret().
-const JWT_SECRET_PROXY = { get: () => getJwtSecret() } as const;
-const JWT_REFRESH_SECRET_PROXY = { get: () => getJwtRefreshSecret() } as const;
 const ACCESS_TTL = parseInt(process.env.JWT_ACCESS_TTL_SECONDS || "1800", 10); // 30 min
 const REFRESH_TTL = parseInt(process.env.JWT_REFRESH_TTL_SECONDS || "2592000", 10); // 30 days
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "10", 10);
