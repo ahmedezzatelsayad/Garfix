@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════════════
--- P0 FIX (Audit v2): Fix companyId column type + decimal precision drift
+-- P0 FIX (Audit v2 · Phase 0): Fix companyId column type + decimal precision drift
 -- ════════════════════════════════════════════════════════════════════════════
 --
 -- Issues fixed by this migration:
@@ -15,7 +15,12 @@
 -- silent truncation of opening balances beyond 3 decimal places.
 --
 -- DB-07: opening_balance_entries.amount has the same DECIMAL(65,3) drift.
--- (Fixed here for consistency — see schema.prisma OpeningBalanceEntry model.)
+--
+-- DB-05: journal_entry_lines index was created on "entryId" (legacy column name)
+-- but the Prisma schema declares the FK as "journalEntryId". The index should
+-- be on the actual FK column. We check for both column names and handle
+-- whichever exists (the table was created with "entryId" in the init migration
+-- but the schema declares "journalEntryId" — there may be drift).
 --
 -- This migration is IDEMPOTENT — it uses IF NOT EXISTS / guards so it can
 -- be safely re-run. The ALTER COLUMN ... TYPE is safe because TEXT can
@@ -23,11 +28,8 @@
 -- ════════════════════════════════════════════════════════════════════════════
 
 -- DB-03: Fix companyId column type from INTEGER to TEXT on recurring_journal_entries
--- The column is currently INTEGER; Prisma sends cuid strings. Convert to TEXT.
--- Using USING clause to coerce existing integer values to text.
 DO $$
 BEGIN
-  -- Check if the column exists and is currently INTEGER
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'recurring_journal_entries'
@@ -85,13 +87,56 @@ BEGIN
 END $$;
 
 -- ──────────────────────────────────────────────────────────────────────────
--- DB-05: Fix journal_entry_lines index — was created on non-existent "entryId"
--- column instead of the actual FK column "journalEntryId".
--- Drop the bad index and create the correct one.
+-- DB-05: Fix journal_entry_lines index — was created on "entryId" (legacy
+-- column name from init migration) but the Prisma schema declares the FK
+-- as "journalEntryId". We need to:
+--   1. Drop the old index on "entryId" (if it exists)
+--   2. Rename "entryId" column to "journalEntryId" (if not already renamed)
+--   3. Create the correct index on "journalEntryId"
+-- This resolves the schema drift between the init migration and the Prisma schema.
 -- ──────────────────────────────────────────────────────────────────────────
-DROP INDEX IF EXISTS "journal_entry_lines_journalEntryId_idx";
--- The above DROP is safe even if the index was created on a different column
--- (e.g. the misnamed "entryId") because we use IF EXISTS.
 
-CREATE INDEX IF NOT EXISTS "journal_entry_lines_journalEntryId_idx"
-  ON "journal_entry_lines" ("journalEntryId");
+-- Step 1: Drop old index on "entryId" if it exists
+DROP INDEX IF EXISTS "journal_entry_lines_entryId_idx";
+DROP INDEX IF EXISTS "journal_entry_lines_journalEntryId_idx";
+
+-- Step 2: Rename "entryId" → "journalEntryId" if the old column exists
+-- AND the new column doesn't (avoid error if already renamed)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'journal_entry_lines' AND column_name = 'entryId'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'journal_entry_lines' AND column_name = 'journalEntryId'
+  ) THEN
+    ALTER TABLE "journal_entry_lines" RENAME COLUMN "entryId" TO "journalEntryId";
+  END IF;
+END $$;
+
+-- Step 3: Create the correct index on "journalEntryId" (if the column exists)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'journal_entry_lines' AND column_name = 'journalEntryId'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS "journal_entry_lines_journalEntryId_idx"
+      ON "journal_entry_lines" ("journalEntryId");
+  END IF;
+END $$;
+
+-- Also rename the FK constraint to match the new column name
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'journal_entry_lines_entryId_fkey'
+      AND table_name = 'journal_entry_lines'
+  ) THEN
+    ALTER TABLE "journal_entry_lines"
+      RENAME CONSTRAINT "journal_entry_lines_entryId_fkey"
+      TO "journal_entry_lines_journalEntryId_fkey";
+  END IF;
+END $$;
