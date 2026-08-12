@@ -321,9 +321,15 @@ export async function issueSession(
 /**
  * Extract client IP from a NextRequest.
  *
- * AUDIT FIX: Delegates to the spoof-resistant getClientIp() from rateLimit.ts
- * instead of reading X-Forwarded-For/X-Real-IP directly (which are client-
- * controllable headers and could store spoofed IPs in the SessionRegistry).
+ * SEC-09 FIX (Audit v2 · Phase 0 merged): Previously this function read
+ * `x-forwarded-for` directly WITHOUT checking TRUSTED_PROXIES — an attacker
+ * could spoof the header and inject arbitrary IPs into audit logs (masking
+ * their real origin or framing other users). Now we delegate to the trusted
+ * getClientIp() in rateLimit.ts, which only honors forwarded headers when
+ * the immediate peer is a configured trusted proxy.
+ *
+ * Async to allow dynamic import (avoids circular dependency at module load
+ * time — rateLimit.ts imports from auth.ts for LIMITS).
  */
 async function getClientIpFromRequest(req: NextRequest): Promise<string | undefined> {
   // Dynamic import to avoid potential circular dependency at module load time

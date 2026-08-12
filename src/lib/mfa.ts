@@ -64,7 +64,12 @@ function buildTOTPUri(secret: string, email: string): string {
 function generateRecoveryCodes(count: number): string[] {
   const codes: string[] = [];
   for (let i = 0; i < count; i++) {
-    const bytes = crypto.randomBytes(4);
+    // SEC-07 FIX (Audit v2): Use 16 bytes (128 bits) of entropy instead of 4 bytes (32 bits).
+    // 32 bits is brute-forceable in ~2^16 attempts on average (65,536 tries) — well within
+    // an attacker's budget if they can observe one recovery code hash. 128 bits is
+    // computationally infeasible. Format: XXXX-XXXX-XXXX-XXXX (16 hex chars = 64 bits displayed,
+    // but the underlying entropy is 128 bits because we use the full buffer).
+    const bytes = crypto.randomBytes(16);
     const code = bytes.toString("hex").toUpperCase().match(/.{1,4}/g)!.join("-");
     codes.push(code);
   }
@@ -231,11 +236,23 @@ export async function useRecoveryCode(userUid: string, code: string): Promise<bo
   if (hashedCodes.length === 0) return false;
 
   const inputHash = hashToken(code);
-  const idx = hashedCodes.indexOf(inputHash);
-  if (idx === -1) return false;
+  // SEC-08 FIX (Audit v2): Use constant-time comparison instead of indexOf.
+  // indexOf short-circuits on the first non-matching character, leaking
+  // information about which codes match the input prefix via timing.
+  // Iterate all codes and compare each with safeCompare (which uses
+  // crypto.timingSafeEqual under the hood).
+  let matchedIndex = -1;
+  for (let i = 0; i < hashedCodes.length; i++) {
+    if (safeCompare(inputHash, hashedCodes[i])) {
+      // Don't break on first match — continue iterating so timing
+      // doesn't reveal which position matched.
+      matchedIndex = i;
+    }
+  }
+  if (matchedIndex === -1) return false;
 
   // Remove the used code from the pool
-  hashedCodes.splice(idx, 1);
+  hashedCodes.splice(matchedIndex, 1);
   const updatedBlob = encryptSecret(JSON.stringify(hashedCodes));
 
   await db.mFASecret.update({

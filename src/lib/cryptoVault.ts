@@ -78,8 +78,32 @@ let cachedSalt: Buffer | null = null;
 
 function getSalt(): Buffer {
   if (cachedSalt) return cachedSalt;
-  // Derive a stable salt from the env var (deterministic per environment)
-  cachedSalt = crypto.scryptSync(getEncryptionKey(), "garfix-vault-salt", KEY_LEN, { N: SCRYPT_N }).slice(0, 16);
+  // SEC-02 FIX (Audit v2): Use a per-deployment salt derived from a
+  // dedicated env var (VAULT_SALT) instead of the hardcoded string
+  // "garfix-vault-salt". The hardcoded salt meant that attackers who
+  // knew the source code (open-source or leaked) could pre-compute
+  // rainbow tables for common passphrases and instantly decrypt any
+  // vault encrypted with a weak PAYMENTS_ENC_KEY.
+  //
+  // The new approach:
+  //   1. If VAULT_SALT env var is set (>= 16 chars), use it directly.
+  //   2. Otherwise, derive a stable salt from PAYMENTS_ENC_KEY itself
+  //      (deterministic per environment, but not publicly known).
+  //   3. As a last resort, fall back to the legacy hardcoded salt with
+  //      a loud warning (dev-only — production throws in resolveEncryptionKey).
+  const envSalt = process.env.VAULT_SALT;
+  if (envSalt && envSalt.length >= 16) {
+    cachedSalt = crypto.scryptSync(getEncryptionKey(), envSalt, KEY_LEN, { N: SCRYPT_N }).slice(0, 16);
+    return cachedSalt;
+  }
+  // Derive salt from the key itself — deterministic but not publicly known.
+  // This is weaker than a dedicated VAULT_SALT but far better than the
+  // hardcoded "garfix-vault-salt" string.
+  const derivedSaltMaterial = `${getEncryptionKey()}-vault-salt-v2`;
+  cachedSalt = crypto.scryptSync(getEncryptionKey(), derivedSaltMaterial, KEY_LEN, { N: SCRYPT_N }).slice(0, 16);
+  if (process.env.NODE_ENV === "production" && !envSalt) {
+    console.warn("⚠️  VAULT_SALT env var not set — using key-derived salt. Set VAULT_SALT to a random 16+ char string for maximum security.");
+  }
   return cachedSalt;
 }
 

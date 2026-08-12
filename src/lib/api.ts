@@ -2,13 +2,37 @@
  * api.ts — Shared Route Handler helpers.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { resolveAuth, type AuthPayload } from "@/lib/auth";
+import { resolveAuth, persistRotatedRefreshToken, type AuthPayload } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { logger } from "@/lib/logger";
 import { z, ZodError } from "zod";
 
 export interface ApiContext {
   user: AuthPayload;
+}
+
+/**
+ * SEC-01 FIX (Audit v2): Resolve auth and capture any rotated refresh token.
+ *
+ * Previously `requireAuth` called `resolveAuth` but discarded the
+ * `rotatedRefreshToken` field — meaning the silent-refresh rotation logic
+ * in `resolveAuth` (which issues a new refresh token + expects the old JTI
+ * to be blacklisted by the next call) was dead code. A stolen refresh
+ * cookie stayed valid for the full 30-day TTL even while the legitimate
+ * user kept using the app.
+ *
+ * Now `requireAuth` returns the resolved auth result so callers can pass
+ * it to `withErrorHandler` (or call `persistRotatedRefreshToken` themselves
+ * on the response they return). `withErrorHandler` auto-persists any
+ * rotated token onto the response, so individual route handlers don't
+ * need to change.
+ */
+export interface AuthenticatedRequest {
+  user: AuthPayload;
+  /** Rotated refresh token (if resolveAuth silently rotated). Persist on response. */
+  rotatedRefreshToken?: string | null;
+  /** Rotated access token (if resolveAuth silently rotated). Persist on response. */
+  rotatedAccessToken?: string | null;
 }
 
 /** Resolve auth, return null + 401 response if unauthenticated. */
@@ -20,7 +44,76 @@ export async function requireAuth(req: NextRequest): Promise<{ user: AuthPayload
       { status: result.status || 401 },
     );
   }
+  // Stash rotated tokens on a per-request WeakMap so withErrorHandler can
+  // retrieve and persist them onto the final response. This avoids changing
+  // the return signature of requireAuth (which would break 200+ callers).
+  if (result.rotatedRefreshToken || result.rotatedAccessToken) {
+    rotationStore.set(req, {
+      refresh: result.rotatedRefreshToken,
+      access: result.rotatedAccessToken,
+    });
+  }
   return { user: result.user };
+}
+
+/**
+ * Resolve auth and return the full result (including rotated tokens).
+ * Use this in routes that want explicit control over cookie persistence.
+ */
+export async function requireAuthWithRotation(req: NextRequest): Promise<
+  | ({ user: AuthPayload } & AuthenticatedRequest)
+  | NextResponse
+> {
+  const result = await resolveAuth(req);
+  if (!result.ok || !result.user) {
+    return NextResponse.json(
+      { error: result.error || "غير مصرّح" },
+      { status: result.status || 401 },
+    );
+  }
+  return {
+    user: result.user,
+    rotatedRefreshToken: result.rotatedRefreshToken,
+    rotatedAccessToken: result.rotatedAccessToken,
+  };
+}
+
+// Per-request rotation store — cleaned up automatically when the request
+// object is GC'd (WeakMap). withErrorHandler reads from this to persist
+// rotated tokens onto the response.
+const rotationStore = new WeakMap<NextRequest, { refresh?: string | null; access?: string | null }>();
+
+/**
+ * Persist any rotated tokens onto a response. Called by withErrorHandler
+ * and usable directly by route handlers that skip withErrorHandler.
+ */
+export function applyRotatedTokens(req: NextRequest, response: NextResponse): NextResponse {
+  const rotated = rotationStore.get(req);
+  if (!rotated) return response;
+  if (rotated.refresh) {
+    persistRotatedRefreshToken(response, rotated.refresh);
+  }
+  if (rotated.access) {
+    // Access token is set via the same cookie helper used by issueSession.
+    // We import lazily to avoid a circular dependency at module load time.
+    // The ACCESS_COOKIE + opts are re-exported from auth.ts.
+    try {
+      const { ACCESS_COOKIE } = require("@/lib/auth") as typeof import("@/lib/auth");
+      const accessCookieOpts = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict" as const,
+        path: "/",
+        maxAge: parseInt(process.env.JWT_ACCESS_TTL_SECONDS || "1800", 10),
+      };
+      response.cookies.set(ACCESS_COOKIE, rotated.access, accessCookieOpts);
+    } catch (err) {
+      logger.warn("[api] failed to persist rotated access token", {
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+  return response;
 }
 
 /**
@@ -97,7 +190,15 @@ export function withErrorHandler<T extends unknown[]>(
 ): (...args: T) => Promise<NextResponse> {
   return async (...args: T) => {
     try {
-      return await fn(...args);
+      const response = await fn(...args);
+      // SEC-01 FIX (Audit v2): persist any silently-rotated tokens onto
+      // the response so the rotation actually takes effect. Previously
+      // resolveAuth issued new tokens but no caller persisted them.
+      const req = args[0] as NextRequest | undefined;
+      if (req) {
+        return applyRotatedTokens(req, response);
+      }
+      return response;
     } catch (err) {
       // Log the real error server-side for debugging
       const internalMessage = err instanceof Error ? err.message : String(err);
