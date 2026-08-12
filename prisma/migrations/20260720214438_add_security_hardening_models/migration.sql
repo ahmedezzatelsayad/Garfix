@@ -72,7 +72,7 @@ CREATE TABLE "WebhookDelivery" (
 CREATE INDEX "MFASecret_userUid_idx" ON "MFASecret"("userUid");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "SessionRegistry_jti_key" ON "SessionRegistry"("jti");
+CREATE UNIQUE INDEX IF NOT EXISTS "SessionRegistry_jti_key" ON "SessionRegistry"("jti");
 
 -- CreateIndex
 CREATE INDEX "SessionRegistry_userUid_idx" ON "SessionRegistry"("userUid");
@@ -81,7 +81,7 @@ CREATE INDEX "SessionRegistry_userUid_idx" ON "SessionRegistry"("userUid");
 CREATE INDEX "SessionRegistry_expiresAt_idx" ON "SessionRegistry"("expiresAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "TamperEvidenceChain_entryId_key" ON "TamperEvidenceChain"("entryId");
+CREATE UNIQUE INDEX IF NOT EXISTS "TamperEvidenceChain_entryId_key" ON "TamperEvidenceChain"("entryId");
 
 -- CreateIndex
 CREATE INDEX "TamperEvidenceChain_companySlug_idx" ON "TamperEvidenceChain"("companySlug");

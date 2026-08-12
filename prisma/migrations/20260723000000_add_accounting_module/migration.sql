@@ -537,13 +537,13 @@ CREATE INDEX "journal_entries_reversedById_idx" ON "journal_entries" ("reversedB
 
 -- ── fiscal_periods ──────────────────────────────────────────────────────────
 
-CREATE UNIQUE INDEX "fiscal_periods_companySlug_name_key" ON "fiscal_periods" ("companySlug", "name");
+CREATE UNIQUE INDEX IF NOT EXISTS "fiscal_periods_companySlug_name_key" ON "fiscal_periods" ("companySlug", "name");
 CREATE INDEX "fiscal_periods_companySlug_startDate_idx" ON "fiscal_periods" ("companySlug", "startDate");
 CREATE INDEX "fiscal_periods_companySlug_status_idx" ON "fiscal_periods" ("companySlug", "status");
 
 -- ── cost_centers ────────────────────────────────────────────────────────────
 
-CREATE UNIQUE INDEX "cost_centers_companySlug_code_key" ON "cost_centers" ("companySlug", "code");
+CREATE UNIQUE INDEX IF NOT EXISTS "cost_centers_companySlug_code_key" ON "cost_centers" ("companySlug", "code");
 CREATE INDEX "cost_centers_companySlug_idx" ON "cost_centers" ("companySlug");
 
 -- ── bank_accounts ───────────────────────────────────────────────────────────
@@ -576,36 +576,36 @@ CREATE INDEX "fixed_assets_companySlug_isActive_idx" ON "fixed_assets" ("company
 
 -- ── depreciation_entries ────────────────────────────────────────────────────
 
-CREATE UNIQUE INDEX "depreciation_entries_assetId_period_key" ON "depreciation_entries" ("assetId", "period");
+CREATE UNIQUE INDEX IF NOT EXISTS "depreciation_entries_assetId_period_key" ON "depreciation_entries" ("assetId", "period");
 CREATE INDEX "depreciation_entries_companySlug_period_idx" ON "depreciation_entries" ("companySlug", "period");
 
 -- ── payment_vouchers ────────────────────────────────────────────────────────
 
-CREATE UNIQUE INDEX "payment_vouchers_companySlug_voucherNumber_key" ON "payment_vouchers" ("companySlug", "voucherNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "payment_vouchers_companySlug_voucherNumber_key" ON "payment_vouchers" ("companySlug", "voucherNumber");
 CREATE INDEX "payment_vouchers_companySlug_date_idx" ON "payment_vouchers" ("companySlug", "date");
 CREATE INDEX "payment_vouchers_companySlug_voucherType_idx" ON "payment_vouchers" ("companySlug", "voucherType");
 
 -- ── quotations ──────────────────────────────────────────────────────────────
 
-CREATE UNIQUE INDEX "quotations_companySlug_quotationNumber_key" ON "quotations" ("companySlug", "quotationNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "quotations_companySlug_quotationNumber_key" ON "quotations" ("companySlug", "quotationNumber");
 CREATE INDEX "quotations_companySlug_date_idx" ON "quotations" ("companySlug", "date");
 CREATE INDEX "quotations_companySlug_status_idx" ON "quotations" ("companySlug", "status");
 
 -- ── purchase_orders ─────────────────────────────────────────────────────────
 
-CREATE UNIQUE INDEX "purchase_orders_companySlug_poNumber_key" ON "purchase_orders" ("companySlug", "poNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "purchase_orders_companySlug_poNumber_key" ON "purchase_orders" ("companySlug", "poNumber");
 CREATE INDEX "purchase_orders_companySlug_date_idx" ON "purchase_orders" ("companySlug", "date");
 CREATE INDEX "purchase_orders_companySlug_status_idx" ON "purchase_orders" ("companySlug", "status");
 
 -- ── budgets ─────────────────────────────────────────────────────────────────
 
-CREATE UNIQUE INDEX "budgets_companySlug_periodName_accountId_costCenterId_key" ON "budgets" ("companySlug", "periodName", "accountId", "costCenterId");
+CREATE UNIQUE INDEX IF NOT EXISTS "budgets_companySlug_periodName_accountId_costCenterId_key" ON "budgets" ("companySlug", "periodName", "accountId", "costCenterId");
 CREATE INDEX "budgets_companySlug_fiscalYear_idx" ON "budgets" ("companySlug", "fiscalYear");
 CREATE INDEX "budgets_accountId_idx" ON "budgets" ("accountId");
 
 -- ── letters_of_credit ───────────────────────────────────────────────────────
 
-CREATE UNIQUE INDEX "letters_of_credit_companySlug_lcNumber_key" ON "letters_of_credit" ("companySlug", "lcNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "letters_of_credit_companySlug_lcNumber_key" ON "letters_of_credit" ("companySlug", "lcNumber");
 CREATE INDEX "letters_of_credit_companySlug_expiryDate_idx" ON "letters_of_credit" ("companySlug", "expiryDate");
 CREATE INDEX "letters_of_credit_supplierId_idx" ON "letters_of_credit" ("supplierId");
 
@@ -630,7 +630,7 @@ CREATE INDEX "inter_company_transactions_companySlugFrom_companySlugTo_status_id
 
 -- ── wps_files ───────────────────────────────────────────────────────────────
 
-CREATE UNIQUE INDEX "wps_files_companySlug_country_month_key" ON "wps_files" ("companySlug", "country", "month");
+CREATE UNIQUE INDEX IF NOT EXISTS "wps_files_companySlug_country_month_key" ON "wps_files" ("companySlug", "country", "month");
 CREATE INDEX "wps_files_companySlug_month_idx" ON "wps_files" ("companySlug", "month");
 
 -- ── tax_filings ─────────────────────────────────────────────────────────────
@@ -646,5 +646,5 @@ CREATE INDEX "accounting_audit_logs_companySlug_createdAt_idx" ON "accounting_au
 
 -- ── opening_balance_entries ─────────────────────────────────────────────────
 
-CREATE UNIQUE INDEX "opening_balance_entries_companySlug_accountId_asOfDate_key" ON "opening_balance_entries" ("companySlug", "accountId", "asOfDate");
+CREATE UNIQUE INDEX IF NOT EXISTS "opening_balance_entries_companySlug_accountId_asOfDate_key" ON "opening_balance_entries" ("companySlug", "accountId", "asOfDate");
 CREATE INDEX "opening_balance_entries_companySlug_asOfDate_idx" ON "opening_balance_entries" ("companySlug", "asOfDate");

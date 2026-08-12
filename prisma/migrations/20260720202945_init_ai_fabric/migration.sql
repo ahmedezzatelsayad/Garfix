@@ -1097,7 +1097,7 @@ CREATE INDEX "invoices_invoiceNumber_idx" ON "invoices"("invoiceNumber");
 CREATE INDEX "invoices_status_idx" ON "invoices"("status");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "invoices_companySlug_invoiceNumber_key" ON "invoices"("companySlug", "invoiceNumber");
+CREATE UNIQUE INDEX IF NOT EXISTS "invoices_companySlug_invoiceNumber_key" ON "invoices"("companySlug", "invoiceNumber");
 
 -- CreateIndex
 CREATE INDEX "product_catalog_companySlug_idx" ON "product_catalog"("companySlug");
@@ -1112,7 +1112,7 @@ CREATE INDEX "warehouses_companySlug_idx" ON "warehouses"("companySlug");
 CREATE INDEX "warehouses_companySlug_isActive_idx" ON "warehouses"("companySlug", "isActive");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "warehouses_companySlug_code_key" ON "warehouses"("companySlug", "code");
+CREATE UNIQUE INDEX IF NOT EXISTS "warehouses_companySlug_code_key" ON "warehouses"("companySlug", "code");
 
 -- CreateIndex
 CREATE INDEX "inventory_items_companySlug_idx" ON "inventory_items"("companySlug");
@@ -1124,7 +1124,7 @@ CREATE INDEX "inventory_items_productId_idx" ON "inventory_items"("productId");
 CREATE INDEX "inventory_items_warehouseId_idx" ON "inventory_items"("warehouseId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "inventory_items_warehouseId_productId_key" ON "inventory_items"("warehouseId", "productId");
+CREATE UNIQUE INDEX IF NOT EXISTS "inventory_items_warehouseId_productId_key" ON "inventory_items"("warehouseId", "productId");
 
 -- CreateIndex
 CREATE INDEX "stock_movements_companySlug_createdAt_idx" ON "stock_movements"("companySlug", "createdAt");
@@ -1229,7 +1229,7 @@ CREATE INDEX "accounts_companySlug_type_idx" ON "accounts"("companySlug", "type"
 CREATE INDEX "accounts_companySlug_isActive_idx" ON "accounts"("companySlug", "isActive");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "accounts_companySlug_code_key" ON "accounts"("companySlug", "code");
+CREATE UNIQUE INDEX IF NOT EXISTS "accounts_companySlug_code_key" ON "accounts"("companySlug", "code");
 
 -- CreateIndex
 CREATE INDEX "journal_entries_companySlug_idx" ON "journal_entries"("companySlug");
@@ -1299,7 +1299,7 @@ CREATE INDEX "payment_transactions_companySlug_createdAt_idx" ON "payment_transa
 CREATE INDEX "payment_transactions_provider_idx" ON "payment_transactions"("provider");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "payment_transactions_provider_providerEventId_key" ON "payment_transactions"("provider", "providerEventId");
+CREATE UNIQUE INDEX IF NOT EXISTS "payment_transactions_provider_providerEventId_key" ON "payment_transactions"("provider", "providerEventId");
 
 -- CreateIndex
 
@@ -1316,7 +1316,7 @@ CREATE INDEX "role_permissions_companySlug_idx" ON "role_permissions"("companySl
 CREATE INDEX "role_permissions_permissionKey_idx" ON "role_permissions"("permissionKey");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "role_permissions_role_permissionKey_companySlug_key" ON "role_permissions"("role", "permissionKey", "companySlug");
+CREATE UNIQUE INDEX IF NOT EXISTS "role_permissions_role_permissionKey_companySlug_key" ON "role_permissions"("role", "permissionKey", "companySlug");
 
 -- CreateIndex
 CREATE INDEX "audit_logs_companySlug_idx" ON "audit_logs"("companySlug");
@@ -1399,7 +1399,7 @@ CREATE INDEX "ai_processing_logs_companySlug_createdAt_idx" ON "ai_processing_lo
 CREATE INDEX "ai_processing_logs_endpoint_createdAt_idx" ON "ai_processing_logs"("endpoint", "createdAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "idempotency_keys_companySlug_endpoint_key_key" ON "idempotency_keys"("companySlug", "endpoint", "key");
+CREATE UNIQUE INDEX IF NOT EXISTS "idempotency_keys_companySlug_endpoint_key_key" ON "idempotency_keys"("companySlug", "endpoint", "key");
 
 -- CreateIndex
 CREATE INDEX "notifications_userUid_isRead_idx" ON "notifications"("userUid", "isRead");
@@ -1457,7 +1457,7 @@ CREATE INDEX "product_aliases_companySlug_idx" ON "product_aliases"("companySlug
 CREATE INDEX "product_aliases_productCatalogId_idx" ON "product_aliases"("productCatalogId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "product_aliases_companySlug_alias_key" ON "product_aliases"("companySlug", "alias");
+CREATE UNIQUE INDEX IF NOT EXISTS "product_aliases_companySlug_alias_key" ON "product_aliases"("companySlug", "alias");
 
 -- CreateIndex
 CREATE INDEX "product_match_audit_companySlug_createdAt_idx" ON "product_match_audit"("companySlug", "createdAt");
@@ -1487,7 +1487,7 @@ CREATE INDEX "ai_model_registry_isEnabled_isHealthy_healthScore_idx" ON "ai_mode
 CREATE INDEX "ai_model_registry_tier_idx" ON "ai_model_registry"("tier");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ai_model_registry_provider_model_key" ON "ai_model_registry"("provider", "model");
+CREATE UNIQUE INDEX IF NOT EXISTS "ai_model_registry_provider_model_key" ON "ai_model_registry"("provider", "model");
 
 -- CreateIndex
 CREATE INDEX "ai_benchmark_results_modelRegistryId_createdAt_idx" ON "ai_benchmark_results"("modelRegistryId", "createdAt");

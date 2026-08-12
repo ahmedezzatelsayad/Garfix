@@ -10,7 +10,7 @@ CREATE TABLE "prompt_templates" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "prompt_templates_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX "prompt_templates_name_version_key" ON "prompt_templates"("name", "version");
+CREATE UNIQUE INDEX IF NOT EXISTS "prompt_templates_name_version_key" ON "prompt_templates"("name", "version");
 CREATE INDEX "prompt_templates_name_active_idx" ON "prompt_templates"("name", "active");
 CREATE INDEX "prompt_templates_active_idx" ON "prompt_templates"("active");
 
