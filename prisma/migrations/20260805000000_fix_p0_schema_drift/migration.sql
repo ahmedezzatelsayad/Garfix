@@ -67,9 +67,8 @@ ALTER TABLE "payment_vouchers" ADD COLUMN IF NOT EXISTS "createdBy" TEXT;
 
 -- Backfill voucherNumber from `number` for legacy rows (so the new code
 -- path that reads voucherNumber finds existing data).
-UPDATE "payment_vouchers"
-SET "voucherNumber" = "number"
-WHERE "voucherNumber" IS NULL AND "number" IS NOT NULL;
+-- P1 FIX: Removed UPDATE that referenced non-existent "number" column
+-- (payment_vouchers was created with "voucherNumber" not "number")
 
 -- Once backfilled, voucherNumber should be non-null going forward. We
 -- leave it nullable to avoid rejecting legacy rows with NULL `number`.
@@ -94,9 +93,8 @@ ALTER TABLE "WebhookDelivery" ADD COLUMN IF NOT EXISTS "maxAttempts" INTEGER NOT
 ALTER TABLE "WebhookDelivery" ADD COLUMN IF NOT EXISTS "statusCode" INTEGER;
 
 -- Backfill eventType from event for legacy rows.
-UPDATE "WebhookDelivery"
-SET "eventType" = "event"
-WHERE "eventType" IS NULL AND "event" IS NOT NULL;
+-- P1 FIX: Removed UPDATE that referenced non-existent "event" column
+-- (WebhookDelivery was created with "eventType" not "event")
 
 -- Backfill nextRetryAt to createdAt for legacy rows so the poller picks them up.
 UPDATE "WebhookDelivery"
