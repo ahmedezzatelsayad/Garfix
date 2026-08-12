@@ -73,16 +73,13 @@ ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "lineItemsAr" TEXT;
 ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "notesAr" TEXT;
 ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "currencyDecimalPlaces" INTEGER;
 
--- Add the unique constraint on (companySlug, invoiceNumber) if missing.
--- Wrapped in DO $$ BEGIN so it doesn't fail if the constraint already exists.
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conname = 'invoices_companySlug_invoiceNumber_key'
-  ) THEN
-    ALTER TABLE "invoices" ADD CONSTRAINT "invoices_companySlug_invoiceNumber_key" UNIQUE ("companySlug", "invoiceNumber");
-  END IF;
-END $$;
+-- P1 FIX (audit): Removed DO $$ block that tried to ADD CONSTRAINT
+-- invoices_companySlug_invoiceNumber_key. This constraint is already created
+-- by CREATE UNIQUE INDEX IF NOT EXISTS in 20260720202945_init_ai_fabric.
+-- The DO $$ block checked pg_constraint but CREATE UNIQUE INDEX creates an
+-- index (not a pg_constraint entry), so the check passed and ADD CONSTRAINT
+-- failed with E42P07 'relation already exists'.
+-- The constraint from the init migration is sufficient.
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 3. NOTIFICATIONS — add isRead column used by GET/PATCH /api/notifications.
