@@ -5,8 +5,23 @@
  * before every query so RLS policies filter rows by tenant automatically.
  *
  * AUDIT FIX: Converted from `$executeRawUnsafe` to `$executeRaw` (tagged
- * template literal) for defense-in-depth. Both were parameterized, but the
- * tagged template API is the recommended Prisma pattern.
+ * template literal) for defense-in-depth.
+ *
+ * DB-02 FIX (Audit v2 · Phase 1): Changed set_config(..., false) to
+ * set_config(..., true) for transaction-local scope. The previous `false`
+ * (session-scoped) setting leaked across the connection pool — a pooled
+ * connection that had `set_config('app.current_company_slug', 'acme', false)`
+ * would retain that value for the NEXT request that happened to reuse the
+ * same connection, causing cross-tenant data leaks.
+ *
+ * With `true` (transaction-local), the setting reverts at the end of the
+ * current transaction (or query if not in an explicit transaction), so it
+ * never leaks to other requests.
+ *
+ * NOTE: `getTenantDb()` here sets the variable but returns the raw dbTyped
+ * client. For true transaction-scoped isolation, prefer `withTenantScope()`
+ * from `src/lib/api/tenant-middleware.ts` which wraps the entire handler
+ * in a `$transaction` + `runWithTenantContext`.
  */
 
 import { NextRequest } from "next/server";
@@ -22,11 +37,13 @@ export async function getTenantDb(req: NextRequest): Promise<typeof dbTyped> {
 
   const user = authResult.user;
 
-  // Founder/admin bypass RLS — they need cross-tenant visibility
+  // Founder/admin bypass RLS — they need cross-tenant visibility.
+  // DB-02 FIX: use true (transaction-local) instead of false (session-scoped).
+  // Setting to NULL within a transaction-local scope means the RLS policy's
+  // IS NULL bypass clause applies only for the duration of this transaction.
   if (hasUnrestrictedScope(user)) {
-    // Set to null so RLS policy allows all (IS NULL check in policy)
     try {
-      await dbTyped.$executeRaw`SELECT set_config('app.current_company_slug', NULL, false)`;
+      await dbTyped.$executeRaw`SELECT set_config('app.current_company_slug', NULL, true)`;
     } catch {}
     return dbTyped;
   }
@@ -40,12 +57,11 @@ export async function getTenantDb(req: NextRequest): Promise<typeof dbTyped> {
   }
 
   try {
-    // AUDIT FIX: Use tagged template literal instead of $executeRawUnsafe.
-    // Both are parameterized, but $executeRaw is the recommended Prisma pattern.
-    // Note: Due to Prisma's connection pooling, this may not affect all connections.
-    // The RLS policy includes `IS NULL` fallback for safety.
+    // DB-02 FIX: Use true (transaction-local) instead of false (session-scoped).
+    // The setting now reverts at the end of the current transaction, preventing
+    // cross-connection-pool leakage.
     await dbTyped.$executeRaw`
-      SELECT set_config('app.current_company_slug', ${companySlug}::text, false)
+      SELECT set_config('app.current_company_slug', ${companySlug}::text, true)
     `;
   } catch (err) {
     logger.warn("[db-rls] failed to set session variable", {

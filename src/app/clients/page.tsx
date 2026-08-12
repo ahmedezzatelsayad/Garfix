@@ -1,18 +1,17 @@
 /**
- * /clients — Pure HTML clients page (Vercel) / AppShell view (AWS).
- * Vercel: fetches /api/clients and renders cards with inline JS.
- * AWS: redirects to / (AppShell loads clients view).
+ * /clients — AppShell clients view (AWS/Docker/Vercel).
+ *
+ * Always redirects to / where the AppShell loads the clients view.
+ *
+ * // FE-05 FIX (Audit v2 · Phase 1) — Vercel escape-hatch (VercelClients)
+ * deleted; the AppShell clients view is the single source of truth.
  *
  * DEPLOYMENT FIX: force-dynamic prevents prerender failure when
  * process.env.VERCEL is undefined during next build.
  */
 export const dynamic = 'force-dynamic';
 import { redirect } from "next/navigation";
-import VercelClients from "./VercelClients";
 
 export default function ClientsPage() {
-  if (process.env.VERCEL === "1") {
-    return <VercelClients />;
-  }
   redirect("/");
 }

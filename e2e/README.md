@@ -1,90 +1,113 @@
-# E2E — اختبارات نهاية إلى نهاية (Playwright)
+# E2E — Playwright end-to-end tests
 
-> اختبارات تلقائية تحاكي سلوك المستخدم الحقيقي في المتصفح.
+> Real, assertion-backed E2E tests for the Garfix ERP critical paths.
+> Replaces the v1 facade suite (TPD-01 fix · Audit v2 · Phase 1).
 
-## ملفات الاختبار
+## Test files
 
-| الملف | الوصف |
-|-------|-------|
-| `api-health.spec.ts` | فحص صحة الـ API و الـ startup check |
-| `auth.spec.ts` | تسجيل الدخول، التسجيل، JWT refresh |
-| `invoices.spec.ts` | إنشاء، عرض، تعديل، حذف الفواتير |
-| `dashboard.spec.ts` | تحميل لوحة التحكم و الإحصائيات |
-| `clients.spec.ts` | إدارة العملاء: إضافة، بحث، CSV import |
-| `settings.spec.ts` | إعدادات الشركة و قوالب الفواتير |
+Each spec exercises a single critical path with REAL assertions: HTTP
+status codes, response body fields, DB state via Prisma, and UI element
+visibility (via `expect(locator).toBeVisible()`, never `isVisible().catch()`).
 
-## اختبار التجاوب مع الأجهزة (Responsive Design)
+| File | Critical path | What it asserts |
+|------|---------------|-----------------|
+| `auth-mfa.spec.ts` | MFA login flow | `mfaRequired:true` response, TOTP code → 200 + session cookie, no redirect to /login |
+| `invoice-create.spec.ts` | Invoice creation | POST /api/invoices → 200, invoice in list, DB row with exact total (253), 409 on duplicate number |
+| `payment-idempotent.spec.ts` | Idempotent payment | Same idempotency key → 200 both times, `paid` incremented once (not twice), single IdempotencyKey row |
+| `zatca-clearance.spec.ts` | ZATCA e-invoicing | Mocked clearance → `clearanceStatus:"cleared"` + uuid; real negative path → 400 (no CCD cert) + no EInvoice row |
+| `client-crud.spec.ts` | Client CRUD cycle | Create → list → update → list → delete → list; DB soft-delete (`deletedAt != null`) |
+| `period-close.spec.ts` | Fiscal period close | POST /close → 200, DB status `open` → `closed`, `closedBy` + `closedAt` set, 400 on re-close |
+| `webhook-delivery.spec.ts` | Webhook dispatch | Register → 201 + encrypted secret; trigger → `dispatched >= 1`; DB delivery row with payload; SSRF guard |
+| `backup-trigger.spec.ts` | Backup trigger | Founder → 200 + file on disk; admin → 403; 500 path with error message |
+| `rbac-denial.spec.ts` | RBAC denial | Employee → /founder-panel redirect; POST /roles → 403; DELETE /invoice → 403; positive control (GET invoices → 200) |
+| `rtl-render.spec.ts` | RTL layout | `<html dir="rtl" lang="ar">`; sidebar `right:0px`; body `font-family` contains "Cairo"; Arabic nav labels render |
 
-Playwright يدعم اختبار عدة أحجام للشاشة (viewport sizes) للتحقق من تجاوب الواجهة مع الأجهزة المختلفة:
+## Helper module
 
-- **المحمول**: 375×667 (iPhone SE) — 390×844 (iPhone 14)
-- **اللوحي**: 768×1024 (iPad) — 1024×1366 (iPad Pro)
-- **الحاسوب**: 1280×720 — 1920×1080
+`_helpers.ts` provides shared utilities so each spec doesn't reimplement them:
 
-يمكن إضافة مشروع متعدد في `playwright.config.ts`:
+- `prisma` — singleton PrismaClient for DB assertions (uses `E2E_DATABASE_URL` or `DATABASE_URL`)
+- `login(page, email, password, mfaCode?)` — POST /api/auth/login via `page.request` (shares cookies with browser context)
+- `authedJson(page, method, path, data)` — wraps `page.request` with the `x-csrf-token` header (required by middleware for all mutating requests)
+- `getCsrfToken(page)` — reads the `inv_csrf` cookie or fetches a fresh one from /api/auth/csrf
+- `ensureTestCompany()` / `ensureTestUser()` — idempotent setup of test data scoped to `TEST_COMPANY_SLUG = "e2e-test-company"`
+- `cleanupTestData({ invoiceIds, clientIds, ... })` — best-effort teardown in `afterEach`
+- `generateTOTP(secret)` — RFC 6238 TOTP code from a base32 secret (for the MFA test)
+- `uniqueInvoiceNumber()` / `uniqueClientName()` / `uniqueSuffix()` — unique value generators for parallel-safe tests
 
-```ts
-projects: [
-  { name: 'mobile',  use: { ...devices['iPhone 14'] } },
-  { name: 'tablet',  use: { ...devices['iPad Pro'] } },
-  { name: 'desktop', use: { viewport: { width: 1280, height: 720 } } },
-]
+## CI lint guard
+
+`lint-check.mjs` fails the build if any `*.spec.ts` file contains the
+forbidden facade patterns (TPD-01):
+
+- `isVisible().catch(` — silent-skip guard
+- `expect(typeof` — tautological type check
+- `.toBe("number")` — tautological value assertion
+
+The script strips comments before scanning, so doc-comments that document
+the anti-patterns are NOT flagged — only actual code occurrences fail.
+
+Wire into CI:
+
+```json
+// package.json
+"scripts": {
+  "lint:e2e": "node e2e/lint-check.mjs"
+}
 ```
 
-## اختبار العربية و RTL
-
-GarfiX منصة **Arabic-first** لمنطقة الخليج، لذا يجب مراعاة:
-
-- ✅ اتجاه الصفحة `dir="rtl"` مفعّل على جميع الصفحات
-- ✅ محاذاة النصوص والعناصر من اليمين إلى اليسار
-- ✅ ترتيب الحقول والأزرار يعكس اتجاه RTL (flip logical order)
-- ✅ خطوط العربية تُعرض بدون أحرف مكسورة أو أرقام معكوسة
-- ✅ ترجمة أسماء الأيام/الشهور ورسائل الخطأ بالعربية
-
-**نصيحة**: أضف اختبار RTL مخصص:
-
-```ts
-test('RTL layout', async ({ page }) => {
-  await page.goto('/dashboard');
-  const dir = await page.getAttribute('html', 'dir');
-  expect(dir).toBe('rtl');
-});
-```
-
-## التشغيل
+Run locally:
 
 ```bash
-# تثبيت المتصفحات (مرة واحدة)
+node e2e/lint-check.mjs
+```
+
+## Running the tests
+
+```bash
+# Install browsers (one-time)
 bunx playwright install
 
-# تشغيل كل الاختبارات
+# Run all E2E tests (requires running app + DB)
 bunx playwright test
 
-# تشغيل مع واجهة رسومية
+# Run a single spec
+bunx playwright test e2e/invoice-create.spec.ts
+
+# Run with UI
 bunx playwright test --ui
 
-# تشغيل test معين
-bunx playwright test e2e/invoices.spec.ts
-
-# تشغيل على محمول فقط (مشروع mobile)
-bunx playwright test --project=mobile
-
-# تقرير HTML
+# HTML report
 bunx playwright show-report
 ```
 
-## الإعداد
+## Environment variables
 
-ملف الإعداد: `playwright.config.ts` في جذر المشروع. يتضمن:
-- Base URL: `http://localhost:3000`
-- Web server: يبدأ تلقائياً قبل الاختبارات
-- Retry: مرتين عند الفشل
-- Screenshot عند الفشل تلقائياً
-- مشاريع متعددة: محمول، لوحي، حاسوب
+The tests read credentials and DB URL from the environment. Defaults match
+the seed script and `.env.example` — override for CI / staging:
 
-## المتطلبات
+```bash
+# Database (must match the dev server's DB for DB assertions to work)
+E2E_DATABASE_URL=postgresql://user:pass@host:5432/garfix
 
-- Tailwind CSS rendering مُفعّل (no JS-only)
-- البيئة (`baseURL`) يجب أن تكون قيد التشغيل
-- متصفح Chromium (يُثبّت عبر `playwright install`)
-- اتجاه RTL مفعّل في صفحات المشروع (`dir="rtl"`)
+# Test users (created on-the-fly by _helpers.ts ensureTestUser)
+E2E_FOUNDER_EMAIL=founder@garfix.app
+E2E_FOUNDER_PASSWORD=E2eTestPassword2026!
+E2E_ADMIN_EMAIL=e2e-admin@garfix.app
+E2E_ADMIN_PASSWORD=E2eAdminPassword2026!
+E2E_EMPLOYEE_EMAIL=e2e-employee@garfix.app
+E2E_EMPLOYEE_PASSWORD=E2eEmployeePassword2026!
+
+# App URL (defaults to http://localhost:3000)
+PLAYWRIGHT_BASE_URL=http://localhost:3000
+```
+
+## Test isolation
+
+Every spec:
+
+1. Creates its own test data in `beforeEach` (scoped to `TEST_COMPANY_SLUG`)
+2. Cleans up in `afterEach` via `cleanupTestData()`
+3. Uses unique identifiers (`uniqueInvoiceNumber()`, etc.) so parallel runs don't collide on `@@unique` constraints
+
+Tests can run in any order and are safe to re-run.

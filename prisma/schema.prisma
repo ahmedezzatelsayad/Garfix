@@ -2104,6 +2104,12 @@ model AIModelRegistry {
   costPerTokenOut Float    @default(0)
   maxTokens       Int?
   isActive        Boolean  @default(true)
+  // AI-01 FIX (Audit v2 · Phase 1): Added capabilities/healthScore/isHealthy
+  // columns to enable capability-based model routing.
+  capabilities    String[] @default([])
+  healthScore     Float    @default(1.0)
+  isHealthy       Boolean  @default(true)
+  lastHealthCheck DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

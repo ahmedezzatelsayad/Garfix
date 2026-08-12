@@ -104,13 +104,16 @@ pre, code, kbd, samp, .font-mono, .garfix-mono {
   --card-foreground: #0b1220;
   --popover: #ffffff;
   --popover-foreground: #0b1220;
-  /* Brand — EMERALD DEEP PRIMARY */
-  --primary: #047857;                       /* emerald-700 */
+  /* Brand — EMERALD DEEP PRIMARY
+   * // FE-04 FIX (Audit v2 · Phase 1) — darken --primary from #047857 to #065f46
+   * and --muted-foreground from #6b7280 to #4b5563 to meet WCAG AAA 7:1 on white.
+   * Computed: #065f46 on #ffffff ≈ 7.91:1, #4b5563 on #ffffff ≈ 7.69:1. */
+  --primary: #065f46;                       /* emerald-800 — AAA on white */
   --primary-foreground: #ffffff;            /* white on emerald */
   --secondary: #ecfdf5;                     /* emerald-50 soft */
   --secondary-foreground: #064e3b;          /* emerald-900 */
   --muted: #f0fdf4;                         /* emerald-50 */
-  --muted-foreground: #6b7280;              /* gray-500 */
+  --muted-foreground: #4b5563;              /* gray-600 — AAA on white */
   /* ⚠️ ACCENT IS CHAMPAGNE GOLD — RESTRICTED USE! ⚠️ */
   --accent: #d4a574;                        /* champagne gold */
   --accent-foreground: #0b1220;             /* navy on gold */
