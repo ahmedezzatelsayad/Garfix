@@ -14,7 +14,7 @@
 -- ─── installment_schedules ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "installment_schedules" (
     "id" SERIAL PRIMARY KEY,
-    "paymentVoucherId" TEXT NOT NULL,
+    "paymentVoucherId" INTEGER NOT NULL,
     "installmentNumber" INTEGER NOT NULL,
     "dueDate" TIMESTAMP(3) NOT NULL,
     "amount" TEXT NOT NULL DEFAULT '0',
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS "profit_distribution_entries" (
 -- ─── letter_of_credit_documents ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "letter_of_credit_documents" (
     "id" TEXT NOT NULL,
-    "letterOfCreditId" TEXT NOT NULL,
+    "letterOfCreditId" INTEGER NOT NULL,
     "documentType" TEXT NOT NULL,
     "fileName" TEXT NOT NULL,
     "fileUrl" TEXT,
@@ -68,8 +68,8 @@ CREATE TABLE IF NOT EXISTS "letter_of_credit_documents" (
 -- ─── budget_lines ────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "budget_lines" (
     "id" TEXT NOT NULL,
-    "budgetId" TEXT NOT NULL,
-    "accountId" TEXT NOT NULL,
+    "budgetId" INTEGER NOT NULL,
+    "accountId" INTEGER NOT NULL,
     "costCenterId" TEXT,
     "plannedAmount" TEXT NOT NULL DEFAULT '0',
     "actualAmount" TEXT NOT NULL DEFAULT '0',

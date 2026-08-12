@@ -127,7 +127,7 @@ CREATE INDEX IF NOT EXISTS "suppliers_deletedAt_idx"
 -- throw "relation does not exist".
 CREATE TABLE IF NOT EXISTS "recurring_journal_entries" (
     "id" TEXT NOT NULL,
-    "companyId" TEXT NOT NULL,
+    "companyId" INTEGER NOT NULL,
     "companySlug" TEXT NOT NULL DEFAULT 'default',
     "title" TEXT NOT NULL,
     "description" TEXT,
@@ -157,7 +157,7 @@ CREATE INDEX IF NOT EXISTS "recurring_journal_entries_nextRunDate_idx"
 
 CREATE TABLE IF NOT EXISTS "fiscal_year_closes" (
     "id" TEXT NOT NULL,
-    "companyId" TEXT NOT NULL,
+    "companyId" INTEGER NOT NULL,
     "companySlug" TEXT NOT NULL DEFAULT 'default',
     "year" INTEGER NOT NULL,
     "closedAt" TIMESTAMP(3) NOT NULL,
