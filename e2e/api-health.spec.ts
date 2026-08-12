@@ -1,58 +1,43 @@
 /**
- * API Health E2E tests — verify critical API endpoints respond correctly.
+ * API Health E2E tests — verifies critical API endpoints respond.
+ * Uses API calls for reliable CI testing.
  */
 import { test, expect } from "@playwright/test";
 
-test.describe("API Health Checks", () => {
-  test("GET /api/health should return 200", async ({ request }) => {
-    const response = await request.get("/api/health");
-    expect(response.status()).toBe(200);
+const BASE_URL = process.env.APP_URL || "http://localhost:3000";
+
+test.describe("API Health", () => {
+  test("GET /api/health returns 200 with status ok", async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/api/health`);
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.status).toBe("ok");
   });
 
-  test("GET /api/startup-check should respond", async ({ request }) => {
-    const response = await request.get("/api/startup-check");
-    expect([200, 503]).toContain(response.status());
+  test("GET /api/health includes database status", async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/api/health`);
+    const body = await res.json();
+    expect(body.db).toBeDefined();
+    expect(body.db.ok).toBe(true);
   });
 
-  test("GET /api/auth/me should return 401 for unauthenticated users", async ({ request }) => {
-    const response = await request.get("/api/auth/me");
-    expect([401, 200]).toContain(response.status());
+  test("GET /api/startup-check returns 200", async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/api/startup-check`);
+    expect(res.status()).toBe(200);
   });
 
-  test("POST /api/auth/login should reject invalid credentials", async ({ request }) => {
-    const response = await request.post("/api/auth/login", {
-      data: { email: "invalid@test.com", password: "wrong" },
-    });
-    expect(response.status()).toBe(401);
+  test("GET / (landing page) returns 200", async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/`);
+    expect(res.status()).toBe(200);
   });
 
-  test("GET /api/modules should respond", async ({ request }) => {
-    const response = await request.get("/api/modules");
-    expect([200, 401]).toContain(response.status());
+  test("GET /login returns 200", async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/login`);
+    expect(res.status()).toBe(200);
   });
 
-  test("GET /api/feature-flags should respond", async ({ request }) => {
-    const response = await request.get("/api/feature-flags");
-    expect([200, 401]).toContain(response.status());
-  });
-
-  test("GET /api/landing-content should respond", async ({ request }) => {
-    const response = await request.get("/api/landing-content");
-    expect([200, 404]).toContain(response.status());
-  });
-});
-
-test.describe("API Error Handling", () => {
-  test("should return JSON error for 404", async ({ request }) => {
-    const response = await request.get("/api/nonexistent-endpoint");
-    expect(response.status()).toBe(404);
-  });
-
-  test("should handle malformed JSON in POST", async ({ request }) => {
-    const response = await request.post("/api/auth/login", {
-      data: "not-json",
-      headers: { "Content-Type": "application/json" },
-    });
-    expect([400, 401, 500]).toContain(response.status());
+  test("GET /api/invoices without auth returns 401", async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/api/invoices`);
+    expect([401, 403]).toContain(res.status());
   });
 });

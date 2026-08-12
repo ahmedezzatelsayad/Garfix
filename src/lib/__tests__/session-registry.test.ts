@@ -238,8 +238,8 @@ describe("SessionRegistry schema (P1-B static checks)", () => {
     const sqlPath = path.join(migrationsDir, p1Migration!, "migration.sql");
     const sql = fs.readFileSync(sqlPath, "utf8");
 
-    expect(sql).toContain('CREATE INDEX "SessionRegistry_userUid_idx" ON "SessionRegistry"("userUid")');
-    expect(sql).toContain('CREATE INDEX "SessionRegistry_expiresAt_idx" ON "SessionRegistry"("expiresAt")');
+    expect(sql).toContain('CREATE INDEX IF NOT EXISTS "SessionRegistry_userUid_idx" ON "SessionRegistry"("userUid")');
+    expect(sql).toContain('CREATE INDEX IF NOT EXISTS "SessionRegistry_expiresAt_idx" ON "SessionRegistry"("expiresAt")');
   });
 
   it("prisma client has sessionRegistry model with all required fields", () => {

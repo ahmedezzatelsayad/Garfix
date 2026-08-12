@@ -17,99 +17,99 @@
 -- (the columns themselves were added by 20260730000000_fix_schema_drift.sql;
 --  we only add the missing indexes here)
 
--- P1 FIX: Removed DO $$ block for SessionRegistry_userUid_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "SessionRegistry_userUid_idx" ON "SessionRegistry"("userUid");
 
--- P1 FIX: Removed DO $$ block for SessionRegistry_expiresAt_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "SessionRegistry_expiresAt_idx" ON "SessionRegistry"("expiresAt");
 
 -- ─── 2. JournalEntryLine — FK indexes on journalEntryId + accountId ────────
 
--- P1 FIX: Removed DO $$ block for journal_entry_lines_journalEntryId_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "journal_entry_lines_journalEntryId_idx" ON "journal_entry_lines"("journalEntryId");
 
--- P1 FIX: Removed DO $$ block for journal_entry_lines_accountId_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "journal_entry_lines_accountId_idx" ON "journal_entry_lines"("accountId");
 
 -- ─── 3. JournalEntry — soft-delete composite + date indexes ────────────────
 
--- P1 FIX: Removed DO $$ block for journal_entries_companySlug_deletedAt_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "journal_entries_companySlug_deletedAt_idx" ON "journal_entries"("companySlug", "deletedAt");
 
--- P1 FIX: Removed DO $$ block for journal_entries_date_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "journal_entries_date_idx" ON "journal_entries"("date");
 
 -- ─── 4. AuditLog — createdAt + entity+entityId + userUid ───────────────────
 
--- P1 FIX: Removed DO $$ block for audit_logs_createdAt_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "audit_logs_createdAt_idx" ON "audit_logs"("createdAt");
 
--- P1 FIX: Removed DO $$ block for audit_logs_entity_entityId_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "audit_logs_entity_entityId_idx" ON "audit_logs"("entity", "entityId");
 
--- P1 FIX: Removed DO $$ block for audit_logs_userUid_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "audit_logs_userUid_idx" ON "audit_logs"("userUid");
 
 -- ─── 5. AccountingAuditLog — createdAt + entity+entityId ───────────────────
 
--- P1 FIX: Removed DO $$ block for accounting_audit_logs_createdAt_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "accounting_audit_logs_createdAt_idx" ON "accounting_audit_logs"("createdAt");
 
--- P1 FIX: Removed DO $$ block for accounting_audit_logs_entity_entityId_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "accounting_audit_logs_entity_entityId_idx" ON "accounting_audit_logs"("entity", "entityId");
 
 -- ─── 6. AdminAuditLog — adminEmail + createdAt + targetSlug (had no indexes) ─
 
--- P1 FIX: Removed DO $$ block for admin_audit_logs_adminEmail_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "admin_audit_logs_adminEmail_idx" ON "admin_audit_logs"("adminEmail");
 
--- P1 FIX: Removed DO $$ block for admin_audit_logs_createdAt_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "admin_audit_logs_createdAt_idx" ON "admin_audit_logs"("createdAt");
 
--- P1 FIX: Removed DO $$ block for admin_audit_logs_targetSlug_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "admin_audit_logs_targetSlug_idx" ON "admin_audit_logs"("targetSlug");
 
 -- ─── 7. AutomationExecutionLog — ruleId + status+triggeredAt ───────────────
 
--- P1 FIX: Removed DO $$ block for automation_execution_logs_ruleId_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "automation_execution_logs_ruleId_idx" ON "automation_execution_logs"("ruleId");
 
--- P1 FIX: Removed DO $$ block for automation_execution_logs_status_triggeredAt_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "automation_execution_logs_status_triggeredAt_idx" ON "automation_execution_logs"("status", "triggeredAt");
 
 -- ─── 8. PlatformSettingsHistory — settingId + createdAt + changedBy ────────
 
--- P1 FIX: Removed DO $$ block for platform_settings_history_settingId_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "platform_settings_history_settingId_idx" ON "platform_settings_history"("settingId");
 
--- P1 FIX: Removed DO $$ block for platform_settings_history_createdAt_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "platform_settings_history_createdAt_idx" ON "platform_settings_history"("createdAt");
 
--- P1 FIX: Removed DO $$ block for platform_settings_history_changedBy_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "platform_settings_history_changedBy_idx" ON "platform_settings_history"("changedBy");
 
 -- ─── 9. Client — soft-delete composite index ───────────────────────────────
 
--- P1 FIX: Removed DO $$ block for clients_companySlug_deletedAt_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "clients_companySlug_deletedAt_idx" ON "clients"("companySlug", "deletedAt");
 
 -- ─── 10. Supplier — composite soft-delete (replaces standalone deletedAt idx)
 --         The old @@index([deletedAt]) is less selective than the composite;
 --         we keep both since both may be useful for different query shapes.
 
--- P1 FIX: Removed DO $$ block for suppliers_companySlug_deletedAt_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "suppliers_companySlug_deletedAt_idx" ON "suppliers"("companySlug", "deletedAt");
 
 -- ─── 11. Company — deletedAt index (had no @@index at all) ─────────────────
 
--- P1 FIX: Removed DO $$ block for companies_deletedAt_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "companies_deletedAt_idx" ON "companies"("deletedAt");
 
 -- ─── 12. Invoice — soft-delete composite + status+createdAt ────────────────
 
--- P1 FIX: Removed DO $$ block for invoices_companySlug_deletedAt_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "invoices_companySlug_deletedAt_idx" ON "invoices"("companySlug_deletedAt");
 
--- P1 FIX: Removed DO $$ block for invoices_status_createdAt_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "invoices_status_createdAt_idx" ON "invoices"("status", "createdAt");
 
 -- ─── 13. PurchaseInvoice — soft-delete composite + supplierId FK ───────────
 
--- P1 FIX: Removed DO $$ block for purchase_invoices_companySlug_deletedAt_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "purchase_invoices_companySlug_deletedAt_idx" ON "purchase_invoices"("companySlug", "deletedAt");
 
--- P1 FIX: Removed DO $$ block for purchase_invoices_supplierId_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "purchase_invoices_supplierId_idx" ON "purchase_invoices"("supplierId");
 
 -- ─── 14. BankTransaction — bankAccountId FK + date ─────────────────────────
 
--- P1 FIX: Removed DO $$ block for bank_transactions_bankAccountId_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "bank_transactions_bankAccountId_idx" ON "bank_transactions"("bankAccountId");
 
--- P1 FIX: Removed DO $$ block for bank_transactions_date_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "bank_transactions_date_idx" ON "bank_transactions"("date");
 
 -- ─── 15. BudgetLine — budgetId + accountId + costCenterId FK indexes ───────
 
--- P1 FIX: Removed DO $$ block for budget_lines_budgetId_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "budget_lines_budgetId_idx" ON "budget"("lines_budgetId");
 
--- P1 FIX: Removed DO $$ block for BudgetLine_budgetId_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "BudgetLine_budgetId_idx" ON "BudgetLine"("budgetId");
 
--- P1 FIX: Removed DO $$ block for BudgetLine_accountId_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "BudgetLine_accountId_idx" ON "BudgetLine"("accountId");
 
--- P1 FIX: Removed DO $$ block for BudgetLine_costCenterId_idx — use IF NOT EXISTS instead
+CREATE INDEX IF NOT EXISTS "BudgetLine_costCenterId_idx" ON "BudgetLine"("costCenterId");
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- End of migration.
