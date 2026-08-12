@@ -76,7 +76,8 @@ ALTER TABLE "refund_transactions"
 CREATE INDEX IF NOT EXISTS "refund_transactions_paymentTransactionId_idx"
   ON "refund_transactions" ("paymentTransactionId");
 -- P1 FIX: Removed CREATE INDEX on refund_transactions.companySlug — column does not exist
-  ON "refund_transactions" ("companySlug");
+-- (the orphaned `ON "refund_transactions" ("companySlug")` line below was a syntax error
+--  that caused migration to fail on PostgreSQL. Cleaned up in ADD-4 Phase 1.5.)
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- P2-Sprint-4: Add journalEntryIdFrom/To to inter_company_transactions

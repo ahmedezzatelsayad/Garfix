@@ -15,10 +15,14 @@ ALTER TABLE landed_cost_lines ADD COLUMN IF NOT EXISTS "companySlug" TEXT NOT NU
 -- ── Part 2: Backfill companySlug from parent tables ────────────────────────
 
 -- JournalEntryLine → JournalEntry
+-- ADD-4 FIX (Phase 1.5): use "entryId" (the column name at this point in the
+-- migration sequence). The rename to "journalEntryId" happens later in
+-- migration 20260813120000. This was a pre-existing bug that caused the
+-- migration to fail on fresh databases.
 UPDATE journal_entry_lines jel
   SET "companySlug" = je."companySlug"
   FROM journal_entries je
-  WHERE jel."journalEntryId" = je.id
+  WHERE jel."entryId" = je.id
     AND jel."companySlug" = 'default'
     AND je."companySlug" IS NOT NULL
     AND je."companySlug" != 'default';
@@ -100,18 +104,39 @@ CREATE INDEX IF NOT EXISTS "role_permissions_companySlug_idx" ON role_permission
 -- The session variable app.current_company_slug is set per-request.
 -- ═══════════════════════════════════════════════════════════════════════════════
 
+-- ADD-4 FIX (Phase 1.5): Create the `app` schema before defining functions in it.
+-- This was missing and caused "schema app does not exist" on fresh databases.
+CREATE SCHEMA IF NOT EXISTS app;
+-- ═══════════════════════════════════════════════════════════════════════════════
+
 -- Business tables that carry companySlug
-CREATE OR REPLACE FUNCTION app.enable_rls_for_table(tbl regclass) RETURNS void AS $$
+-- ADD-4 FIX (Phase 1.5): Changed function parameter from `regclass` to `text`
+-- and added existence checks. The `regclass` type resolves at call time and
+-- throws if the table doesn't exist yet. Using `text` + information_schema
+-- check allows the function to silently skip non-existent tables.
+CREATE OR REPLACE FUNCTION app.enable_rls_for_table(tbl_name text) RETURNS void AS $$
 BEGIN
-  EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', tbl);
-  EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', tbl);
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_name = tbl_name AND table_schema = 'public'
+  ) THEN
+    RETURN;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = tbl_name AND column_name = 'companySlug'
+  ) THEN
+    RETURN;
+  END IF;
+  EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', tbl_name);
+  EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', tbl_name);
   EXECUTE format('
     CREATE POLICY tenant_isolation ON %I
       USING ("companySlug" = current_setting(''app.current_company_slug'', true) OR
              current_setting(''app.current_company_slug'', true) IS NULL)
       WITH CHECK ("companySlug" = current_setting(''app.current_company_slug'', true) OR
                    current_setting(''app.current_company_slug'', true) IS NULL);
-  ', tbl);
+  ', tbl_name);
 EXCEPTION WHEN duplicate_object THEN NULL;
 END;
 $$ LANGUAGE plpgsql;
