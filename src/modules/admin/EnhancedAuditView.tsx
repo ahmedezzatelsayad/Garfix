@@ -115,7 +115,7 @@ export function EnhancedAuditView() {
   }), [filters]);
 
   const { data, isLoading, isRefetching, refetch } = useAuditLogFiltered(queryParams);
-  const logs = (data?.logs ?? []) as unknown as  AuditLog[];
+  const logs = (data?.logs ?? []) as AuditLog[];
 
   // Client-side filtering + pagination
   const filteredLogs = useMemo(() => {

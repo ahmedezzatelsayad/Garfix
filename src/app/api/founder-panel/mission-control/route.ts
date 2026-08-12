@@ -83,12 +83,12 @@ export interface MissionControlData {
 
 // ─── GET Handler ────────────────────────────────────────────────────────────
 
-export async function GET(req: NextRequest): Promise<NextResponse<MissionControlData>> {
+export async function GET(req: NextRequest): Promise<NextResponse<MissionControlData | { error: string; timestamp: string }>> {
   // SEC-C8 (Cycle 4): close missing-auth — founder-panel route exposed platform-wide
   // ops metrics (companies online, workers, queue depths, AI calls/sec, savings,
   // gross margin) to anyone on the internet.
   const authResult = await requireFounder(req);
-  if (authResult instanceof NextResponse) return authResult as NextResponse<MissionControlData>;
+  if (authResult instanceof NextResponse) return authResult as NextResponse<MissionControlData | { error: string; timestamp: string }>;
 
   const now = new Date();
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -252,7 +252,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<MissionControl
       {
         error: "Failed to fetch mission control data",
         timestamp: new Date().toISOString(),
-      } as unknown as MissionControlData /* SAFETY: error path */,
+      },
       { status: 500 }
     );
   }

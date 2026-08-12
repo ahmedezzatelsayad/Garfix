@@ -1601,7 +1601,7 @@ export function calculateMetrics(companiesOrTelemetry: SyntheticCompany[] | Tele
     companies = [];
     telemetry = [];
   } else {
-    const first = companiesOrTelemetry[0] as unknown as  Record<string, unknown>;
+    const first = companiesOrTelemetry[0];
     if (first && ('slug' in first || 'invoices' in first)) {
       // First arg is companies
       companies = companiesOrTelemetry as SyntheticCompany[];

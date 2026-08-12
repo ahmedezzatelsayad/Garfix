@@ -129,7 +129,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     const ExcelJS = (await import("exceljs")).default;
     const buffer = Buffer.from(fileBase64.replace(/^data:[^;]+;base64,/, ""), "base64");
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer as unknown as ArrayBuffer /* SAFETY: Buffer → ArrayBuffer */);
+    // ExcelJS.xlsx.load accepts Buffer | ArrayBuffer.
+    // Node.js Buffer has extra properties not on ArrayBuffer, so extract
+    // the underlying ArrayBuffer for type compatibility.
+    const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+    await workbook.xlsx.load(arrayBuffer);
     const firstSheet = workbook.worksheets[0];
     if (!firstSheet) {
       return apiError("الملف لا يحتوي على أوراق عمل", 400);

@@ -139,8 +139,8 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
   const handleRunNow = async (id: string) => {
     setActionLoading(id);
     try {
-      const response = await apiPost(`/api/accounting/recurring/${id}/run`, {});
-      toast.success((response as unknown as  { message?: string }).message || "تم تشغيل القيد بنجاح");
+      await apiPost(`/api/accounting/recurring/${id}/run`, {});
+      toast.success("تم تشغيل القيد بنجاح");
       fetchEntries();
     } catch (err) {
       toast.error("خطأ في تشغيل القيد");

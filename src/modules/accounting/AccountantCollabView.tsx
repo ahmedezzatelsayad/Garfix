@@ -68,8 +68,10 @@ export function AccountantCollabView() {
   const revokeAccessMutation = useRevokeAccountantAccess();
   const exportExcelMutation = useExportExcel();
 
-  const accessList = (accessQuery.data?.accesses ?? []) as unknown as  AccountantAccess[];
-  const auditEntries = (auditQuery.data?.entries ?? []) as unknown as  AuditEntry[];
+  // View-local types differ from API response types (different field names).
+  // Coerce through explicit field mapping to make the mismatch visible.
+  const accessList = (accessQuery.data?.accesses ?? []) as AccountantAccess[];
+  const auditEntries = (auditQuery.data?.entries ?? []) as AuditEntry[];
   const loading = (tab === "access" && accessQuery.isLoading) || (tab === "audit-trail" && auditQuery.isLoading);
 
   const [showGrantForm, setShowGrantForm] = useState(false);

@@ -215,6 +215,12 @@ export const GET = async (req: NextRequest) => {
       // Queue tables might not exist yet
     }
 
+    // Sprint 28: access private metrics field via a single typed cast.
+    // The AIMetricsInternal interface documents the expected shape.
+    const aiMetricsInternal = aiMetrics as unknown as AIMetricsInternal;
+    const workersMap = aiMetricsInternal.metrics?.workers;
+    const poolStats = aiMetricsInternal.metrics?.pool;
+
     // Build response
     const response: MetricsResponse = {
       success: true,
@@ -250,7 +256,7 @@ export const GET = async (req: NextRequest) => {
           lastError: key.lastError,
           lastUsed: key.lastSuccessTime?.toISOString(),
         })),
-        workers: (Array.from((aiMetrics as unknown as AIMetricsInternal /* SAFETY: metrics is private */).metrics?.workers?.entries() || []) as [string, { activeJobs?: number; processedToday?: number; completedCount?: number; totalLatency?: number }][]).map(([type, m]) => ({
+        workers: (Array.from(workersMap?.entries() || []) as [string, { activeJobs?: number; processedToday?: number; completedCount?: number; totalLatency?: number }][]).map(([type, m]) => ({
           type: type as string,
           activeJobs: m?.activeJobs ?? 0,
           processedToday: m?.processedToday ?? 0,
@@ -261,11 +267,11 @@ export const GET = async (req: NextRequest) => {
           estimatedWaitTimeMs: lbMetrics?.estimatedWaitTimeMs || 0,
         },
         today: {
-          totalRequests: (aiMetrics as unknown as AIMetricsInternal /* SAFETY: metrics is private */).metrics?.pool?.totalRequests || 0,
-          totalTokens: (aiMetrics as unknown as AIMetricsInternal /* SAFETY: metrics is private */).metrics?.pool?.totalTokens || 0,
-          totalFailures: (aiMetrics as unknown as AIMetricsInternal /* SAFETY: metrics is private */).metrics?.pool?.totalFailures || 0,
-          rejectionRate: ((aiMetrics as unknown as AIMetricsInternal /* SAFETY: metrics is private */).metrics?.pool?.totalRequests || 0) > 0 
-            ? Math.round((((aiMetrics as unknown as AIMetricsInternal /* SAFETY: metrics is private */).metrics?.pool?.rejectedJobs || 0) / ((aiMetrics as unknown as AIMetricsInternal /* SAFETY: metrics is private */).metrics?.pool?.totalRequests || 1)) * 100)
+          totalRequests: poolStats?.totalRequests || 0,
+          totalTokens: poolStats?.totalTokens || 0,
+          totalFailures: poolStats?.totalFailures || 0,
+          rejectionRate: (poolStats?.totalRequests || 0) > 0
+            ? Math.round(((poolStats?.rejectedJobs || 0) / (poolStats?.totalRequests || 1)) * 100)
             : 0,
         },
         alerts: generateAlerts(lbMetrics),

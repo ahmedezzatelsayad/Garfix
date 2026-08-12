@@ -363,7 +363,7 @@ export async function getAiProviders(): Promise<AiProviderConfig[]> {
 
     // Parse provider configs from settings
     const providers: AiProviderConfig[] = [];
-    const providerMap = new Map<string, Record<string, unknown>>();
+    const providerMap = new Map<string, Partial<AiProviderConfig>>();
 
     for (const s of settings) {
       // Keys: ai.provider.{type}.{field} = ai.provider.openrouter.apiKey, etc.
@@ -391,7 +391,7 @@ export async function getAiProviders(): Promise<AiProviderConfig[]> {
     }
 
     for (const [, entry] of providerMap) {
-      providers.push(entry as unknown as AiProviderConfig /* SAFETY: Record → typed */);
+      providers.push(entry as AiProviderConfig);
     }
 
     // Sort by priority

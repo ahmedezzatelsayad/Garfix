@@ -93,6 +93,9 @@ const scopedDbCache = new WeakMap<PrismaClient, Map<string, TenantScopedDb>>();
 export function withTenant(db: PrismaClient, companySlug: string): TenantScopedDb {
   // SQLite detection — RLS is a no-op there.
   if (isSqlite(db)) {
+    // SQLite doesn't support RLS — return the base client directly.
+    // Structural mismatch is expected: PrismaClient lacks __tenantSlug
+    // (added by Proxy at runtime). The no-op path never reads it.
     return db as unknown as TenantScopedDb;
   }
 
@@ -113,6 +116,9 @@ export function withTenant(db: PrismaClient, companySlug: string): TenantScopedD
   // when called twice on Proxies backed by the same `db` (the first call
   // made the property non-configurable, so the second call threw
   // "Attempting to change value of a readonly property").
+  // Proxy target: structural mismatch with PrismaClient is expected —
+  // the Proxy intercepts every property access, so the target type
+  // is never directly exposed to callers.
   const scoped = new Proxy(db as unknown as TenantScopedDb, {
     get(target, prop, receiver) {
       // Expose the tenant slug for diagnostic / assertion purposes

@@ -764,10 +764,18 @@ export function useTestIntegration() {
  * query caches automatically. Callers may wish to invalidate
  * audit or stats queries after the job completes.
  */
+export interface RetentionCleanupResult {
+  dryRun: boolean;
+  retentionPeriodYears: number;
+  cutoffDate: string;
+  eligible: Record<string, number>;
+  deleted?: Record<string, number>;
+}
+
 export function useRetentionCleanup() {
-  return useMutation<Record<string, unknown>, ApiError, Record<string, unknown>>({
+  return useMutation<RetentionCleanupResult, ApiError, { confirmYears: number; dryRun: boolean }>({
     mutationFn: (payload) =>
-      apiPost<Record<string, unknown>, Record<string, unknown>>(
+      apiPost<{ confirmYears: number; dryRun: boolean }, RetentionCleanupResult>(
         "/api/platform-admin/retention-cleanup",
         payload,
       ),

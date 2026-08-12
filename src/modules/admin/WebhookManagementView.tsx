@@ -30,7 +30,7 @@ import {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-interface WebhookEndpoint {
+interface WebhookEndpointLocal {
   id: string;
   url: string;
   events: string;
@@ -40,7 +40,7 @@ interface WebhookEndpoint {
   secret: string | null;
 }
 
-interface WebhookDelivery {
+interface WebhookDeliveryLocal {
   id: string;
   endpointId: string;
   eventType: string;
@@ -64,7 +64,7 @@ interface DeliveryStats {
   avgLatencyMs: number;
 }
 
-interface EventType {
+interface EventTypeLocal {
   id: string;
   label: string;
   labelAr: string;
@@ -112,10 +112,10 @@ export function WebhookManagementView() {
   const testEventMutation = useTestWebhookEvent();
 
   // ── Derived data from queries ──────────────────────────────────────────────
-  const endpoints = (endpointsQuery.data?.endpoints ?? []) as unknown as  WebhookEndpoint[];
-  const deliveries = (deliveriesQuery.data?.deliveries ?? []) as unknown as  WebhookDelivery[];
+  const endpoints = (endpointsQuery.data?.endpoints ?? []) as unknown as WebhookEndpointLocal[];
+  const deliveries = (deliveriesQuery.data?.deliveries ?? []) as unknown as WebhookDeliveryLocal[];
   const stats = deliveriesQuery.data?.stats as DeliveryStats | null | undefined;
-  const events = (eventsQuery.data?.events ?? []) as unknown as  EventType[];
+  const events = (eventsQuery.data?.events ?? []) as unknown as EventTypeLocal[];
   const loading = endpointsQuery.isLoading || deliveriesQuery.isLoading || eventsQuery.isLoading;
   const error = endpointsQuery.error?.message || deliveriesQuery.error?.message || eventsQuery.error?.message || null;
 
@@ -178,7 +178,7 @@ export function WebhookManagementView() {
     }
   };
 
-  const handleEditEndpoint = (ep: WebhookEndpoint) => {
+  const handleEditEndpoint = (ep: WebhookEndpointLocal) => {
     setEditingId(ep.id);
     setFormUrl(ep.url);
     try {

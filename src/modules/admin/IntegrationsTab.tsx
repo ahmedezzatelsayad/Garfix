@@ -39,7 +39,7 @@ export function IntegrationsTab() {
   const updateMutation = useUpdatePlatformIntegrations();
   const [configuringType, setConfiguringType] = useState<string | null>(null);
 
-  const integrations: IntegrationInfo[] = (integrationsQuery.data as unknown as  IntegrationInfo[]) || [];
+  const integrations: IntegrationInfo[] = (integrationsQuery.data as IntegrationInfo[]) || [];
   const loading = integrationsQuery.isLoading;
 
   const disconnect = async (type: string) => {

@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Database, Trash2, Check } from "lucide-react";
-import { useRetentionCleanup } from "@/hooks/queries";
+import { useRetentionCleanup, type RetentionCleanupResult } from "@/hooks/queries";
 
 /**
  * Admin P2 — Retention Cleanup tab.
@@ -12,17 +12,9 @@ import { useRetentionCleanup } from "@/hooks/queries";
  * POST (no GET), so we call POST with dryRun=true on mount for preview,
  * then POST with dryRun=false after confirm().
  */
-interface CleanupResult {
-  dryRun: boolean;
-  retentionPeriodYears: number;
-  cutoffDate: string;
-  eligible: Record<string, number>;
-  deleted?: Record<string, number>;
-}
-
 export function RetentionCleanupTab() {
   const cleanupMutation = useRetentionCleanup();
-  const [preview, setPreview] = useState<CleanupResult | null>(null);
+  const [preview, setPreview] = useState<RetentionCleanupResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [retentionYears, setRetentionYears] = useState(5);
@@ -31,7 +23,7 @@ export function RetentionCleanupTab() {
     setLoading(true);
     try {
       const result = await cleanupMutation.mutateAsync({ confirmYears: years, dryRun: true });
-      setPreview(result as unknown as  CleanupResult);
+      setPreview(result);
     } catch {
       toast.error("تعذّر تحميل المعاينة");
     } finally {
@@ -59,7 +51,7 @@ export function RetentionCleanupTab() {
     setRunning(true);
     try {
       const result = await cleanupMutation.mutateAsync({ confirmYears: retentionYears, dryRun: false });
-      const d = result as unknown as  CleanupResult;
+      const d = result;
       const deletedTotal = d.deleted ? Object.values(d.deleted).reduce((a, b) => a + b, 0) : 0;
       toast.success(`تم حذف ${deletedTotal} سجلاً نهائياً`);
       setPreview(d);

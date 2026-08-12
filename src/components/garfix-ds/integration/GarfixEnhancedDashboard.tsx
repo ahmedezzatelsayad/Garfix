@@ -852,7 +852,7 @@ export function GarfixEnhancedAIDashboard() {
               <GarfixTabPanel tabId="keys" activeTab={activeTab}>
                 {metrics && (
                   <GarfixDataTable
-                    data={metrics.data.keys as unknown as  Record<string, unknown>[]}
+                    data={metrics.data.keys.map(k => ({ ...k }) as Record<string, unknown>)}
                     rowKey="id"
                     columns={[
                       { key: 'name', header: 'اسم المفتاح' },
