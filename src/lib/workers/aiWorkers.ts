@@ -294,6 +294,18 @@ class AIMetricsCollector {
     };
   }
 
+  /** Expose worker and pool metrics for the metrics dashboard.
+   * Returns typed copies so consumers never need private-field casts. */
+  getWorkerAndPoolStats(): {
+    workers: Map<string, PerWorkerMetrics>;
+    pool: { totalRequests: number; totalTokens: number; totalFailures: number; rejectedJobs: number };
+  } {
+    return {
+      workers: new Map<string, PerWorkerMetrics>(this.metrics.workers),
+      pool: this.metrics.pool,
+    };
+  }
+
   /** Reset daily counters (call at midnight) */
   resetDailyCounters(): void {
     for (const [, keyMetrics] of this.metrics.keys) {

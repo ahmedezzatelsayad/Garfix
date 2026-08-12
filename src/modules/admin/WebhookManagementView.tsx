@@ -33,7 +33,8 @@ import {
 interface WebhookEndpointLocal {
   id: string;
   url: string;
-  events: string;
+  /** API may return events as a JSON string or an already-parsed array. */
+  events: string | string[];
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -112,10 +113,12 @@ export function WebhookManagementView() {
   const testEventMutation = useTestWebhookEvent();
 
   // ── Derived data from queries ──────────────────────────────────────────────
-  const endpoints = (endpointsQuery.data?.endpoints ?? []) as unknown as WebhookEndpointLocal[];
-  const deliveries = (deliveriesQuery.data?.deliveries ?? []) as unknown as WebhookDeliveryLocal[];
+  const endpoints = (endpointsQuery.data?.endpoints ?? []) as WebhookEndpointLocal[];
+  // @ts-expect-error — API returns extra fields (eventType, statusCode, etc.) not declared in the hook's WebhookDelivery type; covered by its [key: string]: any index sig at runtime.
+  const deliveries = (deliveriesQuery.data?.deliveries ?? []) as WebhookDeliveryLocal[];
   const stats = deliveriesQuery.data?.stats as DeliveryStats | null | undefined;
-  const events = (eventsQuery.data?.events ?? []) as unknown as EventTypeLocal[];
+  // @ts-expect-error — useWebhookEvents returns WebhookEvent[] but the component renders event type definitions (id, labelAr, etc.); the API returns both shapes depending on context.
+  const events = (eventsQuery.data?.events ?? []) as EventTypeLocal[];
   const loading = endpointsQuery.isLoading || deliveriesQuery.isLoading || eventsQuery.isLoading;
   const error = endpointsQuery.error?.message || deliveriesQuery.error?.message || eventsQuery.error?.message || null;
 
@@ -181,11 +184,7 @@ export function WebhookManagementView() {
   const handleEditEndpoint = (ep: WebhookEndpointLocal) => {
     setEditingId(ep.id);
     setFormUrl(ep.url);
-    try {
-      setFormEvents(JSON.parse(ep.events));
-    } catch {
-      setFormEvents([]);
-    }
+    setFormEvents(typeof ep.events === 'string' ? (() => { try { return JSON.parse(ep.events); } catch { return []; } })() : ep.events);
     setFormActive(ep.isActive);
     setShowForm(true);
   };
@@ -376,7 +375,7 @@ export function WebhookManagementView() {
                   </thead>
                   <tbody>
                     {endpoints.map((ep) => {
-                      const parsedEvents: string[] = (() => { try { return JSON.parse(ep.events); } catch { return []; } })();
+                      const parsedEvents: string[] = typeof ep.events === 'string' ? (() => { try { return JSON.parse(ep.events); } catch { return []; } })() : ep.events;
                       return (
                         <tr key={ep.id} className="border-b border-[var(--border)]">
                           <td className="py-2.5 px-3 font-mono text-xs dir-ltr" dir="ltr">

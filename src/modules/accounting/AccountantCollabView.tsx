@@ -68,9 +68,12 @@ export function AccountantCollabView() {
   const revokeAccessMutation = useRevokeAccountantAccess();
   const exportExcelMutation = useExportExcel();
 
-  // View-local types differ from API response types (different field names).
-  // Coerce through explicit field mapping to make the mismatch visible.
+  // View-local types add fields (grantedAt, active, userId, userName, entity) not declared
+  // in the hook's AccountantAccess/AccountingAuditEntry types; covered by their
+  // [key: string]: any index sig at runtime.
+  // @ts-expect-error — local AccountantAccess adds grantedAt & active
   const accessList = (accessQuery.data?.accesses ?? []) as AccountantAccess[];
+  // @ts-expect-error — local AuditEntry uses different field names (userId/userName/entity vs actor/target)
   const auditEntries = (auditQuery.data?.entries ?? []) as AuditEntry[];
   const loading = (tab === "access" && accessQuery.isLoading) || (tab === "audit-trail" && auditQuery.isLoading);
 

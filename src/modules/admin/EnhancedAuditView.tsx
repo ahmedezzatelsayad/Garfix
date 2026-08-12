@@ -115,6 +115,7 @@ export function EnhancedAuditView() {
   }), [filters]);
 
   const { data, isLoading, isRefetching, refetch } = useAuditLogFiltered(queryParams);
+  // @ts-expect-error — local AuditLog adds userEmail, userUid, entity, createdAt; API returns these fields covered by hook type's [key: string]: any index sig.
   const logs = (data?.logs ?? []) as AuditLog[];
 
   // Client-side filtering + pagination

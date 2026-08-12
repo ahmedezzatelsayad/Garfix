@@ -161,15 +161,8 @@ function getPoolStatus(utilizationPct: number, healthyRatio: number): 'healthy' 
 
 // ── Main Endpoint ───────────────────────────────────────────
 
-// Sprint 28: typed interface for AIMetricsCollector private field access.
-// The 'metrics' field is private but we need to read it for the dashboard.
-// This interface documents the expected shape — cast through 'unknown' to access.
-interface AIMetricsInternal {
-  metrics: {
-    workers?: Map<string, { activeJobs?: number; processedToday?: number; completedCount?: number; totalLatency?: number }>;
-    pool?: { totalRequests?: number; totalTokens?: number; totalFailures?: number; rejectedJobs?: number };
-  };
-}
+// Sprint 28: use public accessor getWorkerAndPoolStats() for worker/pool metrics.
+
 
 export const GET = async (req: NextRequest) => {
   try {
@@ -215,11 +208,8 @@ export const GET = async (req: NextRequest) => {
       // Queue tables might not exist yet
     }
 
-    // Sprint 28: access private metrics field via a single typed cast.
-    // The AIMetricsInternal interface documents the expected shape.
-    const aiMetricsInternal = aiMetrics as unknown as AIMetricsInternal;
-    const workersMap = aiMetricsInternal.metrics?.workers;
-    const poolStats = aiMetricsInternal.metrics?.pool;
+    // Sprint 28: use public accessor for worker/pool metrics.
+    const { workers: workersMap, pool: poolStats } = aiMetrics.getWorkerAndPoolStats();
 
     // Build response
     const response: MetricsResponse = {
@@ -256,22 +246,22 @@ export const GET = async (req: NextRequest) => {
           lastError: key.lastError,
           lastUsed: key.lastSuccessTime?.toISOString(),
         })),
-        workers: (Array.from(workersMap?.entries() || []) as [string, { activeJobs?: number; processedToday?: number; completedCount?: number; totalLatency?: number }][]).map(([type, m]) => ({
-          type: type as string,
-          activeJobs: m?.activeJobs ?? 0,
-          processedToday: m?.processedToday ?? 0,
-          avgLatencyMs: (m?.completedCount || 0) > 0 ? Math.round((m?.totalLatency || 0) / (m?.completedCount || 1)) : 0,
+        workers: Array.from(workersMap.entries()).map(([type, m]) => ({
+          type,
+          activeJobs: m.activeJobs,
+          processedToday: m.processedToday,
+          avgLatencyMs: m.completedCount > 0 ? Math.round(m.totalLatency / m.completedCount) : 0,
         })),
         queue: {
           ...queueStats,
           estimatedWaitTimeMs: lbMetrics?.estimatedWaitTimeMs || 0,
         },
         today: {
-          totalRequests: poolStats?.totalRequests || 0,
-          totalTokens: poolStats?.totalTokens || 0,
-          totalFailures: poolStats?.totalFailures || 0,
-          rejectionRate: (poolStats?.totalRequests || 0) > 0
-            ? Math.round(((poolStats?.rejectedJobs || 0) / (poolStats?.totalRequests || 1)) * 100)
+          totalRequests: poolStats.totalRequests,
+          totalTokens: poolStats.totalTokens,
+          totalFailures: poolStats.totalFailures,
+          rejectionRate: poolStats.totalRequests > 0
+            ? Math.round((poolStats.rejectedJobs / poolStats.totalRequests) * 100)
             : 0,
         },
         alerts: generateAlerts(lbMetrics),

@@ -93,10 +93,17 @@ const scopedDbCache = new WeakMap<PrismaClient, Map<string, TenantScopedDb>>();
 export function withTenant(db: PrismaClient, companySlug: string): TenantScopedDb {
   // SQLite detection — RLS is a no-op there.
   if (isSqlite(db)) {
-    // SQLite doesn't support RLS — return the base client directly.
-    // Structural mismatch is expected: PrismaClient lacks __tenantSlug
-    // (added by Proxy at runtime). The no-op path never reads it.
-    return db as unknown as TenantScopedDb;
+    // SQLite doesn't support RLS — return a passthrough proxy that
+    // satisfies the TenantScopedDb interface. The `__tenantSlug` trap
+    // still works because the proxy intercepts all access.
+    // @ts-expect-error — TS cannot verify Proxy satisfies TenantScopedDb; the trap adds __tenantSlug at runtime.
+    const passthrough: TenantScopedDb = new Proxy(db, {
+      get(target, prop, receiver) {
+        if (prop === "__tenantSlug") return companySlug;
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+    return passthrough;
   }
 
   let innerCache = scopedDbCache.get(db);
@@ -116,10 +123,10 @@ export function withTenant(db: PrismaClient, companySlug: string): TenantScopedD
   // when called twice on Proxies backed by the same `db` (the first call
   // made the property non-configurable, so the second call threw
   // "Attempting to change value of a readonly property").
-  // Proxy target: structural mismatch with PrismaClient is expected —
-  // the Proxy intercepts every property access, so the target type
-  // is never directly exposed to callers.
-  const scoped = new Proxy(db as unknown as TenantScopedDb, {
+  // The Proxy intercepts all property access at runtime, so the target
+  // type is never directly exposed to callers.
+  // @ts-expect-error — TS cannot verify Proxy satisfies TenantScopedDb; the trap adds __tenantSlug at runtime.
+  const scoped: TenantScopedDb = new Proxy(db, {
     get(target, prop, receiver) {
       // Expose the tenant slug for diagnostic / assertion purposes
       if (prop === "__tenantSlug") return companySlug;
@@ -127,7 +134,8 @@ export function withTenant(db: PrismaClient, companySlug: string): TenantScopedD
       if (typeof prop !== "string" || prop.startsWith("$")) {
         return Reflect.get(target, prop, receiver);
       }
-      const model = (target as unknown as Record<string, unknown>)[prop];
+      // @ts-expect-error — accessing model by dynamic string key on PrismaClient
+      const model = (target as Record<string, unknown>)[prop];
       if (!model || typeof model !== "object") {
         return model;
       }
