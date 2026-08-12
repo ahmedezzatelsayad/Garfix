@@ -131,7 +131,7 @@ const extendedPrisma = createExtendedPrisma();
  * lets us opt-in to type safety incrementally rather than blocking the
  * whole codebase on a single massive refactor.
  */
-export const db: any = globalForPrisma.prisma ?? extendedPrisma;
+export const db = globalForPrisma.prisma ?? extendedPrisma;
 
 /**
  * Fully-typed extended Prisma client. Use this in NEW code — it catches

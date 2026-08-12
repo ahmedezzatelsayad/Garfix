@@ -22,53 +22,12 @@ const __dirname = dirname(__filename);
 
 const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
   rules: {
-    // TypeScript rules
-    "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/no-unused-vars": "off",
-    "@typescript-eslint/no-non-null-assertion": "off",
-    "@typescript-eslint/ban-ts-comment": "off",
-    "@typescript-eslint/prefer-as-const": "off",
-    "@typescript-eslint/no-unused-disable-directive": "off",
-    "@typescript-eslint/no-require-imports": "off",
-    
-    // React rules
-    "react-hooks/exhaustive-deps": "off",
-    "react-hooks/purity": "off",
-    "react-hooks/set-state-in-effect": "off",
-    "react-hooks/error-boundaries": "off",
-    "react-hooks/immutability": "off",
-    "react-hooks/static-components": "off",
-    "react-hooks/preserve-manual-memoization": "off",
-    "react-hooks/refs": "off",
-    "react/no-unescaped-entities": "off",
-    "react/display-name": "off",
-    "react/prop-types": "off",
-    "react-compiler/react-compiler": "off",
-    
-    // Next.js rules
-    "@next/next/no-img-element": "off",
-    "@next/next/no-html-link-for-pages": "off",
-    
-    // General JavaScript rules
-    "prefer-const": "off",
-    "no-unused-vars": "off",
-    "no-console": "off",
-    "no-empty": "off",
-    "no-irregular-whitespace": "off",
-    "no-case-declarations": "off",
-    "no-mixed-spaces-and-tabs": "off",
-    "no-redeclare": "off",
-    "no-useless-escape": "off",
-    "no-debugger": "error",
-    "no-unreachable": "error",
-    "no-fallthrough": "error",
-    // Sprint 28: 'no-undef' is OFF for TypeScript files — REDUNDANT.
-    // tsc already checks undefined variables with full type information
-    // (including .d.ts global declarations). ESLint's no-undef doesn't
-    // understand TypeScript globals → 178 false-positive warnings for
-    // React, RequestInit, NodeJS, EventListener, BodyInit, Bun, etc.
-    // Source: https://typescript-eslint.io/troubleshooting/#no-undef
-    "no-undef": "off",
+    '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    'no-console': ['warn', { allow: ['warn', 'error'] }],
+    'no-debugger': 'warn',
+    'no-unreachable': 'error',
+    'react-hooks/exhaustive-deps': 'warn',
+    '@next/next/no-img-element': 'off', // many raw img tags exist, don't block build
   },
 }, {
   ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
