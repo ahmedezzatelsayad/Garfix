@@ -10,8 +10,12 @@
  * PostgreSQL's default Read Committed is insufficient for these operations.
  * This helper provides a drop-in replacement for db.$transaction(async (tx) => ...)
  * that adds Serializable isolation.
+ *
+ * Note: Uses DbTx (the extended client's transaction type) instead of
+ * Prisma.TransactionClient because dbTyped is an $extends client whose
+ * transaction callback receives the extended type with soft-delete hooks.
  */
-import { dbTyped as db } from "@/lib/db";
+import { dbTyped as db, type DbTx } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
 
 /** Serializable isolation level for financial transactions */
@@ -26,7 +30,7 @@ const SERIALIZABLE: Prisma.TransactionIsolationLevel = "Serializable";
  * On serialization failure, retries up to 3 times with exponential backoff.
  */
 export async function accountingTx<T>(
-  fn: (tx: Prisma.TransactionClient) => Promise<T>,
+  fn: (tx: DbTx) => Promise<T>,
   options?: { maxRetries?: number; timeoutMs?: number },
 ): Promise<T> {
   const maxRetries = options?.maxRetries ?? 3;
@@ -35,11 +39,11 @@ export async function accountingTx<T>(
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      return await db.$transaction(fn, {
+      return await db.$transaction(fn as Parameters<typeof db.$transaction>[0], {
         isolationLevel: SERIALIZABLE,
         maxWait: timeoutMs,
         timeout: timeoutMs,
-      });
+      }) as T;
     } catch (err: unknown) {
       lastError = err instanceof Error ? err : new Error(String(err));
       // PostgreSQL serialization failure error code
