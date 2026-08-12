@@ -76,14 +76,8 @@ ALTER TABLE "product_catalog" ALTER COLUMN "wholesalePrice" DROP DEFAULT;
 ALTER TABLE "product_catalog" ALTER COLUMN "wholesalePrice" TYPE Decimal(65,30) USING "wholesalePrice"::Decimal;
 
 -- Step 7: SalesReturn.totalAmount
-ALTER TABLE "sales_returns" ALTER COLUMN "totalAmount" DROP DEFAULT;
-ALTER TABLE "sales_returns" ALTER COLUMN "totalAmount" TYPE Decimal(65,30) USING "totalAmount"::Decimal;
-ALTER TABLE "sales_returns" ALTER COLUMN "totalAmount" SET DEFAULT 0;
 
 -- Step 8: PurchaseReturn.totalAmount
-ALTER TABLE "purchase_returns" ALTER COLUMN "totalAmount" DROP DEFAULT;
-ALTER TABLE "purchase_returns" ALTER COLUMN "totalAmount" TYPE Decimal(65,30) USING "totalAmount"::Decimal;
-ALTER TABLE "purchase_returns" ALTER COLUMN "totalAmount" SET DEFAULT 0;
 
 -- Step 9: Account.balance
 ALTER TABLE "accounts" ALTER COLUMN "balance" DROP DEFAULT;
@@ -183,12 +177,6 @@ ALTER TABLE "installment_schedules" ALTER COLUMN "totalAmount" TYPE Decimal(65,3
 ALTER TABLE "installment_schedules" ALTER COLUMN "totalAmount" SET DEFAULT 0;
 
 -- Step 23: Installment.amount and paidAmount
-ALTER TABLE "installments" ALTER COLUMN "amount" DROP DEFAULT;
-ALTER TABLE "installments" ALTER COLUMN "amount" TYPE Decimal(65,30) USING "amount"::Decimal;
-ALTER TABLE "installments" ALTER COLUMN "amount" SET DEFAULT 0;
-ALTER TABLE "installments" ALTER COLUMN "paidAmount" DROP DEFAULT;
-ALTER TABLE "installments" ALTER COLUMN "paidAmount" TYPE Decimal(65,30) USING "paidAmount"::Decimal;
-ALTER TABLE "installments" ALTER COLUMN "paidAmount" SET DEFAULT 0;
 
 -- Step 24: FixedAsset monetary fields
 ALTER TABLE "fixed_assets" ALTER COLUMN "acquisitionCost" DROP DEFAULT;

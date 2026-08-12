@@ -88,24 +88,24 @@ CREATE UNIQUE INDEX IF NOT EXISTS "payment_vouchers_companySlug_voucherNumber_id
 --
 -- The existing `event` column is kept for backward compatibility; the new
 -- `eventType` column is what the X-Garfix-Event header reads.
-ALTER TABLE "webhook_deliveries" ADD COLUMN IF NOT EXISTS "eventType" TEXT;
-ALTER TABLE "webhook_deliveries" ADD COLUMN IF NOT EXISTS "nextRetryAt" TIMESTAMP(3);
-ALTER TABLE "webhook_deliveries" ADD COLUMN IF NOT EXISTS "maxAttempts" INTEGER NOT NULL DEFAULT 3;
-ALTER TABLE "webhook_deliveries" ADD COLUMN IF NOT EXISTS "statusCode" INTEGER;
+ALTER TABLE "WebhookDelivery" ADD COLUMN IF NOT EXISTS "eventType" TEXT;
+ALTER TABLE "WebhookDelivery" ADD COLUMN IF NOT EXISTS "nextRetryAt" TIMESTAMP(3);
+ALTER TABLE "WebhookDelivery" ADD COLUMN IF NOT EXISTS "maxAttempts" INTEGER NOT NULL DEFAULT 3;
+ALTER TABLE "WebhookDelivery" ADD COLUMN IF NOT EXISTS "statusCode" INTEGER;
 
 -- Backfill eventType from event for legacy rows.
-UPDATE "webhook_deliveries"
+UPDATE "WebhookDelivery"
 SET "eventType" = "event"
 WHERE "eventType" IS NULL AND "event" IS NOT NULL;
 
 -- Backfill nextRetryAt to createdAt for legacy rows so the poller picks them up.
-UPDATE "webhook_deliveries"
+UPDATE "WebhookDelivery"
 SET "nextRetryAt" = "createdAt"
 WHERE "nextRetryAt" IS NULL AND "createdAt" IS NOT NULL;
 
 -- Index for the pending-delivery poll query.
 CREATE INDEX IF NOT EXISTS "webhook_deliveries_status_nextRetryAt_idx"
-  ON "webhook_deliveries" ("status", "nextRetryAt");
+  ON "WebhookDelivery" ("status", "nextRetryAt");
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- P0-08: Supplier — soft-delete column the API filters on
