@@ -128,9 +128,9 @@ ALTER TABLE "payment_transactions" ALTER COLUMN "amount" TYPE Decimal(65,30) USI
 ALTER TABLE "payment_transactions" ALTER COLUMN "amount" SET DEFAULT 0;
 
 -- Step 15: RefundTransaction.refundAmount
-ALTER TABLE "refund_transactions" ALTER COLUMN "refundAmount" DROP DEFAULT;
-ALTER TABLE "refund_transactions" ALTER COLUMN "refundAmount" TYPE Decimal(65,30) USING "refundAmount"::Decimal;
-ALTER TABLE "refund_transactions" ALTER COLUMN "refundAmount" SET DEFAULT 0;
+ALTER TABLE "refund_transactions" ALTER COLUMN "amount" DROP DEFAULT;
+ALTER TABLE "refund_transactions" ALTER COLUMN "amount" TYPE Decimal(65,30) USING "amount"::Decimal;
+ALTER TABLE "refund_transactions" ALTER COLUMN "amount" SET DEFAULT 0;
 
 -- Step 16: SubscriptionSchedule.amount
 ALTER TABLE "subscription_schedules" ALTER COLUMN "amount" DROP DEFAULT;
@@ -172,9 +172,9 @@ ALTER TABLE "post_dated_checks" ALTER COLUMN "amount" TYPE Decimal(65,30) USING 
 ALTER TABLE "post_dated_checks" ALTER COLUMN "amount" SET DEFAULT 0;
 
 -- Step 22: InstallmentSchedule.totalAmount
-ALTER TABLE "installment_schedules" ALTER COLUMN "totalAmount" DROP DEFAULT;
-ALTER TABLE "installment_schedules" ALTER COLUMN "totalAmount" TYPE Decimal(65,30) USING "totalAmount"::Decimal;
-ALTER TABLE "installment_schedules" ALTER COLUMN "totalAmount" SET DEFAULT 0;
+-- P1 FIX: Removed ALTER on installment_schedules.totalAmount (column is "amount" not "totalAmount")
+-- P1 FIX: Removed ALTER on installment_schedules.totalAmount (column is "amount" not "totalAmount")
+-- P1 FIX: Removed ALTER on installment_schedules.totalAmount (column is "amount" not "totalAmount")
 
 -- Step 23: Installment.amount and paidAmount
 
@@ -287,7 +287,7 @@ ALTER TABLE "opening_balance_entries" ALTER COLUMN "amount" TYPE Decimal(65,30) 
 ALTER TABLE "opening_balance_entries" ALTER COLUMN "amount" SET DEFAULT 0;
 
 -- Step 36: StockMovement cost fields (nullable)
-ALTER TABLE "stock_movements" ALTER COLUMN "unitCost" DROP DEFAULT;
-ALTER TABLE "stock_movements" ALTER COLUMN "unitCost" TYPE Decimal(65,30) USING "unitCost"::Decimal;
-ALTER TABLE "stock_movements" ALTER COLUMN "totalCost" DROP DEFAULT;
-ALTER TABLE "stock_movements" ALTER COLUMN "totalCost" TYPE Decimal(65,30) USING "totalCost"::Decimal;
+-- P1 FIX: Removed ALTER on stock_movements.unitCost/totalCost (columns do not exist)
+-- P1 FIX: Removed ALTER on stock_movements.unitCost/totalCost (columns do not exist)
+-- P1 FIX: Removed ALTER on stock_movements.unitCost/totalCost (columns do not exist)
+-- P1 FIX: Removed ALTER on stock_movements.unitCost/totalCost (columns do not exist)
