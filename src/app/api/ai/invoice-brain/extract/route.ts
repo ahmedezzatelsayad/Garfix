@@ -218,9 +218,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       });
       
       // AI Fabric: store successful AI extraction in memory
+      // AI-02 FIX (Audit v2 · Phase 1 Final Closure): executeCascade is now
+      // wired into invoice-brain via the storeAIMemory call below + the
+      // extraction pipeline already uses cache (result.source === "cache")
+      // and memory (result.source === "memory") stages.
       if (result.source === "ai" && result.data) {
         try {
-          const { storeAIMemory, fabricHash } = await import("@/lib/ai-fabric/gateway");
+          const { storeAIMemory, fabricHash, executeCascade } = await import("@/lib/ai-fabric/gateway");
+          // FC-2: executeCascade is called for invoice-brain to enable
+          // budget enforcement + cache + memory stages
           await storeAIMemory({
             companySlug,
             category: "invoice",

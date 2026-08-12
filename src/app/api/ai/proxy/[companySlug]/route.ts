@@ -170,13 +170,37 @@ export async function POST(
 
     // 6. Call the per-feature router (handles rate limit + key resolution +
     //    encryption + pool fallback + upstream call + usage tracking)
+    // AI-02 FIX (Audit v2 · Phase 1 Final Closure): Wrap the upstream call in
+    // executeCascade so the proxy benefits from cache + budget enforcement.
     const startTime = Date.now();
-    const result = await generateWithFeature(company.id, feature, {
-      messages: sanitizedMessages,
-      temperature,
-      maxTokens,
-      jsonMode,
-    });
+    const { executeCascade } = await import("@/lib/ai-fabric/gateway");
+    const cascadeResult = await executeCascade<unknown>(
+      {
+        companySlug,
+        requestType: "chat",
+        normalizedInput: JSON.stringify(sanitizedMessages).slice(0, 500),
+        rawInput: JSON.stringify(sanitizedMessages),
+        context: { feature, temperature, maxTokens, jsonMode },
+      },
+      {
+        skipStages: ["pattern", "rule"], // proxy is a pass-through, skip extraction stages
+        aiFn: async (): Promise<{ data: unknown; provider: string; tokensUsed: number; costUsd: number }> => {
+          const upstreamResult = await generateWithFeature(company.id, feature, {
+            messages: sanitizedMessages,
+            temperature,
+            maxTokens,
+            jsonMode,
+          });
+          return {
+            data: upstreamResult,
+            provider: "proxy-upstream",
+            tokensUsed: 0,
+            costUsd: 0,
+          };
+        },
+      },
+    );
+    const result = cascadeResult.data as Awaited<ReturnType<typeof generateWithFeature>>;
 
     const latencyMs = Date.now() - startTime;
 
