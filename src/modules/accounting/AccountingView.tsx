@@ -1,7 +1,7 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useState, useEffect, Suspense, lazy } from "react";
+import { useState, useEffect, Suspense, lazy, useRef } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { toast } from "sonner";
 import {
@@ -1398,7 +1398,7 @@ function JournalForm({ company, accounts, onClose, onSaved }: { company: { slug:
   const [description, setDescription] = useState("");
   const [reference, setReference] = useState("");
   const [status, setStatus] = useState("draft");
-  const [lines, setLines] = useState<Array<{ accountId: number | null; debit: number; credit: number; description?: string }>>([{ accountId: null, debit: 0, credit: 0 }]);
+  const [lines, setLines] = useState<Array<{ _key: string; accountId: number | null; debit: number; credit: number; description?: string }>>([{ _key: "line-0", accountId: null, debit: 0, credit: 0 }]);
   const [saving, setSaving] = useState(false);
   const createJournalEntryMutation = useCreateJournalEntry();
 
@@ -1407,7 +1407,8 @@ function JournalForm({ company, accounts, onClose, onSaved }: { company: { slug:
   const isBalanced = Math.abs(totalDebit - totalCredit) < 0.001;
 
   const updateLine = (i: number, field: string, value: number | string) => { setLines((arr) => arr.map((l, idx) => idx === i ? { ...l, [field]: value } : l)); };
-  const addLine = () => setLines((arr) => [...arr, { accountId: null, debit: 0, credit: 0 }]);
+  const lineCounter = useRef(1);
+  const addLine = () => setLines((arr) => [...arr, { _key: `line-${lineCounter.current++}`, accountId: null, debit: 0, credit: 0 }]);
   const removeLine = (i: number) => setLines((arr) => arr.filter((_, idx) => idx !== i));
 
   const submit = async () => {
@@ -1444,7 +1445,7 @@ function JournalForm({ company, accounts, onClose, onSaved }: { company: { slug:
           </div>
           <div className="flex flex-col gap-2">
             {lines.map((l, i) => (
-              <div key={i} className="grid grid-cols-[1fr_80px_100px_28px] sm:grid-cols-[1fr_100px_100px_32px] gap-1 sm:gap-2 items-center">
+              <div key={l._key} className="grid grid-cols-[1fr_80px_100px_28px] sm:grid-cols-[1fr_100px_100px_32px] gap-1 sm:gap-2 items-center">
                 <select value={l.accountId ?? ""} onChange={(e) => updateLine(i, "accountId", Number(e.target.value))} className={inputStyle}><option value="">— اختر حساب —</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.nameAr}</option>)}</select>
                 <input type="number" placeholder="مدين" value={l.debit} onChange={(e) => updateLine(i, "debit", Number(e.target.value))} className={inputStyle} dir="ltr" />
                 <input type="number" placeholder="دائن" value={l.credit} onChange={(e) => updateLine(i, "credit", Number(e.target.value))} className={inputStyle} dir="ltr" />

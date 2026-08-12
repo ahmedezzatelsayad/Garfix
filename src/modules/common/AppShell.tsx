@@ -226,7 +226,11 @@ function parseHash(): ViewKey {
   return VALID_VIEWS.includes(key) ? key : "dash";
 }
 
-export default function AppShell() {
+export default function AppShell(props: Record<string, unknown>) {
+  return <Suspense fallback={null}><AppShellContent {...props} /></Suspense>;
+}
+
+function AppShellContent(_props: Record<string, unknown>) {
   const { user, logout, perms, isAdmin, isFounder } = useAuth();
   const { activeCompany, companies, setActiveSlug, loadingCompanies, refreshCompanies, theme, toggleTheme } = useBrand();
   // Lazy-initialize from the URL hash so we don't need a setState-in-effect on mount

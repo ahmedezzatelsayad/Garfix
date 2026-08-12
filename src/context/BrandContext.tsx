@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { useTheme } from "next-themes";
 import { useAuth } from "./AuthContext";
 import { useCompanies } from "@/hooks/queries";
@@ -153,10 +153,10 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
 
   const activeCompany = companies.find((c) => c.slug === activeSlug) || null;
 
+  const value = useMemo(() => ({ companies, activeCompany, setActiveSlug, loadingCompanies, refreshCompanies, theme, toggleTheme }), [companies, activeCompany, setActiveSlug, loadingCompanies, refreshCompanies, theme, toggleTheme]);
+
   return (
-    <BrandContext.Provider
-      value={{ companies, activeCompany, setActiveSlug, loadingCompanies, refreshCompanies, theme, toggleTheme }}
-    >
+    <BrandContext.Provider value={value}>
       {children}
     </BrandContext.Provider>
   );

@@ -18,7 +18,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GarfixCard } from "../core/GarfixCard";
@@ -115,6 +115,10 @@ const colorConfig: Record<StatColor, {
 
 function useAnimatedValue(targetValue: number, enabled: boolean, duration = 800): number {
   const [currentValue, setCurrentValue] = useState(targetValue);
+  const currentValueRef = useRef(targetValue);
+
+  // Keep the ref in sync so the animation closure reads the latest settled value.
+  currentValueRef.current = currentValue;
 
   useEffect(() => {
     if (!enabled || typeof targetValue !== "number") {
@@ -123,7 +127,7 @@ function useAnimatedValue(targetValue: number, enabled: boolean, duration = 800)
     }
 
     const startTime = Date.now();
-    const startValue = currentValue;
+    const startValue = currentValueRef.current;
 
     const animate = () => {
       const elapsed = Date.now() - startTime;
@@ -140,7 +144,7 @@ function useAnimatedValue(targetValue: number, enabled: boolean, duration = 800)
     };
 
     requestAnimationFrame(animate);
-  }, [targetValue, enabled]);
+  }, [targetValue, enabled, duration]);
 
   return currentValue;
 }
