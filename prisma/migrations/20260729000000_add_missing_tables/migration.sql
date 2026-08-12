@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS "budget_lines" (
     "id" TEXT NOT NULL,
     "budgetId" INTEGER NOT NULL,
     "accountId" INTEGER NOT NULL,
-    "costCenterId" TEXT,
+    "costCenterId" INTEGER,
     "plannedAmount" TEXT NOT NULL DEFAULT '0',
     "actualAmount" TEXT NOT NULL DEFAULT '0',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS "SessionRegistry" (
 CREATE TABLE IF NOT EXISTS "TamperEvidenceChain" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "companySlug" TEXT,
-    "entryId" TEXT NOT NULL,
+    "entryId" INTEGER NOT NULL,
     "contentHash" TEXT NOT NULL,
     "prevHash" TEXT NOT NULL,
     "chainOrder" INTEGER NOT NULL DEFAULT 0,
