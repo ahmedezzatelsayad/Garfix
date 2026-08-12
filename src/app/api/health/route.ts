@@ -32,8 +32,6 @@ import { cacheStats } from "@/lib/cache";
 import { totalmem } from "node:os";
 
 const VERSION = process.env.APP_VERSION || "12.1.0";
-const COMMIT_SHA = process.env.COMMIT_SHA || "unknown";
-const BUILD_TIME = process.env.BUILD_TIME || "unknown";
 
 export const dynamic = "force-dynamic";
 
@@ -109,14 +107,15 @@ export async function GET() {
   }
 
   // ── 5. Memory ──────────────────────────────────────────────────────────
+  // AUDIT FIX: Only include RSS percentage for internal diagnostics.
+  // Stripped systemTotalMB, heapTotalMB, and raw RSS to reduce
+  // fingerprinting surface on this unauthenticated endpoint.
   const memUsage = process.memoryUsage();
   const totalMemory = totalmem();
   checks.memory = {
-    rssMB: Math.round(memUsage.rss / 1024 / 1024),
-    heapMB: Math.round(memUsage.heapUsed / 1024 / 1024),
-    heapTotalMB: Math.round(memUsage.heapTotal / 1024 / 1024),
-    systemTotalMB: Math.round(totalMemory / 1024 / 1024),
-    rssPercent: ((memUsage.rss / totalMemory) * 100).toFixed(1),
+    rssPercent: totalMemory > 0
+      ? ((memUsage.rss / totalMemory) * 100).toFixed(1)
+      : "unknown",
   };
 
   // ── 6. Disk (non-critical) ────────────────────────────────────────────
@@ -142,12 +141,11 @@ export async function GET() {
     {
       status: criticalOk ? "ok" : "degraded",
       version: VERSION,
-      commitSha: COMMIT_SHA,
-      buildTime: BUILD_TIME,
+      // AUDIT FIX: Stripped commitSha and buildTime to reduce
+      // fingerprinting surface on this unauthenticated endpoint.
       uptime: process.uptime ? Math.round(process.uptime()) : null,
       latencyMs,
       checks,
-      timestamp: new Date().toISOString(),
     },
     { status: criticalOk ? 200 : 503 },
   );

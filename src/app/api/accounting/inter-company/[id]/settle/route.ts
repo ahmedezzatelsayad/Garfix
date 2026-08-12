@@ -12,6 +12,7 @@ import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
+import { accountingTx } from "@/lib/accounting/tx";
 import { z } from "zod";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
@@ -122,8 +123,9 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     return apiError("Could not resolve company records for inter-company settlement", 400);
   }
 
-  // Perform all operations in a single $transaction for atomicity
-  const result = await db.$transaction(async (tx) => {
+  // AUDIT FIX: Use Serializable isolation for cross-company settlement —
+  // prevents balance corruption if two settlements run concurrently.
+  const result = await accountingTx(async (tx) => {
     // Create JE for the "from" company
     const jeFrom = await tx.journalEntry.create({
       data: {

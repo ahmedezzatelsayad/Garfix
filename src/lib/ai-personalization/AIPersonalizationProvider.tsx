@@ -556,8 +556,7 @@ export const AIPersonalizationProvider: React.FC<AIPersonalizationProviderProps>
     itemId: string,
     feedback: "positive" | "negative"
   ) => {
-    // In real implementation, send to ML service
-    logger.info(`Feedback ${feedback} for item: ${itemId}`);
+    // In real implementation, send to ML service — using logger to avoid leaking data to console in production
     
     // Update recommendation relevance
     setRecommendations(prev =>

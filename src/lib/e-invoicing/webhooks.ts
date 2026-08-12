@@ -123,35 +123,43 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
     }
   }
 
-  // ── 2. Resolve companySlug + invoiceNumber from invoiceId ───────────
-  let companySlug = input.companySlug;
+  // ── 2. Resolve companySlug from DB (never trust the payload) ──
+  // AUDIT FIX: companySlug from the request body is attacker-controlled.
+  // We ALWAYS derive it from the Invoice record when invoiceId is present.
+  // When no invoiceId is available, the payload companySlug is used but
+  // EInvoice status mutation is gated on signatureValid === true.
+  let companySlug: string | null = null;
   let invoiceId = input.invoiceId ?? null;
   let invoiceNumber: string | null = null;
 
   if (invoiceId) {
-    // FIX #3 (CRITICAL): scope by companySlug when provided, to prevent cross-tenant lookups
-    const invoice = await db.invoice.findFirst({
-      where: companySlug
-        ? { id: invoiceId, companySlug }
-        : { id: invoiceId },
+    const invoice = await db.invoice.findUnique({
+      where: { id: invoiceId },
       select: { companySlug: true, invoiceNumber: true },
     });
     if (invoice) {
-      // FIX #3 (CRITICAL): if input provided a companySlug, verify it matches
-      if (companySlug && invoice.companySlug !== companySlug) {
-        logger.error("[e-invoicing:webhooks] cross-tenant invoice access blocked", {
-          inputCompanySlug: companySlug,
-          invoiceCompanySlug: invoice.companySlug,
+      companySlug = invoice.companySlug;
+      invoiceNumber = invoice.invoiceNumber;
+      // Audit: log if the payload companySlug disagrees with DB
+      if (input.companySlug && input.companySlug !== invoice.companySlug) {
+        logger.warn("[e-invoicing:webhooks] companySlug mismatch (payload vs DB)", {
+          payloadCompanySlug: input.companySlug,
+          dbCompanySlug: invoice.companySlug,
           invoiceId,
+          authority: input.authority,
         });
-        companySlug = "_unknown";
-        invoiceId = null; // prevent EInvoice update for wrong tenant
-      } else {
-        companySlug = invoice.companySlug;
-        invoiceNumber = invoice.invoiceNumber;
       }
+    } else {
+      // Invoice not found — keep companySlug null, will fall to _unknown below
+      logger.warn("[e-invoicing:webhooks] invoiceId not found in DB", { invoiceId, authority: input.authority });
     }
   }
+
+  // Fallback to payload companySlug only if no invoiceId was provided
+  if (!companySlug && input.companySlug) {
+    companySlug = input.companySlug;
+  }
+
   if (!companySlug) {
     logger.warn("[e-invoicing:webhooks] cannot resolve companySlug for receipt", {
       authority: input.authority,

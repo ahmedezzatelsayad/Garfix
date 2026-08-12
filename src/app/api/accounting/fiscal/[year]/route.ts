@@ -17,6 +17,7 @@ import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { Prisma } from "@prisma/client";
+import { accountingTx } from "@/lib/accounting/tx";
 
 // ─── Validation Schemas ──────────────────────────────────────────────────────
 
@@ -179,7 +180,9 @@ async function POST_close(req: NextRequest, ctx: RouteContext) {
   const startDate = new Date(year, 0, 1);
   const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
 
-  const closingResult = await db.$transaction(async (tx) => {
+  // AUDIT FIX: Serializable isolation for year-close — prevents concurrent
+  // year-close operations from corrupting account balances.
+  const closingResult = await accountingTx(async (tx) => {
     // Get all revenue/expense accounts
     const pnlAccounts = await tx.account.findMany({
       where: { 
@@ -415,7 +418,8 @@ async function POST_reopen(req: NextRequest, ctx: RouteContext) {
   });
 
   if (closingJE) {
-    await db.$transaction(async (tx) => {
+    // AUDIT FIX: Serializable isolation for year-reopen reversal.
+    await accountingTx(async (tx) => {
       const swappedLines = closingJE.lines.map((l) => ({
         accountId: l.accountId,
         debit: (l.credit ?? 0).toFixed(3),

@@ -1,6 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { FileText } from "lucide-react";
 import { FooterPageLayout } from "@/components/garfix/FooterPageLayout";
+
+export const metadata: Metadata = {
+  title: "الشروط والأحكام · GarfiX",
+  description: "الشروط والأحكام لاستخدام منصة GarfiX EOS — اشتراكات، فوترة، حقوق الملكية الفكرية، ومساعد الذكاء الاصطناعي.",
+};
 
 export default function TermsPage() {
   return (

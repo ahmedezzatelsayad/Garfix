@@ -1,6 +1,12 @@
 import { HelpCircle, Search, MessageCircle, BookOpen, Settings, CreditCard, Users, BarChart3, Shield, Zap } from "lucide-react";
 import { FooterPageLayout } from "@/components/garfix/FooterPageLayout";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "مركز المساعدة · GarfiX",
+  description: "مركز المساعدة لمنصة GarfiX EOS — دليل البدء، إدارة الفواتير والعملاء، التقارير المالية، الأمان، ومساعد الذكاء الاصطناعي.",
+};
 
 const HELP_CATEGORIES = [
   {

@@ -1,6 +1,12 @@
 import { Globe, Handshake, ArrowRight, CheckCircle } from "lucide-react";
 import { FooterPageLayout } from "@/components/garfix/FooterPageLayout";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "شركاؤنا · GarfiX",
+  description: "برنامج شركاء GarfiX EOS — شركاء التكامل والمبيعات والتدريب والتطوير في منطقة الشرق الأوسط وشمال أفريقيا.",
+};
 
 const PARTNER_TYPES = [
   {

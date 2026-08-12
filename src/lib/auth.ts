@@ -295,7 +295,7 @@ export async function issueSession(
       const decoded = jwt.decode(accessToken) as jwt.JwtPayload | null;
       const jti = decoded?.jti as string | undefined;
       if (jti) {
-        const ip = getClientIpFromRequest(req);
+        const ip = await getClientIpFromRequest(req);
         const ua = req.headers.get("user-agent") || undefined;
         // Dynamic import avoids a circular dep at module load (passwordPolicy
         // imports db which imports logger which is fine, but keeping the
@@ -318,17 +318,18 @@ export async function issueSession(
   }
 }
 
-/** Extract client IP from a NextRequest, honoring X-Forwarded-For chains. */
-function getClientIpFromRequest(req: NextRequest): string | undefined {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) {
-    // First IP in the chain is the original client
-    return xff.split(",")[0]?.trim() || undefined;
-  }
-  // Next.js 15+ exposes req.ip in some runtimes; fall back to x-real-ip
-  return (req as unknown as { ip?: string }).ip
-    || req.headers.get("x-real-ip")
-    || undefined;
+/**
+ * Extract client IP from a NextRequest.
+ *
+ * AUDIT FIX: Delegates to the spoof-resistant getClientIp() from rateLimit.ts
+ * instead of reading X-Forwarded-For/X-Real-IP directly (which are client-
+ * controllable headers and could store spoofed IPs in the SessionRegistry).
+ */
+async function getClientIpFromRequest(req: NextRequest): Promise<string | undefined> {
+  // Dynamic import to avoid potential circular dependency at module load time
+  const { getClientIp } = await import("./rateLimit");
+  const ip = getClientIp(req);
+  return ip !== "unknown" ? ip : undefined;
 }
 
 export async function clearSession(response: NextResponse): Promise<void> {

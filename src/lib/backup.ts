@@ -146,8 +146,20 @@ export async function runBackup(label = "scheduled"): Promise<BackupResult> {
     // Prisma doesn't expose .backup() directly, so we fall back to file copy
     // after a VACUUM INTO — which produces a consistent snapshot.
     try {
-      const sql = `VACUUM INTO '${backupPath.replace(/'/g, "''")}'`;
-      await db.$executeRawUnsafe(sql);
+      // NOTE: $executeRawUnsafe is intentional here. SQLite's VACUUM INTO
+      // requires a string literal file path — Prisma's tagged template
+      // ($executeRaw) produces a parameterized query (using $1), which
+      // SQLite's VACUUM does not support.
+      //
+      // Defense-in-depth:
+      //   1. backupPath comes from resolveSafeBackupPath() which validates
+      //      the filename against ^[a-zA-Z0-9._-]+\.db$ and ensures no
+      //      path traversal (realpath must start with BACKUP_DIR).
+      //   2. BACKUP_DIR itself comes from process.env.BACKUP_DIR (operator-
+      //      controlled, not user-supplied).
+      //   3. Single quotes in the path are escaped with ''.
+      const escapedPath = backupPath.replace(/'/g, "''");
+      await db.$executeRawUnsafe(`VACUUM INTO '${escapedPath}'`);
     } catch (vacErr) {
       // Fallback: plain file copy (less consistent but works)
       logger.warn("[backup] VACUUM INTO failed — falling back to file copy", { err: vacErr instanceof Error ? vacErr.message : String(vacErr) });
