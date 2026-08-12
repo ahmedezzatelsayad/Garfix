@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * auth-advanced.test.ts — 50 tests for the auth module.
  *

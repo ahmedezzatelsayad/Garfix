@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * queue-pgboss.test.ts — Comprehensive test suite for the pg-boss queue integration.
  *

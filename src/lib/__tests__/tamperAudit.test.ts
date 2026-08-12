@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * tamperAudit.test.ts — 50 tests for the tamper-evident audit chain module.
  *

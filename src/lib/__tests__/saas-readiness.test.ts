@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * saas-readiness.test.ts — 40 tests for SaaS readiness features.
  *

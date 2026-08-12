@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'bun:test';
 import { seedEnterpriseData, TelemetryCollector, calculateMetrics, generateFounderReport } from '../index';
 describe('Scale: invoice-items 12', () => {

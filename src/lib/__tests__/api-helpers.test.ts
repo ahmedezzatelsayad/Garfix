@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * api-helpers.test.ts — tests for the shared Route Handler helpers in
  * `src/lib/api.ts`.

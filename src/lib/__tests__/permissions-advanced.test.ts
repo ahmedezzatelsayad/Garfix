@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * permissions-advanced.test.ts — 50 tests for the permissions system.
  *

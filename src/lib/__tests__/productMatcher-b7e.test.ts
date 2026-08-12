@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * productMatcher-b7e.test.ts — B.7e charSetJaccard multiplicity false-positive trap.
  *

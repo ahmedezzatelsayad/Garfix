@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * rateLimit-advanced.test.ts — 50 tests for the rate limiter.
  *

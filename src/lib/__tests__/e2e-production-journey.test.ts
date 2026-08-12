@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * E2E Production Journey Test — Full tenant lifecycle simulation.
  *

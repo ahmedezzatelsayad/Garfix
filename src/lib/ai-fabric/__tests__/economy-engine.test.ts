@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * economy-engine.test.ts — Comprehensive tests for the AI Economy Engine.
  *
