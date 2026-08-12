@@ -475,16 +475,34 @@ describe("resolveAuth", () => {
 });
 
 // ─── assertCompanyAccess ───────────────────────────────────────────────────
+//
+// AUDIT-DECISION (ADD-1 · Phase 1.5): The 4 tests below were updated to
+// reflect the intentional removal of the founder/admin bypass from
+// assertCompanyAccess (commit 85e40be "fix(api): tenant isolation, schema
+// fields, IDOR protection"). The old tests asserted that admin/founder
+// could access ANY company's data without being a member — this was an
+// IDOR vulnerability. The new behavior requires ALL users (including
+// admin/founder) to have the companySlug in their companies list.
+//
+// Founder/admin cross-tenant access is now handled via:
+//   1. The platform_admin_bypass RLS policy (migration 20260813130000)
+//      which fires when app.is_platform = 'on' is set.
+//   2. The withTenantScope HOF (src/lib/api/tenant-middleware.ts) which
+//      sets app.is_platform for hasUnrestrictedScope() users.
+//
+// This is defense-in-depth: app-layer assertCompanyAccess is strict,
+// and the DB-layer RLS provides the founder bypass via a separate,
+// audited mechanism.
 
 describe("assertCompanyAccess", () => {
   const adminUser = {
     uid: "a", email: "admin@test.com", role: "admin",
-    companies: [], permissions: {}, tv: 1,
+    companies: ["co-a"], permissions: {}, tv: 1,
   };
 
   const founderUser = {
     uid: "f", email: "founder@garfix.com", role: "editor",
-    companies: [], permissions: {}, tv: 1,
+    companies: ["co-a"], permissions: {}, tv: 1,
   };
 
   const employeeUser = {
@@ -492,20 +510,24 @@ describe("assertCompanyAccess", () => {
     companies: ["co-a", "co-b"], permissions: {}, tv: 1,
   };
 
-  it("admin has unrestricted access (no slug)", () => {
-    expect(assertCompanyAccess(adminUser, null)).toBe(true);
+  // ADD-1 FIX: admin no longer bypasses — must have slug in companies list
+  it("admin with matching company slug returns true", () => {
+    expect(assertCompanyAccess(adminUser, "co-a")).toBe(true);
   });
 
-  it("admin has unrestricted access (with slug)", () => {
-    expect(assertCompanyAccess(adminUser, "any-slug")).toBe(true);
+  // ADD-1 FIX: admin cannot access company they're not a member of
+  it("admin with mismatched slug returns false (IDOR protection)", () => {
+    expect(assertCompanyAccess(adminUser, "other-company")).toBe(false);
   });
 
-  it("founder has unrestricted access (no slug)", () => {
-    expect(assertCompanyAccess(founderUser, null)).toBe(true);
+  // ADD-1 FIX: founder no longer bypasses — must have slug in companies list
+  it("founder with matching company slug returns true", () => {
+    expect(assertCompanyAccess(founderUser, "co-a")).toBe(true);
   });
 
-  it("founder has unrestricted access (with slug)", () => {
-    expect(assertCompanyAccess(founderUser, "any-company")).toBe(true);
+  // ADD-1 FIX: founder cannot access company they're not a member of
+  it("founder with mismatched slug returns false (IDOR protection)", () => {
+    expect(assertCompanyAccess(founderUser, "other-company")).toBe(false);
   });
 
   it("employee with matching company slug returns true", () => {
@@ -516,8 +538,17 @@ describe("assertCompanyAccess", () => {
     expect(assertCompanyAccess(employeeUser, "co-c")).toBe(false);
   });
 
-  it("employee without slug uses unrestricted check (false)", () => {
+  it("employee without slug returns false (no bypass)", () => {
     expect(assertCompanyAccess(employeeUser, null)).toBe(false);
+  });
+
+  // ADD-1 FIX: no slug = no access for ANY user (including admin/founder)
+  it("admin without slug returns false (no bypass)", () => {
+    expect(assertCompanyAccess(adminUser, null)).toBe(false);
+  });
+
+  it("founder without slug returns false (no bypass)", () => {
+    expect(assertCompanyAccess(founderUser, null)).toBe(false);
   });
 });
 
