@@ -75,7 +75,7 @@ ALTER TABLE "refund_transactions"
 
 CREATE INDEX IF NOT EXISTS "refund_transactions_paymentTransactionId_idx"
   ON "refund_transactions" ("paymentTransactionId");
-CREATE INDEX IF NOT EXISTS "refund_transactions_companySlug_idx"
+-- P1 FIX: Removed CREATE INDEX on refund_transactions.companySlug — column does not exist
   ON "refund_transactions" ("companySlug");
 
 -- ─────────────────────────────────────────────────────────────────────────────

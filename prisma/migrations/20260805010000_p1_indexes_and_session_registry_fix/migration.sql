@@ -23,7 +23,7 @@ CREATE INDEX IF NOT EXISTS "SessionRegistry_expiresAt_idx" ON "SessionRegistry"(
 
 -- ─── 2. JournalEntryLine — FK indexes on journalEntryId + accountId ────────
 
-CREATE INDEX IF NOT EXISTS "journal_entry_lines_journalEntryId_idx" ON "journal_entry_lines"("journalEntryId");
+CREATE INDEX IF NOT EXISTS "journal_entry_lines_journalEntryId_idx" ON "journal_entry_lines"("entryId");
 
 CREATE INDEX IF NOT EXISTS "journal_entry_lines_accountId_idx" ON "journal_entry_lines"("accountId");
 
@@ -53,19 +53,19 @@ CREATE INDEX IF NOT EXISTS "admin_audit_logs_adminEmail_idx" ON "admin_audit_log
 
 CREATE INDEX IF NOT EXISTS "admin_audit_logs_createdAt_idx" ON "admin_audit_logs"("createdAt");
 
-CREATE INDEX IF NOT EXISTS "admin_audit_logs_targetSlug_idx" ON "admin_audit_logs"("targetSlug");
+-- P1 FIX: Removed CREATE INDEX on "admin_audit_logs" — columns ['targetSlug'] do not exist
 
 -- ─── 7. AutomationExecutionLog — ruleId + status+triggeredAt ───────────────
 
 CREATE INDEX IF NOT EXISTS "automation_execution_logs_ruleId_idx" ON "automation_execution_logs"("ruleId");
 
-CREATE INDEX IF NOT EXISTS "automation_execution_logs_status_triggeredAt_idx" ON "automation_execution_logs"("status", "triggeredAt");
+-- P1 FIX: Removed CREATE INDEX on "automation_execution_logs" — columns ['triggeredAt'] do not exist
 
 -- ─── 8. PlatformSettingsHistory — settingId + createdAt + changedBy ────────
 
-CREATE INDEX IF NOT EXISTS "platform_settings_history_settingId_idx" ON "platform_settings_history"("settingId");
+-- P1 FIX: Removed CREATE INDEX on "platform_settings_history" — columns ['settingId'] do not exist
 
-CREATE INDEX IF NOT EXISTS "platform_settings_history_createdAt_idx" ON "platform_settings_history"("createdAt");
+-- P1 FIX: Removed CREATE INDEX on "platform_settings_history" — columns ['createdAt'] do not exist
 
 CREATE INDEX IF NOT EXISTS "platform_settings_history_changedBy_idx" ON "platform_settings_history"("changedBy");
 
@@ -85,7 +85,7 @@ CREATE INDEX IF NOT EXISTS "companies_deletedAt_idx" ON "companies"("deletedAt")
 
 -- ─── 12. Invoice — soft-delete composite + status+createdAt ────────────────
 
-CREATE INDEX IF NOT EXISTS "invoices_companySlug_deletedAt_idx" ON "invoices"("companySlug_deletedAt");
+-- P1 FIX: Removed CREATE INDEX on "invoices" — columns ['companySlug_deletedAt'] do not exist
 
 CREATE INDEX IF NOT EXISTS "invoices_status_createdAt_idx" ON "invoices"("status", "createdAt");
 
@@ -93,7 +93,7 @@ CREATE INDEX IF NOT EXISTS "invoices_status_createdAt_idx" ON "invoices"("status
 
 CREATE INDEX IF NOT EXISTS "purchase_invoices_companySlug_deletedAt_idx" ON "purchase_invoices"("companySlug", "deletedAt");
 
-CREATE INDEX IF NOT EXISTS "purchase_invoices_supplierId_idx" ON "purchase_invoices"("supplierId");
+-- P1 FIX: Removed CREATE INDEX on "purchase_invoices" — columns ['supplierId'] do not exist
 
 -- ─── 14. BankTransaction — bankAccountId FK + date ─────────────────────────
 
@@ -103,13 +103,13 @@ CREATE INDEX IF NOT EXISTS "bank_transactions_date_idx" ON "bank_transactions"("
 
 -- ─── 15. BudgetLine — budgetId + accountId + costCenterId FK indexes ───────
 
-CREATE INDEX IF NOT EXISTS "budget_lines_budgetId_idx" ON "budget"("lines_budgetId");
+-- P1 FIX: Removed CREATE INDEX on non-existent table "budget"
 
-CREATE INDEX IF NOT EXISTS "BudgetLine_budgetId_idx" ON "BudgetLine"("budgetId");
+-- P1 FIX: Removed CREATE INDEX on non-existent table "BudgetLine"
 
-CREATE INDEX IF NOT EXISTS "BudgetLine_accountId_idx" ON "BudgetLine"("accountId");
+-- P1 FIX: Removed CREATE INDEX on non-existent table "BudgetLine"
 
-CREATE INDEX IF NOT EXISTS "BudgetLine_costCenterId_idx" ON "BudgetLine"("costCenterId");
+-- P1 FIX: Removed CREATE INDEX on non-existent table "BudgetLine"
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- End of migration.
