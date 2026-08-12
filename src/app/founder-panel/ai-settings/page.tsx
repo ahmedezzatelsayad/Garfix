@@ -21,6 +21,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 // ── GarfiX DS Imports ──────────────────────────────────────
 
@@ -202,7 +203,7 @@ export default function AISettingsPage() {
         }
       }
     } catch (error) {
-      console.error('Failed to fetch AI config:', error);
+      logger.error('Failed to fetch AI config:', { err: error });
       setAlert({ type: 'error', message: 'فشل في تحميل الإعدادات' });
     } finally {
       setIsLoading(false);
@@ -218,7 +219,7 @@ export default function AISettingsPage() {
         setUsageData(data.data);
       }
     } catch (error) {
-      console.error('Failed to fetch usage:', error);
+      logger.error('Failed to fetch usage:', { err: error });
     }
   };
   
@@ -259,7 +260,7 @@ export default function AISettingsPage() {
         setAlert({ type: 'error', message: data.error || 'فشل في الحفظ' });
       }
     } catch (error) {
-      console.error('Failed to save config:', error);
+      logger.error('Failed to save config:', { err: error });
       setAlert({ type: 'error', message: 'خطأ في الاتصال بالخادم' });
     } finally {
       setIsSaving(false);
@@ -738,9 +739,9 @@ export default function AISettingsPage() {
                           💡 التوصيات
                         </h3>
                         <div className="space-y-2">
-                          {usageData.recommendations.map((rec, i) => (
+                          {usageData.recommendations.map((rec) => (
                             <GarfixAlert
-                              key={i}
+                              key={rec.message}
                               variant={
                                 rec.severity === 'critical'
                                   ? 'error'

@@ -492,6 +492,11 @@ async function POST_reopen(req: NextRequest, ctx: RouteContext) {
 // ─── Route Handlers ──────────────────────────────────────────────────────────
 
 export const POST = withErrorHandler(async (req: NextRequest, ctx: RouteContext) => {
+  const authResult = await resolveAuth(req);
+  if (!authResult.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const rl = await rateLimitResponse(req, "post:accounting-fiscal-year", LIMITS.API_WRITE);
   if (rl) return rl;
 

@@ -308,7 +308,7 @@ export function validateKuwaitInvoice(
   const lineItems = invoice.lineItems as LineItem[] | string | undefined;
   let parsedItems: LineItem[] = [];
   if (typeof lineItems === "string") {
-    try { parsedItems = JSON.parse(lineItems); } catch { parsedItems = []; }
+    try { parsedItems = JSON.parse(lineItems); } catch (error) { logger.error("Kuwait line items JSON parse failed", { error }); parsedItems = []; }
   } else if (Array.isArray(lineItems)) {
     parsedItems = lineItems;
   }
@@ -316,7 +316,7 @@ export function validateKuwaitInvoice(
   const lineItemsAr = invoice.lineItemsAr as string | undefined;
   let parsedItemsAr: KuwaitLineItemPayload[] = [];
   if (lineItemsAr) {
-    try { parsedItemsAr = JSON.parse(lineItemsAr); } catch { parsedItemsAr = []; }
+    try { parsedItemsAr = JSON.parse(lineItemsAr); } catch (error) { logger.error("Kuwait Arabic line items JSON parse failed", { error }); parsedItemsAr = []; }
   }
   if (parsedItems.length > 0 && parsedItemsAr.length !== parsedItems.length) {
     errors.push(ERROR_MESSAGES.LINE_ITEMS_ARABIC_MISSING);
@@ -400,7 +400,7 @@ export function generateKuwaitInvoicePayload(
   const lineItems = invoice.lineItems as LineItem[] | string;
   let parsedItems: LineItem[] = [];
   if (typeof lineItems === "string") {
-    try { parsedItems = JSON.parse(lineItems); } catch { parsedItems = []; }
+    try { parsedItems = JSON.parse(lineItems); } catch (error) { logger.error("Kuwait line items JSON parse failed", { error }); parsedItems = []; }
   } else if (Array.isArray(lineItems)) {
     parsedItems = lineItems;
   }
@@ -409,7 +409,7 @@ export function generateKuwaitInvoicePayload(
   const lineItemsArStr = invoice.lineItemsAr as string | undefined;
   let parsedItemsAr: KuwaitLineItemPayload[] = [];
   if (lineItemsArStr) {
-    try { parsedItemsAr = JSON.parse(lineItemsArStr); } catch { parsedItemsAr = []; }
+    try { parsedItemsAr = JSON.parse(lineItemsArStr); } catch (error) { logger.error("Kuwait Arabic line items JSON parse failed", { error }); parsedItemsAr = []; }
   }
   // If Arabic items are missing, generate placeholder structure
   if (parsedItemsAr.length === 0 && parsedItems.length > 0) {

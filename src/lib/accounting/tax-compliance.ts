@@ -241,7 +241,7 @@ export async function calculateZakat(
     (a) => a.code.startsWith("13") || a.code.startsWith("14") || (a.nameAr ?? '').includes("استثمار") || a.nameEn?.toLowerCase().includes("investment"),
   );
   for (const acc of investmentAccounts) {
-    let balance = balanceMap.get(acc.id) || num(acc.balance, 3);
+    const balance = balanceMap.get(acc.id) || num(acc.balance, 3);
     longTermInvestments += balance;
   }
 

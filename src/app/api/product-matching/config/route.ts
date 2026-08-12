@@ -40,8 +40,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
   let autoMatchThreshold = DEFAULT_AUTO_MATCH_THRESHOLD;
   let suggestedThreshold = DEFAULT_SUGGESTED_THRESHOLD;
-  let evidenceWeights = { ...DEFAULT_EVIDENCE_WEIGHTS };
-  let signalFlags = { ...DEFAULT_SIGNAL_FLAGS };
+  const evidenceWeights = { ...DEFAULT_EVIDENCE_WEIGHTS };
+  const signalFlags = { ...DEFAULT_SIGNAL_FLAGS };
 
   for (const s of settings) {
     try {

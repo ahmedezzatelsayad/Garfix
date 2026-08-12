@@ -569,7 +569,7 @@ interface TenantConfig {
   signalFlags: SignalFlags;
 }
 
-let configCache: Map<string, { config: TenantConfig; expiry: number }> = new Map();
+const configCache: Map<string, { config: TenantConfig; expiry: number }> = new Map();
 
 async function getTenantConfig(companySlug: string): Promise<TenantConfig> {
   const cached = configCache.get(companySlug);
@@ -584,8 +584,8 @@ async function getTenantConfig(companySlug: string): Promise<TenantConfig> {
 
   let autoMatchThreshold = DEFAULT_AUTO_MATCH_THRESHOLD;
   let suggestedThreshold = DEFAULT_SUGGESTED_THRESHOLD;
-  let evidenceWeights = { ...DEFAULT_EVIDENCE_WEIGHTS };
-  let signalFlags = { ...DEFAULT_SIGNAL_FLAGS };
+  const evidenceWeights = { ...DEFAULT_EVIDENCE_WEIGHTS };
+  const signalFlags = { ...DEFAULT_SIGNAL_FLAGS };
 
   for (const s of settings) {
     try {

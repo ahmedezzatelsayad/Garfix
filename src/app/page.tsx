@@ -77,8 +77,8 @@ function StaticLanding() {
             { icon: "🏢", title: "متعدد الشركات", desc: "أدر عدد غير محدود من الشركات مع عزل كامل للبيانات" },
             { icon: "📱", title: "Arabic-first", desc: "واجهة عربية RTL كاملة + تقويم هجري + تحويل المبالغ لنص عربي" },
             { icon: "🛡️", title: "أمان مؤسسي", desc: "RBAC كامل + AES-256 encryption + MFA + audit trail" },
-          ].map((f, i) => (
-            <div key={i} className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-emerald-500/20 transition-colors">
+          ].map((f) => (
+            <div key={f.title} className="p-6 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-emerald-500/20 transition-colors">
               <div className="text-3xl mb-3">{f.icon}</div>
               <h3 className="font-bold text-white mb-2">{f.title}</h3>
               <p className="text-sm text-white/60 leading-relaxed">{f.desc}</p>

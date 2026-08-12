@@ -58,6 +58,7 @@ import {
   EventContext,
   DeviceInfo,
 } from "./types";
+import { logger } from "@/lib/logger";
 
 // ── Default Preferences ─────────────────────────────────────────────────
 
@@ -556,7 +557,7 @@ export const AIPersonalizationProvider: React.FC<AIPersonalizationProviderProps>
     feedback: "positive" | "negative"
   ) => {
     // In real implementation, send to ML service
-    console.log(`Feedback ${feedback} for item: ${itemId}`);
+    logger.info(`Feedback ${feedback} for item: ${itemId}`);
     
     // Update recommendation relevance
     setRecommendations(prev =>

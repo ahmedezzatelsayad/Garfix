@@ -39,6 +39,7 @@ export default function VercelClients() {
               var data = await cliRes.json();
               var clients = data.clients || data.data || [];
               if (clients.length === 0) {
+                // [SAFE] innerHTML: static HTML — no dynamic/user data
                 document.getElementById('clients-grid').innerHTML = '<div class="col-span-full text-center py-12 text-white/40">لا يوجد عملاء بعد</div>';
               } else {
                 var html = clients.map(function(c) {
@@ -53,6 +54,7 @@ export default function VercelClients() {
                     (taxId?'<p class="text-xs text-white/60">🆔 '+taxId+'</p>':'') +
                     '</div>';
                 }).join('');
+                // [SAFE] innerHTML: all dynamic values escaped via __esc()
                 document.getElementById('clients-grid').innerHTML = html;
               }
             }

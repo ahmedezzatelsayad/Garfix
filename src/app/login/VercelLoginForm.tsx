@@ -89,7 +89,7 @@ export function VercelLoginForm() {
           var password = document.getElementById('password').value;
 
           btn.disabled = true;
-          btn.innerHTML = 'جارٍ التسجيل...';
+          btn.textContent = 'جارٍ التسجيل...';
           errDiv.className = 'hidden';
 
           try {
@@ -106,13 +106,13 @@ export function VercelLoginForm() {
               errDiv.textContent = data.error || 'فشل تسجيل الدخول';
               errDiv.className = 'block p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm';
               btn.disabled = false;
-              btn.innerHTML = 'تسجيل الدخول →';
+              btn.textContent = 'تسجيل الدخول →';
             }
           } catch(err) {
             errDiv.textContent = 'خطأ في الاتصال';
             errDiv.className = 'block p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm';
             btn.disabled = false;
-            btn.innerHTML = 'تسجيل الدخول →';
+            btn.textContent = 'تسجيل الدخول →';
           }
         });
       `}} />

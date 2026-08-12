@@ -247,9 +247,9 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
             { n: "99.9%", label: "وقت التشغيل" },
             { n: "24/7", label: "دعم فوري" },
             { n: "15+", label: "وحدة متكاملة" },
-          ].map((s, i) => (
+          ].map((s) => (
             <div
-              key={i}
+              key={s.label}
               className="p-5 rounded-[14px] bg-white/[0.04] border border-white/[0.08]"
             >
               <div className="text-[32px] font-black text-[#fbbf24]">{s.n}</div>
@@ -275,8 +275,8 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
 
         {/* Feature Showcase Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-[1200px] mx-auto mb-12">
-          {FEATURE_SHOWCASE.map((f, i) => (
-            <div key={i}>
+          {FEATURE_SHOWCASE.map((f) => (
+            <div key={f.titleAr}>
               <Card className="landing-card cursor-default h-full hover-lift duration-120">
                 <CardHeader>
                   <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center text-white mb-2`}>
@@ -305,9 +305,9 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
             { icon: "🔒", title: "أمان وصلاحيات", desc: "تحكم بصلاحيات كل موظف بدقة عالية مع سجل تدقيق كامل لكل عملية" },
             { icon: "🧾", title: "الفاتورة الإلكترونية", desc: "قابلية التوسع لهيئات الفوترة الإلكترونية الخليجية مستقبلاً (ZATCA، FTA، NBR)" },
             { icon: "📱", title: "تطبيق موبايل (PWA)", desc: "ثبّت المنصة كتطبيق على موبايلك — تعمل بسرعة تطبيق أصلي مع إشعارات" },
-          ].map((f, i) => (
+          ].map((f) => (
             <div
-              key={i}
+              key={f.title}
               className="p-6 rounded-2xl landing-card cursor-default hover-lift duration-120"
             >
               <div className="text-[32px] mb-3">{f.icon}</div>
@@ -375,8 +375,8 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
                     <span className="text-white/50 text-[13px]">{tier.currency}/{billingPeriod === "yearly" ? "سنوياً" : tier.periodAr}</span>
                   </div>
                   <ul className="list-none p-0 m-0 mb-6 text-[13px] text-white/75">
-                    {tier.features.map((f, i) => (
-                      <li key={i} className="py-1.5 flex items-start gap-2">
+                    {tier.features.map((f) => (
+                      <li key={f} className="py-1.5 flex items-start gap-2">
                         <CheckCircle2 size={14} className="text-[#10b981] shrink-0 mt-0.5" />
                         <span>{f}</span>
                       </li>
@@ -447,8 +447,8 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
               </tr>
             </thead>
             <tbody>
-              {COMPARISON_FEATURES.map((row, i) => (
-                <tr key={i} className="border-b border-white/[0.06]">
+              {COMPARISON_FEATURES.map((row) => (
+                <tr key={row.featureAr} className="border-b border-white/[0.06]">
                   <td className="p-3 font-bold text-white/80">{row.featureAr}</td>
                   <td className="p-3 text-center text-[#6ee7b7] font-bold comparison-garfix">{row.garfix}</td>
                   <td className="p-3 text-center text-white/50">{row.odoo}</td>
@@ -474,8 +474,8 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-[1100px] mx-auto">
-          {TESTIMONIALS.map((t, i) => (
-            <div key={i}>
+          {TESTIMONIALS.map((t) => (
+            <div key={t.name}>
               <Card className="glass landing-card h-full">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-1 mb-3">
@@ -506,8 +506,8 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
         </div>
         <div className="max-w-[760px] mx-auto">
           <Accordion type="single" collapsible className="flex flex-col gap-3">
-            {FAQ_ITEMS.map((faq, i) => (
-              <AccordionItem key={i} value={`faq-${i}`} className="rounded-lg landing-card border-none px-5">
+            {FAQ_ITEMS.map((faq) => (
+              <AccordionItem key={faq.q} value={`faq-${faq.q}`} className="rounded-lg landing-card border-none px-5">
                 <AccordionTrigger className="text-[15px] font-bold text-white outline-none hover:no-underline [&[data-state=open]]:text-[#6ee7b7]">
                   {faq.q}
                 </AccordionTrigger>

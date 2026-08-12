@@ -54,6 +54,7 @@ export default function VercelInvoices() {
               document.getElementById('stat-pending').textContent = invoices.filter(function(i){return i.status==='sent'||i.status==='draft'}).length;
 
               if (invoices.length === 0) {
+                // [SAFE] innerHTML: static HTML — no dynamic/user data
                 document.getElementById('invoices-table').innerHTML = '<div class="text-center py-12 text-white/40">لا توجد فواتير بعد. اضغط "فاتورة جديدة" لإنشاء أول فاتورة.</div>';
               } else {
                 var html = invoices.map(function(inv) {
@@ -69,6 +70,7 @@ export default function VercelInvoices() {
                     '<div class="flex items-center gap-4"><span class="text-sm font-bold">'+total+'</span>' +
                     '<span class="text-xs px-2 py-0.5 rounded-full '+statusColor+'">'+status+'</span></div></div>';
                 }).join('');
+                // [SAFE] innerHTML: all dynamic values escaped via __esc()
                 document.getElementById('invoices-table').innerHTML = html;
               }
             }

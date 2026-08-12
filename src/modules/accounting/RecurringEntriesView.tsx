@@ -11,6 +11,7 @@ import {
   RotateCcw, FileText, ArrowUpDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
 
@@ -110,7 +111,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
       setEntries(response.entries);
       setPagination(response.pagination);
     } catch (err) {
-      console.error("Error fetching recurring entries:", err);
+      logger.error("Error fetching recurring entries:", { err });
       toast.error("خطأ في تحميل القيود الدورية");
     } finally {
       setLoading(false);
@@ -655,7 +656,7 @@ function RecurringEntryModal({
   useEffect(() => {
     apiGet<any>(`/api/accounting/accounts?companySlug=${companySlug}`)
       .then((res) => setAccounts(res.accounts || []))
-      .catch(console.error);
+      .catch((err: unknown) => logger.error("Error fetching recurring accounts", { err }));
   }, [companySlug]);
 
   // Handlers

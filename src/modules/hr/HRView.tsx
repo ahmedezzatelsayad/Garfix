@@ -456,9 +456,9 @@ export function HRView() {
             <div className="kpi-label">إجمالي الموظفين</div>
             <div className="sparkline-container mt-2">
               <div className="flex items-end gap-0.5 h-8">
-                {[40, 65, 45, 80, 55, 70, 60].map((h, i) => (
+                {[40, 65, 45, 80, 55, 70, 60].map((h) => (
                   <div 
-                    key={i} 
+                    key={h} 
                     className="flex-1 bg-primary/30 rounded-sm min-w-[4px]" 
                     style={{ height: `${h}%` }}
                   />

@@ -25,6 +25,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckSquare, Square } from 'lucide-react';
 
 // ── GarfiX DS Imports ──────────────────────────────────────
@@ -284,7 +285,7 @@ export default function CompaniesPerFeatureAIPage() {
         setAlert({ type: 'error', message: data.error || 'فشل تحميل الشركات' });
       }
     } catch (error) {
-      console.error('Fetch companies error:', error);
+      logger.error('Fetch companies error:', { err: error });
       setAlert({ type: 'error', message: 'خطأ في الاتصال بالخادم' });
     } finally {
       setIsLoading(false);
@@ -314,7 +315,7 @@ export default function CompaniesPerFeatureAIPage() {
       }
       return null;
     } catch (error) {
-      console.error('Fetch AI config error:', error);
+      logger.error('Fetch AI config error:', { err: error });
       return null;
     }
   };
@@ -377,7 +378,7 @@ export default function CompaniesPerFeatureAIPage() {
         setAlert({ type: 'error', message: data.error || 'فشل الحفظ' });
       }
     } catch (error) {
-      console.error('Save error:', error);
+      logger.error('Save error:', { err: error });
       setAlert({ type: 'error', message: 'خطأ في الاتصال' });
     } finally {
       setIsSaving(false);
@@ -427,7 +428,7 @@ export default function CompaniesPerFeatureAIPage() {
         }
       }
     } catch (error) {
-      console.error('Test error:', error);
+      logger.error('Test error:', { err: error });
       setTestResults(prev => ({
         ...prev,
         [featureKey]: { success: false, latencyMs: 0, model: '', error: 'خطأ في الاتصال', feature: featureKey },
@@ -791,8 +792,8 @@ export default function CompaniesPerFeatureAIPage() {
         {/* ══ Companies List ══ */}
         {isLoading ? (
           <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <GarfixCard key={i}>
+            {[1, 2, 3].map((n) => (
+              <GarfixCard key={n}>
                 <GarfixSkeleton className="h-32 w-full" />
               </GarfixCard>
             ))}

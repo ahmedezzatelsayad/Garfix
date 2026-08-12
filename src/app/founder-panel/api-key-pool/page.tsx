@@ -19,6 +19,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckSquare, Square, Search, Filter } from 'lucide-react';
 
 // ── GarfiX DS Imports ──────────────────────────────────────
@@ -165,7 +166,7 @@ export default function FounderApiKeyPoolPage() {
         setAlert({ type: 'error', message: data.error || 'فشل تحميل البيانات' });
       }
     } catch (error) {
-      console.error('Fetch pool error:', error);
+      logger.error('Fetch pool error:', { err: error });
       setAlert({ type: 'error', message: 'خطأ في الاتصال بالخادم' });
     } finally {
       setIsLoading(false);
@@ -221,7 +222,7 @@ export default function FounderApiKeyPoolPage() {
         setAlert({ type: 'error', message: data.error || 'فشل إضافة المفاتيح' });
       }
     } catch (error) {
-      console.error('Add keys error:', error);
+      logger.error('Add keys error:', { err: error });
       setAlert({ type: 'error', message: 'خطأ في الاتصال' });
     } finally {
       setIsAdding(false);

@@ -11,6 +11,7 @@ import {
   DollarSign, AlertTriangle,
 } from "lucide-react";
 import { LazyReviewQueueModal } from "@/modules/common/LazyModals";
+import { logger } from "@/lib/logger";
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -794,7 +795,7 @@ export function AICopilotBubble() {
 function toastWarn(msg: string) {
   if (typeof window !== "undefined") {
     // Defer to sonner if available; otherwise console.
-    import("sonner").then((s) => s.toast.warning(msg)).catch(() => console.warn(msg));
+    import("sonner").then((s) => s.toast.warning(msg)).catch(() => logger.warn(msg));
   }
 }
 

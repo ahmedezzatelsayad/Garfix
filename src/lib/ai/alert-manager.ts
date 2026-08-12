@@ -490,7 +490,7 @@ export class AIAlertManager extends EventEmitter {
         if (currentValue === undefined || currentValue === null) continue;
 
         // Handle numeric conversion for string values (like circuit state)
-        let numericValue = typeof currentValue === 'number' 
+        const numericValue = typeof currentValue === 'number' 
           ? currentValue 
           : currentValue === rule.threshold ? 1 : 0;
 

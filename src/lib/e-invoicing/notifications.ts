@@ -116,7 +116,8 @@ async function findCompanyAdmins(companySlug: string): Promise<Array<{ uid: stri
             ? parsed.filter((s): s is string => typeof s === "string")
             : [];
           return slugs.includes(companySlug);
-        } catch {
+        } catch (error) {
+          logger.warn("[e-invoicing:notifications] companies JSON parse failed for user", { error });
           return false;
         }
       })
@@ -144,7 +145,8 @@ async function getCompanyContact(companySlug: string): Promise<{ phone: string |
       phone: company?.phone || null,
       name: company?.nameAr || company?.name || null,
     };
-  } catch {
+  } catch (error) {
+    logger.warn("[e-invoicing:notifications] company contact lookup failed", { companySlug, error });
     return { phone: null, name: null };
   }
 }

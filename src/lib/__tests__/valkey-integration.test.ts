@@ -54,7 +54,7 @@ mock.module("@/lib/queue-pgboss", () => ({
 const RedisMock = (await import("ioredis-mock")).default;
 
 // Create a shared mock instance that all modules will use
-let sharedMockRedis: InstanceType<typeof RedisMock> | null = null;
+const sharedMockRedis: InstanceType<typeof RedisMock> | null = null;
 
 function createMockRedis(): InstanceType<typeof RedisMock> {
   const r = new RedisMock();

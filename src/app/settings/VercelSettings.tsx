@@ -50,6 +50,7 @@ export default function VercelSettings() {
             document.getElementById('content').className = 'space-y-6';
 
             var companies = user.companies || [];
+            // [SAFE] innerHTML: all dynamic values escaped via __esc()
             document.getElementById('company-info').innerHTML =
               '<div class="flex justify-between"><span class="text-sm text-white/60">الإيميل</span><span class="text-sm">'+__esc(user.email)+'</span></div>' +
               '<div class="flex justify-between"><span class="text-sm text-white/60">الاسم</span><span class="text-sm">'+__esc(user.displayName||'---')+'</span></div>' +
@@ -57,6 +58,7 @@ export default function VercelSettings() {
               '<div class="flex justify-between"><span class="text-sm text-white/60">الشركة</span><span class="text-sm">'+__esc(companies[0]||'---')+'</span></div>' +
               '<div class="flex justify-between"><span class="text-sm text-white/60">المؤسس</span><span class="text-sm '+(user.isFounder?'text-emerald-400':'text-white/40')+'">'+(user.isFounder?'نعم':'لا')+'</span></div>';
 
+            // [SAFE] innerHTML: static HTML — no dynamic/user data
             document.getElementById('einvoice-status').innerHTML =
               '<div class="flex items-center justify-between p-3 rounded-lg bg-white/[0.02]"><span class="text-sm">ZATCA (السعودية)</span><span class="text-xs text-amber-400">يحتاج إعداد</span></div>' +
               '<div class="flex items-center justify-between p-3 rounded-lg bg-white/[0.02]"><span class="text-sm">ETA (مصر)</span><span class="text-xs text-amber-400">يحتاج إعداد</span></div>' +

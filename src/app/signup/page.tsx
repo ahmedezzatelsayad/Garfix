@@ -241,11 +241,11 @@ export default function SignupPage() {
                 {password.length > 0 && (
                   <div className="space-y-1.5">
                     <div className="flex gap-1">
-                      {[0, 1, 2, 3, 4].map((i) => (
+                      {[0, 1, 2, 3, 4].map((level) => (
                         <div
-                          key={i}
+                          key={level}
                           className={`h-1.5 flex-1 rounded-full transition-colors duration-200 ${
-                            i < pwdScore
+                            level < pwdScore
                               ? pwdScore <= 2
                                 ? "bg-red-500"
                                 : pwdScore === 3

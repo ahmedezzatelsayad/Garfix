@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { 
   Activity, 
   Zap, 
@@ -531,7 +532,7 @@ export function AIMetricsDashboard() {
       setMetrics(data);
       setLastRefresh(new Date());
     } catch (err: any) {
-      console.error('Failed to fetch AI metrics:', err);
+      logger.error('Failed to fetch AI metrics:', { err });
       setError(err.message);
       
       // Use mock data for demo/development
@@ -579,7 +580,7 @@ export function AIMetricsDashboard() {
         fetchMetrics(); // Refresh metrics
       }
     } catch (err) {
-      console.error('Failed to reset quotas:', err);
+      logger.error('Failed to reset quotas:', { err });
     }
   };
 

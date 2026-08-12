@@ -272,7 +272,7 @@ export function InvoicesView() {
           <AlertDescription>
             <ul className="list-disc pr-5 text-sm space-y-1 mt-1">
               {inventoryWarnings.slice(0, 5).map((w, i) => (
-                <li key={i}>{w}</li>
+                <li key={`${w}-${i}`}>{w}</li>
               ))}
               {inventoryWarnings.length > 5 && (
                 <li className="text-xs opacity-70">+ {inventoryWarnings.length - 5} تحذيرات أخرى…</li>
@@ -306,7 +306,7 @@ export function InvoicesView() {
             <div className="flex flex-col gap-2">
               <ul className="m-0 ps-5 flex flex-col gap-1 list-disc">
                 {reviewQueueWarnings.slice(0, 5).map((w, i) => (
-                  <li key={i} className="text-[12px] leading-[1.5] text-foreground">
+                  <li key={`${w}-${i}`} className="text-[12px] leading-[1.5] text-foreground">
                     {w}
                   </li>
                 ))}

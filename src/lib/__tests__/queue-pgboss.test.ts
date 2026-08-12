@@ -32,7 +32,7 @@ const mockBossInstance = {
   isInstalled: mock(async () => true),
 };
 
-let PgBossMock = mock(function (options) {
+const PgBossMock = mock(function (options) {
   return mockBossInstance;
 });
 

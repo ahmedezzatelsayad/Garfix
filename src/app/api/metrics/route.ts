@@ -24,7 +24,7 @@ import { cacheStats } from "@/lib/cache";
 import { getBullMQStats } from "@/lib/queues";
 import { valkeyHealthCheck, VALKEY_CONFIGURED, getValkeyUrl } from "@/lib/valkey";
 import { logger } from "@/lib/logger";
-import { getAuthenticatedUser } from "@/lib/auth";
+import { resolveAuth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +61,8 @@ export async function GET(req: NextRequest) {
   if (!tokenAuthOk) {
     // Fallback: check for a valid founder/admin session cookie.
     try {
-      const user = await getAuthenticatedUser(req);
+      const authResult = await resolveAuth(req);
+      const user = authResult.user;
       if (!user || (user.role !== 'founder' && user.role !== 'admin')) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }

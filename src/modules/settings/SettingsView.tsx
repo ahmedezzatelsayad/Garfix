@@ -265,7 +265,7 @@ function SectionCard({
 
 function calculateCompletion(company: CompanyInfo): number {
   let filled = 0;
-  let total = 8;
+  const total = 8;
   
   if (company.name) filled++;
   if (company.nameAr) filled++;

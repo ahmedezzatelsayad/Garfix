@@ -25,6 +25,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 // ── GarfiX DS Imports ──────────────────────────────────────
 
@@ -531,7 +532,7 @@ export function GarfixEnhancedAIDashboard() {
       }
       
       // ⚠️ Fallback to mock data if API fails
-      console.warn('AI Metrics API unavailable, using fallback data');
+      logger.warn('AI Metrics API unavailable, using fallback data');
       setMetrics(MOCK_AI_METRICS);
       aiContext?.trackEvent({
         type: 'page_view',
@@ -543,7 +544,7 @@ export function GarfixEnhancedAIDashboard() {
       });
       
     } catch (error) {
-      console.error('Failed to fetch AI metrics:', error);
+      logger.error('Failed to fetch AI metrics:', { err: error });
       // ❌ Error fallback - use mock data
       setMetrics(MOCK_AI_METRICS);
     } finally {

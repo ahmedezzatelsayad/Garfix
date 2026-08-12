@@ -126,11 +126,11 @@ describe("P1.1: Outbox pattern", () => {
     });
 
     // First attempt: failed
-    let r1 = await processOutboxBatch();
+    const r1 = await processOutboxBatch();
     expect(r1.failed).toBe(1);
     expect(r1.dead).toBe(0);
     // Second attempt: dead
-    let r2 = await processOutboxBatch();
+    const r2 = await processOutboxBatch();
     expect(r2.dead).toBe(1);
     expect((db as any)._store[0].status).toBe("dead");
 

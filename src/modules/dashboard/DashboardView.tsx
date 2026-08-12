@@ -33,6 +33,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useBrand } from "@/context/BrandContext";
+import { logger } from "@/lib/logger";
 import { useDashboardStats } from "@/hooks/queries/dashboard";
 import {
   FileText, Users, DollarSign, TrendingUp, AlertCircle, ArrowLeft,
@@ -362,7 +363,7 @@ export function DashboardView() {
   }
 
   if (statsError) {
-    console.error("[Dashboard] Error loading stats:", statsError);
+    logger.error("[Dashboard] Error loading stats:", { err: statsError });
   }
 
   if (!stats) {

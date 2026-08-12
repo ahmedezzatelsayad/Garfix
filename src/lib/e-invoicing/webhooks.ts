@@ -379,7 +379,8 @@ export class WebhookBodyTooLargeError extends Error {
 export function safeJsonParse<T = unknown>(raw: string): T | null {
   try {
     return JSON.parse(raw) as T;
-  } catch {
+  } catch (error) {
+    logger.warn("[e-invoicing:webhooks] safeJsonParse failed", { error });
     return null;
   }
 }

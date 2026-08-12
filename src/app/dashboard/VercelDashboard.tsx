@@ -121,12 +121,15 @@ export default function VercelDashboard() {
                       '<div class="flex items-center gap-4"><span class="text-sm font-bold">' + total + '</span>' +
                       '<span class="text-xs ' + statusColor + '">' + status + '</span></div></div>';
                   }).join('');
+                  // [SAFE] innerHTML: all dynamic values escaped via __esc()
                   document.getElementById('invoices-list').innerHTML = html;
                 } else {
+                  // [SAFE] innerHTML: static HTML — no dynamic/user data
                   document.getElementById('invoices-list').innerHTML = '<p class="text-sm text-white/40">لا توجد فواتير بعد</p>';
                 }
               }
             } catch(e) {
+              // [SAFE] innerHTML: static HTML — no dynamic/user data
               document.getElementById('invoices-list').innerHTML = '<p class="text-sm text-white/40">تعذر تحميل الفواتير</p>';
             }
           } catch(err) {

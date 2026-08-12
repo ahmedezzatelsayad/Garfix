@@ -13,6 +13,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useMemo } 
 import { useTheme } from "next-themes";
 import { useAuth } from "./AuthContext";
 import { useCompanies } from "@/hooks/queries";
+import { logger } from "@/lib/logger";
 import type { Company as QueryCompany } from "@/hooks/queries/dashboard";
 
 export interface CompanyInfo {
@@ -119,7 +120,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       // spams the console on every page load before the user signs in.
       const status = (companiesQuery.error as { status?: number } | null)?.status;
       if (status !== 401) {
-        console.error("[brand] failed to load companies:", companiesQuery.error);
+        logger.error("[brand] failed to load companies:", { err: companiesQuery.error });
       }
       setCompanies([]);
     }

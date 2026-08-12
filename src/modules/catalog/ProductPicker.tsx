@@ -14,6 +14,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, Plus, Package, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -115,7 +116,7 @@ export function ProductPicker({
 
       setOptions(products);
     } catch (err) {
-      console.error("[ProductPicker] Search error:", err);
+      logger.error("[ProductPicker] Search error:", { err });
       setOptions([]);
     } finally {
       setLoading(false);

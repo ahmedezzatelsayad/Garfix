@@ -98,8 +98,8 @@ async function callAIStream(
 ): Promise<StreamOutcome> {
   const t0 = Date.now();
   let fullReply = "";
-  let provider = "z-ai";
-  let model = "z-ai-glm";
+  const provider = "z-ai";
+  const model = "z-ai-glm";
   let tokensIn = 0;
   let tokensOut = 0;
   try {
