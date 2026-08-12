@@ -181,8 +181,35 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 أجب فقط بـ JSON:
 {"orders":[{"clientName":"","clientPhone":"","clientAddress":"","items":[{"name":"","qty":1,"unitPrice":0.0}],"taxRate":0,"shipping":0,"discount":0,"notes":""}]}`;
 
-    const aiResult = await callAI(systemPrompt, `أعمدة الملف: ${headerKeys.join(", ")}\n\nالبيانات:\n${textRows}`);
-    const content = aiResult.content;
+    // AI-02 FIX (Audit v2 · Phase 1 Final Closure): Wrap callAI in executeCascade
+    // so parse-file benefits from cache → pattern → rule → memory → budget → AI.
+    const { executeCascade } = await import("@/lib/ai-fabric/gateway");
+    // Keep aiResult accessible outside the cascade for logging
+    let aiResult: { content: string; provider?: string; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }; processingMs: number } | null = null;
+    const cascadeResult = await executeCascade<string>(
+      {
+        companySlug: companySlug || "__global",
+        requestType: "extraction",
+        normalizedInput: textRows.slice(0, 500),
+        rawInput: textRows,
+        context: { systemPrompt, headerKeys },
+      },
+      {
+        aiFn: async (): Promise<{ data: string; provider: string; tokensUsed: number; costUsd: number }> => {
+          const result = await callAI(systemPrompt, `أعمدة الملف: ${headerKeys.join(", ")}\n\nالبيانات:\n${textRows}`);
+          aiResult = result;
+          return {
+            data: result.content,
+            provider: "z-ai",
+            tokensUsed: (result.usage?.prompt_tokens || 0) + (result.usage?.completion_tokens || 0),
+            costUsd: 0,
+          };
+        },
+      },
+    );
+    const content = String(cascadeResult.data || "");
+    // If cascade resolved via cache, aiResult may be undefined — use safe defaults
+    const _aiResult = aiResult ?? { content, provider: cascadeResult.resolvedBy as string, usage: {} as { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }, processingMs: cascadeResult.latencyMs };
 
     let orders: ParsedOrder[] = [];
     try {
@@ -199,9 +226,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         provider: "z-ai",
         model: 'z-ai-glm',
         endpoint: "parse-file",
-        tokensIn: aiResult.usage.prompt_tokens || 0,
-        tokensOut: aiResult.usage.completion_tokens || 0,
-        processingMs: aiResult.processingMs,
+        tokensIn: _aiResult.usage?.prompt_tokens || 0 || 0,
+        tokensOut: _aiResult.usage?.completion_tokens || 0 || 0,
+        processingMs: _aiResult.processingMs || 0,
         success: false,
         errorMessage: `JSON parse failed: ${err instanceof Error ? err.message : String(err)}`,
       });
@@ -216,16 +243,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     // P0 FIX (AI Effectiveness prompt): log every parse-file AI call to
     // ai_usage_logs with real token counts + the AI provider call latency
-    // (aiResult.processingMs), distinct from the whole-handler processingMs.
+    // (_aiResult.processingMs || 0), distinct from the whole-handler processingMs.
     void logAiUsage({
       companySlug: companySlug ?? "",
       userUid: user.uid ?? "",
       provider: "z-ai",
       model: 'z-ai-glm',
       endpoint: "parse-file",
-      tokensIn: aiResult.usage.prompt_tokens || 0,
-      tokensOut: aiResult.usage.completion_tokens || 0,
-      processingMs: aiResult.processingMs,
+      tokensIn: _aiResult.usage?.prompt_tokens || 0 || 0,
+      tokensOut: _aiResult.usage?.completion_tokens || 0 || 0,
+      processingMs: _aiResult.processingMs || 0,
       success: true,
     });
 
@@ -235,7 +262,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         requestType: "parse-file",
         provider: "z-ai",
         latencyMs: processingMs,
-        tokensUsed: aiResult.usage.total_tokens || 0,
+        tokensUsed: _aiResult.usage?.total_tokens || 0 || 0,
         success: true,
       },
     });
@@ -243,17 +270,17 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     await logAudit({
       userEmail: user.email, userUid: user.uid ?? "",
       action: "ai_parse_file", entity: "ai", companySlug: companySlug ?? "",
-      details: { fileName, rowsParsed: rows.length, ordersExtracted: orders.length, processingMs, aiMs: aiResult.processingMs },
+      details: { fileName, rowsParsed: rows.length, ordersExtracted: orders.length, processingMs, aiMs: _aiResult.processingMs || 0 },
     });
 
     return NextResponse.json({
       orders,
       meta: {
         processingMs,
-        aiMs: aiResult.processingMs,
-        inputTokens: aiResult.usage.prompt_tokens || 0,
-        outputTokens: aiResult.usage.completion_tokens || 0,
-        totalTokens: aiResult.usage.total_tokens || 0,
+        aiMs: _aiResult.processingMs || 0,
+        inputTokens: _aiResult.usage?.prompt_tokens || 0 || 0,
+        outputTokens: _aiResult.usage?.completion_tokens || 0 || 0,
+        totalTokens: _aiResult.usage?.total_tokens || 0 || 0,
         rowsParsed: rows.length,
         ordersCount: orders.length,
         itemsCount,
