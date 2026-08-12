@@ -64,6 +64,10 @@ export function invalidateRegistryCache(): void {
 }
 
 // ─── Row mapper ─────────────────────────────────────────────────────────────
+// AI-01 FIX (Audit v2 · Phase 1): mapRow now reads the actual `capabilities`,
+// `healthScore`, `isHealthy`, and `lastHealthCheck` columns from the DB
+// instead of hardcoding `capabilities: []` and `isHealthy: true`.
+// This unblocks getModelsForCapability() and callAIWithFallback().
 
 function mapRow(row: {
   id: number;
@@ -73,6 +77,10 @@ function mapRow(row: {
   costPerTokenOut: number;
   maxTokens: number | null;
   isActive: boolean;
+  capabilities: string[];
+  healthScore: number;
+  isHealthy: boolean;
+  lastHealthCheck: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }): RegistryEntry {
@@ -81,21 +89,23 @@ function mapRow(row: {
     provider: row.provider,
     model: row.model,
     displayName: row.model,
-    capabilities: [],
+    // AI-01 FIX: read actual capabilities from DB (was hardcoded [])
+    capabilities: (row.capabilities || []) as AICapability[],
     tier: "free",
     costPer1kIn: row.costPerTokenIn,
     costPer1kOut: row.costPerTokenOut,
     maxTokens: row.maxTokens ?? 0,
     contextWindow: 0,
     isEnabled: row.isActive,
-    isHealthy: true,
-    healthScore: 0,
+    // AI-01 FIX: read actual health status from DB (was hardcoded true)
+    isHealthy: row.isHealthy ?? true,
+    healthScore: row.healthScore ?? 0,
     successRate: 0,
     avgLatencyMs: 0,
     p95LatencyMs: 0,
     avgQualityScore: 0,
     totalBenchmarks: 0,
-    lastBenchmarkAt: null,
+    lastBenchmarkAt: row.lastHealthCheck ?? null,
     lastError: null,
   };
 }
@@ -126,7 +136,13 @@ export async function getEnabledModels(): Promise<RegistryEntry[]> {
 
 export async function getModelsForCapability(cap: AICapability): Promise<RegistryEntry[]> {
   const all = await getEnabledModels();
-  return all.filter((m) => m.capabilities.includes(cap) && m.isHealthy);
+  // AI-01 FIX (Audit v2 · Phase 1): filter by capability AND health.
+  // Previously this always returned [] because capabilities was hardcoded [].
+  // Now it returns only healthy models (isHealthy=true, healthScore >= 0.5)
+  // that have the requested capability.
+  return all.filter(
+    (m) => m.capabilities.includes(cap) && m.isHealthy && m.healthScore >= 0.5
+  );
 }
 
 export async function findByProviderModel(

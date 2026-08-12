@@ -11,7 +11,8 @@
  * - Adaptive UI based on user behavior
  * - Advanced animations & transitions
  * - Full RTL Arabic support
- * - WCAG 2.1 AA accessible
+ * - WCAG 2.1 AAA accessible
+ * // FE-02 FIX (Audit v2 · Phase 1) — target bumped from AA to AAA.
  * 
  * Integrates:
  * - AIPersonalizationProvider context

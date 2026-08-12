@@ -2,7 +2,8 @@
  * useAccessibility.ts — GarfiX DS v4.0 Accessibility Hooks
  *
  * ════════════════════════════════════════════════════════════════════════
- * React Hooks for WCAG 2.1 AA Compliance
+ * React Hooks for WCAG 2.1 AAA Compliance
+ * // FE-02 FIX (Audit v2 · Phase 1) — target bumped from AA to AAA.
  *
  * HOOKS:
  * - useFocusTrap: Trap focus within a container

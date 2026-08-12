@@ -1,5 +1,9 @@
 "use client";
 
+// FE-04 FIX (Audit v2 · Phase 1) — every text-white/40 swapped for
+// text-white/60 to satisfy WCAG AAA large-text contrast (≥4.5:1) on the
+// #0b1220 navy background.
+
 import { useState, useMemo, useCallback } from "react";
 import { ProfessionalFooter } from "@/components/garfix/ProfessionalFooter";
 
@@ -337,7 +341,7 @@ export default function ApiDocsPage() {
       {/* ── Endpoint list ─────────────────────────────────────────── */}
       <main className="max-w-7xl mx-auto px-4 py-4 space-y-2">
         {filtered.length === 0 && (
-          <div className="text-center py-12 text-white/40 state-empty">
+          <div className="text-center py-12 text-white/60 state-empty">
             {isRtl ? "لا توجد نتائج" : "No endpoints found"}
           </div>
         )}
@@ -439,7 +443,7 @@ export default function ApiDocsPage() {
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="text-xs text-white/40 border-b border-white/[0.06]">
+                            <tr className="text-xs text-white/60 border-b border-white/[0.06]">
                               <th className="py-1 pr-2">
                                 {isRtl ? "الاسم" : "Name"}
                               </th>

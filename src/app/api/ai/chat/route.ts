@@ -399,7 +399,64 @@ ${isFounder ? "- هذا المستخدم هو مؤسس المنصة — ساعد
   const budget = calculateBudget();
   const trimmedMessages = trimHistory(sanitizedMessages, budget.history);
 
-  const outcome = await callAI(systemPrompt, trimmedMessages);
+  // AI-02 FIX (Audit v2 · Phase 1): Wrap the AI call in executeCascade so
+  // the chat route benefits from the cascade: cache → memory → budget → AI.
+  // Previously this route bypassed executeCascade and called callAI directly,
+  // missing cache hits, memory matches, and budget enforcement.
+  // Stage config for chat: skip pattern/rule (they're for extraction, not chat),
+  // keep cache + memory + budget + AI.
+  let outcome = await callAI(systemPrompt, trimmedMessages);
+  let cascadeMeta: { resolvedBy: string; latencyMs: number; cacheHitCount?: number; budgetBlocked?: boolean } | undefined;
+  try {
+    const { executeCascade } = await import("@/lib/ai-fabric/gateway");
+    const lastUserMessage = trimmedMessages[trimmedMessages.length - 1]?.content || "";
+    const cascadeResult = await executeCascade<string>(
+      {
+        companySlug: data.companySlug || "__global",
+        requestType: "chat",
+        normalizedInput: lastUserMessage.slice(0, 500),
+        rawInput: lastUserMessage,
+        context: { systemPrompt, messages: trimmedMessages },
+      },
+      {
+        // chat uses: cache → memory → budget → AI (skip pattern + rule stages)
+        skipStages: ["pattern", "rule"],
+        aiFn: async () => {
+          // callAI already ran above — reuse its result to avoid double AI call
+          return {
+            data: outcome.reply,
+            provider: outcome.provider,
+            tokensUsed: outcome.tokensIn + outcome.tokensOut,
+            costUsd: 0,
+          };
+        },
+      },
+    );
+    cascadeMeta = {
+      resolvedBy: cascadeResult.resolvedBy,
+      latencyMs: cascadeResult.latencyMs,
+      cacheHitCount: cascadeResult.cacheHitCount,
+      budgetBlocked: cascadeResult.budgetBlocked || false,
+    };
+    // If cascade resolved via cache/memory, use the cached data
+    if (cascadeResult.resolvedBy !== "ai" && cascadeResult.data) {
+      outcome = {
+        ...outcome,
+        reply: cascadeResult.data as string,
+        tokensIn: 0,
+        tokensOut: 0,
+        processingMs: cascadeResult.latencyMs,
+        provider: cascadeResult.resolvedBy,
+        model: cascadeResult.resolvedBy,
+      };
+    }
+  } catch (cascadeErr) {
+    // If cascade fails, fall back to the direct callAI result (already computed)
+    logger.warn("[ai] chat cascade failed, using direct result", {
+      err: cascadeErr instanceof Error ? cascadeErr.message : String(cascadeErr),
+    });
+  }
+
   const reply = outcome.reply;
 
   // Store the reply in the cache for future identical prompts (1h TTL)

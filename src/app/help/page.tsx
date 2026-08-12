@@ -1,3 +1,6 @@
+// FE-04 FIX (Audit v2 · Phase 1) — text-white/40 → text-white/60 (WCAG AAA
+// large-text contrast ≥4.5:1 on #0b1220 navy background).
+
 import { HelpCircle, Search, MessageCircle, BookOpen, Settings, CreditCard, Users, BarChart3, Shield, Zap } from "lucide-react";
 import { FooterPageLayout } from "@/components/garfix/FooterPageLayout";
 import Link from "next/link";
@@ -85,7 +88,7 @@ export default function HelpPage() {
         {/* بحث سريع */}
         <div className="glass-strong bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 text-center shadow-brand-md">
           <div className="flex items-center gap-3 max-w-[500px] mx-auto bg-white/[0.05] border border-white/[0.1] rounded-lg px-4 py-3">
-            <Search size={18} className="text-white/40" />
+            <Search size={18} className="text-white/60" />
             <input
               type="text"
               placeholder="ابحث في مركز المساعدة..."

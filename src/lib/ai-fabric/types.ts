@@ -21,6 +21,8 @@ export type AIRequestType =
   | "whatsapp"
   | "financial_analysis"
   | "matching"
+  | "chat"        // AI-02 FIX (Audit v2 · Phase 1): added for chat route cascade
+  | "extraction"  // AI-02 FIX: added for parse-file/parse-image routes
   | "other";
 
 // ─── AI Memory categories ───────────────────────────────────────────────────
