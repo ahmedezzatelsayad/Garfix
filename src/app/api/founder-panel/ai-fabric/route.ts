@@ -108,7 +108,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<AIFabricData>>
   } catch (error) {
     logger.error("[ai-fabric] fetch failed", { err: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
-      { error: "Failed to fetch AI Fabric data" } as unknown as AIFabricData,
+      { error: "Failed to fetch AI Fabric data" } as unknown as AIFabricData /* SAFETY: error path */,
       { status: 500 }
     );
   }

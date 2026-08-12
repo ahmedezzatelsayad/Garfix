@@ -252,7 +252,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<MissionControl
       {
         error: "Failed to fetch mission control data",
         timestamp: new Date().toISOString(),
-      } as unknown as MissionControlData,
+      } as unknown as MissionControlData /* SAFETY: error path */,
       { status: 500 }
     );
   }

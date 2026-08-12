@@ -68,8 +68,8 @@ export function AccountantCollabView() {
   const revokeAccessMutation = useRevokeAccountantAccess();
   const exportExcelMutation = useExportExcel();
 
-  const accessList = (accessQuery.data?.accesses ?? []) as unknown as AccountantAccess[];
-  const auditEntries = (auditQuery.data?.entries ?? []) as unknown as AuditEntry[];
+  const accessList = (accessQuery.data?.accesses ?? []) as unknown as  AccountantAccess[];
+  const auditEntries = (auditQuery.data?.entries ?? []) as unknown as  AuditEntry[];
   const loading = (tab === "access" && accessQuery.isLoading) || (tab === "audit-trail" && auditQuery.isLoading);
 
   const [showGrantForm, setShowGrantForm] = useState(false);

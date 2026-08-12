@@ -154,7 +154,7 @@ const {
 beforeEach(() => {
   sessions.clear();
   for (const fn of Object.values(dbMock.sessionRegistry)) {
-    (fn as unknown as { mockClear: () => void }).mockClear();
+    (fn as  { mockClear: () => void }).mockClear();
   }
 });
 

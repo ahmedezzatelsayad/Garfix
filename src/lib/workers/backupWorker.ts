@@ -53,9 +53,9 @@ export async function handleBackupJob(data: Record<string, unknown>): Promise<vo
 
   switch (jobType) {
     case BACKUP_JOB_TYPES.BACKUP:
-      return handleBackup(payload as unknown as BackupJobData);
+      return handleBackup(payload as  BackupJobData);
     case BACKUP_JOB_TYPES.VERIFY_BACKUP:
-      return handleVerifyBackup(payload as unknown as VerifyBackupJobData);
+      return handleVerifyBackup(payload as  VerifyBackupJobData);
     default:
       throw new Error(`backupWorker: unknown job type "${jobType}"`);
   }

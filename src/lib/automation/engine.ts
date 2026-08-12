@@ -243,7 +243,7 @@ async function executeAction(action: ActionShape, event: TriggerEvent): Promise<
           const sgConfig = await getIntegrationConfig("sendgrid");
           if (sgConfig?.api_key) {
             const { sendgridProvider } = await import("@/lib/integrations/sendgrid");
-            const sgResult = await (sendgridProvider as unknown as {
+            const sgResult = await (sendgridProvider as  {
               sendEmail: (params: {
                 to: string;
                 subject: string;
@@ -300,7 +300,7 @@ async function executeAction(action: ActionShape, event: TriggerEvent): Promise<
         }
 
         const { twilioProvider } = await import("@/lib/integrations/twilio");
-        const result = await (twilioProvider as unknown as {
+        const result = await (twilioProvider as  {
           sendSms: (to: string, body: string) => Promise<{ ok: boolean; error?: string; sid?: string }>;
         }).sendSms(phone, message);
 

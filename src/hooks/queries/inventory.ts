@@ -24,7 +24,7 @@ export interface InventoryItem {
   price?: number;
   warehouseId?: number;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Shape of an inventory movement record returned by the API. */
@@ -35,7 +35,7 @@ export interface InventoryMovement {
   quantity: number;
   date: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Shape of a warehouse record returned by the API. */
@@ -44,7 +44,7 @@ export interface Warehouse {
   name: string;
   address?: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for creating a new inventory item. */
@@ -56,7 +56,7 @@ export interface CreateInventoryItemPayload {
   price?: number;
   warehouseId?: number;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for creating a new warehouse. */
@@ -64,7 +64,7 @@ export interface CreateWarehousePayload {
   name: string;
   address?: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for updating an existing warehouse. */
@@ -72,7 +72,7 @@ export interface UpdateWarehousePayload {
   id: number;
   name?: string;
   address?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Response shape for the inventory items list endpoint. */

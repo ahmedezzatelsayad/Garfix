@@ -137,7 +137,7 @@ export const PUT = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
       return apiError("بعض الحسابات غير موجودة أو غير نشطة", 400);
     }
 
-    updateData.templateLines = data.templateLines as unknown as object;
+    updateData.templateLines = data.templateLines as  object;
   }
 
   // Recalculate nextRunDate if schedule changed

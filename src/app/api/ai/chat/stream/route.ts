@@ -106,8 +106,8 @@ async function callAIStream(
     const ZAI = (await import("z-ai-web-dev-sdk")).default;
     const ai = await ZAI.create();
     // Use streaming if available — fall back to non-streaming if not
-    if (typeof (ai.chat.completions as unknown as { createStream?: unknown }).createStream === "function") {
-      const stream = await (ai.chat.completions as unknown as {
+    if (typeof (ai.chat.completions as  { createStream?: unknown }).createStream === "function") {
+      const stream = await (ai.chat.completions as unknown as  {
         createStream: (args: unknown) => Promise<AsyncIterable<{ choices: Array<{ delta?: { content?: string } }>; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number } }>>;
       }).createStream({
         messages: [

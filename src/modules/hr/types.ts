@@ -1,77 +1,13 @@
 /**
  * HR module — shared types and discriminated unions.
  *
- * The `HREditItem` discriminated union replaces the unsafe
- * `Record<string, unknown>` pattern that required 18+ `as string` casts.
- * Each variant carries its tab key (`_tag`) and the full typed data,
- * so consumers can narrow with a switch on `_tag` and get proper types.
+ * Entity types are re-exported from the hook layer so that view
+ * components and query hooks always use the same shape.
  */
 
-// ─── Entity interfaces ─────────────────────────────────────────────────────
+// ─── Entity interfaces (re-exported from hooks) ─────────────────────────────
 
-export interface Employee {
-  id: number;
-  name: string;
-  nameEn?: string;
-  phone?: string;
-  email?: string;
-  position?: string;
-  department?: string;
-  baseSalary: number;
-  currency: string;
-  joinDate?: string;
-  isActive: boolean;
-}
-
-export interface Attendance {
-  id: number;
-  employeeId: number;
-  date: string;
-  status: string;
-  checkIn?: string;
-  checkOut?: string;
-}
-
-export interface Salary {
-  id: number;
-  employeeId: number;
-  month: string;
-  baseSalary: number;
-  allowances: number;
-  deductions: number;
-  bonus: number;
-  netSalary: number;
-  isPaid: boolean;
-}
-
-export interface Commission {
-  id: number;
-  employeeId: number;
-  date: string;
-  type: string;
-  description?: string;
-  amount: number;
-  isPaid: boolean;
-}
-
-export interface LeaveRequest {
-  id: number;
-  employeeId: number;
-  type: string;
-  startDate: string;
-  endDate: string;
-  days: number;
-  status: string;
-}
-
-export interface Performance {
-  id: number;
-  employeeId: number;
-  period: string;
-  kpiScore?: number;
-  overallScore?: number;
-  rating?: string;
-}
+export type { Employee, Attendance, Salary, Commission, LeaveRequest, Performance } from "@/hooks/queries/hr";
 
 export interface GratuityRecord {
   id: number;
@@ -96,6 +32,8 @@ export type Tab =
 // that is sent to `handleEdit` is wrapped in an HREditItem. The `_tag`
 // discriminant lets the form (or any consumer) narrow the type safely.
 
+import type { Employee, Attendance, Salary, Commission, LeaveRequest, Performance } from "@/hooks/queries/hr";
+
 export type HREditItem =
   | { _tag: "employees"; data: Employee }
   | { _tag: "attendance"; data: Attendance }
@@ -103,15 +41,6 @@ export type HREditItem =
   | { _tag: "commissions"; data: Commission }
   | { _tag: "leaves"; data: LeaveRequest }
   | { _tag: "performance"; data: Performance };
-
-// ─── Helper: API response wrappers ──────────────────────────────────────────
-
-export interface EmployeesResponse { employees?: Employee[] }
-export interface AttendanceResponse { attendance?: Attendance[] }
-export interface SalariesResponse { salaries?: Salary[] }
-export interface CommissionsResponse { commissions?: Commission[] }
-export interface LeavesResponse { leaves?: LeaveRequest[] }
-export interface PerformanceResponse { performance?: Performance[] }
 
 // ─── Table shared props ─────────────────────────────────────────────────────
 

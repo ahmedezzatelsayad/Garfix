@@ -391,7 +391,7 @@ export async function getAiProviders(): Promise<AiProviderConfig[]> {
     }
 
     for (const [, entry] of providerMap) {
-      providers.push(entry as unknown as AiProviderConfig);
+      providers.push(entry as unknown as AiProviderConfig /* SAFETY: Record → typed */);
     }
 
     // Sort by priority

@@ -140,7 +140,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
     setActionLoading(id);
     try {
       const response = await apiPost(`/api/accounting/recurring/${id}/run`, {});
-      toast.success((response as unknown as { message?: string }).message || "تم تشغيل القيد بنجاح");
+      toast.success((response as unknown as  { message?: string }).message || "تم تشغيل القيد بنجاح");
       fetchEntries();
     } catch (err) {
       toast.error("خطأ في تشغيل القيد");

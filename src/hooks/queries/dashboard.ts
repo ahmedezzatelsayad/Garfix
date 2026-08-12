@@ -136,7 +136,7 @@ export interface AuditLogEntry {
   target: string;
   timestamp: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Shape of a backup record returned by the API. */
@@ -146,14 +146,14 @@ export interface Backup {
   size: number;
   createdAt: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Shape of a company record returned by the API. */
 export interface Company {
   slug: string;
   name: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Shape of a company member record returned by the API. */
@@ -162,7 +162,7 @@ export interface CompanyMember {
   name: string;
   email: string;
   role: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Shape of a purchase record returned by the API. */
@@ -172,7 +172,7 @@ export interface Purchase {
   amount: number;
   date: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Shape of a report record returned by the API. */
@@ -182,7 +182,7 @@ export interface Report {
   type: string;
   createdAt: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Shape of a feature flag returned by the API. */
@@ -190,7 +190,7 @@ export interface FeatureFlag {
   key: string;
   enabled: boolean;
   description?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Shape of a module record returned by the API. */
@@ -198,21 +198,21 @@ export interface Module {
   id: string;
   name: string;
   enabled: boolean;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for creating a new company. */
 export interface CreateCompanyPayload {
   name: string;
   slug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for updating an existing company. */
 export interface UpdateCompanyPayload {
   slug: string;
   name?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for adding a member to a company. */
@@ -220,7 +220,7 @@ export interface AddCompanyMemberPayload {
   slug: string;
   uid: string;
   role: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for updating a company member's role. */
@@ -228,7 +228,7 @@ export interface UpdateCompanyMemberPayload {
   slug: string;
   uid: string;
   role: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for removing a company member. */
@@ -243,7 +243,7 @@ export interface CreatePurchasePayload {
   amount: number;
   date: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for updating an existing purchase. */
@@ -252,7 +252,7 @@ export interface UpdatePurchasePayload {
   description?: string;
   amount?: number;
   date?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Response shape for the dashboard stats endpoint. */

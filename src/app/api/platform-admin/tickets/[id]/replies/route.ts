@@ -62,7 +62,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   // cast the transaction client through `unknown` to keep the runtime call
   // intact without re-introducing `any`.
   const reply = await db.$transaction(async (tx) => {
-    const r = await (tx as unknown as {
+    const r = await (tx as unknown as  {
       ticketReply: {
         create: (args: {
           data: {

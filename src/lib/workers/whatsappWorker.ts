@@ -52,9 +52,9 @@ export async function handleWhatsAppJob(data: Record<string, unknown>): Promise<
 
   switch (jobType) {
     case WHATSAPP_JOB_TYPES.SEND_TEXT:
-      return handleSendText(payload as unknown as WhatsAppTextJobData);
+      return handleSendText(payload as unknown as  WhatsAppTextJobData);
     case WHATSAPP_JOB_TYPES.SEND_TEMPLATE:
-      return handleSendTemplate(payload as unknown as WhatsAppTemplateJobData);
+      return handleSendTemplate(payload as unknown as  WhatsAppTemplateJobData);
     default:
       throw new Error(`whatsappWorker: unknown job type "${jobType}"`);
   }

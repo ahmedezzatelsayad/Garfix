@@ -262,7 +262,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<FinOpsData>> {
   } catch (error) {
     logger.error("[finops] fetch failed", { err: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
-      { error: "Failed to fetch FinOps data" } as unknown as FinOpsData,
+      { error: "Failed to fetch FinOps data" } as unknown as FinOpsData /* SAFETY: error path */,
       { status: 500 }
     );
   }

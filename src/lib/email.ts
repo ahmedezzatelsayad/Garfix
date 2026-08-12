@@ -161,7 +161,7 @@ export async function enqueueEmail(input: SendEmailInput): Promise<void> {
   const { enqueue, QUEUE_NAMES } = await import("./queues");
   await enqueue(QUEUE_NAMES.EMAIL, {
     type: "send-email",
-    data: input as unknown as Record<string, unknown>,
+    data: input as unknown as Record<string, unknown> /* SAFETY: no index sig */,
   });
 }
 

@@ -1123,7 +1123,7 @@ export async function matchProduct(
         try {
           enqueueBackground(QUEUE_NAMES.AI, {
             type: AI_PRODUCT_MATCH_JOB_TYPE,
-            data: jobData as unknown as Record<string, unknown>,
+            data: jobData as  Record<string, unknown>,
           });
         } catch (err) {
           logger.error("[product-matcher] failed to enqueue AI job after tx commit — audit row stays in ai-queued-for-review", {
@@ -1238,7 +1238,7 @@ async function buildResult(args: BuildResultArgs): Promise<MatchResult> {
     matchedAlias,
     confidence: breakdown.finalConfidence,
     tier,
-    action: action as unknown as "auto-matched" | "queued-for-review" | "auto-created" | "ai-auto-matched" | "ai-auto-created" | "ai-queued-for-review" | "collision-recovery-skipped",
+    action: action as  "auto-matched" | "queued-for-review" | "auto-created" | "ai-auto-matched" | "ai-auto-created" | "ai-queued-for-review" | "collision-recovery-skipped",
     isNewProduct: false,
     method,
     rankScore,

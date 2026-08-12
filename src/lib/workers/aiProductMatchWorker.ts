@@ -57,7 +57,7 @@ export const AI_PRODUCT_MATCH_JOB_TYPE = "ai-product-match-resolve";
  * The actual handler — exported for direct invocation from tests.
  */
 export async function handleAIProductMatchJob(data: Record<string, unknown>): Promise<void> {
-  const payload = data as unknown as AIProductMatchJobData;
+  const payload = data as unknown as  AIProductMatchJobData;
 
   // Basic shape validation — refuse to process malformed payloads (the
   // queue runner will then dead-letter the job).

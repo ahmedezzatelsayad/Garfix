@@ -9,19 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useGratuity } from "@/hooks/queries";
 
-interface Employee {
-  id: number;
-  name: string;
-  nameEn?: string;
-  phone?: string;
-  email?: string;
-  position?: string;
-  department?: string;
-  baseSalary: number;
-  currency: string;
-  joinDate?: string;
-  isActive: boolean;
-}
+import type { Employee } from "./types";
 
 interface GratuityBreakdownRow {
   period: string;
@@ -131,7 +119,7 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
         employeeId,
         endDate,
         companySlug: "", // companySlug handled by mutation context
-      })) as unknown as GratuityResponse & { error?: string };
+      })) as  any;
       setResult(data);
       if (!data.eligible) {
         toast.warning(data.message || "الموظف غير مؤهل");

@@ -295,11 +295,11 @@ export async function GET(request: NextRequest) {
           role: 'founder',
         },
       });
-      
+
       if (!membership) {
         return apiError('No founder role found. Access denied.', 403);
       }
-      
+
       companyId = membership.companySlug;
     }
     
@@ -406,27 +406,19 @@ export async function PUT(request: NextRequest) {
     const configData = validated.data;
     
     // Verify founder access
-    // NOTE: `companyMember` is not in prisma schema.prisma — see GET handler
-    // above for the cast rationale.
-    const membership = await (db as unknown as {
-      companyMember: {
-        findFirst: (args: {
-          where: { userId?: string; role?: string };
-        }) => Promise<{ companyId: string } | null>;
-      };
-    }).companyMember.findFirst({
-      where: { 
-        userId: auth.user.uid,
+    const membership = await db.companyMembership.findFirst({
+      where: {
+        userUid: auth.user.uid,
         role: 'founder',
       },
     });
-    
+
     if (!membership) {
       return apiError('Only founders can modify AI configuration', 403);
     }
-    
+
     // Get existing config
-    const existingConfig = await getOrCreateCompanyAIConfig(membership.companyId);
+    const existingConfig = await getOrCreateCompanyAIConfig(membership.companySlug);
     
     // Helper to handle masked keys (don't overwrite with ••••••••)
     // P2-SPRINT6 FIX: routes through `resolveKeyForUpdate()` from keyVault.ts
@@ -480,7 +472,7 @@ export async function PUT(request: NextRequest) {
       action: 'update_ai_config_per_feature',
       entity: 'company_ai_config',
       details: {
-        companyId: membership.companyId,
+        companyId: membership.companySlug,
         featuresUpdated: {
           chat: !!configData.chat.apiKey && configData.chat.apiKey !== '••••••••',
           invoice: !!configData.invoice.apiKey && configData.invoice.apiKey !== '••••••••',
@@ -490,7 +482,7 @@ export async function PUT(request: NextRequest) {
       },
     });
     
-    logger.info(`Per-feature AI config updated by founder ${auth.user.email} for company ${membership.companyId}`);
+    logger.info(`Per-feature AI config updated by founder ${auth.user.email} for company ${membership.companySlug}`);
     
     return NextResponse.json({
       success: true,

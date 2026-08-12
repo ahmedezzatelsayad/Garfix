@@ -327,7 +327,7 @@ function AppShellContent(_props: Record<string, unknown>) {
         </div>
 
         {/*
-          Part 1.1 fix: the previous code had `marginRight: { md: "260px" } as unknown as string`
+          Part 1.1 fix: the previous code had `marginRight: { md: "260px" } as  string`
           which is a broken object-as-string cast (produces invalid CSS). Replaced with
           Tailwind logical-property class `md:me-[260px]` (margin-end = right in RTL,
           left in LTR). On mobile (<md) the sidebar is an off-canvas drawer so no margin.

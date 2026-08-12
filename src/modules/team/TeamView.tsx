@@ -72,7 +72,7 @@ export function TeamView() {
   const { activeCompany } = useBrand();
   const removeMemberMutation = useRemoveCompanyMember();
   const { data: membersData, isLoading: loading, refetch } = useCompanyMembers(activeCompany?.slug || "");
-  const members: Member[] = (membersData?.members ?? []) as unknown as Member[];
+  const members: Member[] = (membersData?.members ?? []) as any;
   const [showInvite, setShowInvite] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -356,7 +356,7 @@ function InviteDialog({
         email,
         displayName: displayName || undefined,
       });
-      const data = raw as unknown as Record<string, unknown>;
+      const data = raw as  Record<string, unknown>;
       if (data.created) {
         toast.success("تم إنشاء الحساب وإضافته للشركة");
       } else {

@@ -112,10 +112,10 @@ export function WebhookManagementView() {
   const testEventMutation = useTestWebhookEvent();
 
   // ── Derived data from queries ──────────────────────────────────────────────
-  const endpoints = (endpointsQuery.data?.endpoints ?? []) as unknown as WebhookEndpoint[];
-  const deliveries = (deliveriesQuery.data?.deliveries ?? []) as unknown as WebhookDelivery[];
+  const endpoints = (endpointsQuery.data?.endpoints ?? []) as unknown as  WebhookEndpoint[];
+  const deliveries = (deliveriesQuery.data?.deliveries ?? []) as unknown as  WebhookDelivery[];
   const stats = deliveriesQuery.data?.stats as DeliveryStats | null | undefined;
-  const events = (eventsQuery.data?.events ?? []) as unknown as EventType[];
+  const events = (eventsQuery.data?.events ?? []) as unknown as  EventType[];
   const loading = endpointsQuery.isLoading || deliveriesQuery.isLoading || eventsQuery.isLoading;
   const error = endpointsQuery.error?.message || deliveriesQuery.error?.message || eventsQuery.error?.message || null;
 

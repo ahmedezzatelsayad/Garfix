@@ -41,7 +41,7 @@ const mockFetch = mock(() =>
 );
 
 // Replace global fetch with our mock before any test runs.
-(globalThis as unknown as { fetch: typeof fetch }).fetch = mockFetch as unknown as typeof fetch;
+(globalThis as  { fetch: typeof fetch }).fetch = mockFetch as  typeof fetch;
 
 // Now safe to import the module under test.
 const {

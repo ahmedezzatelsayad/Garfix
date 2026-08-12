@@ -40,7 +40,7 @@ export function PurchasesView() {
   const { data, isLoading, refetch } = usePurchases(activeCompany?.slug || "");
   const deleteMutation = useDeletePurchase();
 
-  const purchases: Purchase[] = (data?.purchases ?? []) as unknown as Purchase[];
+  const purchases: Purchase[] = (data?.purchases ?? []) as any;
   const [showForm, setShowForm] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
@@ -334,7 +334,7 @@ function PurchaseForm({ company, onClose, onSaved }: { company: { slug: string }
         num, date, supplier,
         items: payloadItems,
         notes, companySlug: company.slug,
-      } as unknown as CreatePurchasePayload);
+      } as  any);
       toast.success("تم إنشاء فاتورة الشراء");
       onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }

@@ -40,7 +40,6 @@ export async function GET(request: NextRequest) {
       });
       
       if (!company) return apiError('Company not found', 404);
-      
       // DB-04 FIX (Audit v2): Use the correct Prisma model name
       // `companyMembership` (model: CompanyMembership, @@map: company_memberships)
       // instead of the non-existent `companyMember`. The old code cast through

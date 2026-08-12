@@ -27,7 +27,7 @@ export interface Employee {
   salary?: number;
   startDate?: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Shape of an attendance record returned by the API. */
@@ -39,7 +39,7 @@ export interface Attendance {
   checkOut?: string;
   status?: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Shape of a salary record returned by the API. */
@@ -51,7 +51,7 @@ export interface Salary {
   deductions: number;
   netSalary: number;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Shape of a commission record returned by the API. */
@@ -62,7 +62,7 @@ export interface Commission {
   description?: string;
   date: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Shape of a leave request record returned by the API. */
@@ -74,7 +74,7 @@ export interface LeaveRequest {
   endDate: string;
   status: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Shape of a performance review record returned by the API. */
@@ -85,7 +85,7 @@ export interface Performance {
   rating: number;
   notes?: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 // ─── Payload Types ──────────────────────────────────────────────────────────
@@ -100,7 +100,7 @@ export interface CreateEmployeePayload {
   salary?: number;
   startDate?: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for updating an existing employee. */
@@ -113,7 +113,7 @@ export interface UpdateEmployeePayload {
   department?: string;
   salary?: number;
   startDate?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for creating a new attendance record. */
@@ -124,7 +124,7 @@ export interface CreateAttendancePayload {
   checkOut?: string;
   status?: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for updating an existing attendance record. */
@@ -133,7 +133,7 @@ export interface UpdateAttendancePayload {
   checkIn?: string;
   checkOut?: string;
   status?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for creating a new salary record. */
@@ -144,7 +144,7 @@ export interface CreateSalaryPayload {
   deductions: number;
   netSalary: number;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for updating an existing salary record. */
@@ -154,7 +154,7 @@ export interface UpdateSalaryPayload {
   baseSalary?: number;
   deductions?: number;
   netSalary?: number;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for creating a new commission record. */
@@ -164,7 +164,7 @@ export interface CreateCommissionPayload {
   description?: string;
   date: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for updating an existing commission record. */
@@ -173,7 +173,7 @@ export interface UpdateCommissionPayload {
   amount?: number;
   description?: string;
   date?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for creating a new leave request. */
@@ -184,7 +184,7 @@ export interface CreateLeavePayload {
   endDate: string;
   status: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for updating an existing leave request. */
@@ -194,7 +194,7 @@ export interface UpdateLeavePayload {
   startDate?: string;
   endDate?: string;
   status?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for creating a new performance review. */
@@ -204,7 +204,7 @@ export interface CreatePerformancePayload {
   rating: number;
   notes?: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for updating an existing performance review. */
@@ -213,21 +213,21 @@ export interface UpdatePerformancePayload {
   period?: string;
   rating?: number;
   notes?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for calculating gratuity. */
 export interface GratuityPayload {
   employeeId: number;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Response shape for gratuity calculation. */
 export interface GratuityResponse {
   gratuity: number;
   employeeId: number;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 // ─── Response Types ─────────────────────────────────────────────────────────

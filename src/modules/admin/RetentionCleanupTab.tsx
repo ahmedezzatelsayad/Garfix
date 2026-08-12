@@ -31,7 +31,7 @@ export function RetentionCleanupTab() {
     setLoading(true);
     try {
       const result = await cleanupMutation.mutateAsync({ confirmYears: years, dryRun: true });
-      setPreview(result as unknown as CleanupResult);
+      setPreview(result as unknown as  CleanupResult);
     } catch {
       toast.error("تعذّر تحميل المعاينة");
     } finally {
@@ -59,7 +59,7 @@ export function RetentionCleanupTab() {
     setRunning(true);
     try {
       const result = await cleanupMutation.mutateAsync({ confirmYears: retentionYears, dryRun: false });
-      const d = result as unknown as CleanupResult;
+      const d = result as unknown as  CleanupResult;
       const deletedTotal = d.deleted ? Object.values(d.deleted).reduce((a, b) => a + b, 0) : 0;
       toast.success(`تم حذف ${deletedTotal} سجلاً نهائياً`);
       setPreview(d);

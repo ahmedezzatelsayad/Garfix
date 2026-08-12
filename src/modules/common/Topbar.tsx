@@ -35,7 +35,7 @@ export function Topbar({ user, activeCompany, onOpenMobile }: TopbarProps) {
   const companySlug = activeCompany?.slug || "";
   const warehousesQuery = useWarehouses(companySlug);
   const warehouses: Array<{ id: string; name: string; code: string }> =
-    ((warehousesQuery.data as unknown as Array<{ id: string; name: string; code: string }>) || []);
+    ((warehousesQuery.data as any)?.warehouses ?? []).map((w: any) => ({ id: String(w.id), name: w.name, code: (w as any).code || '' }));
 
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("");
   const [showWarehouseMenu, setShowWarehouseMenu] = useState(false);

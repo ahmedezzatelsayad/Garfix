@@ -157,7 +157,7 @@ export async function extractWithAIDetailed(text: string): Promise<AiExtractionO
           tax: Number(fallback.taxAmount || 0),
           total: Number(fallback.total || 0),
           notes: "regex-fallback",
-        } as unknown as Invoice,
+        } as  Invoice,
         raw: {
           content: JSON.stringify(fallback),
           provider: "z-ai" as const,
