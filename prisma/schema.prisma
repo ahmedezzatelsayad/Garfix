@@ -543,6 +543,9 @@ model OpeningBalanceEntry {
   journalEntryId String?     // FK to journal_entries.id, set when posted
   amount         Decimal     @default(0) // single-field amount (code uses this)
   importedFrom   String      @default("manual") // manual, csv, xlsx
+  // ── Fields used by API routes for richer opening-balance descriptions
+  description   String?
+  reference     String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   account     Account      @relation(fields: [accountId], references: [id])
