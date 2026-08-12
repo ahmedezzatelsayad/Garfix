@@ -28,145 +28,145 @@
 CREATE INDEX IF NOT EXISTS "accounts_companySlug_idx" ON "accounts"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "accounts_companyId_idx" ON "accounts"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for accounts — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "clients_companySlug_idx" ON "clients"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "clients_companyId_idx" ON "clients"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for clients — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "Supplier_companySlug_idx" ON "suppliers"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "Supplier_companyId_idx" ON "suppliers"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for suppliers — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "product_catalog_companySlug_idx" ON "product_catalog"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "product_catalog_companyId_idx" ON "product_catalog"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for product_catalog — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "inventory_items_companySlug_idx" ON "inventory_items"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "inventory_items_companyId_idx" ON "inventory_items"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for inventory_items — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "warehouses_companySlug_idx" ON "warehouses"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "warehouses_companyId_idx" ON "warehouses"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for warehouses — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "fiscal_periods_companySlug_idx" ON "fiscal_periods"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "fiscal_periods_companyId_idx" ON "fiscal_periods"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for fiscal_periods — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "journal_entries_companySlug_idx" ON "journal_entries"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "journal_entries_companyId_idx" ON "journal_entries"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for journal_entries — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "payment_vouchers_companySlug_idx" ON "payment_vouchers"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "payment_vouchers_companyId_idx" ON "payment_vouchers"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for payment_vouchers — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "opening_balance_entries_companySlug_idx" ON "opening_balance_entries"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "opening_balance_entries_companyId_idx" ON "opening_balance_entries"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for opening_balance_entries — column does not exist
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "ProfitDistribution_companyId_idx" ON "profit_distributions"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for profit_distributions — column does not exist
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "letters_of_credit_companyId_idx" ON "letters_of_credit"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for letters_of_credit — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "bank_accounts_companySlug_idx" ON "bank_accounts"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "bank_accounts_companyId_idx" ON "bank_accounts"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for bank_accounts — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "bank_transactions_companySlug_idx" ON "bank_transactions"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "bank_transactions_companyId_idx" ON "bank_transactions"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for bank_transactions — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "bank_reconciliations_companySlug_idx" ON "bank_reconciliations"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "bank_reconciliations_companyId_idx" ON "bank_reconciliations"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for bank_reconciliations — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "fixed_assets_companySlug_idx" ON "fixed_assets"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "fixed_assets_companyId_idx" ON "fixed_assets"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for fixed_assets — column does not exist
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "depreciation_entries_companyId_idx" ON "depreciation_entries"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for depreciation_entries — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "budgets_companySlug_idx" ON "budgets"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "budgets_companyId_idx" ON "budgets"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for budgets — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "cost_centers_companySlug_idx" ON "cost_centers"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "cost_centers_companyId_idx" ON "cost_centers"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for cost_centers — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "fx_revaluations_companySlug_idx" ON "fx_revaluations"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "fx_revaluations_companyId_idx" ON "fx_revaluations"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for fx_revaluations — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "landed_cost_allocations_companySlug_idx" ON "landed_cost_allocations"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "landed_cost_allocations_companyId_idx" ON "landed_cost_allocations"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for landed_cost_allocations — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "hr_employees_companySlug_idx" ON "hr_employees"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "hr_employees_companyId_idx" ON "hr_employees"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for hr_employees — column does not exist
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "invoices_companyId_idx" ON "invoices"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for invoices — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "purchase_invoices_companySlug_idx" ON "purchase_invoices"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "purchase_invoices_companyId_idx" ON "purchase_invoices"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for purchase_invoices — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "quotations_companySlug_idx" ON "quotations"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "quotations_companyId_idx" ON "quotations"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for quotations — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "purchase_orders_companySlug_idx" ON "purchase_orders"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "purchase_orders_companyId_idx" ON "purchase_orders"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for purchase_orders — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "stock_movements_companySlug_idx" ON "stock_movements"("companySlug");
@@ -175,25 +175,25 @@ CREATE INDEX IF NOT EXISTS "stock_movements_companySlug_idx" ON "stock_movements
 CREATE INDEX IF NOT EXISTS "payment_transactions_companySlug_idx" ON "payment_transactions"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "payment_transactions_companyId_idx" ON "payment_transactions"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for payment_transactions — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "RefundTransaction_companySlug_idx" ON "refund_transactions"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "RefundTransaction_companyId_idx" ON "refund_transactions"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for refund_transactions — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "post_dated_checks_companySlug_idx" ON "post_dated_checks"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "post_dated_checks_companyId_idx" ON "post_dated_checks"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for post_dated_checks — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "tax_filings_companySlug_idx" ON "tax_filings"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "tax_filings_companyId_idx" ON "tax_filings"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for tax_filings — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "e_invoices_companySlug_idx" ON "e_invoices"("companySlug");
@@ -259,7 +259,7 @@ CREATE INDEX IF NOT EXISTS "automation_rules_companySlug_idx" ON "automation_rul
 CREATE INDEX IF NOT EXISTS "WebhookEndpoint_companySlug_idx" ON "WebhookEndpoint"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "WebhookEndpoint_companyId_idx" ON "WebhookEndpoint"("companyId");
+-- P1 FIX: Removed CREATE INDEX on companyId for WebhookEndpoint — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "invoice_templates_companySlug_idx" ON "invoice_templates"("companySlug");
