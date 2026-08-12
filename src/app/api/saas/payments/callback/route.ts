@@ -56,6 +56,15 @@ export const GET = async (req: NextRequest) => {
   }
 
   try {
+    // TODO(SECURITY): Verify request signature. Currently this callback trusts
+    // the paymentId from the query string and re-verified payment status via the
+    // GetPaymentStatus API. However, the callback redirect URL itself lacks
+    // cryptographic signature verification (e.g. MyFatoorah's signed payload or
+    // webhook secret). An attacker who knows a valid paymentId could craft a
+    // callback URL to trick the system. Implement signature verification using
+    // MyFatoorah's webhook signing key to prevent callback forgery.
+    // See: https://docs.myfatoorah.com/docs/webhooks
+
     // Get MyFatoorah credentials
     const cfg = await getIntegrationConfig("myfatoorah");
     if (!cfg?.api_key || !cfg?.base_url) {
