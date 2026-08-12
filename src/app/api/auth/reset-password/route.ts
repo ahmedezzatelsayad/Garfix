@@ -39,9 +39,6 @@ const Schema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
-  const limited = await rateLimitResponse(req, "pw-reset-verify", LIMITS.OTP_VERIFY);
-  if (limited) return limited;
-
   const body = await parseJsonBody(req);
   const parsed = Schema.safeParse(body);
   if (!parsed.success) {
@@ -49,6 +46,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
   const { email, code, newPassword } = parsed.data;
   const normalizedEmail = email.trim().toLowerCase();
+
+  // Rate-limit per-email (not per-IP) to prevent attackers from rotating
+  // IPs to bypass the limit. The body is small (email + code + password)
+  // so parsing before rate-limiting is acceptable.
+  const limited = await rateLimitResponse(req, "pw-reset-verify", LIMITS.OTP_VERIFY, normalizedEmail);
+  if (limited) return limited;
 
   // SEC-H1 FIX (Cycle 1): enforce strong password policy BEFORE doing any
   // OTP lookup. This avoids leaking whether the email exists when the

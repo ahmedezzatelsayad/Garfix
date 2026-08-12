@@ -1,3 +1,5 @@
+> ⚠️ This document may be stale. Refer to the latest deployment process in the worklog.
+>
 # 🚀 GarfiX EOS v0.2.0 - Deployment & Operations Guide
 
 ## 📋 Table of Contents

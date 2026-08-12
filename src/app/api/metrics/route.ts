@@ -4,11 +4,15 @@
  * Observability endpoint for production monitoring dashboards (Prometheus, Grafana, etc.).
  * Returns operational metrics for all Valkey-backed subsystems.
  *
- * Auth: requires a valid METRICS_TOKEN env var. The token may be supplied via
+ * Auth: requires EITHER
+ *   - A valid METRICS_TOKEN env var (machine-to-machine, e.g. Prometheus), OR
+ *   - A valid session cookie from a founder or admin user.
+ * The METRICS_TOKEN may be supplied via:
  *   - `?token=<METRICS_TOKEN>` query param, OR
  *   - `X-Prometheus-Token: <METRICS_TOKEN>` request header
  * Constant-time comparison (`crypto.timingSafeEqual`) is used to prevent timing
- * attacks. If `METRICS_TOKEN` is not configured, the endpoint fails closed (503).
+ * attacks. If `METRICS_TOKEN` is not configured, the endpoint still accepts
+ * founder/admin sessions. If neither auth method succeeds, returns 401.
  *
  * RUNTIME: Node.js only — imports queues.ts (BullMQ)
  */
@@ -20,6 +24,7 @@ import { cacheStats } from "@/lib/cache";
 import { getBullMQStats } from "@/lib/queues";
 import { valkeyHealthCheck, VALKEY_CONFIGURED, getValkeyUrl } from "@/lib/valkey";
 import { logger } from "@/lib/logger";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -47,19 +52,23 @@ function checkMetricsToken(req: NextRequest): boolean {
 }
 
 export async function GET(req: NextRequest) {
-  // Fail closed if METRICS_TOKEN is not configured.
-  if (!process.env.METRICS_TOKEN) {
-    logger.error("[metrics] METRICS_TOKEN env var not set — metrics endpoint disabled");
-    return NextResponse.json({ error: "Metrics endpoint disabled" }, { status: 503 });
+  // Auth: METRICS_TOKEN (machine-to-machine) OR founder/admin session.
+  let tokenAuthOk = false;
+  if (process.env.METRICS_TOKEN) {
+    tokenAuthOk = checkMetricsToken(req);
   }
 
-  if (!checkMetricsToken(req)) {
-    logger.warn("[metrics] unauthorized access attempt", {
-      ip: req.headers.get("x-forwarded-for") || "unknown",
-    });
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!tokenAuthOk) {
+    // Fallback: check for a valid founder/admin session cookie.
+    try {
+      const user = await getAuthenticatedUser(req);
+      if (!user || (user.role !== 'founder' && user.role !== 'admin')) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    } catch {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
-
   const cache = cacheStats();
   const valkey = await valkeyHealthCheck();
   const queueStats = await getBullMQStats();

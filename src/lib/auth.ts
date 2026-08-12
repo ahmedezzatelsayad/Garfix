@@ -87,7 +87,7 @@ function getJwtRefreshSecret(): string {
 
 const ACCESS_TTL = parseInt(process.env.JWT_ACCESS_TTL_SECONDS || "1800", 10); // 30 min
 const REFRESH_TTL = parseInt(process.env.JWT_REFRESH_TTL_SECONDS || "2592000", 10); // 30 days
-const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "10", 10);
+const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12", 10); // OWASP 2025: minimum 12
 
 export const ACCESS_COOKIE = "inv_token";
 export const REFRESH_COOKIE = "inv_refresh";

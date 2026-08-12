@@ -153,6 +153,8 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      # TODO: Replace with actual deployment steps (SSH, k8s apply, AWS ECS, etc.)
+      # Currently a placeholder — configure your deployment target here.
       - name: Deploy to staging
         run: |
           echo "╔══════════════════════════════════════════════════╗"
@@ -164,7 +166,7 @@ jobs:
           echo "Version: ${{ inputs.version || github.ref_name }}"
           echo ""
           echo "✅ Staging deployment initiated"
-          echo "⚠️ Configure your deployment target (SSH, k8s, etc.) in this step"
+          echo "⚠️  PLACEHOLDER — no actual deployment occurs. Configure SSH/k8s/ECS here."
 
       - name: Run smoke tests
         run: |
@@ -210,6 +212,8 @@ jobs:
     timeout-minutes: 20
 
     steps:
+      # TODO: Replace with actual deployment steps (SSH, k8s apply, AWS ECS, etc.)
+      # Currently a placeholder — configure your deployment target here.
       - name: Deploy to production
         run: |
           echo "╔══════════════════════════════════════════════════╗"
@@ -221,7 +225,7 @@ jobs:
           echo "Version: ${{ inputs.version || github.ref_name }}"
           echo ""
           echo "✅ Production deployment initiated"
-          echo "⚠️ Configure your deployment target (SSH, k8s, etc.) in this step"
+          echo "⚠️  PLACEHOLDER — no actual deployment occurs. Configure SSH/k8s/ECS here."
 
       - name: Run production health check
         run: |

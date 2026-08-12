@@ -160,9 +160,9 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
     companySlug = "_unknown";
     try {
       const { logAudit } = await import("@/lib/audit");
-      const { FOUNDER_EMAIL } = await import("@/lib/founder");
+      const { getFounderEmail } = await import("@/lib/founder");
       void logAudit({
-        userEmail: FOUNDER_EMAIL,
+        userEmail: getFounderEmail(),
         userUid: "system",
         action: "einvoice_webhook_unknown_tenant",
         entity: "einvoice_receipt",

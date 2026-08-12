@@ -128,7 +128,7 @@ export async function GET() {
     const testFile = path.join(storageDir, ".healthcheck-probe");
     await fs.writeFile(testFile, "ok");
     await fs.unlink(testFile);
-    checks.disk = { ok: true, storageDir };
+    checks.disk = { ok: true };
   } catch (err) {
     checks.disk = {
       ok: false,

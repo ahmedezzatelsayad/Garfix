@@ -1,9 +1,12 @@
 /**
  * founder.ts — Single source of truth for the founder e-mail.
  * Read from environment so it can be rotated without a code change.
+ *
+ * Uses a getter function (not a module-level const) so that changes to
+ * FOUNDER_EMAIL take effect immediately without a server restart.
  */
 
-function resolveFounderEmail(): string {
+export function getFounderEmail(): string {
   const env = process.env.FOUNDER_EMAIL;
   if (!env) {
     // Fallback for dev — production should always set FOUNDER_EMAIL.
@@ -12,9 +15,7 @@ function resolveFounderEmail(): string {
   return env.trim().toLowerCase();
 }
 
-export const FOUNDER_EMAIL: string = resolveFounderEmail();
-
 export function isFounderEmail(email: string | null | undefined): boolean {
   if (!email) return false;
-  return email.trim().toLowerCase() === FOUNDER_EMAIL;
+  return email.trim().toLowerCase() === getFounderEmail();
 }
