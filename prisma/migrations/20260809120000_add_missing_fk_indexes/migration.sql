@@ -10,4 +10,4 @@
 --   CREATE INDEX CONCURRENTLY IF NOT EXISTS "payment_transactions_invoiceId_idx" ON "payment_transactions"("invoiceId");
 
 CREATE INDEX IF NOT EXISTS "invoices_clientId_idx" ON "invoices"("clientId");
-CREATE INDEX IF NOT EXISTS "payment_transactions_invoiceId_idx" ON "payment_transactions"("invoiceId");
+-- P1 FIX: Removed CREATE INDEX on payment_transactions.invoiceId — column does not exist

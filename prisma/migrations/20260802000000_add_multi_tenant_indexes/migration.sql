@@ -178,7 +178,7 @@ CREATE INDEX IF NOT EXISTS "payment_transactions_companySlug_idx" ON "payment_tr
 -- P1 FIX: Removed CREATE INDEX on companyId for payment_transactions — column does not exist
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "RefundTransaction_companySlug_idx" ON "refund_transactions"("companySlug");
+-- P1 FIX: Removed CREATE INDEX on companySlug for refund_transactions — column does not exist
 
 -- CreateIndex
 -- P1 FIX: Removed CREATE INDEX on companyId for refund_transactions — column does not exist
@@ -208,7 +208,7 @@ CREATE INDEX IF NOT EXISTS "product_match_audit_companySlug_idx" ON "product_mat
 CREATE INDEX IF NOT EXISTS "match_overrides_companySlug_idx" ON "match_overrides"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "support_tickets_companySlug_idx" ON "support_tickets"("companySlug");
+-- P1 FIX: Removed CREATE INDEX on companySlug for support_tickets — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "audit_logs_companySlug_idx" ON "audit_logs"("companySlug");
@@ -250,7 +250,7 @@ CREATE INDEX IF NOT EXISTS "rule_candidates_companySlug_idx" ON "rule_candidates
 CREATE INDEX IF NOT EXISTS "profit_snapshots_companySlug_idx" ON "profit_snapshots"("companySlug");
 
 -- CreateIndex
-CREATE INDEX IF NOT EXISTS "compiled_rules_companySlug_idx" ON "compiled_rules"("companySlug");
+-- P1 FIX: Removed CREATE INDEX on companySlug for compiled_rules — column does not exist
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "automation_rules_companySlug_idx" ON "automation_rules"("companySlug");
