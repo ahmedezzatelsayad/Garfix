@@ -114,9 +114,40 @@ export async function runBackup(label = "scheduled"): Promise<BackupResult> {
       try {
         // pg_dump is the standard PostgreSQL backup tool.
         // If not installed, the backup fails gracefully (non-fatal).
-        // Strip Prisma-specific query params that pg_dump doesn't understand.
-        const cleanUrl = dbUrl.replace(/[?&](schema|connection_limit|pool_timeout|connect_timeout|sslmode|sslaccept)=[^&]*/g, "").replace(/\?$/, "").replace(/&$/, "");
-        execFileSync("pg_dump", [cleanUrl, "-f", dumpPath], { timeout: 30000 });
+        //
+        // SEC-05 FIX (Audit v2): Do NOT pass the full connection URL on the
+        // command line — the password would be visible in `ps aux` output to
+        // any user on the host. Instead, parse the URL and pass credentials
+        // via the PGPASSWORD environment variable (pg_dump's documented
+        // mechanism for password-only auth). The argv only contains
+        // --host/--port/--username/--dbname (no secrets).
+        const url = new URL(dbUrl);
+        const dbName = url.pathname.replace(/^\//, "");
+        const dbHost = url.hostname;
+        const dbPort = url.port || "5432";
+        const dbUser = decodeURIComponent(url.username);
+        const dbPassword = decodeURIComponent(url.password);
+
+        execFileSync(
+          "pg_dump",
+          [
+            "--host", dbHost,
+            "--port", dbPort,
+            "--username", dbUser,
+            "--dbname", dbName,
+            "--file", dumpPath,
+            // Exclude Prisma's internal _prisma_migrations table from the dump
+            // (it's rebuilt by `prisma migrate deploy` on restore anyway).
+            "--exclude-table=_prisma_migrations",
+          ],
+          {
+            timeout: 30000,
+            env: {
+              ...process.env,
+              PGPASSWORD: dbPassword,
+            },
+          },
+        );
         // Encrypt the dump file
         const rawBuffer = await fs.readFile(dumpPath);
         const b64Content = rawBuffer.toString("base64");

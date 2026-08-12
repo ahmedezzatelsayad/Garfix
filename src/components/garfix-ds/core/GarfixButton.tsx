@@ -53,49 +53,60 @@ export interface GarfixButtonProps extends ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 // ── Variant Styles ──────────────────────────────────────────────────────
-
+//
+// FE-12 FIX (Audit v2): Replaced hardcoded hex colors (#047857, #065f46, ...)
+// with CSS variable tokens (bg-primary, bg-primary/90, text-primary-foreground,
+// ring-primary, etc.). The hardcoded hex values broke dark mode — the light-
+// mode primary (#047857) was always used even when the dark theme was active,
+// because the hex values bypassed Tailwind's dark: variant system.
+//
+// The token-based approach below automatically picks up the correct color
+// for the active theme via the --primary CSS variable defined in globals.css.
 const variantStyles: Record<ButtonVariant, string> = {
   primary: [
-    "bg-[#047857] text-white",
-    "hover:bg-[#065f46] active:bg-[#064e3b]",
-    "border border-[#047857]",
-    "shadow-sm shadow-emerald-900/20",
-    "focus-visible:ring-2 focus-visible:ring-[#047857] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "bg-primary text-primary-foreground",
+    "hover:bg-primary/90 active:bg-primary/80",
+    "border border-primary",
+    "shadow-sm shadow-primary/20",
+    "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
   ].join(" "),
-  
+
   secondary: [
-    "bg-[#ecfdf5] text-[#064e3b]",
-    "hover:bg-[#d1fae5] active:bg-[#a7f3d0]",
-    "border border-[#a7f3d0]",
-    "focus-visible:ring-2 focus-visible:ring-[#047857] focus-visible:ring-offset-2",
+    "bg-primary/10 text-primary",
+    "hover:bg-primary/20 active:bg-primary/30",
+    "border border-primary/20",
+    "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
   ].join(" "),
-  
+
   outline: [
-    "bg-transparent text-[#047857]",
-    "hover:bg-[#ecfdf5] active:bg-[#d1fae5]",
-    "border border-[#047857]",
-    "focus-visible:ring-2 focus-visible:ring-[#047857] focus-visible:ring-offset-2",
+    "bg-transparent text-primary",
+    "hover:bg-primary/10 active:bg-primary/20",
+    "border border-primary",
+    "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
   ].join(" "),
-  
+
   ghost: [
-    "bg-transparent text-[#047857]",
-    "hover:bg-[#f0fdf4] active:bg-[#ecfdf5]",
+    "bg-transparent text-primary",
+    "hover:bg-primary/5 active:bg-primary/10",
     "border border-transparent",
-    "focus-visible:ring-2 focus-visible:ring-[#047857] focus-visible:ring-offset-2",
+    "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
   ].join(" "),
-  
+
   destructive: [
-    "bg-[#dc2626] text-white",
-    "hover:bg-[#b91c1c] active:bg-[#991b1b]",
-    "border border-[#dc2626]",
-    "shadow-sm shadow-red-900/20",
-    "focus-visible:ring-2 focus-visible:ring-[#dc2626] focus-visible:ring-offset-2",
+    "bg-destructive text-destructive-foreground",
+    "hover:bg-destructive/90 active:bg-destructive/80",
+    "border border-destructive",
+    "shadow-sm shadow-destructive/20",
+    "focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2",
   ].join(" "),
-  
+
   gold: [
     // ⚠️ RESTRICTED USE: Premium/AI features only!
+    // Gold variant keeps its hex values because it's a brand accent color
+    // that doesn't have a corresponding CSS variable token (it's used only
+    // for premium features and shouldn't change with the theme).
     "bg-[#d4a574] text-[#0b1220]",
-    "hover:bg-[#c9956a] active:bg[#b8855a]",
+    "hover:bg-[#c9956a] active:bg-[#b8855a]",
     "border border-[#d4a574]",
     "shadow-sm shadow-[#d4a574]/20",
     "focus-visible:ring-2 focus-visible:ring-[#d4a574] focus-visible:ring-offset-2",

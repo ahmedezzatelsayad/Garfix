@@ -118,13 +118,22 @@ export async function saveBase64(
         : `https://s3.${s3Config.region}.amazonaws.com`;
       const s3Url = `${endpoint}/${s3Config.bucket_name}/${encodeURIComponent(key)}`;
 
+      // SEC-03 FIX (Audit v2): Do NOT set x-amz-acl: public-read.
+      // Files (invoices, receipts, KYC docs) may contain sensitive PII.
+      // Default to private bucket access; use presigned URLs for download.
+      // If public access is needed for a specific use case, set the
+      // S3_PUBLIC_ACL env var to "true" explicitly.
+      const headers: Record<string, string> = {
+        "Content-Type": mimeType,
+        "Content-Length": buffer.length.toString(),
+      };
+      if (process.env.S3_PUBLIC_ACL === "true") {
+        headers["x-amz-acl"] = "public-read";
+      }
+
       const uploadRes = await fetch(s3Url, {
         method: "PUT",
-        headers: {
-          "Content-Type": mimeType,
-          "Content-Length": buffer.length.toString(),
-          "x-amz-acl": "public-read",
-        },
+        headers,
         body: buffer,
       }).catch(() => null);
 

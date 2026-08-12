@@ -262,16 +262,13 @@ export async function GET(request: NextRequest) {
       // pass any companySlug and read that company's AI config (masked keys,
       // model names, RPMs, usage stats). Now we verify the caller has a
       // founder role in the requested company before returning the config.
-      const membership = await (db as unknown as {
-        companyMember: {
-          findFirst: (args: {
-            where: { userId?: string; companyId?: string; role?: string };
-          }) => Promise<{ role: string } | null>;
-        };
-      }).companyMember.findFirst({
+      // DB-04 FIX (Audit v2): Use correct Prisma model `companyMembership`.
+      // The old code cast through `unknown` to call `db.companyMember` which
+      // doesn't exist in the Prisma client → TypeError at runtime.
+      const membership = await db.companyMembership.findFirst({
         where: {
-          userId: auth.user.uid,
-          companyId: company.id,
+          userUid: auth.user.uid,
+          companySlug: company.slug,
           role: 'founder',
         },
       });
@@ -291,19 +288,10 @@ export async function GET(request: NextRequest) {
       companyId = company.id;
     } else {
       // Use user's primary company
-      // NOTE: `companyMember` is not in prisma schema.prisma — the table is
-      // created by an unrelated migration and was previously accessed via
-      // `db: any`. We cast through `unknown` to keep the runtime call intact
-      // without re-introducing `any`.
-      const membership = await (db as unknown as {
-        companyMember: {
-          findFirst: (args: {
-            where: { userId?: string; role?: string };
-          }) => Promise<{ companyId: string } | null>;
-        };
-      }).companyMember.findFirst({
-        where: { 
-          userId: auth.user.uid,
+      // DB-04 FIX (Audit v2): Use correct Prisma model `companyMembership`.
+      const membership = await db.companyMembership.findFirst({
+        where: {
+          userUid: auth.user.uid,
           role: 'founder',
         },
       });
@@ -312,7 +300,7 @@ export async function GET(request: NextRequest) {
         return apiError('No founder role found. Access denied.', 403);
       }
       
-      companyId = membership.companyId;
+      companyId = membership.companySlug;
     }
     
     // Get or create config
