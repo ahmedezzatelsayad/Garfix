@@ -107,9 +107,10 @@ function isLikelyEncrypted(value: string): boolean {
 // ── Find all encrypted-secret columns in the schema ──────────────────
 // These are the tables/columns that store AES-256-GCM encrypted values
 // (identified by the encryptSecret() calls in the codebase).
+// ADD-4 FIX (Phase 1.5): Corrected table names to match @@map in schema.prisma.
 const SECRET_COLUMNS: Array<{ table: string; column: string; model: string }> = [
-  { table: "company", column: "whatsappAppSecretEnc", model: "company" },
-  { table: "company_ai_config", column: "apiKeyEnc", model: "companyAIConfig" },
+  { table: "companies", column: "whatsappAppSecretEnc", model: "company" },
+  { table: "company_ai_configs", column: "apiKeyEnc", model: "companyAIConfig" },
   { table: "api_key_pool", column: "keyEnc", model: "apiKeyPool" },
   { table: "integration_configs", column: "configEnc", model: "integrationConfig" },
   { table: "e_invoice_receipts", column: "certificateEnc", model: "eInvoiceReceipt" },
