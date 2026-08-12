@@ -121,20 +121,81 @@ export async function verifyAndEnableMFA(userUid: string, code: string): Promise
   return false;
 }
 
-/** Validate a TOTP code for an already-enabled MFA. */
+/** Validate a TOTP code for an already-enabled MFA.
+ * P1-2 FIX: Added rate limiting — 5 attempts per minute, then 15-min lockout.
+ * P1-3 FIX: Added replay protection — same code cannot be reused within the TOTP window.
+ */
 export async function validateMFA(userUid: string, code: string): Promise<boolean> {
   const record = await db.mFASecret.findUnique({ where: { id: `mfa-${userUid}` } });
   if (!record || !record.verified) return false;
+
+  // P1-2: Rate limit check using Valkey
+  try {
+    const { getValkeyClient } = await import('./valkey');
+    const valkey = await getValkeyClient();
+    if (valkey) {
+      const rateLimitKey = `mfa:attempts:${userUid}`;
+      const attempts = await valkey.get(rateLimitKey);
+      const count = attempts ? parseInt(attempts, 10) : 0;
+      
+      if (count >= 5) {
+        // Check if locked out
+        const lockKey = `mfa:lockout:${userUid}`;
+        const locked = await valkey.get(lockKey);
+        if (locked) {
+          const remaining = Math.ceil((parseInt(locked, 10) - Date.now()) / 1000);
+          logger.warn('[mfa] rate limited', { userUid, remaining });
+          return false;
+        }
+        // Set 15-minute lockout
+        await valkey.set(lockKey, String(Date.now() + 15 * 60 * 1000), 'EX', 15 * 60);
+        await valkey.del(rateLimitKey);
+        logger.warn('[mfa] lockout triggered', { userUid });
+        return false;
+      }
+      
+      // Increment attempt counter (1 min TTL)
+      await valkey.incr(rateLimitKey);
+      if (count === 0) {
+        await valkey.expire(rateLimitKey, 60);
+      }
+    }
+  } catch {
+    // Fail-open: don't block MFA if Valkey is down
+  }
 
   const secret = decryptSecret(record.secret);
   const valid = verifyTOTPCode(secret, code);
 
   if (valid) {
-    // No `lastUsedAt` column in schema — update is a no-op touch.
-    await db.mFASecret.update({
-      where: { id: `mfa-${userUid}` },
-      data: {},
-    }).catch(() => {});
+    // P1-3: Replay protection — store used code hash in Valkey for 90s (3 windows)
+    try {
+      const { getValkeyClient } = await import('./valkey');
+      const valkey = await getValkeyClient();
+      if (valkey) {
+        const crypto = await import('node:crypto');
+        const codeHash = crypto.createHash('sha256').update(`${userUid}:${code}`).digest('hex');
+        const replayKey = `mfa:used:${codeHash}`;
+        const alreadyUsed = await valkey.get(replayKey);
+        if (alreadyUsed) {
+          logger.warn('[mfa] replay attempt blocked', { userUid });
+          return false;
+        }
+        await valkey.set(replayKey, '1', 'EX', 90);
+      }
+    } catch {
+      // Fail-open
+    }
+
+    // Clear rate limit on success
+    try {
+      const { getValkeyClient } = await import('./valkey');
+      const valkey = await getValkeyClient();
+      if (valkey) {
+        await valkey.del(`mfa:attempts:${userUid}`);
+        await valkey.del(`mfa:lockout:${userUid}`);
+      }
+    } catch {}
   }
   return valid;
 }

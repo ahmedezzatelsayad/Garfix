@@ -5,13 +5,15 @@
  * Handles period close (closing entries for revenue/expense → retained earnings),
  * period reopen, and preventing posting to closed periods.
  *
- * ALL monetary values as String (no Float), use num() from money.ts.
+ * P0-4 FIX: ALL monetary calculations now use Prisma.Decimal instead of num().
+ * This eliminates floating-point errors like 0.1 + 0.2 ≠ 0.3 in financial math.
  * ALL mutations MUST log audit via logAudit.
  */
 import { dbTyped as db } from "@/lib/db";
-import { num, addNums, subNums, toNum } from "@/lib/money";
+import { addMoney, subtractMoney, roundMoney, isZero } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
+import { Prisma } from "@prisma/client";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -54,6 +56,9 @@ export async function closeFiscalPeriod(
   userEmail: string,
   userUid: string,
 ): Promise<ClosingResult> {
+  const ZERO = new Prisma.Decimal(0);
+  const TOLERANCE = new Prisma.Decimal("0.001");
+
   // 1. Find and verify the period
   const period = await db.fiscalPeriod.findFirst({
     where: { companySlug, name: periodName },
@@ -80,7 +85,6 @@ export async function closeFiscalPeriod(
   }
 
   // 3. Calculate net income for the period (Revenue - Expenses)
-  // Find all revenue and expense accounts
   const revenueAccounts = await db.account.findMany({
     where: { companySlug, type: "revenue", isActive: true },
   });
@@ -91,12 +95,9 @@ export async function closeFiscalPeriod(
     where: { companySlug, type: "contra_revenue", isActive: true },
   });
 
-  // Sum posted JE lines for revenue accounts within the period
   const revenueAccountIds = revenueAccounts.map((a) => a.id);
   const expenseAccountIds = expenseAccounts.map((a) => a.id);
-  const contraRevenueAccountIds = contraRevenueAccounts.map((a) => a.id);
 
-  // Fetch posted JE lines for revenue accounts in the period
   const postedJEIds = await db.journalEntry.findMany({
     where: {
       companySlug,
@@ -109,166 +110,157 @@ export async function closeFiscalPeriod(
   const postedJEIdList = postedJEIds.map((je) => je.id);
 
   const revenueLines = await db.journalEntryLine.findMany({
-    where: {
-      journalEntryId: { in: postedJEIdList },
-      accountId: { in: revenueAccountIds },
-    },
+    where: { journalEntryId: { in: postedJEIdList }, accountId: { in: revenueAccountIds } },
   });
-
   const expenseLines = await db.journalEntryLine.findMany({
-    where: {
-      journalEntryId: { in: postedJEIdList },
-      accountId: { in: expenseAccountIds },
-    },
+    where: { journalEntryId: { in: postedJEIdList }, accountId: { in: expenseAccountIds } },
   });
-
   const contraRevenueLines = await db.journalEntryLine.findMany({
-    where: {
-      journalEntryId: { in: postedJEIdList },
-      accountId: { in: contraRevenueAccountIds },
-    },
+    where: { journalEntryId: { in: postedJEIdList }, accountId: { in: contraRevenueAccounts.map(a => a.id) } },
   });
 
-  // Revenue = total credits - total debits (credit normal)
-  const totalRevenue = revenueLines.reduce((sum, l) => sum + num(l.credit, 3) - num(l.debit, 3), 0);
-  // Contra Revenue = total debits - total credits (debit normal for contra_revenue)
-  const totalContraRevenue = contraRevenueLines.reduce((sum, l) => sum + num(l.debit, 3) - num(l.credit, 3), 0);
-  // Expenses = total debits - total credits (debit normal)
-  const totalExpenses = expenseLines.reduce((sum, l) => sum + num(l.debit, 3) - num(l.credit, 3), 0);
+  // P0-4 FIX: Use Decimal arithmetic throughout
+  const totalRevenue = revenueLines.reduce(
+    (sum, l) => sum.plus(new Prisma.Decimal(l.credit ?? 0)).minus(new Prisma.Decimal(l.debit ?? 0)),
+    ZERO,
+  );
+  const totalContraRevenue = contraRevenueLines.reduce(
+    (sum, l) => sum.plus(new Prisma.Decimal(l.debit ?? 0)).minus(new Prisma.Decimal(l.credit ?? 0)),
+    ZERO,
+  );
+  const totalExpenses = expenseLines.reduce(
+    (sum, l) => sum.plus(new Prisma.Decimal(l.debit ?? 0)).minus(new Prisma.Decimal(l.credit ?? 0)),
+    ZERO,
+  );
 
-  const netRevenue = num(totalRevenue - totalContraRevenue, 3);
-  const netIncome = num(netRevenue - totalExpenses, 3);
+  const netRevenue = totalRevenue.minus(totalContraRevenue);
+  const netIncome = netRevenue.minus(totalExpenses);
 
   // 4. Create closing JE
-  // Get Income Summary and Retained Earnings accounts
   const incomeSummaryAccount = await db.account.findFirst({
-    where: { companySlug, code: "3900" }, // Income Summary (temporary closing account)
+    where: { companySlug, code: "3900" },
   }) || await db.account.findFirst({
-    where: { companySlug, code: "3000" }, // fallback to Retained Earnings if no Income Summary
+    where: { companySlug, code: "3000" },
   });
   if (!incomeSummaryAccount) {
     throw new Error(`Income Summary account (3900) not found for company "${companySlug}"`);
   }
 
   const retainedEarningsAccount = await db.account.findFirst({
-    where: { companySlug, code: "3000" }, // Retained Earnings
+    where: { companySlug, code: "3000" },
   });
   if (!retainedEarningsAccount) {
     throw new Error(`Retained Earnings account (3000) not found for company "${companySlug}"`);
   }
 
-  // Build closing JE lines
   const closingLines: { accountId: string; debit: string; credit: string; description: string | null }[] = [];
 
-  // Close Revenue accounts: Debit each revenue account, Credit Income Summary
+  // Close Revenue accounts
   for (const acc of revenueAccounts) {
     const accBalance = revenueLines
       .filter((l) => l.accountId === acc.id)
-      .reduce((sum, l) => sum + num(l.credit, 3) - num(l.debit, 3), 0);
-    if (Math.abs(accBalance) > 0.001) {
+      .reduce((sum, l) => sum.plus(new Prisma.Decimal(l.credit ?? 0)).minus(new Prisma.Decimal(l.debit ?? 0)), ZERO);
+    if (accBalance.abs().gt(TOLERANCE)) {
       closingLines.push({
         accountId: acc.id,
-        debit: num(accBalance, 3).toFixed(3),
-        credit: num(0, 3).toFixed(3),
+        debit: accBalance.toFixed(3),
+        credit: "0.000",
         description: `Close revenue account ${acc.code} — ${periodName}`,
       });
     }
   }
 
-  // Close Contra Revenue accounts: Credit each contra revenue account, Debit Income Summary
+  // Close Contra Revenue accounts
   for (const acc of contraRevenueAccounts) {
     const accBalance = contraRevenueLines
       .filter((l) => l.accountId === acc.id)
-      .reduce((sum, l) => sum + num(l.debit, 3) - num(l.credit, 3), 0);
-    if (Math.abs(accBalance) > 0.001) {
+      .reduce((sum, l) => sum.plus(new Prisma.Decimal(l.debit ?? 0)).minus(new Prisma.Decimal(l.credit ?? 0)), ZERO);
+    if (accBalance.abs().gt(TOLERANCE)) {
       closingLines.push({
         accountId: acc.id,
-        debit: num(0, 3).toFixed(3),
-        credit: num(accBalance, 3).toFixed(3),
+        debit: "0.000",
+        credit: accBalance.toFixed(3),
         description: `Close contra revenue account ${acc.code} — ${periodName}`,
       });
     }
   }
 
-  // Credit Income Summary with total revenue (net of contra)
-  if (Math.abs(netRevenue) > 0.001) {
+  // Credit Income Summary with total revenue
+  if (netRevenue.abs().gt(TOLERANCE)) {
     closingLines.push({
       accountId: incomeSummaryAccount.id,
-      debit: num(0, 3).toFixed(3),
-      credit: num(netRevenue, 3).toFixed(3),
+      debit: "0.000",
+      credit: netRevenue.toFixed(3),
       description: `Income Summary — revenue closing — ${periodName}`,
     });
   }
 
-  // Close Expense accounts: Credit each expense account, Debit Income Summary
+  // Close Expense accounts
   for (const acc of expenseAccounts) {
     const accBalance = expenseLines
       .filter((l) => l.accountId === acc.id)
-      .reduce((sum, l) => sum + num(l.debit, 3) - num(l.credit, 3), 0);
-    if (Math.abs(accBalance) > 0.001) {
+      .reduce((sum, l) => sum.plus(new Prisma.Decimal(l.debit ?? 0)).minus(new Prisma.Decimal(l.credit ?? 0)), ZERO);
+    if (accBalance.abs().gt(TOLERANCE)) {
       closingLines.push({
         accountId: acc.id,
-        debit: num(0, 3).toFixed(3),
-        credit: num(accBalance, 3).toFixed(3),
+        debit: "0.000",
+        credit: accBalance.toFixed(3),
         description: `Close expense account ${acc.code} — ${periodName}`,
       });
     }
   }
 
   // Debit Income Summary with total expenses
-  if (Math.abs(totalExpenses) > 0.001) {
+  if (totalExpenses.abs().gt(TOLERANCE)) {
     closingLines.push({
       accountId: incomeSummaryAccount.id,
-      debit: num(totalExpenses, 3).toFixed(3),
-      credit: num(0, 3).toFixed(3),
+      debit: totalExpenses.toFixed(3),
+      credit: "0.000",
       description: `Income Summary — expense closing — ${periodName}`,
     });
   }
 
   // Close Income Summary to Retained Earnings
-  if (Math.abs(netIncome) > 0.001) {
-    if (netIncome > 0) {
-      // Net income (profit): Debit Income Summary, Credit Retained Earnings
+  if (netIncome.abs().gt(TOLERANCE)) {
+    if (netIncome.gt(ZERO)) {
       closingLines.push({
         accountId: incomeSummaryAccount.id,
-        debit: num(netIncome, 3).toFixed(3),
-        credit: num(0, 3).toFixed(3),
+        debit: netIncome.toFixed(3), credit: "0.000",
         description: `Close Income Summary to Retained Earnings — ${periodName}`,
       });
       closingLines.push({
         accountId: retainedEarningsAccount.id,
-        debit: num(0, 3).toFixed(3),
-        credit: num(netIncome, 3).toFixed(3),
+        debit: "0.000", credit: netIncome.toFixed(3),
         description: `Retained Earnings — net income from ${periodName}`,
       });
     } else {
-      // Net loss: Credit Income Summary, Debit Retained Earnings
-      const lossAmount = Math.abs(netIncome);
+      const lossAmount = netIncome.abs();
       closingLines.push({
         accountId: incomeSummaryAccount.id,
-        debit: num(0, 3).toFixed(3),
-        credit: num(lossAmount, 3).toFixed(3),
+        debit: "0.000", credit: lossAmount.toFixed(3),
         description: `Close Income Summary to Retained Earnings (loss) — ${periodName}`,
       });
       closingLines.push({
         accountId: retainedEarningsAccount.id,
-        debit: num(lossAmount, 3).toFixed(3),
-        credit: num(0, 3).toFixed(3),
+        debit: lossAmount.toFixed(3), credit: "0.000",
         description: `Retained Earnings — net loss from ${periodName}`,
       });
     }
   }
 
   // Validate balanced
-  const totalClosingDebit = closingLines.reduce((s, l) => s + num(l.debit, 3), 0);
-  const totalClosingCredit = closingLines.reduce((s, l) => s + num(l.credit, 3), 0);
-  if (Math.abs(totalClosingDebit - totalClosingCredit) > 0.01) {
+  const totalClosingDebit = closingLines.reduce(
+    (s, l) => s.plus(new Prisma.Decimal(l.debit)), ZERO,
+  );
+  const totalClosingCredit = closingLines.reduce(
+    (s, l) => s.plus(new Prisma.Decimal(l.credit)), ZERO,
+  );
+  if (totalClosingDebit.minus(totalClosingCredit).abs().gt(new Prisma.Decimal("0.01"))) {
     throw new Error(`Closing JE not balanced: debit=${totalClosingDebit.toFixed(3)}, credit=${totalClosingCredit.toFixed(3)}`);
   }
 
-  // 5-6. Create closing JE + mark period as closed + lock all JEs in the period
+  // 5-6. Create closing JE + mark period as closed
   const result = await db.$transaction(async (tx) => {
-    // Create the closing JE
     let closingJEId: string | null = null;
     if (closingLines.length > 0) {
       const closingJE = await tx.journalEntry.create({
@@ -279,7 +271,7 @@ export async function closeFiscalPeriod(
           date: period.endDate,
           description: `Closing entries for period ${periodName}`,
           status: "posted",
-          sourceType: "opening_balance", // closing entries are a special type
+          sourceType: "opening_balance",
           createdBy: userEmail,
           lines: { create: closingLines },
         },
@@ -287,49 +279,45 @@ export async function closeFiscalPeriod(
       });
       closingJEId = closingJE.id;
 
-      // Update account balances for closing JE
+      // Update account balances
       const accountIds = [...new Set(closingLines.map((l) => l.accountId))];
       const accounts = await tx.account.findMany({ where: { id: { in: accountIds }, companySlug } });
-      const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
+      const accountMap: Map<string, { type: string; balance: Prisma.Decimal }> = new Map(
+        accounts.map((a) => [a.id, { type: a.type, balance: new Prisma.Decimal(a.balance ?? 0) }])
+      );
 
-      const deltas = new Map<string, number>();
+      const deltas = new Map<string, Prisma.Decimal>();
       for (const line of closingLines) {
         const acc = accountMap.get(line.accountId);
         if (!acc) continue;
+        const debit = new Prisma.Decimal(line.debit);
+        const credit = new Prisma.Decimal(line.credit);
         const isDebitNormal = acc.type === "asset" || acc.type === "expense" || acc.type === "contra_revenue";
-        const delta = isDebitNormal
-          ? num(line.debit, 3) - num(line.credit, 3)
-          : num(line.credit, 3) - num(line.debit, 3);
-        deltas.set(line.accountId, (deltas.get(line.accountId) || 0) + delta);
+        const delta = isDebitNormal ? debit.minus(credit) : credit.minus(debit);
+        deltas.set(line.accountId, (deltas.get(line.accountId) ?? ZERO).plus(delta));
       }
 
       for (const [accountId, delta] of deltas) {
         const acc = accountMap.get(accountId)!;
-        const currentBalance = num(acc.balance, 3);
+        const newBalance = acc.balance.plus(delta);
         await tx.account.update({
           where: { id: accountId },
-          data: { balance: (currentBalance + delta).toFixed(3) },
+          data: { balance: newBalance.toFixed(3) },
         });
       }
     }
 
-    // Mark period as closed
     const now = new Date();
     await tx.fiscalPeriod.update({
       where: { id: period.id },
-      data: {
-        status: "closed",
-        closedBy: userEmail,
-        closedAt: now,
-      },
+      data: { status: "closed", closedBy: userEmail, closedAt: now },
     });
 
     return { closingJEId, closedAt: now.toISOString() };
   });
 
   await logAudit({
-    userEmail,
-    userUid,
+    userEmail, userUid,
     action: "close_fiscal_period",
     entity: "fiscal_period",
     entityId: period.id,
@@ -358,13 +346,6 @@ export async function closeFiscalPeriod(
 
 // ── Period Reopen ────────────────────────────────────────────────────────────────
 
-/**
- * reopenFiscalPeriod — Reopen a closed fiscal period:
- * - Only allowed with special permission (period_reopen)
- * - Reverse the closing JE
- * - Mark period back to "open"
- * - Create AuditLog entry with reason
- */
 export async function reopenFiscalPeriod(
   companySlug: string,
   periodName: string,
@@ -383,7 +364,6 @@ export async function reopenFiscalPeriod(
     throw new Error(`Fiscal period "${periodName}" is not closed (current status: ${period.status})`);
   }
 
-  // Find the closing JE for this period
   const closingJE = await db.journalEntry.findFirst({
     where: {
       companySlug,
@@ -399,15 +379,13 @@ export async function reopenFiscalPeriod(
     let reversalJEId: string | null = null;
 
     if (closingJE) {
-      // Build swapped lines to reverse the closing JE
       const swappedLines = closingJE.lines.map((l) => ({
         accountId: l.accountId,
-        debit: num(l.credit, 3).toFixed(3),
-        credit: num(l.debit, 3).toFixed(3),
+        debit: (l.credit ?? 0).toFixed(3),
+        credit: (l.debit ?? 0).toFixed(3),
         description: l.description || null,
       }));
 
-      // Create reversal entry
       const reversal = await tx.journalEntry.create({
         data: {
           number: `JE-REOPEN-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
@@ -428,62 +406,53 @@ export async function reopenFiscalPeriod(
       // Update account balances for the reversal
       const accountIds = [...new Set(swappedLines.map((l) => l.accountId))].filter((id): id is string => id !== null);
       const accounts = await tx.account.findMany({ where: { id: { in: accountIds }, companySlug } });
-      const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
+      const accountMap: Map<string, { type: string; balance: Prisma.Decimal }> = new Map(
+        accounts.map((a) => [a.id, { type: a.type, balance: new Prisma.Decimal(a.balance ?? 0) }])
+      );
 
-      const deltas = new Map<string, number>();
+      const deltas = new Map<string, Prisma.Decimal>();
       for (const line of swappedLines) {
         const aid = line.accountId;
         if (!aid) continue;
         const acc = accountMap.get(aid);
         if (!acc) continue;
+        const debit = new Prisma.Decimal(line.debit);
+        const credit = new Prisma.Decimal(line.credit);
         const isDebitNormal = acc.type === "asset" || acc.type === "expense" || acc.type === "contra_revenue";
-        const delta = isDebitNormal
-          ? num(line.debit, 3) - num(line.credit, 3)
-          : num(line.credit, 3) - num(line.debit, 3);
-        deltas.set(aid, (deltas.get(aid) || 0) + delta);
+        const delta = isDebitNormal ? debit.minus(credit) : credit.minus(debit);
+        deltas.set(aid, (deltas.get(aid) ?? new Prisma.Decimal(0)).plus(delta));
       }
 
       for (const [accountId, delta] of deltas) {
         const acc = accountMap.get(accountId)!;
-        const currentBalance = num(acc.balance, 3);
+        const newBalance = acc.balance.plus(delta);
         await tx.account.update({
           where: { id: accountId },
-          data: { balance: (currentBalance + delta).toFixed(3) },
+          data: { balance: newBalance.toFixed(3) },
         });
       }
 
-      // Mark original closing JE as reversed
       await tx.journalEntry.update({
         where: { id: closingJE.id },
         data: { status: "reversed" },
       });
     }
 
-    // Mark period back to "open"
     await tx.fiscalPeriod.update({
       where: { id: period.id },
-      data: {
-        status: "open",
-        closedBy: null,
-        closedAt: null,
-      },
+      data: { status: "open", closedBy: null, closedAt: null },
     });
 
     return { reversalJEId };
   });
 
   await logAudit({
-    userEmail,
-    userUid,
+    userEmail, userUid,
     action: "reopen_fiscal_period",
     entity: "fiscal_period",
     entityId: period.id,
     companySlug,
-    details: {
-      periodName,
-      reason,
-      reversalJEId: result.reversalJEId,
-    },
+    details: { periodName, reason, reversalJEId: result.reversalJEId },
   });
 
   return {
@@ -498,28 +467,15 @@ export async function reopenFiscalPeriod(
 
 // ── Prevent Posting to Closed Period ────────────────────────────────────────────
 
-/**
- * preventPostingToClosedPeriod — Check before any JE posting:
- * - Find period that contains the given date
- * - If period is "closed" or "locked", throw error
- */
 export async function preventPostingToClosedPeriod(
   companySlug: string,
   date: string,
 ): Promise<void> {
-  // Find any period that contains this date
   const period = await db.fiscalPeriod.findFirst({
-    where: {
-      companySlug,
-      startDate: { lte: date },
-      endDate: { gte: date },
-    },
+    where: { companySlug, startDate: { lte: date }, endDate: { gte: date } },
   });
 
-  if (!period) {
-    // No period found for this date — allow posting (no period constraint)
-    return;
-  }
+  if (!period) return;
 
   if (period.status === "closed" || period.status === "locked") {
     throw new Error(

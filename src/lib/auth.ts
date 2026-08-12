@@ -420,7 +420,10 @@ export async function resolveAuth(req: NextRequest): Promise<AuthResult> {
   const refresh = getRefreshToken(req);
   if (!refresh) return { ok: false, error: "Unauthorized", status: 401 };
 
-  const refreshPayload = verifyRefreshToken(refresh);
+  // P1-1 FIX: Use verifyRefreshTokenWithBlacklist instead of verifyRefreshToken
+  // to also check Valkey blacklist. Previously a blacklisted refresh token
+  // (e.g. after logout) could still be used for silent refresh in resolveAuth.
+  const refreshPayload = await verifyRefreshTokenWithBlacklist(refresh);
   if (!refreshPayload) return { ok: false, error: "Unauthorized", status: 401 };
 
   // Look up user — verify token version matches (invalidates old sessions).

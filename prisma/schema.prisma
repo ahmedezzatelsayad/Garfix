@@ -437,6 +437,7 @@ model JournalEntryLine {
   description    String?
   sortOrder      Int          @default(0)
   journalEntryId String
+  companySlug    String       @default("default")
   account        Account      @relation(fields: [accountId], references: [id])
   journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
 
@@ -444,6 +445,7 @@ model JournalEntryLine {
   // table without these. journal_entry_lines grows with every journal entry.
   @@index([journalEntryId])
   @@index([accountId])
+  @@index([companySlug])
   @@map("journal_entry_lines")
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
@@ -516,10 +518,12 @@ model InstallmentSchedule {
   status           String         @default("pending") // pending, paid, overdue, cancelled
   paidDate         DateTime?
   paymentRef       String?
+  companySlug       String         @default("default")
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   paymentVoucher   PaymentVoucher @relation(fields: [paymentVoucherId], references: [id], onDelete: Cascade)
 
+  @@index([companySlug])
   @@map("installment_schedules")
 }
 
@@ -574,6 +578,7 @@ model ProfitDistribution {
   entries          ProfitDistributionEntry[]
 
   @@index([companyId])
+  @@index([companySlug])
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
   companySlug                  String
@@ -587,10 +592,12 @@ model ProfitDistributionEntry {
   shareholder    String
   shareRatio     Decimal            @default(0)
   amount         Decimal            @default(0)
+  companySlug     String             @default("default")
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   distribution   ProfitDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
 
+  @@index([companySlug])
   @@map("profit_distribution_entries")
 }
 
@@ -621,6 +628,7 @@ model LetterOfCredit {
   @@unique([number, companyId])
   @@index([companyId])
   @@index([bankAccountId])
+  @@index([companySlug])
   @@map("letters_of_credit")
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
@@ -639,9 +647,11 @@ model LetterOfCreditDocument {
   documentType     String
   fileName         String
   fileUrl          String?
+  companySlug       String         @default("default")
   uploadedAt       DateTime       @default(now())
   letterOfCredit   LetterOfCredit @relation(fields: [letterOfCreditId], references: [id], onDelete: Cascade)
 
+  @@index([companySlug])
   @@map("letter_of_credit_documents")
 }
 
@@ -819,11 +829,13 @@ model DepreciationEntry {
   date        DateTime
   description String?
   companyId   String
+  companySlug String     @default("default")
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   fixedAsset  FixedAsset @relation(fields: [assetId], references: [id])
 
   @@index([companyId])
+  @@index([companySlug])
   @@map("depreciation_entries")
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
@@ -875,6 +887,7 @@ model BudgetLine {
   costCenterId  String?
   plannedAmount Decimal     @default(0)
   actualAmount  Decimal     @default(0)
+  companySlug   String      @default("default")
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   budget        Budget      @relation(fields: [budgetId], references: [id], onDelete: Cascade)
@@ -884,6 +897,7 @@ model BudgetLine {
   @@index([budgetId])
   @@index([accountId])
   @@index([costCenterId])
+  @@index([companySlug])
 }
 
 // ─── Cost Center (matches db.costCenter) ───
@@ -1017,6 +1031,7 @@ model LandedCostLine {
   productId            String?
   proportionalWeight   Decimal              @default(0)
   allocatedAmount      Decimal              @default(0)
+  companySlug          String               @default("default")
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   landedCostAllocation LandedCostAllocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
@@ -1024,6 +1039,7 @@ model LandedCostLine {
 
   @@index([allocationId])
   @@index([productId])
+  @@index([companySlug])
   @@map("landed_cost_lines")
 }
 
@@ -1768,6 +1784,7 @@ model RolePermission {
 
   // Note: RolePermission.role is not a FK to AppUser.role — it's a standalone mapping
   @@unique([role, permissionKey])
+  @@index([companySlug])
   @@map("role_permissions")
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
