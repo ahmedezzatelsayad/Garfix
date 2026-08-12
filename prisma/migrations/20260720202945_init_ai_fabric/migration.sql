@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "app_users" (
+CREATE TABLE IF NOT EXISTS "app_users" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "uid" TEXT NOT NULL,
     "email" TEXT NOT NULL,
@@ -16,12 +16,12 @@ CREATE TABLE "app_users" (
     CONSTRAINT "app_users_uid_key" UNIQUE ("uid"),
     CONSTRAINT "app_users_email_key" UNIQUE ("email")
 );
-CREATE INDEX "app_users_role_idx" ON "app_users"("role");
+CREATE INDEX IF NOT EXISTS "app_users_role_idx" ON "app_users"("role");
 
 
 
 -- CreateTable
-CREATE TABLE "email_verifications" (
+CREATE TABLE IF NOT EXISTS "email_verifications" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "userId" TEXT NOT NULL,
     "token" TEXT,
@@ -37,7 +37,7 @@ CREATE TABLE "email_verifications" (
 );
 
 -- CreateTable
-CREATE TABLE "companies" (
+CREATE TABLE IF NOT EXISTS "companies" (
     "id" SERIAL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
@@ -79,7 +79,7 @@ CREATE TABLE "companies" (
 );
 
 -- CreateTable
-CREATE TABLE "setup_wizard_progress" (
+CREATE TABLE IF NOT EXISTS "setup_wizard_progress" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "currentStep" INTEGER NOT NULL DEFAULT 1,
@@ -93,7 +93,7 @@ CREATE TABLE "setup_wizard_progress" (
 );
 
 -- CreateTable
-CREATE TABLE "clients" (
+CREATE TABLE IF NOT EXISTS "clients" (
     "id" SERIAL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "email" TEXT,
@@ -110,7 +110,7 @@ CREATE TABLE "clients" (
 );
 
 -- CreateTable
-CREATE TABLE "invoices" (
+CREATE TABLE IF NOT EXISTS "invoices" (
     "id" SERIAL PRIMARY KEY,
     "invoiceNumber" TEXT NOT NULL,
     "companySlug" TEXT NOT NULL,
@@ -149,7 +149,7 @@ CREATE TABLE "invoices" (
 );
 
 -- CreateTable
-CREATE TABLE "product_catalog" (
+CREATE TABLE IF NOT EXISTS "product_catalog" (
     "id" SERIAL PRIMARY KEY,
     "code" TEXT,
     "name" TEXT NOT NULL,
@@ -164,7 +164,7 @@ CREATE TABLE "product_catalog" (
 );
 
 -- CreateTable
-CREATE TABLE "warehouses" (
+CREATE TABLE IF NOT EXISTS "warehouses" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -177,7 +177,7 @@ CREATE TABLE "warehouses" (
 );
 
 -- CreateTable
-CREATE TABLE "inventory_items" (
+CREATE TABLE IF NOT EXISTS "inventory_items" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "warehouseId" INTEGER NOT NULL,
@@ -195,7 +195,7 @@ CREATE TABLE "inventory_items" (
 );
 
 -- CreateTable
-CREATE TABLE "stock_movements" (
+CREATE TABLE IF NOT EXISTS "stock_movements" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "productId" INTEGER,
@@ -212,7 +212,7 @@ CREATE TABLE "stock_movements" (
 );
 
 -- CreateTable
-CREATE TABLE "purchase_invoices" (
+CREATE TABLE IF NOT EXISTS "purchase_invoices" (
     "id" SERIAL PRIMARY KEY,
     "num" TEXT NOT NULL,
     "date" TEXT NOT NULL,
@@ -229,7 +229,7 @@ CREATE TABLE "purchase_invoices" (
 );
 
 -- CreateTable
-CREATE TABLE "hr_employees" (
+CREATE TABLE IF NOT EXISTS "hr_employees" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -256,7 +256,7 @@ CREATE TABLE "hr_employees" (
 );
 
 -- CreateTable
-CREATE TABLE "hr_attendance" (
+CREATE TABLE IF NOT EXISTS "hr_attendance" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "employeeId" INTEGER NOT NULL,
@@ -270,7 +270,7 @@ CREATE TABLE "hr_attendance" (
 );
 
 -- CreateTable
-CREATE TABLE "hr_salaries" (
+CREATE TABLE IF NOT EXISTS "hr_salaries" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "employeeId" INTEGER NOT NULL,
@@ -288,7 +288,7 @@ CREATE TABLE "hr_salaries" (
 );
 
 -- CreateTable
-CREATE TABLE "hr_commissions" (
+CREATE TABLE IF NOT EXISTS "hr_commissions" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "employeeId" INTEGER NOT NULL,
@@ -302,7 +302,7 @@ CREATE TABLE "hr_commissions" (
 );
 
 -- CreateTable
-CREATE TABLE "hr_leave_requests" (
+CREATE TABLE IF NOT EXISTS "hr_leave_requests" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "employeeId" INTEGER NOT NULL,
@@ -318,7 +318,7 @@ CREATE TABLE "hr_leave_requests" (
 );
 
 -- CreateTable
-CREATE TABLE "hr_performance" (
+CREATE TABLE IF NOT EXISTS "hr_performance" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "employeeId" INTEGER NOT NULL,
@@ -336,7 +336,7 @@ CREATE TABLE "hr_performance" (
 );
 
 -- CreateTable
-CREATE TABLE "accounts" (
+CREATE TABLE IF NOT EXISTS "accounts" (
     "id" SERIAL PRIMARY KEY,
     "code" TEXT NOT NULL,
     "nameAr" TEXT NOT NULL,
@@ -354,7 +354,7 @@ CREATE TABLE "accounts" (
 );
 
 -- CreateTable
-CREATE TABLE "journal_entries" (
+CREATE TABLE IF NOT EXISTS "journal_entries" (
     "id" SERIAL PRIMARY KEY,
     "date" TEXT NOT NULL,
     "description" TEXT,
@@ -372,7 +372,7 @@ CREATE TABLE "journal_entries" (
 );
 
 -- CreateTable
-CREATE TABLE "journal_entry_lines" (
+CREATE TABLE IF NOT EXISTS "journal_entry_lines" (
     "id" SERIAL PRIMARY KEY,
     "entryId" INTEGER NOT NULL,
     "accountId" INTEGER NOT NULL,
@@ -385,7 +385,7 @@ CREATE TABLE "journal_entry_lines" (
 );
 
 -- CreateTable
-CREATE TABLE "e_invoices" (
+CREATE TABLE IF NOT EXISTS "e_invoices" (
     "id" SERIAL PRIMARY KEY,
     "invoiceId" INTEGER NOT NULL,
     "companySlug" TEXT NOT NULL,
@@ -411,7 +411,7 @@ CREATE TABLE "e_invoices" (
 );
 
 -- CreateTable
-CREATE TABLE "order_deliveries" (
+CREATE TABLE IF NOT EXISTS "order_deliveries" (
     "id" SERIAL PRIMARY KEY,
     "invoiceId" INTEGER,
     "companySlug" TEXT NOT NULL,
@@ -434,7 +434,7 @@ CREATE TABLE "order_deliveries" (
 );
 
 -- CreateTable
-CREATE TABLE "payment_provider_configs" (
+CREATE TABLE IF NOT EXISTS "payment_provider_configs" (
     "provider" TEXT NOT NULL PRIMARY KEY,
     "encryptedCredentials" TEXT,
     "publicConfig" TEXT,
@@ -445,7 +445,7 @@ CREATE TABLE "payment_provider_configs" (
 );
 
 -- CreateTable
-CREATE TABLE "payment_transactions" (
+CREATE TABLE IF NOT EXISTS "payment_transactions" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "plan" TEXT NOT NULL,
@@ -469,7 +469,7 @@ CREATE TABLE "payment_transactions" (
 );
 
 -- CreateTable
-CREATE TABLE "payments_vault" (
+CREATE TABLE IF NOT EXISTS "payments_vault" (
     "id" TEXT NOT NULL PRIMARY KEY DEFAULT 'singleton',
     "wrappedKey" TEXT NOT NULL,
     "kdfSalt" TEXT NOT NULL,
@@ -483,7 +483,7 @@ CREATE TABLE "payments_vault" (
 );
 
 -- CreateTable
-CREATE TABLE "permissions" (
+CREATE TABLE IF NOT EXISTS "permissions" (
     "id" SERIAL PRIMARY KEY,
     "key" TEXT NOT NULL,
     "labelAr" TEXT NOT NULL,
@@ -496,7 +496,7 @@ CREATE TABLE "permissions" (
 );
 
 -- CreateTable
-CREATE TABLE "role_permissions" (
+CREATE TABLE IF NOT EXISTS "role_permissions" (
     "id" SERIAL PRIMARY KEY,
     "role" TEXT NOT NULL,
     "permissionKey" TEXT NOT NULL,
@@ -508,7 +508,7 @@ CREATE TABLE "role_permissions" (
 );
 
 -- CreateTable
-CREATE TABLE "audit_logs" (
+CREATE TABLE IF NOT EXISTS "audit_logs" (
     "id" SERIAL PRIMARY KEY,
     "userEmail" TEXT NOT NULL,
     "userUid" TEXT NOT NULL,
@@ -522,7 +522,7 @@ CREATE TABLE "audit_logs" (
 );
 
 -- CreateTable
-CREATE TABLE "admin_audit_logs" (
+CREATE TABLE IF NOT EXISTS "admin_audit_logs" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "adminEmail" TEXT NOT NULL,
     "action" TEXT NOT NULL,
@@ -535,7 +535,7 @@ CREATE TABLE "admin_audit_logs" (
 );
 
 -- CreateTable
-CREATE TABLE "announcements" (
+CREATE TABLE IF NOT EXISTS "announcements" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "title" TEXT NOT NULL,
     "body" TEXT NOT NULL,
@@ -549,7 +549,7 @@ CREATE TABLE "announcements" (
 );
 
 -- CreateTable
-CREATE TABLE "support_tickets" (
+CREATE TABLE IF NOT EXISTS "support_tickets" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "tenantId" INTEGER,
     "userEmail" TEXT NOT NULL,
@@ -562,7 +562,7 @@ CREATE TABLE "support_tickets" (
 );
 
 -- CreateTable
-CREATE TABLE "ticket_replies" (
+CREATE TABLE IF NOT EXISTS "ticket_replies" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "ticketId" TEXT NOT NULL,
     "senderEmail" TEXT NOT NULL,
@@ -573,7 +573,7 @@ CREATE TABLE "ticket_replies" (
 );
 
 -- CreateTable
-CREATE TABLE "platform_settings" (
+CREATE TABLE IF NOT EXISTS "platform_settings" (
     "key" TEXT NOT NULL PRIMARY KEY,
     "category" TEXT NOT NULL,
     "valueType" TEXT NOT NULL,
@@ -585,7 +585,7 @@ CREATE TABLE "platform_settings" (
 );
 
 -- CreateTable
-CREATE TABLE "platform_settings_history" (
+CREATE TABLE IF NOT EXISTS "platform_settings_history" (
     "id" SERIAL PRIMARY KEY,
     "settingKey" TEXT NOT NULL,
     "oldValue" TEXT,
@@ -597,7 +597,7 @@ CREATE TABLE "platform_settings_history" (
 );
 
 -- CreateTable
-CREATE TABLE "modules" (
+CREATE TABLE IF NOT EXISTS "modules" (
     "id" SERIAL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "identifier" TEXT NOT NULL,
@@ -613,7 +613,7 @@ CREATE TABLE "modules" (
 );
 
 -- CreateTable
-CREATE TABLE "chat_history" (
+CREATE TABLE IF NOT EXISTS "chat_history" (
     "id" SERIAL PRIMARY KEY,
     "userUid" TEXT NOT NULL,
     "companySlug" TEXT,
@@ -630,7 +630,7 @@ CREATE TABLE "chat_history" (
 );
 
 -- CreateTable
-CREATE TABLE "ai_processing_logs" (
+CREATE TABLE IF NOT EXISTS "ai_processing_logs" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT,
     "endpoint" TEXT NOT NULL,
@@ -649,7 +649,7 @@ CREATE TABLE "ai_processing_logs" (
 );
 
 -- CreateTable
-CREATE TABLE "idempotency_keys" (
+CREATE TABLE IF NOT EXISTS "idempotency_keys" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "endpoint" TEXT NOT NULL,
@@ -661,7 +661,7 @@ CREATE TABLE "idempotency_keys" (
 );
 
 -- CreateTable
-CREATE TABLE "notifications" (
+CREATE TABLE IF NOT EXISTS "notifications" (
     "id" SERIAL PRIMARY KEY,
     "userUid" TEXT NOT NULL,
     "companySlug" TEXT,
@@ -675,7 +675,7 @@ CREATE TABLE "notifications" (
 );
 
 -- CreateTable
-CREATE TABLE "invoice_templates" (
+CREATE TABLE IF NOT EXISTS "invoice_templates" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -696,7 +696,7 @@ CREATE TABLE "invoice_templates" (
 );
 
 -- CreateTable
-CREATE TABLE "invoice_template_settings" (
+CREATE TABLE IF NOT EXISTS "invoice_template_settings" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "templateId" TEXT NOT NULL DEFAULT 'modern',
@@ -716,7 +716,7 @@ CREATE TABLE "invoice_template_settings" (
 );
 
 -- CreateTable
-CREATE TABLE "ai_usage_logs" (
+CREATE TABLE IF NOT EXISTS "ai_usage_logs" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT,
     "userUid" TEXT,
@@ -734,7 +734,7 @@ CREATE TABLE "ai_usage_logs" (
 );
 
 -- CreateTable
-CREATE TABLE "landing_content" (
+CREATE TABLE IF NOT EXISTS "landing_content" (
     "key" TEXT NOT NULL PRIMARY KEY,
     "value" TEXT NOT NULL,
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -742,7 +742,7 @@ CREATE TABLE "landing_content" (
 );
 
 -- CreateTable
-CREATE TABLE "automation_rules" (
+CREATE TABLE IF NOT EXISTS "automation_rules" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -755,7 +755,7 @@ CREATE TABLE "automation_rules" (
 );
 
 -- CreateTable
-CREATE TABLE "automation_execution_logs" (
+CREATE TABLE IF NOT EXISTS "automation_execution_logs" (
     "id" SERIAL PRIMARY KEY,
     "ruleId" INTEGER NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'pending',
@@ -767,7 +767,7 @@ CREATE TABLE "automation_execution_logs" (
 );
 
 -- CreateTable
-CREATE TABLE "ai_memory_notes" (
+CREATE TABLE IF NOT EXISTS "ai_memory_notes" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "entityType" TEXT NOT NULL,
@@ -778,7 +778,7 @@ CREATE TABLE "ai_memory_notes" (
 );
 
 -- CreateTable
-CREATE TABLE "feature_flags" (
+CREATE TABLE IF NOT EXISTS "feature_flags" (
     "id" SERIAL PRIMARY KEY,
     "key" TEXT NOT NULL,
     "label" TEXT NOT NULL,
@@ -792,7 +792,7 @@ CREATE TABLE "feature_flags" (
 );
 
 -- CreateTable
-CREATE TABLE "user_workspace_state" (
+CREATE TABLE IF NOT EXISTS "user_workspace_state" (
     "userUid" TEXT NOT NULL PRIMARY KEY,
     "pinnedViews" TEXT NOT NULL DEFAULT '[]',
     "lastActiveView" TEXT NOT NULL DEFAULT 'dash',
@@ -801,7 +801,7 @@ CREATE TABLE "user_workspace_state" (
 );
 
 -- CreateTable
-CREATE TABLE "invoice_brain_templates" (
+CREATE TABLE IF NOT EXISTS "invoice_brain_templates" (
     "fingerprint" TEXT NOT NULL PRIMARY KEY,
     "fields" TEXT NOT NULL,
     "sampleCount" INTEGER NOT NULL DEFAULT 1,
@@ -810,7 +810,7 @@ CREATE TABLE "invoice_brain_templates" (
 );
 
 -- CreateTable
-CREATE TABLE "invoice_brain_header_maps" (
+CREATE TABLE IF NOT EXISTS "invoice_brain_header_maps" (
     "headerFingerprint" TEXT NOT NULL PRIMARY KEY,
     "mapping" TEXT NOT NULL,
     "sampleCount" INTEGER NOT NULL DEFAULT 1,
@@ -819,7 +819,7 @@ CREATE TABLE "invoice_brain_header_maps" (
 );
 
 -- CreateTable
-CREATE TABLE "product_aliases" (
+CREATE TABLE IF NOT EXISTS "product_aliases" (
     "id" SERIAL PRIMARY KEY,
     "productCatalogId" INTEGER NOT NULL,
     "companySlug" TEXT NOT NULL,
@@ -836,7 +836,7 @@ CREATE TABLE "product_aliases" (
 );
 
 -- CreateTable
-CREATE TABLE "product_match_audit" (
+CREATE TABLE IF NOT EXISTS "product_match_audit" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "inputText" TEXT NOT NULL,
@@ -858,7 +858,7 @@ CREATE TABLE "product_match_audit" (
 );
 
 -- CreateTable
-CREATE TABLE "match_overrides" (
+CREATE TABLE IF NOT EXISTS "match_overrides" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "inputText" TEXT NOT NULL,
@@ -874,7 +874,7 @@ CREATE TABLE "match_overrides" (
 );
 
 -- CreateTable
-CREATE TABLE "job_queue" (
+CREATE TABLE IF NOT EXISTS "job_queue" (
     "id" SERIAL PRIMARY KEY,
     "queue" TEXT NOT NULL,
     "type" TEXT NOT NULL,
@@ -892,7 +892,7 @@ CREATE TABLE "job_queue" (
 );
 
 -- CreateTable
-CREATE TABLE "ai_model_registry" (
+CREATE TABLE IF NOT EXISTS "ai_model_registry" (
     "id" SERIAL PRIMARY KEY,
     "provider" TEXT NOT NULL,
     "model" TEXT NOT NULL,
@@ -918,7 +918,7 @@ CREATE TABLE "ai_model_registry" (
 );
 
 -- CreateTable
-CREATE TABLE "ai_benchmark_results" (
+CREATE TABLE IF NOT EXISTS "ai_benchmark_results" (
     "id" SERIAL PRIMARY KEY,
     "modelRegistryId" INTEGER NOT NULL,
     "capability" TEXT NOT NULL,
@@ -934,7 +934,7 @@ CREATE TABLE "ai_benchmark_results" (
 );
 
 -- CreateTable
-CREATE TABLE "company_runtimes" (
+CREATE TABLE IF NOT EXISTS "company_runtimes" (
     "id" SERIAL PRIMARY KEY,
     "companyId" INTEGER NOT NULL,
     "workerPoolSize" INTEGER NOT NULL DEFAULT 2,
@@ -947,7 +947,7 @@ CREATE TABLE "company_runtimes" (
 );
 
 -- CreateTable
-CREATE TABLE "ai_request_logs" (
+CREATE TABLE IF NOT EXISTS "ai_request_logs" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "requestType" TEXT NOT NULL,
@@ -960,7 +960,7 @@ CREATE TABLE "ai_request_logs" (
 );
 
 -- CreateTable
-CREATE TABLE "ai_fabric_cache_entries" (
+CREATE TABLE IF NOT EXISTS "ai_fabric_cache_entries" (
     "id" SERIAL PRIMARY KEY,
     "key" TEXT NOT NULL,
     "companySlug" TEXT NOT NULL,
@@ -974,7 +974,7 @@ CREATE TABLE "ai_fabric_cache_entries" (
 );
 
 -- CreateTable
-CREATE TABLE "budget_configs" (
+CREATE TABLE IF NOT EXISTS "budget_configs" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "monthlyBudgetUsd" REAL NOT NULL,
@@ -988,7 +988,7 @@ CREATE TABLE "budget_configs" (
 );
 
 -- CreateTable
-CREATE TABLE "provider_configs" (
+CREATE TABLE IF NOT EXISTS "provider_configs" (
     "id" SERIAL PRIMARY KEY,
     "taskType" TEXT NOT NULL,
     "primaryProvider" TEXT NOT NULL,
@@ -1001,7 +1001,7 @@ CREATE TABLE "provider_configs" (
 );
 
 -- CreateTable
-CREATE TABLE "ai_memory_entries" (
+CREATE TABLE IF NOT EXISTS "ai_memory_entries" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "category" TEXT NOT NULL,
@@ -1011,7 +1011,7 @@ CREATE TABLE "ai_memory_entries" (
 );
 
 -- CreateTable
-CREATE TABLE "profit_snapshots" (
+CREATE TABLE IF NOT EXISTS "profit_snapshots" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "periodStart" TIMESTAMP(3) NOT NULL,
@@ -1033,270 +1033,270 @@ CREATE TABLE "profit_snapshots" (
 -- CreateIndex
 
 -- CreateIndex
-CREATE INDEX "email_verifications_userId_purpose_createdAt_idx" ON "email_verifications"("userId", "purpose", "createdAt");
+CREATE INDEX IF NOT EXISTS "email_verifications_userId_purpose_createdAt_idx" ON "email_verifications"("userId", "purpose", "createdAt");
 
 -- CreateIndex
 
 -- CreateIndex
-CREATE INDEX "companies_stripeCustomerId_idx" ON "companies"("stripeCustomerId");
+CREATE INDEX IF NOT EXISTS "companies_stripeCustomerId_idx" ON "companies"("stripeCustomerId");
 
 -- CreateIndex
-CREATE INDEX "companies_stripeSubscriptionId_idx" ON "companies"("stripeSubscriptionId");
+CREATE INDEX IF NOT EXISTS "companies_stripeSubscriptionId_idx" ON "companies"("stripeSubscriptionId");
 
 -- CreateIndex
-CREATE INDEX "companies_subscriptionStatus_idx" ON "companies"("subscriptionStatus");
+CREATE INDEX IF NOT EXISTS "companies_subscriptionStatus_idx" ON "companies"("subscriptionStatus");
 
 -- CreateIndex
-CREATE INDEX "companies_plan_idx" ON "companies"("plan");
+CREATE INDEX IF NOT EXISTS "companies_plan_idx" ON "companies"("plan");
 
 -- CreateIndex
-CREATE INDEX "companies_deletedAt_idx" ON "companies"("deletedAt");
+CREATE INDEX IF NOT EXISTS "companies_deletedAt_idx" ON "companies"("deletedAt");
 
 -- CreateIndex
 
 -- CreateIndex
-CREATE INDEX "clients_companySlug_idx" ON "clients"("companySlug");
+CREATE INDEX IF NOT EXISTS "clients_companySlug_idx" ON "clients"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "clients_companySlug_createdAt_id_idx" ON "clients"("companySlug", "createdAt", "id");
+CREATE INDEX IF NOT EXISTS "clients_companySlug_createdAt_id_idx" ON "clients"("companySlug", "createdAt", "id");
 
 -- CreateIndex
-CREATE INDEX "clients_companySlug_deletedAt_idx" ON "clients"("companySlug", "deletedAt");
+CREATE INDEX IF NOT EXISTS "clients_companySlug_deletedAt_idx" ON "clients"("companySlug", "deletedAt");
 
 -- CreateIndex
-CREATE INDEX "invoices_companySlug_idx" ON "invoices"("companySlug");
+CREATE INDEX IF NOT EXISTS "invoices_companySlug_idx" ON "invoices"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "invoices_companySlug_issueDate_idx" ON "invoices"("companySlug", "issueDate");
+CREATE INDEX IF NOT EXISTS "invoices_companySlug_issueDate_idx" ON "invoices"("companySlug", "issueDate");
 
 -- CreateIndex
-CREATE INDEX "invoices_companySlug_status_idx" ON "invoices"("companySlug", "status");
+CREATE INDEX IF NOT EXISTS "invoices_companySlug_status_idx" ON "invoices"("companySlug", "status");
 
 -- CreateIndex
-CREATE INDEX "invoices_clientId_idx" ON "invoices"("clientId");
+CREATE INDEX IF NOT EXISTS "invoices_clientId_idx" ON "invoices"("clientId");
 
 -- CreateIndex
-CREATE INDEX "invoices_companySlug_createdAt_id_idx" ON "invoices"("companySlug", "createdAt", "id");
+CREATE INDEX IF NOT EXISTS "invoices_companySlug_createdAt_id_idx" ON "invoices"("companySlug", "createdAt", "id");
 
 -- CreateIndex
-CREATE INDEX "invoices_journalEntryId_idx" ON "invoices"("journalEntryId");
+CREATE INDEX IF NOT EXISTS "invoices_journalEntryId_idx" ON "invoices"("journalEntryId");
 
 -- CreateIndex
-CREATE INDEX "invoices_companySlug_eInvoiceStatus_idx" ON "invoices"("companySlug", "eInvoiceStatus");
+CREATE INDEX IF NOT EXISTS "invoices_companySlug_eInvoiceStatus_idx" ON "invoices"("companySlug", "eInvoiceStatus");
 
 -- CreateIndex
-CREATE INDEX "invoices_companySlug_deletedAt_idx" ON "invoices"("companySlug", "deletedAt");
+CREATE INDEX IF NOT EXISTS "invoices_companySlug_deletedAt_idx" ON "invoices"("companySlug", "deletedAt");
 
 -- CreateIndex
-CREATE INDEX "invoices_companySlug_dueDate_status_idx" ON "invoices"("companySlug", "dueDate", "status");
+CREATE INDEX IF NOT EXISTS "invoices_companySlug_dueDate_status_idx" ON "invoices"("companySlug", "dueDate", "status");
 
 -- CreateIndex
-CREATE INDEX "invoices_invoiceNumber_idx" ON "invoices"("invoiceNumber");
+CREATE INDEX IF NOT EXISTS "invoices_invoiceNumber_idx" ON "invoices"("invoiceNumber");
 
 -- CreateIndex
-CREATE INDEX "invoices_status_idx" ON "invoices"("status");
+CREATE INDEX IF NOT EXISTS "invoices_status_idx" ON "invoices"("status");
 
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "invoices_companySlug_invoiceNumber_key" ON "invoices"("companySlug", "invoiceNumber");
 
 -- CreateIndex
-CREATE INDEX "product_catalog_companySlug_idx" ON "product_catalog"("companySlug");
+CREATE INDEX IF NOT EXISTS "product_catalog_companySlug_idx" ON "product_catalog"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "product_catalog_companySlug_createdAt_id_idx" ON "product_catalog"("companySlug", "createdAt", "id");
+CREATE INDEX IF NOT EXISTS "product_catalog_companySlug_createdAt_id_idx" ON "product_catalog"("companySlug", "createdAt", "id");
 
 -- CreateIndex
-CREATE INDEX "warehouses_companySlug_idx" ON "warehouses"("companySlug");
+CREATE INDEX IF NOT EXISTS "warehouses_companySlug_idx" ON "warehouses"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "warehouses_companySlug_isActive_idx" ON "warehouses"("companySlug", "isActive");
+CREATE INDEX IF NOT EXISTS "warehouses_companySlug_isActive_idx" ON "warehouses"("companySlug", "isActive");
 
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "warehouses_companySlug_code_key" ON "warehouses"("companySlug", "code");
 
 -- CreateIndex
-CREATE INDEX "inventory_items_companySlug_idx" ON "inventory_items"("companySlug");
+CREATE INDEX IF NOT EXISTS "inventory_items_companySlug_idx" ON "inventory_items"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "inventory_items_productId_idx" ON "inventory_items"("productId");
+CREATE INDEX IF NOT EXISTS "inventory_items_productId_idx" ON "inventory_items"("productId");
 
 -- CreateIndex
-CREATE INDEX "inventory_items_warehouseId_idx" ON "inventory_items"("warehouseId");
+CREATE INDEX IF NOT EXISTS "inventory_items_warehouseId_idx" ON "inventory_items"("warehouseId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "inventory_items_warehouseId_productId_key" ON "inventory_items"("warehouseId", "productId");
 
 -- CreateIndex
-CREATE INDEX "stock_movements_companySlug_createdAt_idx" ON "stock_movements"("companySlug", "createdAt");
+CREATE INDEX IF NOT EXISTS "stock_movements_companySlug_createdAt_idx" ON "stock_movements"("companySlug", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "stock_movements_companySlug_productId_idx" ON "stock_movements"("companySlug", "productId");
+CREATE INDEX IF NOT EXISTS "stock_movements_companySlug_productId_idx" ON "stock_movements"("companySlug", "productId");
 
 -- CreateIndex
-CREATE INDEX "stock_movements_sourceType_sourceId_idx" ON "stock_movements"("sourceType", "sourceId");
+CREATE INDEX IF NOT EXISTS "stock_movements_sourceType_sourceId_idx" ON "stock_movements"("sourceType", "sourceId");
 
 -- CreateIndex
-CREATE INDEX "stock_movements_warehouseId_idx" ON "stock_movements"("warehouseId");
+CREATE INDEX IF NOT EXISTS "stock_movements_warehouseId_idx" ON "stock_movements"("warehouseId");
 
 -- CreateIndex
-CREATE INDEX "stock_movements_companySlug_idx" ON "stock_movements"("companySlug");
+CREATE INDEX IF NOT EXISTS "stock_movements_companySlug_idx" ON "stock_movements"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "stock_movements_productId_idx" ON "stock_movements"("productId");
+CREATE INDEX IF NOT EXISTS "stock_movements_productId_idx" ON "stock_movements"("productId");
 
 -- CreateIndex
-CREATE INDEX "purchase_invoices_companySlug_idx" ON "purchase_invoices"("companySlug");
+CREATE INDEX IF NOT EXISTS "purchase_invoices_companySlug_idx" ON "purchase_invoices"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "purchase_invoices_companySlug_createdAt_id_idx" ON "purchase_invoices"("companySlug", "createdAt", "id");
+CREATE INDEX IF NOT EXISTS "purchase_invoices_companySlug_createdAt_id_idx" ON "purchase_invoices"("companySlug", "createdAt", "id");
 
 -- CreateIndex
-CREATE INDEX "purchase_invoices_companySlug_deletedAt_idx" ON "purchase_invoices"("companySlug", "deletedAt");
+CREATE INDEX IF NOT EXISTS "purchase_invoices_companySlug_deletedAt_idx" ON "purchase_invoices"("companySlug", "deletedAt");
 
 -- CreateIndex
-CREATE INDEX "hr_employees_companySlug_idx" ON "hr_employees"("companySlug");
+CREATE INDEX IF NOT EXISTS "hr_employees_companySlug_idx" ON "hr_employees"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "hr_employees_civilId_idx" ON "hr_employees"("civilId");
+CREATE INDEX IF NOT EXISTS "hr_employees_civilId_idx" ON "hr_employees"("civilId");
 
 -- CreateIndex
-CREATE INDEX "hr_employees_companySlug_isActive_idx" ON "hr_employees"("companySlug", "isActive");
+CREATE INDEX IF NOT EXISTS "hr_employees_companySlug_isActive_idx" ON "hr_employees"("companySlug", "isActive");
 
 -- CreateIndex
-CREATE INDEX "hr_attendance_companySlug_idx" ON "hr_attendance"("companySlug");
+CREATE INDEX IF NOT EXISTS "hr_attendance_companySlug_idx" ON "hr_attendance"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "hr_attendance_employeeId_date_idx" ON "hr_attendance"("employeeId", "date");
+CREATE INDEX IF NOT EXISTS "hr_attendance_employeeId_date_idx" ON "hr_attendance"("employeeId", "date");
 
 -- CreateIndex
-CREATE INDEX "hr_attendance_companySlug_date_idx" ON "hr_attendance"("companySlug", "date");
+CREATE INDEX IF NOT EXISTS "hr_attendance_companySlug_date_idx" ON "hr_attendance"("companySlug", "date");
 
 -- CreateIndex
-CREATE INDEX "hr_salaries_companySlug_idx" ON "hr_salaries"("companySlug");
+CREATE INDEX IF NOT EXISTS "hr_salaries_companySlug_idx" ON "hr_salaries"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "hr_salaries_employeeId_month_idx" ON "hr_salaries"("employeeId", "month");
+CREATE INDEX IF NOT EXISTS "hr_salaries_employeeId_month_idx" ON "hr_salaries"("employeeId", "month");
 
 -- CreateIndex
-CREATE INDEX "hr_salaries_companySlug_isPaid_idx" ON "hr_salaries"("companySlug", "isPaid");
+CREATE INDEX IF NOT EXISTS "hr_salaries_companySlug_isPaid_idx" ON "hr_salaries"("companySlug", "isPaid");
 
 -- CreateIndex
-CREATE INDEX "hr_salaries_companySlug_month_idx" ON "hr_salaries"("companySlug", "month");
+CREATE INDEX IF NOT EXISTS "hr_salaries_companySlug_month_idx" ON "hr_salaries"("companySlug", "month");
 
 -- CreateIndex
-CREATE INDEX "hr_commissions_companySlug_idx" ON "hr_commissions"("companySlug");
+CREATE INDEX IF NOT EXISTS "hr_commissions_companySlug_idx" ON "hr_commissions"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "hr_commissions_employeeId_idx" ON "hr_commissions"("employeeId");
+CREATE INDEX IF NOT EXISTS "hr_commissions_employeeId_idx" ON "hr_commissions"("employeeId");
 
 -- CreateIndex
-CREATE INDEX "hr_commissions_companySlug_isPaid_idx" ON "hr_commissions"("companySlug", "isPaid");
+CREATE INDEX IF NOT EXISTS "hr_commissions_companySlug_isPaid_idx" ON "hr_commissions"("companySlug", "isPaid");
 
 -- CreateIndex
-CREATE INDEX "hr_commissions_companySlug_date_idx" ON "hr_commissions"("companySlug", "date");
+CREATE INDEX IF NOT EXISTS "hr_commissions_companySlug_date_idx" ON "hr_commissions"("companySlug", "date");
 
 -- CreateIndex
-CREATE INDEX "hr_leave_requests_companySlug_idx" ON "hr_leave_requests"("companySlug");
+CREATE INDEX IF NOT EXISTS "hr_leave_requests_companySlug_idx" ON "hr_leave_requests"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "hr_leave_requests_employeeId_idx" ON "hr_leave_requests"("employeeId");
+CREATE INDEX IF NOT EXISTS "hr_leave_requests_employeeId_idx" ON "hr_leave_requests"("employeeId");
 
 -- CreateIndex
-CREATE INDEX "hr_leave_requests_companySlug_status_idx" ON "hr_leave_requests"("companySlug", "status");
+CREATE INDEX IF NOT EXISTS "hr_leave_requests_companySlug_status_idx" ON "hr_leave_requests"("companySlug", "status");
 
 -- CreateIndex
-CREATE INDEX "hr_performance_companySlug_idx" ON "hr_performance"("companySlug");
+CREATE INDEX IF NOT EXISTS "hr_performance_companySlug_idx" ON "hr_performance"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "hr_performance_employeeId_idx" ON "hr_performance"("employeeId");
+CREATE INDEX IF NOT EXISTS "hr_performance_employeeId_idx" ON "hr_performance"("employeeId");
 
 -- CreateIndex
-CREATE INDEX "hr_performance_companySlug_period_idx" ON "hr_performance"("companySlug", "period");
+CREATE INDEX IF NOT EXISTS "hr_performance_companySlug_period_idx" ON "hr_performance"("companySlug", "period");
 
 -- CreateIndex
-CREATE INDEX "accounts_companySlug_idx" ON "accounts"("companySlug");
+CREATE INDEX IF NOT EXISTS "accounts_companySlug_idx" ON "accounts"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "accounts_code_idx" ON "accounts"("code");
+CREATE INDEX IF NOT EXISTS "accounts_code_idx" ON "accounts"("code");
 
 -- CreateIndex
-CREATE INDEX "accounts_parentId_idx" ON "accounts"("parentId");
+CREATE INDEX IF NOT EXISTS "accounts_parentId_idx" ON "accounts"("parentId");
 
 -- CreateIndex
-CREATE INDEX "accounts_companySlug_type_idx" ON "accounts"("companySlug", "type");
+CREATE INDEX IF NOT EXISTS "accounts_companySlug_type_idx" ON "accounts"("companySlug", "type");
 
 -- CreateIndex
-CREATE INDEX "accounts_companySlug_isActive_idx" ON "accounts"("companySlug", "isActive");
+CREATE INDEX IF NOT EXISTS "accounts_companySlug_isActive_idx" ON "accounts"("companySlug", "isActive");
 
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "accounts_companySlug_code_key" ON "accounts"("companySlug", "code");
 
 -- CreateIndex
-CREATE INDEX "journal_entries_companySlug_idx" ON "journal_entries"("companySlug");
+CREATE INDEX IF NOT EXISTS "journal_entries_companySlug_idx" ON "journal_entries"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "journal_entries_companySlug_date_idx" ON "journal_entries"("companySlug", "date");
+CREATE INDEX IF NOT EXISTS "journal_entries_companySlug_date_idx" ON "journal_entries"("companySlug", "date");
 
 -- CreateIndex
-CREATE INDEX "journal_entries_companySlug_deletedAt_idx" ON "journal_entries"("companySlug", "deletedAt");
+CREATE INDEX IF NOT EXISTS "journal_entries_companySlug_deletedAt_idx" ON "journal_entries"("companySlug", "deletedAt");
 
 -- CreateIndex
-CREATE INDEX "journal_entries_companySlug_status_idx" ON "journal_entries"("companySlug", "status");
+CREATE INDEX IF NOT EXISTS "journal_entries_companySlug_status_idx" ON "journal_entries"("companySlug", "status");
 
 -- CreateIndex
-CREATE INDEX "journal_entries_companySlug_sourceType_sourceId_idx" ON "journal_entries"("companySlug", "sourceType", "sourceId");
+CREATE INDEX IF NOT EXISTS "journal_entries_companySlug_sourceType_sourceId_idx" ON "journal_entries"("companySlug", "sourceType", "sourceId");
 
 -- CreateIndex
-CREATE INDEX "journal_entry_lines_entryId_idx" ON "journal_entry_lines"("entryId");
+CREATE INDEX IF NOT EXISTS "journal_entry_lines_entryId_idx" ON "journal_entry_lines"("entryId");
 
 -- CreateIndex
-CREATE INDEX "journal_entry_lines_accountId_idx" ON "journal_entry_lines"("accountId");
-
--- CreateIndex
-
--- CreateIndex
-CREATE INDEX "e_invoices_invoiceId_idx" ON "e_invoices"("invoiceId");
-
--- CreateIndex
-CREATE INDEX "e_invoices_companySlug_idx" ON "e_invoices"("companySlug");
-
--- CreateIndex
-CREATE INDEX "e_invoices_companySlug_submissionStatus_idx" ON "e_invoices"("companySlug", "submissionStatus");
-
--- CreateIndex
-CREATE INDEX "e_invoices_companySlug_deletedAt_idx" ON "e_invoices"("companySlug", "deletedAt");
+CREATE INDEX IF NOT EXISTS "journal_entry_lines_accountId_idx" ON "journal_entry_lines"("accountId");
 
 -- CreateIndex
 
 -- CreateIndex
-CREATE INDEX "order_deliveries_companySlug_idx" ON "order_deliveries"("companySlug");
+CREATE INDEX IF NOT EXISTS "e_invoices_invoiceId_idx" ON "e_invoices"("invoiceId");
 
 -- CreateIndex
-CREATE INDEX "order_deliveries_companySlug_status_idx" ON "order_deliveries"("companySlug", "status");
+CREATE INDEX IF NOT EXISTS "e_invoices_companySlug_idx" ON "e_invoices"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "order_deliveries_companySlug_preferredTime_idx" ON "order_deliveries"("companySlug", "preferredTime");
+CREATE INDEX IF NOT EXISTS "e_invoices_companySlug_submissionStatus_idx" ON "e_invoices"("companySlug", "submissionStatus");
 
 -- CreateIndex
-CREATE INDEX "order_deliveries_driverId_idx" ON "order_deliveries"("driverId");
+CREATE INDEX IF NOT EXISTS "e_invoices_companySlug_deletedAt_idx" ON "e_invoices"("companySlug", "deletedAt");
 
 -- CreateIndex
-CREATE INDEX "payment_transactions_provider_providerPaymentId_idx" ON "payment_transactions"("provider", "providerPaymentId");
 
 -- CreateIndex
-CREATE INDEX "payment_transactions_companySlug_idx" ON "payment_transactions"("companySlug");
+CREATE INDEX IF NOT EXISTS "order_deliveries_companySlug_idx" ON "order_deliveries"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "payment_transactions_companySlug_deletedAt_idx" ON "payment_transactions"("companySlug", "deletedAt");
+CREATE INDEX IF NOT EXISTS "order_deliveries_companySlug_status_idx" ON "order_deliveries"("companySlug", "status");
 
 -- CreateIndex
-CREATE INDEX "payment_transactions_companySlug_status_idx" ON "payment_transactions"("companySlug", "status");
+CREATE INDEX IF NOT EXISTS "order_deliveries_companySlug_preferredTime_idx" ON "order_deliveries"("companySlug", "preferredTime");
 
 -- CreateIndex
-CREATE INDEX "payment_transactions_companySlug_createdAt_idx" ON "payment_transactions"("companySlug", "createdAt");
+CREATE INDEX IF NOT EXISTS "order_deliveries_driverId_idx" ON "order_deliveries"("driverId");
 
 -- CreateIndex
-CREATE INDEX "payment_transactions_provider_idx" ON "payment_transactions"("provider");
+CREATE INDEX IF NOT EXISTS "payment_transactions_provider_providerPaymentId_idx" ON "payment_transactions"("provider", "providerPaymentId");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "payment_transactions_companySlug_idx" ON "payment_transactions"("companySlug");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "payment_transactions_companySlug_deletedAt_idx" ON "payment_transactions"("companySlug", "deletedAt");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "payment_transactions_companySlug_status_idx" ON "payment_transactions"("companySlug", "status");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "payment_transactions_companySlug_createdAt_idx" ON "payment_transactions"("companySlug", "createdAt");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "payment_transactions_provider_idx" ON "payment_transactions"("provider");
 
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "payment_transactions_provider_providerEventId_key" ON "payment_transactions"("provider", "providerEventId");
@@ -1304,240 +1304,240 @@ CREATE UNIQUE INDEX IF NOT EXISTS "payment_transactions_provider_providerEventId
 -- CreateIndex
 
 -- CreateIndex
-CREATE INDEX "permissions_category_idx" ON "permissions"("category");
+CREATE INDEX IF NOT EXISTS "permissions_category_idx" ON "permissions"("category");
 
 -- CreateIndex
-CREATE INDEX "role_permissions_role_idx" ON "role_permissions"("role");
+CREATE INDEX IF NOT EXISTS "role_permissions_role_idx" ON "role_permissions"("role");
 
 -- CreateIndex
-CREATE INDEX "role_permissions_companySlug_idx" ON "role_permissions"("companySlug");
+CREATE INDEX IF NOT EXISTS "role_permissions_companySlug_idx" ON "role_permissions"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "role_permissions_permissionKey_idx" ON "role_permissions"("permissionKey");
+CREATE INDEX IF NOT EXISTS "role_permissions_permissionKey_idx" ON "role_permissions"("permissionKey");
 
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "role_permissions_role_permissionKey_companySlug_key" ON "role_permissions"("role", "permissionKey", "companySlug");
 
 -- CreateIndex
-CREATE INDEX "audit_logs_companySlug_idx" ON "audit_logs"("companySlug");
+CREATE INDEX IF NOT EXISTS "audit_logs_companySlug_idx" ON "audit_logs"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "audit_logs_createdAt_idx" ON "audit_logs"("createdAt");
+CREATE INDEX IF NOT EXISTS "audit_logs_createdAt_idx" ON "audit_logs"("createdAt");
 
 -- CreateIndex
-CREATE INDEX "audit_logs_action_idx" ON "audit_logs"("action");
+CREATE INDEX IF NOT EXISTS "audit_logs_action_idx" ON "audit_logs"("action");
 
 -- CreateIndex
-CREATE INDEX "audit_logs_userUid_idx" ON "audit_logs"("userUid");
+CREATE INDEX IF NOT EXISTS "audit_logs_userUid_idx" ON "audit_logs"("userUid");
 
 -- CreateIndex
-CREATE INDEX "audit_logs_companySlug_entity_idx" ON "audit_logs"("companySlug", "entity");
+CREATE INDEX IF NOT EXISTS "audit_logs_companySlug_entity_idx" ON "audit_logs"("companySlug", "entity");
 
 -- CreateIndex
-CREATE INDEX "audit_logs_companySlug_createdAt_idx" ON "audit_logs"("companySlug", "createdAt");
+CREATE INDEX IF NOT EXISTS "audit_logs_companySlug_createdAt_idx" ON "audit_logs"("companySlug", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "admin_audit_logs_createdAt_idx" ON "admin_audit_logs"("createdAt");
+CREATE INDEX IF NOT EXISTS "admin_audit_logs_createdAt_idx" ON "admin_audit_logs"("createdAt");
 
 -- CreateIndex
-CREATE INDEX "admin_audit_logs_adminEmail_idx" ON "admin_audit_logs"("adminEmail");
+CREATE INDEX IF NOT EXISTS "admin_audit_logs_adminEmail_idx" ON "admin_audit_logs"("adminEmail");
 
 -- CreateIndex
-CREATE INDEX "admin_audit_logs_action_idx" ON "admin_audit_logs"("action");
+CREATE INDEX IF NOT EXISTS "admin_audit_logs_action_idx" ON "admin_audit_logs"("action");
 
 -- CreateIndex
-CREATE INDEX "admin_audit_logs_targetType_idx" ON "admin_audit_logs"("targetType");
+CREATE INDEX IF NOT EXISTS "admin_audit_logs_targetType_idx" ON "admin_audit_logs"("targetType");
 
 -- CreateIndex
-CREATE INDEX "announcements_isActive_startsAt_idx" ON "announcements"("isActive", "startsAt");
+CREATE INDEX IF NOT EXISTS "announcements_isActive_startsAt_idx" ON "announcements"("isActive", "startsAt");
 
 -- CreateIndex
-CREATE INDEX "support_tickets_status_idx" ON "support_tickets"("status");
+CREATE INDEX IF NOT EXISTS "support_tickets_status_idx" ON "support_tickets"("status");
 
 -- CreateIndex
-CREATE INDEX "support_tickets_tenantId_idx" ON "support_tickets"("tenantId");
+CREATE INDEX IF NOT EXISTS "support_tickets_tenantId_idx" ON "support_tickets"("tenantId");
 
 -- CreateIndex
-CREATE INDEX "support_tickets_userEmail_idx" ON "support_tickets"("userEmail");
+CREATE INDEX IF NOT EXISTS "support_tickets_userEmail_idx" ON "support_tickets"("userEmail");
 
 -- CreateIndex
-CREATE INDEX "support_tickets_createdAt_idx" ON "support_tickets"("createdAt");
+CREATE INDEX IF NOT EXISTS "support_tickets_createdAt_idx" ON "support_tickets"("createdAt");
 
 -- CreateIndex
-CREATE INDEX "support_tickets_status_createdAt_idx" ON "support_tickets"("status", "createdAt");
+CREATE INDEX IF NOT EXISTS "support_tickets_status_createdAt_idx" ON "support_tickets"("status", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "ticket_replies_ticketId_idx" ON "ticket_replies"("ticketId");
+CREATE INDEX IF NOT EXISTS "ticket_replies_ticketId_idx" ON "ticket_replies"("ticketId");
 
 -- CreateIndex
-CREATE INDEX "platform_settings_category_idx" ON "platform_settings"("category");
+CREATE INDEX IF NOT EXISTS "platform_settings_category_idx" ON "platform_settings"("category");
 
 -- CreateIndex
-CREATE INDEX "platform_settings_history_settingKey_idx" ON "platform_settings_history"("settingKey");
+CREATE INDEX IF NOT EXISTS "platform_settings_history_settingKey_idx" ON "platform_settings_history"("settingKey");
 
 -- CreateIndex
-CREATE INDEX "platform_settings_history_changedAt_idx" ON "platform_settings_history"("changedAt");
+CREATE INDEX IF NOT EXISTS "platform_settings_history_changedAt_idx" ON "platform_settings_history"("changedAt");
 
 -- CreateIndex
 
 -- CreateIndex
-CREATE INDEX "modules_isActive_idx" ON "modules"("isActive");
+CREATE INDEX IF NOT EXISTS "modules_isActive_idx" ON "modules"("isActive");
 
 -- CreateIndex
-CREATE INDEX "chat_history_userUid_createdAt_idx" ON "chat_history"("userUid", "createdAt");
+CREATE INDEX IF NOT EXISTS "chat_history_userUid_createdAt_idx" ON "chat_history"("userUid", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "chat_history_companySlug_createdAt_idx" ON "chat_history"("companySlug", "createdAt");
+CREATE INDEX IF NOT EXISTS "chat_history_companySlug_createdAt_idx" ON "chat_history"("companySlug", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "chat_history_userUid_conversationId_createdAt_idx" ON "chat_history"("userUid", "conversationId", "createdAt");
+CREATE INDEX IF NOT EXISTS "chat_history_userUid_conversationId_createdAt_idx" ON "chat_history"("userUid", "conversationId", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "ai_processing_logs_companySlug_createdAt_idx" ON "ai_processing_logs"("companySlug", "createdAt");
+CREATE INDEX IF NOT EXISTS "ai_processing_logs_companySlug_createdAt_idx" ON "ai_processing_logs"("companySlug", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "ai_processing_logs_endpoint_createdAt_idx" ON "ai_processing_logs"("endpoint", "createdAt");
+CREATE INDEX IF NOT EXISTS "ai_processing_logs_endpoint_createdAt_idx" ON "ai_processing_logs"("endpoint", "createdAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "idempotency_keys_companySlug_endpoint_key_key" ON "idempotency_keys"("companySlug", "endpoint", "key");
 
 -- CreateIndex
-CREATE INDEX "notifications_userUid_isRead_idx" ON "notifications"("userUid", "isRead");
+CREATE INDEX IF NOT EXISTS "notifications_userUid_isRead_idx" ON "notifications"("userUid", "isRead");
 
 -- CreateIndex
-CREATE INDEX "notifications_userUid_createdAt_idx" ON "notifications"("userUid", "createdAt");
+CREATE INDEX IF NOT EXISTS "notifications_userUid_createdAt_idx" ON "notifications"("userUid", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "notifications_companySlug_idx" ON "notifications"("companySlug");
+CREATE INDEX IF NOT EXISTS "notifications_companySlug_idx" ON "notifications"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "invoice_templates_companySlug_idx" ON "invoice_templates"("companySlug");
-
--- CreateIndex
-
--- CreateIndex
-CREATE INDEX "ai_usage_logs_companySlug_createdAt_idx" ON "ai_usage_logs"("companySlug", "createdAt");
-
--- CreateIndex
-CREATE INDEX "ai_usage_logs_userUid_createdAt_idx" ON "ai_usage_logs"("userUid", "createdAt");
-
--- CreateIndex
-CREATE INDEX "ai_usage_logs_endpoint_createdAt_idx" ON "ai_usage_logs"("endpoint", "createdAt");
-
--- CreateIndex
-CREATE INDEX "automation_rules_companySlug_idx" ON "automation_rules"("companySlug");
-
--- CreateIndex
-CREATE INDEX "automation_rules_trigger_idx" ON "automation_rules"("trigger");
-
--- CreateIndex
-CREATE INDEX "automation_rules_companySlug_isActive_idx" ON "automation_rules"("companySlug", "isActive");
-
--- CreateIndex
-CREATE INDEX "automation_execution_logs_ruleId_createdAt_idx" ON "automation_execution_logs"("ruleId", "createdAt");
-
--- CreateIndex
-CREATE INDEX "automation_execution_logs_status_idx" ON "automation_execution_logs"("status");
-
--- CreateIndex
-CREATE INDEX "ai_memory_notes_companySlug_entityType_entityId_idx" ON "ai_memory_notes"("companySlug", "entityType", "entityId");
-
--- CreateIndex
-CREATE INDEX "ai_memory_notes_companySlug_createdAt_idx" ON "ai_memory_notes"("companySlug", "createdAt");
+CREATE INDEX IF NOT EXISTS "invoice_templates_companySlug_idx" ON "invoice_templates"("companySlug");
 
 -- CreateIndex
 
 -- CreateIndex
-CREATE INDEX "feature_flags_isActive_idx" ON "feature_flags"("isActive");
+CREATE INDEX IF NOT EXISTS "ai_usage_logs_companySlug_createdAt_idx" ON "ai_usage_logs"("companySlug", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "product_aliases_companySlug_idx" ON "product_aliases"("companySlug");
+CREATE INDEX IF NOT EXISTS "ai_usage_logs_userUid_createdAt_idx" ON "ai_usage_logs"("userUid", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "product_aliases_productCatalogId_idx" ON "product_aliases"("productCatalogId");
+CREATE INDEX IF NOT EXISTS "ai_usage_logs_endpoint_createdAt_idx" ON "ai_usage_logs"("endpoint", "createdAt");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "automation_rules_companySlug_idx" ON "automation_rules"("companySlug");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "automation_rules_trigger_idx" ON "automation_rules"("trigger");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "automation_rules_companySlug_isActive_idx" ON "automation_rules"("companySlug", "isActive");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "automation_execution_logs_ruleId_createdAt_idx" ON "automation_execution_logs"("ruleId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "automation_execution_logs_status_idx" ON "automation_execution_logs"("status");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "ai_memory_notes_companySlug_entityType_entityId_idx" ON "ai_memory_notes"("companySlug", "entityType", "entityId");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "ai_memory_notes_companySlug_createdAt_idx" ON "ai_memory_notes"("companySlug", "createdAt");
+
+-- CreateIndex
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "feature_flags_isActive_idx" ON "feature_flags"("isActive");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "product_aliases_companySlug_idx" ON "product_aliases"("companySlug");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "product_aliases_productCatalogId_idx" ON "product_aliases"("productCatalogId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "product_aliases_companySlug_alias_key" ON "product_aliases"("companySlug", "alias");
 
 -- CreateIndex
-CREATE INDEX "product_match_audit_companySlug_createdAt_idx" ON "product_match_audit"("companySlug", "createdAt");
+CREATE INDEX IF NOT EXISTS "product_match_audit_companySlug_createdAt_idx" ON "product_match_audit"("companySlug", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "product_match_audit_companySlug_isUndone_idx" ON "product_match_audit"("companySlug", "isUndone");
+CREATE INDEX IF NOT EXISTS "product_match_audit_companySlug_isUndone_idx" ON "product_match_audit"("companySlug", "isUndone");
 
 -- CreateIndex
-CREATE INDEX "product_match_audit_companySlug_resolvedBy_idx" ON "product_match_audit"("companySlug", "resolvedBy");
+CREATE INDEX IF NOT EXISTS "product_match_audit_companySlug_resolvedBy_idx" ON "product_match_audit"("companySlug", "resolvedBy");
 
 -- CreateIndex
-CREATE INDEX "match_overrides_companySlug_inputNormalized_idx" ON "match_overrides"("companySlug", "inputNormalized");
+CREATE INDEX IF NOT EXISTS "match_overrides_companySlug_inputNormalized_idx" ON "match_overrides"("companySlug", "inputNormalized");
 
 -- CreateIndex
-CREATE INDEX "match_overrides_companySlug_toProductId_idx" ON "match_overrides"("companySlug", "toProductId");
+CREATE INDEX IF NOT EXISTS "match_overrides_companySlug_toProductId_idx" ON "match_overrides"("companySlug", "toProductId");
 
 -- CreateIndex
-CREATE INDEX "job_queue_queue_status_scheduledAt_idx" ON "job_queue"("queue", "status", "scheduledAt");
+CREATE INDEX IF NOT EXISTS "job_queue_queue_status_scheduledAt_idx" ON "job_queue"("queue", "status", "scheduledAt");
 
 -- CreateIndex
-CREATE INDEX "job_queue_status_scheduledAt_idx" ON "job_queue"("status", "scheduledAt");
+CREATE INDEX IF NOT EXISTS "job_queue_status_scheduledAt_idx" ON "job_queue"("status", "scheduledAt");
 
 -- CreateIndex
-CREATE INDEX "ai_model_registry_isEnabled_isHealthy_healthScore_idx" ON "ai_model_registry"("isEnabled", "isHealthy", "healthScore");
+CREATE INDEX IF NOT EXISTS "ai_model_registry_isEnabled_isHealthy_healthScore_idx" ON "ai_model_registry"("isEnabled", "isHealthy", "healthScore");
 
 -- CreateIndex
-CREATE INDEX "ai_model_registry_tier_idx" ON "ai_model_registry"("tier");
+CREATE INDEX IF NOT EXISTS "ai_model_registry_tier_idx" ON "ai_model_registry"("tier");
 
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "ai_model_registry_provider_model_key" ON "ai_model_registry"("provider", "model");
 
 -- CreateIndex
-CREATE INDEX "ai_benchmark_results_modelRegistryId_createdAt_idx" ON "ai_benchmark_results"("modelRegistryId", "createdAt");
+CREATE INDEX IF NOT EXISTS "ai_benchmark_results_modelRegistryId_createdAt_idx" ON "ai_benchmark_results"("modelRegistryId", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "ai_benchmark_results_capability_createdAt_idx" ON "ai_benchmark_results"("capability", "createdAt");
-
--- CreateIndex
-
--- CreateIndex
-CREATE INDEX "company_runtimes_status_idx" ON "company_runtimes"("status");
-
--- CreateIndex
-CREATE INDEX "ai_request_logs_companySlug_createdAt_idx" ON "ai_request_logs"("companySlug", "createdAt");
-
--- CreateIndex
-CREATE INDEX "ai_request_logs_companySlug_resolvedBy_createdAt_idx" ON "ai_request_logs"("companySlug", "resolvedBy", "createdAt");
-
--- CreateIndex
-CREATE INDEX "ai_request_logs_requestType_resolvedBy_createdAt_idx" ON "ai_request_logs"("requestType", "resolvedBy", "createdAt");
-
--- CreateIndex
-CREATE INDEX "ai_request_logs_resolvedBy_createdAt_idx" ON "ai_request_logs"("resolvedBy", "createdAt");
+CREATE INDEX IF NOT EXISTS "ai_benchmark_results_capability_createdAt_idx" ON "ai_benchmark_results"("capability", "createdAt");
 
 -- CreateIndex
 
 -- CreateIndex
-CREATE INDEX "ai_fabric_cache_entries_companySlug_idx" ON "ai_fabric_cache_entries"("companySlug");
+CREATE INDEX IF NOT EXISTS "company_runtimes_status_idx" ON "company_runtimes"("status");
 
 -- CreateIndex
-CREATE INDEX "ai_fabric_cache_entries_expiresAt_idx" ON "ai_fabric_cache_entries"("expiresAt");
+CREATE INDEX IF NOT EXISTS "ai_request_logs_companySlug_createdAt_idx" ON "ai_request_logs"("companySlug", "createdAt");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "ai_request_logs_companySlug_resolvedBy_createdAt_idx" ON "ai_request_logs"("companySlug", "resolvedBy", "createdAt");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "ai_request_logs_requestType_resolvedBy_createdAt_idx" ON "ai_request_logs"("requestType", "resolvedBy", "createdAt");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "ai_request_logs_resolvedBy_createdAt_idx" ON "ai_request_logs"("resolvedBy", "createdAt");
 
 -- CreateIndex
 
 -- CreateIndex
-CREATE INDEX "budget_configs_companySlug_idx" ON "budget_configs"("companySlug");
+CREATE INDEX IF NOT EXISTS "ai_fabric_cache_entries_companySlug_idx" ON "ai_fabric_cache_entries"("companySlug");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "ai_fabric_cache_entries_expiresAt_idx" ON "ai_fabric_cache_entries"("expiresAt");
 
 -- CreateIndex
 
 -- CreateIndex
-CREATE INDEX "ai_memory_entries_companySlug_category_idx" ON "ai_memory_entries"("companySlug", "category");
+CREATE INDEX IF NOT EXISTS "budget_configs_companySlug_idx" ON "budget_configs"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "ai_memory_entries_companySlug_category_lastAccessedAt_idx" ON "ai_memory_entries"("companySlug", "category", "lastAccessedAt");
 
 -- CreateIndex
-CREATE INDEX "ai_memory_entries_lastAccessedAt_idx" ON "ai_memory_entries"("lastAccessedAt");
+CREATE INDEX IF NOT EXISTS "ai_memory_entries_companySlug_category_idx" ON "ai_memory_entries"("companySlug", "category");
 
 -- CreateIndex
-CREATE INDEX "profit_snapshots_companySlug_periodStart_idx" ON "profit_snapshots"("companySlug", "periodStart");
+CREATE INDEX IF NOT EXISTS "ai_memory_entries_companySlug_category_lastAccessedAt_idx" ON "ai_memory_entries"("companySlug", "category", "lastAccessedAt");
 
 -- CreateIndex
-CREATE INDEX "profit_snapshots_periodStart_periodEnd_idx" ON "profit_snapshots"("periodStart", "periodEnd");
+CREATE INDEX IF NOT EXISTS "ai_memory_entries_lastAccessedAt_idx" ON "ai_memory_entries"("lastAccessedAt");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "profit_snapshots_companySlug_periodStart_idx" ON "profit_snapshots"("companySlug", "periodStart");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "profit_snapshots_periodStart_periodEnd_idx" ON "profit_snapshots"("periodStart", "periodEnd");

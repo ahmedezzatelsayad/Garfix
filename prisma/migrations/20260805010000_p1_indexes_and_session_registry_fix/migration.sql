@@ -17,292 +17,99 @@
 -- (the columns themselves were added by 20260730000000_fix_schema_drift.sql;
 --  we only add the missing indexes here)
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'SessionRegistry_userUid_idx'
-  ) THEN
-    CREATE INDEX "SessionRegistry_userUid_idx" ON "SessionRegistry"("userUid");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for SessionRegistry_userUid_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'SessionRegistry_expiresAt_idx'
-  ) THEN
-    CREATE INDEX "SessionRegistry_expiresAt_idx" ON "SessionRegistry"("expiresAt");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for SessionRegistry_expiresAt_idx — use IF NOT EXISTS instead
 
 -- ─── 2. JournalEntryLine — FK indexes on journalEntryId + accountId ────────
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'journal_entry_lines_journalEntryId_idx'
-  ) THEN
-    CREATE INDEX "journal_entry_lines_journalEntryId_idx" ON "journal_entry_lines"("journalEntryId");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for journal_entry_lines_journalEntryId_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'journal_entry_lines_accountId_idx'
-  ) THEN
-    CREATE INDEX "journal_entry_lines_accountId_idx" ON "journal_entry_lines"("accountId");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for journal_entry_lines_accountId_idx — use IF NOT EXISTS instead
 
 -- ─── 3. JournalEntry — soft-delete composite + date indexes ────────────────
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'journal_entries_companySlug_deletedAt_idx'
-  ) THEN
-    CREATE INDEX "journal_entries_companySlug_deletedAt_idx" ON "journal_entries"("companySlug", "deletedAt");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for journal_entries_companySlug_deletedAt_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'journal_entries_date_idx'
-  ) THEN
-    CREATE INDEX "journal_entries_date_idx" ON "journal_entries"("date");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for journal_entries_date_idx — use IF NOT EXISTS instead
 
 -- ─── 4. AuditLog — createdAt + entity+entityId + userUid ───────────────────
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'audit_logs_createdAt_idx'
-  ) THEN
-    CREATE INDEX "audit_logs_createdAt_idx" ON "audit_logs"("createdAt");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for audit_logs_createdAt_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'audit_logs_entity_entityId_idx'
-  ) THEN
-    CREATE INDEX "audit_logs_entity_entityId_idx" ON "audit_logs"("entity", "entityId");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for audit_logs_entity_entityId_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'audit_logs_userUid_idx'
-  ) THEN
-    CREATE INDEX "audit_logs_userUid_idx" ON "audit_logs"("userUid");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for audit_logs_userUid_idx — use IF NOT EXISTS instead
 
 -- ─── 5. AccountingAuditLog — createdAt + entity+entityId ───────────────────
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'accounting_audit_logs_createdAt_idx'
-  ) THEN
-    CREATE INDEX "accounting_audit_logs_createdAt_idx" ON "accounting_audit_logs"("createdAt");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for accounting_audit_logs_createdAt_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'accounting_audit_logs_entity_entityId_idx'
-  ) THEN
-    CREATE INDEX "accounting_audit_logs_entity_entityId_idx" ON "accounting_audit_logs"("entity", "entityId");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for accounting_audit_logs_entity_entityId_idx — use IF NOT EXISTS instead
 
 -- ─── 6. AdminAuditLog — adminEmail + createdAt + targetSlug (had no indexes) ─
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'admin_audit_logs_adminEmail_idx'
-  ) THEN
-    CREATE INDEX "admin_audit_logs_adminEmail_idx" ON "admin_audit_logs"("adminEmail");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for admin_audit_logs_adminEmail_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'admin_audit_logs_createdAt_idx'
-  ) THEN
-    CREATE INDEX "admin_audit_logs_createdAt_idx" ON "admin_audit_logs"("createdAt");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for admin_audit_logs_createdAt_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'admin_audit_logs_targetSlug_idx'
-  ) THEN
-    CREATE INDEX "admin_audit_logs_targetSlug_idx" ON "admin_audit_logs"("targetSlug");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for admin_audit_logs_targetSlug_idx — use IF NOT EXISTS instead
 
 -- ─── 7. AutomationExecutionLog — ruleId + status+triggeredAt ───────────────
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'automation_execution_logs_ruleId_idx'
-  ) THEN
-    CREATE INDEX "automation_execution_logs_ruleId_idx" ON "automation_execution_logs"("ruleId");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for automation_execution_logs_ruleId_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'automation_execution_logs_status_triggeredAt_idx'
-  ) THEN
-    CREATE INDEX "automation_execution_logs_status_triggeredAt_idx" ON "automation_execution_logs"("status", "triggeredAt");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for automation_execution_logs_status_triggeredAt_idx — use IF NOT EXISTS instead
 
 -- ─── 8. PlatformSettingsHistory — settingId + createdAt + changedBy ────────
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'platform_settings_history_settingId_idx'
-  ) THEN
-    CREATE INDEX "platform_settings_history_settingId_idx" ON "platform_settings_history"("settingId");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for platform_settings_history_settingId_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'platform_settings_history_createdAt_idx'
-  ) THEN
-    CREATE INDEX "platform_settings_history_createdAt_idx" ON "platform_settings_history"("createdAt");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for platform_settings_history_createdAt_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'platform_settings_history_changedBy_idx'
-  ) THEN
-    CREATE INDEX "platform_settings_history_changedBy_idx" ON "platform_settings_history"("changedBy");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for platform_settings_history_changedBy_idx — use IF NOT EXISTS instead
 
 -- ─── 9. Client — soft-delete composite index ───────────────────────────────
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'clients_companySlug_deletedAt_idx'
-  ) THEN
-    CREATE INDEX "clients_companySlug_deletedAt_idx" ON "clients"("companySlug", "deletedAt");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for clients_companySlug_deletedAt_idx — use IF NOT EXISTS instead
 
 -- ─── 10. Supplier — composite soft-delete (replaces standalone deletedAt idx)
 --         The old @@index([deletedAt]) is less selective than the composite;
 --         we keep both since both may be useful for different query shapes.
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'suppliers_companySlug_deletedAt_idx'
-  ) THEN
-    CREATE INDEX "suppliers_companySlug_deletedAt_idx" ON "suppliers"("companySlug", "deletedAt");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for suppliers_companySlug_deletedAt_idx — use IF NOT EXISTS instead
 
 -- ─── 11. Company — deletedAt index (had no @@index at all) ─────────────────
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'companies_deletedAt_idx'
-  ) THEN
-    CREATE INDEX "companies_deletedAt_idx" ON "companies"("deletedAt");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for companies_deletedAt_idx — use IF NOT EXISTS instead
 
 -- ─── 12. Invoice — soft-delete composite + status+createdAt ────────────────
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'invoices_companySlug_deletedAt_idx'
-  ) THEN
-    CREATE INDEX "invoices_companySlug_deletedAt_idx" ON "invoices"("companySlug", "deletedAt");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for invoices_companySlug_deletedAt_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'invoices_status_createdAt_idx'
-  ) THEN
-    CREATE INDEX "invoices_status_createdAt_idx" ON "invoices"("status", "createdAt");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for invoices_status_createdAt_idx — use IF NOT EXISTS instead
 
 -- ─── 13. PurchaseInvoice — soft-delete composite + supplierId FK ───────────
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'purchase_invoices_companySlug_deletedAt_idx'
-  ) THEN
-    CREATE INDEX "purchase_invoices_companySlug_deletedAt_idx" ON "purchase_invoices"("companySlug", "deletedAt");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for purchase_invoices_companySlug_deletedAt_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'purchase_invoices_supplierId_idx'
-  ) THEN
-    CREATE INDEX "purchase_invoices_supplierId_idx" ON "purchase_invoices"("supplierId");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for purchase_invoices_supplierId_idx — use IF NOT EXISTS instead
 
 -- ─── 14. BankTransaction — bankAccountId FK + date ─────────────────────────
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'bank_transactions_bankAccountId_idx'
-  ) THEN
-    CREATE INDEX "bank_transactions_bankAccountId_idx" ON "bank_transactions"("bankAccountId");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for bank_transactions_bankAccountId_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'bank_transactions_date_idx'
-  ) THEN
-    CREATE INDEX "bank_transactions_date_idx" ON "bank_transactions"("date");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for bank_transactions_date_idx — use IF NOT EXISTS instead
 
 -- ─── 15. BudgetLine — budgetId + accountId + costCenterId FK indexes ───────
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'budget_lines_budgetId_idx'
-  ) THEN
-    -- Prisma maps BudgetLine to "BudgetLine" by default — check both names
-    CREATE INDEX IF NOT EXISTS "BudgetLine_budgetId_idx" ON "BudgetLine"("budgetId");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for budget_lines_budgetId_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'BudgetLine_budgetId_idx'
-  ) THEN
-    CREATE INDEX IF NOT EXISTS "BudgetLine_budgetId_idx" ON "BudgetLine"("budgetId");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for BudgetLine_budgetId_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'BudgetLine_accountId_idx'
-  ) THEN
-    CREATE INDEX IF NOT EXISTS "BudgetLine_accountId_idx" ON "BudgetLine"("accountId");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for BudgetLine_accountId_idx — use IF NOT EXISTS instead
 
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes WHERE indexname = 'BudgetLine_costCenterId_idx'
-  ) THEN
-    CREATE INDEX IF NOT EXISTS "BudgetLine_costCenterId_idx" ON "BudgetLine"("costCenterId");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for BudgetLine_costCenterId_idx — use IF NOT EXISTS instead
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- End of migration.

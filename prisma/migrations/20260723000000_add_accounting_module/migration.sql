@@ -12,9 +12,9 @@
 -- Step 1 — ALTER existing tables: add new columns (no FK constraints yet)
 -- ──────────────────────────────────────────────────────────────────────────────
 
-ALTER TABLE "journal_entries" ADD COLUMN "currency" TEXT NOT NULL DEFAULT 'KWD';
-ALTER TABLE "journal_entries" ADD COLUMN "reversedById" INTEGER;
-ALTER TABLE "journal_entry_lines" ADD COLUMN "costCenterId" INTEGER;
+ALTER TABLE "journal_entries" ADD COLUMN IF NOT EXISTS "currency" TEXT NOT NULL DEFAULT 'KWD';
+ALTER TABLE "journal_entries" ADD COLUMN IF NOT EXISTS "reversedById" INTEGER;
+ALTER TABLE "journal_entry_lines" ADD COLUMN IF NOT EXISTS "costCenterId" INTEGER;
 
 -- ──────────────────────────────────────────────────────────────────────────────
 -- Step 2 — CREATE new tables (dependency-ordered)
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS "suppliers" (
     CONSTRAINT "suppliers_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
-CREATE TABLE "fiscal_periods" (
+CREATE TABLE IF NOT EXISTS "fiscal_periods" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -58,7 +58,7 @@ CREATE TABLE "fiscal_periods" (
 
 -- ── CostCenter (مراكز التكلفة) ─────────────────────────────────────────────
 
-CREATE TABLE "cost_centers" (
+CREATE TABLE IF NOT EXISTS "cost_centers" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "code" TEXT NOT NULL,
@@ -75,7 +75,7 @@ CREATE TABLE "cost_centers" (
 
 -- ── WpsFile (ملف حماية الأجور) ────────────────────────────────────────────
 
-CREATE TABLE "wps_files" (
+CREATE TABLE IF NOT EXISTS "wps_files" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "country" TEXT NOT NULL,
@@ -95,7 +95,7 @@ CREATE TABLE "wps_files" (
 
 -- ── AccountingAuditLog (سجل تعديلات محاسبي) ───────────────────────────────
 
-CREATE TABLE "accounting_audit_logs" (
+CREATE TABLE IF NOT EXISTS "accounting_audit_logs" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "userEmail" TEXT NOT NULL,
@@ -112,7 +112,7 @@ CREATE TABLE "accounting_audit_logs" (
 
 -- ── BankAccount (حسابات بنكية) ──────────────────────────────────────────────
 
-CREATE TABLE "bank_accounts" (
+CREATE TABLE IF NOT EXISTS "bank_accounts" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "bankName" TEXT NOT NULL,
@@ -134,7 +134,7 @@ CREATE TABLE "bank_accounts" (
 
 -- ── Quotation (عروض أسعار) ─────────────────────────────────────────────────
 
-CREATE TABLE "quotations" (
+CREATE TABLE IF NOT EXISTS "quotations" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "quotationNumber" TEXT NOT NULL,
@@ -158,7 +158,7 @@ CREATE TABLE "quotations" (
 
 -- ── PurchaseOrder (أوامر شراء) ─────────────────────────────────────────────
 
-CREATE TABLE "purchase_orders" (
+CREATE TABLE IF NOT EXISTS "purchase_orders" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "poNumber" TEXT NOT NULL,
@@ -181,7 +181,7 @@ CREATE TABLE "purchase_orders" (
 
 -- ── FxRevaluation (إعادة تقييم العملة) ────────────────────────────────────
 
-CREATE TABLE "fx_revaluations" (
+CREATE TABLE IF NOT EXISTS "fx_revaluations" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "fromCurrency" TEXT NOT NULL,
@@ -203,7 +203,7 @@ CREATE TABLE "fx_revaluations" (
 
 -- ── FixedAsset (أصول ثابتة) ────────────────────────────────────────────────
 
-CREATE TABLE "fixed_assets" (
+CREATE TABLE IF NOT EXISTS "fixed_assets" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "nameAr" TEXT NOT NULL,
@@ -237,7 +237,7 @@ CREATE TABLE "fixed_assets" (
 
 -- ── LandedCostAllocation (تكلفة الاستيراد) ────────────────────────────────
 
-CREATE TABLE "landed_cost_allocations" (
+CREATE TABLE IF NOT EXISTS "landed_cost_allocations" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "purchaseInvoiceId" INTEGER NOT NULL,
@@ -253,7 +253,7 @@ CREATE TABLE "landed_cost_allocations" (
 
 -- ── PostDatedCheck (شيكات آجلة) ────────────────────────────────────────────
 
-CREATE TABLE "post_dated_checks" (
+CREATE TABLE IF NOT EXISTS "post_dated_checks" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "checkNumber" TEXT NOT NULL,
@@ -284,7 +284,7 @@ CREATE TABLE "post_dated_checks" (
 
 -- ── OpeningBalanceEntry (ترحيل أرصدة افتتاحية) ────────────────────────────
 
-CREATE TABLE "opening_balance_entries" (
+CREATE TABLE IF NOT EXISTS "opening_balance_entries" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "accountId" INTEGER NOT NULL,
@@ -303,7 +303,7 @@ CREATE TABLE "opening_balance_entries" (
 
 -- ── TaxFiling (إقرارات ضريبية) ────────────────────────────────────────────
 
-CREATE TABLE "tax_filings" (
+CREATE TABLE IF NOT EXISTS "tax_filings" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "country" TEXT NOT NULL,
@@ -327,7 +327,7 @@ CREATE TABLE "tax_filings" (
 
 -- ── InterCompanyTransaction (معاملات بين فروع) ────────────────────────────
 
-CREATE TABLE "inter_company_transactions" (
+CREATE TABLE IF NOT EXISTS "inter_company_transactions" (
     "id" SERIAL PRIMARY KEY,
     "companySlugFrom" TEXT NOT NULL,
     "companySlugTo" TEXT NOT NULL,
@@ -350,7 +350,7 @@ CREATE TABLE "inter_company_transactions" (
 -- ── BankTransaction (حركات بنكية) ──────────────────────────────────────────
 -- Depends on: bank_accounts
 
-CREATE TABLE "bank_transactions" (
+CREATE TABLE IF NOT EXISTS "bank_transactions" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "bankAccountId" INTEGER NOT NULL,
@@ -374,7 +374,7 @@ CREATE TABLE "bank_transactions" (
 -- ── BankReconciliation (تسوية بنكية) ───────────────────────────────────────
 -- Depends on: bank_accounts
 
-CREATE TABLE "bank_reconciliations" (
+CREATE TABLE IF NOT EXISTS "bank_reconciliations" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "bankAccountId" INTEGER NOT NULL,
@@ -397,7 +397,7 @@ CREATE TABLE "bank_reconciliations" (
 -- ── DepreciationEntry (إهلاك) ──────────────────────────────────────────────
 -- Depends on: fixed_assets
 
-CREATE TABLE "depreciation_entries" (
+CREATE TABLE IF NOT EXISTS "depreciation_entries" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "assetId" INTEGER NOT NULL,
@@ -417,7 +417,7 @@ CREATE TABLE "depreciation_entries" (
 -- ── PaymentVoucher (سندات قبض وصرف) ──────────────────────────────────────
 -- Depends on: bank_accounts
 
-CREATE TABLE "payment_vouchers" (
+CREATE TABLE IF NOT EXISTS "payment_vouchers" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "voucherNumber" TEXT NOT NULL,
@@ -452,7 +452,7 @@ CREATE TABLE "payment_vouchers" (
 -- ── Budget (موازنة تخطيطية) ──────────────────────────────────────────────
 -- Depends on: cost_centers
 
-CREATE TABLE "budgets" (
+CREATE TABLE IF NOT EXISTS "budgets" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "fiscalYear" INTEGER NOT NULL,
@@ -476,7 +476,7 @@ CREATE TABLE "budgets" (
 -- ── LetterOfCredit (اعتمادات مستندية) ────────────────────────────────────
 -- Depends on: bank_accounts
 
-CREATE TABLE "letters_of_credit" (
+CREATE TABLE IF NOT EXISTS "letters_of_credit" (
     "id" SERIAL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "lcNumber" TEXT NOT NULL,
@@ -501,7 +501,7 @@ CREATE TABLE "letters_of_credit" (
 -- ── LandedCostLine (تفاصيل تكلفة الاستيراد) ──────────────────────────────
 -- Depends on: landed_cost_allocations
 
-CREATE TABLE "landed_cost_lines" (
+CREATE TABLE IF NOT EXISTS "landed_cost_lines" (
     "id" SERIAL PRIMARY KEY,
     "allocationId" INTEGER NOT NULL,
     "inventoryItemId" INTEGER,
@@ -532,119 +532,119 @@ ALTER TABLE "journal_entries" ADD CONSTRAINT "journal_entries_reversedById_fkey"
 
 -- ── Indexes for columns added to existing tables ────────────────────────────
 
-CREATE INDEX "journal_entry_lines_costCenterId_idx" ON "journal_entry_lines" ("costCenterId");
-CREATE INDEX "journal_entries_reversedById_idx" ON "journal_entries" ("reversedById");
+CREATE INDEX IF NOT EXISTS "journal_entry_lines_costCenterId_idx" ON "journal_entry_lines" ("costCenterId");
+CREATE INDEX IF NOT EXISTS "journal_entries_reversedById_idx" ON "journal_entries" ("reversedById");
 
 -- ── fiscal_periods ──────────────────────────────────────────────────────────
 
 CREATE UNIQUE INDEX IF NOT EXISTS "fiscal_periods_companySlug_name_key" ON "fiscal_periods" ("companySlug", "name");
-CREATE INDEX "fiscal_periods_companySlug_startDate_idx" ON "fiscal_periods" ("companySlug", "startDate");
-CREATE INDEX "fiscal_periods_companySlug_status_idx" ON "fiscal_periods" ("companySlug", "status");
+CREATE INDEX IF NOT EXISTS "fiscal_periods_companySlug_startDate_idx" ON "fiscal_periods" ("companySlug", "startDate");
+CREATE INDEX IF NOT EXISTS "fiscal_periods_companySlug_status_idx" ON "fiscal_periods" ("companySlug", "status");
 
 -- ── cost_centers ────────────────────────────────────────────────────────────
 
 CREATE UNIQUE INDEX IF NOT EXISTS "cost_centers_companySlug_code_key" ON "cost_centers" ("companySlug", "code");
-CREATE INDEX "cost_centers_companySlug_idx" ON "cost_centers" ("companySlug");
+CREATE INDEX IF NOT EXISTS "cost_centers_companySlug_idx" ON "cost_centers" ("companySlug");
 
 -- ── bank_accounts ───────────────────────────────────────────────────────────
 
-CREATE INDEX "bank_accounts_companySlug_idx" ON "bank_accounts" ("companySlug");
-CREATE INDEX "bank_accounts_companySlug_currency_idx" ON "bank_accounts" ("companySlug", "currency");
+CREATE INDEX IF NOT EXISTS "bank_accounts_companySlug_idx" ON "bank_accounts" ("companySlug");
+CREATE INDEX IF NOT EXISTS "bank_accounts_companySlug_currency_idx" ON "bank_accounts" ("companySlug", "currency");
 
 -- ── bank_transactions ───────────────────────────────────────────────────────
 
-CREATE INDEX "bank_transactions_companySlug_date_idx" ON "bank_transactions" ("companySlug", "date");
-CREATE INDEX "bank_transactions_bankAccountId_idx" ON "bank_transactions" ("bankAccountId");
-CREATE INDEX "bank_transactions_companySlug_isReconciled_idx" ON "bank_transactions" ("companySlug", "isReconciled");
+CREATE INDEX IF NOT EXISTS "bank_transactions_companySlug_date_idx" ON "bank_transactions" ("companySlug", "date");
+CREATE INDEX IF NOT EXISTS "bank_transactions_bankAccountId_idx" ON "bank_transactions" ("bankAccountId");
+CREATE INDEX IF NOT EXISTS "bank_transactions_companySlug_isReconciled_idx" ON "bank_transactions" ("companySlug", "isReconciled");
 
 -- ── bank_reconciliations ────────────────────────────────────────────────────
 
-CREATE INDEX "bank_reconciliations_companySlug_periodEnd_idx" ON "bank_reconciliations" ("companySlug", "periodEnd");
-CREATE INDEX "bank_reconciliations_bankAccountId_idx" ON "bank_reconciliations" ("bankAccountId");
+CREATE INDEX IF NOT EXISTS "bank_reconciliations_companySlug_periodEnd_idx" ON "bank_reconciliations" ("companySlug", "periodEnd");
+CREATE INDEX IF NOT EXISTS "bank_reconciliations_bankAccountId_idx" ON "bank_reconciliations" ("bankAccountId");
 
 -- ── post_dated_checks ───────────────────────────────────────────────────────
 
-CREATE INDEX "post_dated_checks_companySlug_dueDate_idx" ON "post_dated_checks" ("companySlug", "dueDate");
-CREATE INDEX "post_dated_checks_companySlug_status_idx" ON "post_dated_checks" ("companySlug", "status");
-CREATE INDEX "post_dated_checks_companySlug_direction_idx" ON "post_dated_checks" ("companySlug", "direction");
+CREATE INDEX IF NOT EXISTS "post_dated_checks_companySlug_dueDate_idx" ON "post_dated_checks" ("companySlug", "dueDate");
+CREATE INDEX IF NOT EXISTS "post_dated_checks_companySlug_status_idx" ON "post_dated_checks" ("companySlug", "status");
+CREATE INDEX IF NOT EXISTS "post_dated_checks_companySlug_direction_idx" ON "post_dated_checks" ("companySlug", "direction");
 
 -- ── fixed_assets ────────────────────────────────────────────────────────────
 
-CREATE INDEX "fixed_assets_companySlug_idx" ON "fixed_assets" ("companySlug");
-CREATE INDEX "fixed_assets_companySlug_category_idx" ON "fixed_assets" ("companySlug", "category");
-CREATE INDEX "fixed_assets_companySlug_isActive_idx" ON "fixed_assets" ("companySlug", "isActive");
+CREATE INDEX IF NOT EXISTS "fixed_assets_companySlug_idx" ON "fixed_assets" ("companySlug");
+CREATE INDEX IF NOT EXISTS "fixed_assets_companySlug_category_idx" ON "fixed_assets" ("companySlug", "category");
+CREATE INDEX IF NOT EXISTS "fixed_assets_companySlug_isActive_idx" ON "fixed_assets" ("companySlug", "isActive");
 
 -- ── depreciation_entries ────────────────────────────────────────────────────
 
 CREATE UNIQUE INDEX IF NOT EXISTS "depreciation_entries_assetId_period_key" ON "depreciation_entries" ("assetId", "period");
-CREATE INDEX "depreciation_entries_companySlug_period_idx" ON "depreciation_entries" ("companySlug", "period");
+CREATE INDEX IF NOT EXISTS "depreciation_entries_companySlug_period_idx" ON "depreciation_entries" ("companySlug", "period");
 
 -- ── payment_vouchers ────────────────────────────────────────────────────────
 
 CREATE UNIQUE INDEX IF NOT EXISTS "payment_vouchers_companySlug_voucherNumber_key" ON "payment_vouchers" ("companySlug", "voucherNumber");
-CREATE INDEX "payment_vouchers_companySlug_date_idx" ON "payment_vouchers" ("companySlug", "date");
-CREATE INDEX "payment_vouchers_companySlug_voucherType_idx" ON "payment_vouchers" ("companySlug", "voucherType");
+CREATE INDEX IF NOT EXISTS "payment_vouchers_companySlug_date_idx" ON "payment_vouchers" ("companySlug", "date");
+CREATE INDEX IF NOT EXISTS "payment_vouchers_companySlug_voucherType_idx" ON "payment_vouchers" ("companySlug", "voucherType");
 
 -- ── quotations ──────────────────────────────────────────────────────────────
 
 CREATE UNIQUE INDEX IF NOT EXISTS "quotations_companySlug_quotationNumber_key" ON "quotations" ("companySlug", "quotationNumber");
-CREATE INDEX "quotations_companySlug_date_idx" ON "quotations" ("companySlug", "date");
-CREATE INDEX "quotations_companySlug_status_idx" ON "quotations" ("companySlug", "status");
+CREATE INDEX IF NOT EXISTS "quotations_companySlug_date_idx" ON "quotations" ("companySlug", "date");
+CREATE INDEX IF NOT EXISTS "quotations_companySlug_status_idx" ON "quotations" ("companySlug", "status");
 
 -- ── purchase_orders ─────────────────────────────────────────────────────────
 
 CREATE UNIQUE INDEX IF NOT EXISTS "purchase_orders_companySlug_poNumber_key" ON "purchase_orders" ("companySlug", "poNumber");
-CREATE INDEX "purchase_orders_companySlug_date_idx" ON "purchase_orders" ("companySlug", "date");
-CREATE INDEX "purchase_orders_companySlug_status_idx" ON "purchase_orders" ("companySlug", "status");
+CREATE INDEX IF NOT EXISTS "purchase_orders_companySlug_date_idx" ON "purchase_orders" ("companySlug", "date");
+CREATE INDEX IF NOT EXISTS "purchase_orders_companySlug_status_idx" ON "purchase_orders" ("companySlug", "status");
 
 -- ── budgets ─────────────────────────────────────────────────────────────────
 
 CREATE UNIQUE INDEX IF NOT EXISTS "budgets_companySlug_periodName_accountId_costCenterId_key" ON "budgets" ("companySlug", "periodName", "accountId", "costCenterId");
-CREATE INDEX "budgets_companySlug_fiscalYear_idx" ON "budgets" ("companySlug", "fiscalYear");
-CREATE INDEX "budgets_accountId_idx" ON "budgets" ("accountId");
+CREATE INDEX IF NOT EXISTS "budgets_companySlug_fiscalYear_idx" ON "budgets" ("companySlug", "fiscalYear");
+CREATE INDEX IF NOT EXISTS "budgets_accountId_idx" ON "budgets" ("accountId");
 
 -- ── letters_of_credit ───────────────────────────────────────────────────────
 
 CREATE UNIQUE INDEX IF NOT EXISTS "letters_of_credit_companySlug_lcNumber_key" ON "letters_of_credit" ("companySlug", "lcNumber");
-CREATE INDEX "letters_of_credit_companySlug_expiryDate_idx" ON "letters_of_credit" ("companySlug", "expiryDate");
-CREATE INDEX "letters_of_credit_supplierId_idx" ON "letters_of_credit" ("supplierId");
+CREATE INDEX IF NOT EXISTS "letters_of_credit_companySlug_expiryDate_idx" ON "letters_of_credit" ("companySlug", "expiryDate");
+CREATE INDEX IF NOT EXISTS "letters_of_credit_supplierId_idx" ON "letters_of_credit" ("supplierId");
 
 -- ── landed_cost_allocations ────────────────────────────────────────────────
 
-CREATE INDEX "landed_cost_allocations_companySlug_idx" ON "landed_cost_allocations" ("companySlug");
-CREATE INDEX "landed_cost_allocations_purchaseInvoiceId_idx" ON "landed_cost_allocations" ("purchaseInvoiceId");
+CREATE INDEX IF NOT EXISTS "landed_cost_allocations_companySlug_idx" ON "landed_cost_allocations" ("companySlug");
+CREATE INDEX IF NOT EXISTS "landed_cost_allocations_purchaseInvoiceId_idx" ON "landed_cost_allocations" ("purchaseInvoiceId");
 
 -- ── landed_cost_lines ──────────────────────────────────────────────────────
 
-CREATE INDEX "landed_cost_lines_allocationId_idx" ON "landed_cost_lines" ("allocationId");
+CREATE INDEX IF NOT EXISTS "landed_cost_lines_allocationId_idx" ON "landed_cost_lines" ("allocationId");
 
 -- ── fx_revaluations ─────────────────────────────────────────────────────────
 
-CREATE INDEX "fx_revaluations_companySlug_period_idx" ON "fx_revaluations" ("companySlug", "period");
+CREATE INDEX IF NOT EXISTS "fx_revaluations_companySlug_period_idx" ON "fx_revaluations" ("companySlug", "period");
 
 -- ── inter_company_transactions ──────────────────────────────────────────────
 
-CREATE INDEX "inter_company_transactions_companySlugFrom_idx" ON "inter_company_transactions" ("companySlugFrom");
-CREATE INDEX "inter_company_transactions_companySlugTo_idx" ON "inter_company_transactions" ("companySlugTo");
-CREATE INDEX "inter_company_transactions_companySlugFrom_companySlugTo_status_idx" ON "inter_company_transactions" ("companySlugFrom", "companySlugTo", "status");
+CREATE INDEX IF NOT EXISTS "inter_company_transactions_companySlugFrom_idx" ON "inter_company_transactions" ("companySlugFrom");
+CREATE INDEX IF NOT EXISTS "inter_company_transactions_companySlugTo_idx" ON "inter_company_transactions" ("companySlugTo");
+CREATE INDEX IF NOT EXISTS "inter_company_transactions_companySlugFrom_companySlugTo_status_idx" ON "inter_company_transactions" ("companySlugFrom", "companySlugTo", "status");
 
 -- ── wps_files ───────────────────────────────────────────────────────────────
 
 CREATE UNIQUE INDEX IF NOT EXISTS "wps_files_companySlug_country_month_key" ON "wps_files" ("companySlug", "country", "month");
-CREATE INDEX "wps_files_companySlug_month_idx" ON "wps_files" ("companySlug", "month");
+CREATE INDEX IF NOT EXISTS "wps_files_companySlug_month_idx" ON "wps_files" ("companySlug", "month");
 
 -- ── tax_filings ─────────────────────────────────────────────────────────────
 
-CREATE INDEX "tax_filings_companySlug_country_taxType_idx" ON "tax_filings" ("companySlug", "country", "taxType");
-CREATE INDEX "tax_filings_companySlug_periodTo_idx" ON "tax_filings" ("companySlug", "periodTo");
+CREATE INDEX IF NOT EXISTS "tax_filings_companySlug_country_taxType_idx" ON "tax_filings" ("companySlug", "country", "taxType");
+CREATE INDEX IF NOT EXISTS "tax_filings_companySlug_periodTo_idx" ON "tax_filings" ("companySlug", "periodTo");
 
 -- ── accounting_audit_logs ───────────────────────────────────────────────────
 
-CREATE INDEX "accounting_audit_logs_companySlug_idx" ON "accounting_audit_logs" ("companySlug");
-CREATE INDEX "accounting_audit_logs_companySlug_entity_entityId_idx" ON "accounting_audit_logs" ("companySlug", "entity", "entityId");
-CREATE INDEX "accounting_audit_logs_companySlug_createdAt_idx" ON "accounting_audit_logs" ("companySlug", "createdAt");
+CREATE INDEX IF NOT EXISTS "accounting_audit_logs_companySlug_idx" ON "accounting_audit_logs" ("companySlug");
+CREATE INDEX IF NOT EXISTS "accounting_audit_logs_companySlug_entity_entityId_idx" ON "accounting_audit_logs" ("companySlug", "entity", "entityId");
+CREATE INDEX IF NOT EXISTS "accounting_audit_logs_companySlug_createdAt_idx" ON "accounting_audit_logs" ("companySlug", "createdAt");
 
 -- ── opening_balance_entries ─────────────────────────────────────────────────
 
 CREATE UNIQUE INDEX IF NOT EXISTS "opening_balance_entries_companySlug_accountId_asOfDate_key" ON "opening_balance_entries" ("companySlug", "accountId", "asOfDate");
-CREATE INDEX "opening_balance_entries_companySlug_asOfDate_idx" ON "opening_balance_entries" ("companySlug", "asOfDate");
+CREATE INDEX IF NOT EXISTS "opening_balance_entries_companySlug_asOfDate_idx" ON "opening_balance_entries" ("companySlug", "asOfDate");

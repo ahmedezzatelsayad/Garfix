@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "MFASecret" (
+CREATE TABLE IF NOT EXISTS "MFASecret" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "userUid" TEXT NOT NULL,
     "secret" TEXT NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE "MFASecret" (
 );
 
 -- CreateTable
-CREATE TABLE "SessionRegistry" (
+CREATE TABLE IF NOT EXISTS "SessionRegistry" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "userUid" TEXT NOT NULL,
     "jti" TEXT NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE "SessionRegistry" (
 );
 
 -- CreateTable
-CREATE TABLE "TamperEvidenceChain" (
+CREATE TABLE IF NOT EXISTS "TamperEvidenceChain" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "companySlug" TEXT,
     "entryId" TEXT NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE "TamperEvidenceChain" (
 );
 
 -- CreateTable
-CREATE TABLE "WebhookEndpoint" (
+CREATE TABLE IF NOT EXISTS "WebhookEndpoint" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "companySlug" TEXT NOT NULL,
     "url" TEXT NOT NULL,
@@ -52,7 +52,7 @@ CREATE TABLE "WebhookEndpoint" (
 );
 
 -- CreateTable
-CREATE TABLE "WebhookDelivery" (
+CREATE TABLE IF NOT EXISTS "WebhookDelivery" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "endpointId" TEXT NOT NULL,
     "eventType" TEXT NOT NULL,
@@ -69,34 +69,34 @@ CREATE TABLE "WebhookDelivery" (
 );
 
 -- CreateIndex
-CREATE INDEX "MFASecret_userUid_idx" ON "MFASecret"("userUid");
+CREATE INDEX IF NOT EXISTS "MFASecret_userUid_idx" ON "MFASecret"("userUid");
 
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "SessionRegistry_jti_key" ON "SessionRegistry"("jti");
 
 -- CreateIndex
-CREATE INDEX "SessionRegistry_userUid_idx" ON "SessionRegistry"("userUid");
+CREATE INDEX IF NOT EXISTS "SessionRegistry_userUid_idx" ON "SessionRegistry"("userUid");
 
 -- CreateIndex
-CREATE INDEX "SessionRegistry_expiresAt_idx" ON "SessionRegistry"("expiresAt");
+CREATE INDEX IF NOT EXISTS "SessionRegistry_expiresAt_idx" ON "SessionRegistry"("expiresAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "TamperEvidenceChain_entryId_key" ON "TamperEvidenceChain"("entryId");
 
 -- CreateIndex
-CREATE INDEX "TamperEvidenceChain_companySlug_idx" ON "TamperEvidenceChain"("companySlug");
+CREATE INDEX IF NOT EXISTS "TamperEvidenceChain_companySlug_idx" ON "TamperEvidenceChain"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "TamperEvidenceChain_chainOrder_idx" ON "TamperEvidenceChain"("chainOrder");
+CREATE INDEX IF NOT EXISTS "TamperEvidenceChain_chainOrder_idx" ON "TamperEvidenceChain"("chainOrder");
 
 -- CreateIndex
-CREATE INDEX "WebhookEndpoint_companySlug_idx" ON "WebhookEndpoint"("companySlug");
+CREATE INDEX IF NOT EXISTS "WebhookEndpoint_companySlug_idx" ON "WebhookEndpoint"("companySlug");
 
 -- CreateIndex
-CREATE INDEX "WebhookDelivery_endpointId_idx" ON "WebhookDelivery"("endpointId");
+CREATE INDEX IF NOT EXISTS "WebhookDelivery_endpointId_idx" ON "WebhookDelivery"("endpointId");
 
 -- CreateIndex
-CREATE INDEX "WebhookDelivery_status_idx" ON "WebhookDelivery"("status");
+CREATE INDEX IF NOT EXISTS "WebhookDelivery_status_idx" ON "WebhookDelivery"("status");
 
 -- CreateIndex
-CREATE INDEX "WebhookDelivery_nextRetryAt_idx" ON "WebhookDelivery"("nextRetryAt");
+CREATE INDEX IF NOT EXISTS "WebhookDelivery_nextRetryAt_idx" ON "WebhookDelivery"("nextRetryAt");
