@@ -79,6 +79,23 @@ type TenantScopedDb = Omit<PrismaClient, "$on" | "$connect" | "$disconnect" | "$
   __tenantSlug: string;
 };
 
+/**
+ * Structural type for any Prisma-like client that supports $transaction
+ * with $executeRaw (used by runWithTenantContext and verifyRlsForSlug).
+ *
+ * Both the base PrismaClient and extended clients (via $extends) satisfy
+ * this interface at runtime. TypeScript can't verify the extended client
+ * IS-A PrismaClient due to how $extends generates types, so we use
+ * structural typing here instead of nominal.
+ */
+type RlsCapableDb = {
+  $transaction<T>(
+    fn: (tx: { $executeRaw: PrismaClient['$executeRaw'] }) => Promise<T>,
+    options?: { isolationLevel?: Prisma.TransactionIsolationLevel },
+  ): Promise<T>;
+  $queryRaw: PrismaClient['$queryRaw'];
+};
+
 const scopedDbCache = new WeakMap<PrismaClient, Map<string, TenantScopedDb>>();
 
 // ─── Public API ────────────────────────────────────────────────────────────
@@ -92,7 +109,7 @@ const scopedDbCache = new WeakMap<PrismaClient, Map<string, TenantScopedDb>>();
  */
 export function withTenant(db: PrismaClient, companySlug: string): TenantScopedDb {
   // SQLite detection — RLS is a no-op there.
-  if (isSqlite(db)) {
+  if (isSqlite()) {
     // SQLite doesn't support RLS — return a passthrough proxy that
     // satisfies the TenantScopedDb interface. The `__tenantSlug` trap
     // still works because the proxy intercepts all access.
@@ -169,11 +186,11 @@ export function withTenant(db: PrismaClient, companySlug: string): TenantScopedD
  *   });
  */
 export async function runWithTenantContext<T>(
-  db: PrismaClient,
+  db: RlsCapableDb,
   companySlug: string,
   fn: () => Promise<T>,
 ): Promise<T> {
-  if (isSqlite(db)) {
+  if (isSqlite()) {
     return fn();
   }
   // $transaction with a callback runs the function in a single
@@ -196,7 +213,7 @@ export async function runWithTenantContext<T>(
  * invoices table for the given slug.
  */
 export async function verifyRlsForSlug(
-  db: PrismaClient,
+  db: RlsCapableDb,
   companySlug: string,
 ): Promise<{ ok: boolean; visibleCount: number; expectedSlug: string; error?: string }> {
   try {
@@ -235,7 +252,7 @@ export async function verifyRlsForSlug(
 // `true` and skipped the proxy. `process.env.DATABASE_URL` access is a
 // property read (microseconds), so the cache had no measurable perf
 // benefit. Removing it makes the function pure and idempotent.
-function isSqlite(db: PrismaClient): boolean {
+function isSqlite(): boolean {
   // Detect by checking the datasource URL. In test/dev this may be
   // SQLite even if the schema says Postgres.
   const url = process.env.DATABASE_URL || "";

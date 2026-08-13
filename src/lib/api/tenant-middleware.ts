@@ -38,7 +38,6 @@ import { dbTyped } from "@/lib/db";
 import { runWithTenantContext } from "@/lib/db-rls";
 import { logger } from "@/lib/logger";
 import { isFounderEmail } from "@/lib/founder";
-import type { PrismaClient } from "@prisma/client";
 
 export interface TenantContext {
   user: AuthPayload;
@@ -96,10 +95,10 @@ export function withTenantScope<T extends unknown[]>(
 
     // 3. Run the handler inside a tenant-scoped transaction
     try {
-      // Cast dbTyped to PrismaClient for runWithTenantContext (the extension
-      // type doesn't match exactly but the runtime API is compatible)
-      const db = dbTyped as unknown as PrismaClient;
-      const result = await runWithTenantContext(db, companySlug, async () => {
+      // dbTyped is an extended Prisma client (via $extends for soft-delete + RLS).
+      // It satisfies RlsCapableDb structurally — runWithTenantContext only needs
+      // $transaction and $queryRaw, both available on extended clients.
+      const result = await runWithTenantContext(dbTyped, companySlug, async () => {
         const ctx: TenantContext = { user, companySlug, isPlatformAdmin };
         return handler(req, ctx, ...args);
       });

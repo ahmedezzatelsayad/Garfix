@@ -45,7 +45,7 @@ import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
 // imports `dbTyped` from "@/lib/db" at module load time, and the cache is a
 // module-level singleton that would persist across tests if not invalidated.
 
-const findManyMock = mock(async () => [] as unknown[]);
+const findManyMock = mock(async () => [] as RawRegistryRow[]);
 
 // Mock the db module so modelRegistry.ts uses our controlled findMany.
 mock.module("@/lib/db", () => ({
@@ -132,7 +132,7 @@ describe("FC-4 AI-01 capability routing", () => {
     // Reset the cache between tests so each test sees a fresh registry.
     invalidateRegistryCache();
     // Default: empty registry. Individual tests override.
-    findManyMock.mockImplementation(async () => [] as unknown[]);
+    findManyMock.mockImplementation(async () => [] as RawRegistryRow[]);
   });
 
   afterEach(() => {
@@ -152,7 +152,7 @@ describe("FC-4 AI-01 capability routing", () => {
         }),
         makeRow({ id: 3, provider: "deepseek", capabilities: ["chat", "reasoning"] }),
         makeRow({ id: 4, provider: "anthropic", capabilities: ["vision"] }),
-      ] as unknown as never,
+      ] as RawRegistryRow[],
     );
 
     const chatModels = await getModelsForCapability("chat");
@@ -170,7 +170,7 @@ describe("FC-4 AI-01 capability routing", () => {
       [
         makeRow({ id: 1, capabilities: ["invoice-extraction"] }),
         makeRow({ id: 2, capabilities: ["vision"] }),
-      ] as unknown as never,
+      ] as RawRegistryRow[],
     );
 
     const chatModels = await getModelsForCapability("chat");
@@ -190,7 +190,7 @@ describe("FC-4 AI-01 capability routing", () => {
           isHealthy: true,
           healthScore: 0.7,
         }),
-      ] as unknown as never,
+      ] as RawRegistryRow[],
     );
 
     const chatModels = await getModelsForCapability("chat");
@@ -211,7 +211,7 @@ describe("FC-4 AI-01 capability routing", () => {
         makeRow({ id: 2, provider: "borderline", healthScore: 0.5, isHealthy: true }),
         makeRow({ id: 3, provider: "weak", healthScore: 0.49, isHealthy: true }),
         makeRow({ id: 4, provider: "dead", healthScore: 0.0, isHealthy: true }),
-      ] as unknown as never,
+      ] as RawRegistryRow[],
     );
 
     const chatModels = await getModelsForCapability("chat");
@@ -266,7 +266,7 @@ describe("FC-4 AI-01 capability routing", () => {
           isHealthy: false,
           healthScore: 0.1,
         }),
-      ] as unknown as never,
+      ] as RawRegistryRow[],
     );
 
     const chatModels = await getModelsForCapability("chat");
@@ -278,7 +278,7 @@ describe("FC-4 AI-01 capability routing", () => {
 
   it("callAIWithFallback returns usedLegacyFallback=true when registry is empty", async () => {
     // Empty registry.
-    findManyMock.mockImplementation(async () => [] as unknown as never);
+    findManyMock.mockImplementation(async () => [] as RawRegistryRow[]);
 
     // Mock the legacy callAI import (used as the fallback path) so the test
     // doesn't make a real HTTP call. The smartRouter imports it lazily via
@@ -316,7 +316,7 @@ describe("FC-4 AI-01 capability routing", () => {
   });
 
   it("routeRequest returns usedLegacyFallback=true when no healthy candidate", async () => {
-    findManyMock.mockImplementation(async () => [] as unknown as never);
+    findManyMock.mockImplementation(async () => [] as RawRegistryRow[]);
 
     const decision = await routeRequest("chat");
     expect(decision.usedLegacyFallback).toBe(true);
@@ -336,7 +336,7 @@ describe("FC-4 AI-01 capability routing", () => {
           isHealthy: true,
           healthScore: 0.85,
         }),
-      ] as unknown as never,
+      ] as RawRegistryRow[],
     );
 
     const decision = await routeRequest("chat");
@@ -366,7 +366,7 @@ describe("FC-4 AI-01 capability routing", () => {
           isHealthy: true,
           healthScore: 0.9,
         }),
-      ] as unknown as never,
+      ] as RawRegistryRow[],
     );
 
     // Track which functions were called.
@@ -470,7 +470,7 @@ describe("FC-4 AI-01 capability routing", () => {
           healthScore: 0.92,
           lastHealthCheck: new Date("2026-01-15T10:00:00Z"),
         }),
-      ] as unknown as never,
+      ] as RawRegistryRow[],
     );
 
     const models = await getEnabledModels();
