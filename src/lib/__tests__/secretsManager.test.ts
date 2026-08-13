@@ -59,10 +59,22 @@ describe("Secrets Manager Module", () => {
       expect(() => getSecret("JWT_SECRET")).toThrow("JWT_SECRET");
     });
 
-    it("returns placeholder in non-production when not set", () => {
+    it("returns placeholder in development when not set (SEC-15)", () => {
+      // SEC-15 FIX (Audit v2 · Phase 4): the dev-placeholder fallback is
+      // now STRICTLY gated behind NODE_ENV === 'development'. Previously
+      // it fired for any non-production env, which was the vulnerability.
+      process.env.NODE_ENV = "development";
       delete process.env.JWT_SECRET;
       const result = getSecret("JWT_SECRET");
       expect(result).toBe("dev-placeholder-jwt_secret");
+    });
+
+    it("throws in test/staging when not set (SEC-15 — no more silent placeholder)", () => {
+      // SEC-15: in test/staging/undefined NODE_ENV, the dev-placeholder
+      // is NOT returned — the function throws so the caller knows.
+      process.env.NODE_ENV = "test";
+      delete process.env.JWT_SECRET;
+      expect(() => getSecret("JWT_SECRET")).toThrow("SEC-15");
     });
 
     it("validates minimum length and throws if too short", () => {
@@ -76,22 +88,35 @@ describe("Secrets Manager Module", () => {
       expect(result).toBe("redis://localhost:6379");
     });
 
-    it("does not throw for optional secret not set in non-production", () => {
+    it("throws for optional secret not set in non-development (SEC-15)", () => {
+      // SEC-15: previously optional secrets silently returned dev-placeholder
+      // outside production. Now they throw in test/staging/etc. too.
+      process.env.NODE_ENV = "test";
       delete process.env.VALKEY_URL;
-      expect(() => getSecret("VALKEY_URL")).not.toThrow();
+      expect(() => getSecret("VALKEY_URL")).toThrow("SEC-15");
     });
 
-    it("does not throw for optional secret not set in production (just warns)", () => {
+    it("does not throw for optional secret not set in production (returns SEC-15 throw — was silent placeholder)", () => {
+      // SEC-15: in production, optional secrets ALSO throw now (was: silent
+      // dev-placeholder). The caller must check via validateSecrets() first.
       process.env.NODE_ENV = "production";
       delete process.env.VALKEY_URL;
-      // VALKEY_URL is required=false, so no throw
-      expect(() => getSecret("VALKEY_URL")).not.toThrow();
+      expect(() => getSecret("VALKEY_URL")).toThrow("SEC-15");
     });
 
-    it("returns dev-placeholder for unknown env key", () => {
+    it("returns dev-placeholder for unknown env key in development (SEC-15)", () => {
+      // SEC-15: unknown keys still get dev-placeholder, but ONLY in development.
+      process.env.NODE_ENV = "development";
       delete process.env.UNKNOWN_KEY;
       const result = getSecret("UNKNOWN_KEY");
       expect(result).toBe("dev-placeholder-unknown_key");
+    });
+
+    it("throws for unknown env key in test (SEC-15)", () => {
+      // SEC-15: outside development, unknown keys also throw (no silent fallback).
+      process.env.NODE_ENV = "test";
+      delete process.env.UNKNOWN_KEY;
+      expect(() => getSecret("UNKNOWN_KEY")).toThrow("SEC-15");
     });
   });
 

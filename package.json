@@ -9,6 +9,8 @@
     "start": "next start -p ${PORT:-3000}",
     "lint": "eslint .",
     "lint:findmany": "node scripts/check-unbounded-findmany.mjs",
+    "lint:migrations": "node scripts/check-migration-names.mjs",
+    "audit:deps": "bun audit --prod || npm audit --omit=dev",
     "test": "bun test --isolate --preload ./test.preload.ts",
     "test:ci": "bun test --isolate --coverage $(find src __tests__ -type f \\( -name '*.test.ts' -o -name '*.test.tsx' \\) -not -path '*/founder-validation/__tests__/*' 2>/dev/null | tr '\\n' ' ')",
     "test:founder": "bun test --isolate --preload ./test.preload.ts src/lib/founder-validation/__tests__/",

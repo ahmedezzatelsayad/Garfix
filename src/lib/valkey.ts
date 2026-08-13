@@ -67,10 +67,13 @@ export async function getValkeyClient(): Promise<RedisClient | null> {
     // BullMQ queues use connection.duplicate() which inherits the db index —
     // to isolate queues, pass db: 1 in the VALKEY_URL for BullMQ specifically.
     // For now, the shared client uses db 0 (default) with key prefixes:
-    //   cache:    "cache:" prefix (cache.ts)
-    //   rate-limit: "ai:rl:" prefix (valkey-rate-limiter.ts)
-    //   session:  "session:" prefix (passwordPolicy.ts)
-    //   BullMQ:   no prefix (BullMQ manages its own keyspace)
+    //   cache:       "cache:" prefix (cache.ts)
+    //   rate-limit:  "rl:{scope}:{id}" prefix (valkey-rate-limiter.ts)
+    //                AI-17 FIX (Audit v2 · Phase 4): standardized from the
+    //                legacy "ai:rl:" to "rl:{scope}:{id}". See
+    //                buildRateLimitKey() in valkey-rate-limiter.ts.
+    //   session:     "session:" prefix (passwordPolicy.ts)
+    //   BullMQ:      no prefix (BullMQ manages its own keyspace)
     sharedClient = new Redis(url, {
       lazyConnect: true,
       maxRetriesPerRequest: 3,
