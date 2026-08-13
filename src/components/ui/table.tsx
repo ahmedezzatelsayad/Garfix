@@ -65,12 +65,16 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   )
 }
 
+// FE-06 FIX (Audit v2 · Phase 2)
+// Replaced physical text-left / pr-0 with logical text-start / pe-0 so the
+// table renders correctly in RTL (Arabic) layouts — Tailwind logical props
+// flip automatically based on the `dir` attribute.
 function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
       className={cn(
-        "text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "text-foreground h-10 px-2 text-start align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]",
         className
       )}
       {...props}
@@ -83,7 +87,8 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        // FE-06 FIX (Audit v2 · Phase 2): pr-0 → pe-0 (logical RTL-safe)
+        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]",
         className
       )}
       {...props}

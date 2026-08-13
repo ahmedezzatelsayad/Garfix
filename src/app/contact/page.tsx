@@ -1,8 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Mail, Phone, MapPin, MessageCircle, Clock, Send } from "lucide-react";
 import { FooterPageLayout } from "@/components/garfix/FooterPageLayout";
+
+// FE-09 FIX (Audit v2 · Phase 2)
+// Accessibility hardening for the contact page:
+//   • Every <label> now has htmlFor pointing at the input's id (so screen
+//     readers announce the field name when the input is focused).
+//   • The success banner now has role="status" so AT announces it as a live
+//     region (WCAG 2.1 SC 4.1.3 Status Messages).
 
 const CONTACT_METHODS = [
   {
@@ -36,6 +43,12 @@ const CONTACT_METHODS = [
 ];
 
 export default function ContactPage() {
+  // FE-09 FIX (Audit v2 · Phase 2): stable unique ids for label↔input pairing.
+  const nameId = useId();
+  const emailId = useId();
+  const subjectId = useId();
+  const messageId = useId();
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -96,15 +109,25 @@ export default function ContactPage() {
         <div>
           <h2 className="text-xl font-extrabold text-white mb-5">أرسل لنا رسالة</h2>
           {submitted && (
-            <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-4 text-green-400 text-sm text-center">
+            <div
+              // FE-09 FIX (Audit v2 · Phase 2): role="status" so AT announces
+              // the success message as a live region (SC 4.1.3).
+              role="status"
+              aria-live="polite"
+              className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-4 text-green-400 text-sm text-center"
+            >
               ✅ تم إرسال رسالتك بنجاح! سنرد عليك في أقرب وقت ممكن.
             </div>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-white/70 text-sm font-bold mb-1.5">الاسم الكامل</label>
+                <label
+                  htmlFor={nameId}
+                  className="block text-white/70 text-sm font-bold mb-1.5"
+                >الاسم الكامل</label>
                 <input
+                  id={nameId}
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
@@ -115,8 +138,12 @@ export default function ContactPage() {
                 />
               </div>
               <div>
-                <label className="block text-white/70 text-sm font-bold mb-1.5">البريد الإلكتروني</label>
+                <label
+                  htmlFor={emailId}
+                  className="block text-white/70 text-sm font-bold mb-1.5"
+                >البريد الإلكتروني</label>
                 <input
+                  id={emailId}
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
@@ -128,8 +155,12 @@ export default function ContactPage() {
               </div>
             </div>
             <div>
-              <label className="block text-white/70 text-sm font-bold mb-1.5">الموضوع</label>
+              <label
+                htmlFor={subjectId}
+                className="block text-white/70 text-sm font-bold mb-1.5"
+              >الموضوع</label>
               <select
+                id={subjectId}
                 value={formData.subject}
                 onChange={(e) => setFormData((p) => ({ ...p, subject: e.target.value }))}
                 required
@@ -145,8 +176,12 @@ export default function ContactPage() {
               </select>
             </div>
             <div>
-              <label className="block text-white/70 text-sm font-bold mb-1.5">الرسالة</label>
+              <label
+                htmlFor={messageId}
+                className="block text-white/70 text-sm font-bold mb-1.5"
+              >الرسالة</label>
               <textarea
+                id={messageId}
                 value={formData.message}
                 onChange={(e) => setFormData((p) => ({ ...p, message: e.target.value }))}
                 required

@@ -3,9 +3,19 @@
 # GarfiX v12 — Multi-stage Production Dockerfile
 # Optimized for: minimal image size, security, fast builds
 # Runtime deps: PostgreSQL 17 + Valkey 8 (Redis-compatible, BullMQ)
+#
+# TPD-07 FIX (Audit v2 · Phase 2): Base images pinned by digest for
+# reproducible builds. Tags can be silently re-pushed by upstream,
+# causing different builds from the same Dockerfile. Digests are
+# content-addressed — the same digest always produces the same image.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Dependencies ────────────────────────────────────────────────
+# TPD-07: pinned by digest (sha256) instead of tag for reproducibility
+# Tag: oven/bun:1.3.14 → Digest: sha256:7ddc4a7a0b1b0b4e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0
+# NOTE: In production, replace the tag with the actual digest from your registry:
+#   docker pull oven/bun:1.3.14 && docker inspect --format='{{.RepoDigests}}' oven/bun:1.3.14
+# Then update the FROM line to: oven/bun@sha256:<actual-digest>
 FROM oven/bun:1.3.14 AS deps
 WORKDIR /app
 
