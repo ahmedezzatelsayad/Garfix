@@ -73,16 +73,13 @@ ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "lineItemsAr" TEXT;
 ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "notesAr" TEXT;
 ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "currencyDecimalPlaces" INTEGER;
 
--- Add the unique constraint on (companySlug, invoiceNumber) if missing.
--- Wrapped in DO $$ BEGIN so it doesn't fail if the constraint already exists.
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conname = 'invoices_companySlug_invoiceNumber_key'
-  ) THEN
-    ALTER TABLE "invoices" ADD CONSTRAINT "invoices_companySlug_invoiceNumber_key" UNIQUE ("companySlug", "invoiceNumber");
-  END IF;
-END $$;
+-- P1 FIX (audit): Removed DO $$ block that tried to ADD CONSTRAINT
+-- invoices_companySlug_invoiceNumber_key. This constraint is already created
+-- by CREATE UNIQUE INDEX IF NOT EXISTS in 20260720202945_init_ai_fabric.
+-- The DO $$ block checked pg_constraint but CREATE UNIQUE INDEX creates an
+-- index (not a pg_constraint entry), so the check passed and ADD CONSTRAINT
+-- failed with E42P07 'relation already exists'.
+-- The constraint from the init migration is sufficient.
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 3. NOTIFICATIONS — add isRead column used by GET/PATCH /api/notifications.
@@ -117,19 +114,8 @@ ALTER TABLE "inter_company_transactions" ADD COLUMN IF NOT EXISTS "currency" TEX
 ALTER TABLE "SessionRegistry" ADD COLUMN IF NOT EXISTS "userUid" TEXT;
 ALTER TABLE "SessionRegistry" ADD COLUMN IF NOT EXISTS "jti" TEXT;
 ALTER TABLE "SessionRegistry" ADD COLUMN IF NOT EXISTS "userAgent" TEXT;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'SessionRegistry_jti_key') THEN
-    ALTER TABLE "SessionRegistry" ADD CONSTRAINT "SessionRegistry_jti_key" UNIQUE ("jti");
-  END IF;
-END $$;
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes
-    WHERE indexname = 'SessionRegistry_userUid_idx'
-  ) THEN
-    CREATE INDEX "SessionRegistry_userUid_idx" ON "SessionRegistry"("userUid");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for SessionRegistry_jti_key — constraint already created by CREATE UNIQUE INDEX IF NOT EXISTS in earlier migration
+-- P1 FIX: Removed DO $$ block for SessionRegistry_userUid_idx — constraint already created by CREATE UNIQUE INDEX IF NOT EXISTS in earlier migration
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 7. ADMIN_AUDIT_LOG — add targetType, targetId, changes, ipAddress, userAgent
@@ -153,14 +139,7 @@ ALTER TABLE "TamperEvidenceChain" ADD COLUMN IF NOT EXISTS "chainOrder" INTEGER;
 ALTER TABLE "TamperEvidenceChain" ADD COLUMN IF NOT EXISTS "companySlug" TEXT;
 ALTER TABLE "TamperEvidenceChain" ADD COLUMN IF NOT EXISTS "isValid" BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE "TamperEvidenceChain" ADD COLUMN IF NOT EXISTS "verifiedAt" TIMESTAMP(3);
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_indexes
-    WHERE indexname = 'TamperEvidenceChain_chainOrder_idx'
-  ) THEN
-    CREATE INDEX "TamperEvidenceChain_chainOrder_idx" ON "TamperEvidenceChain"("chainOrder");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for TamperEvidenceChain_chainOrder_idx — constraint already created by CREATE UNIQUE INDEX IF NOT EXISTS in earlier migration
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 9. IDEMPOTENCY_KEYS — add endpoint, companySlug, responseJson columns.
@@ -171,14 +150,7 @@ END $$;
 ALTER TABLE "idempotency_keys" ADD COLUMN IF NOT EXISTS "endpoint" TEXT;
 ALTER TABLE "idempotency_keys" ADD COLUMN IF NOT EXISTS "companySlug" TEXT;
 ALTER TABLE "idempotency_keys" ADD COLUMN IF NOT EXISTS "responseJson" TEXT;
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conname = 'idempotency_keys_companySlug_endpoint_key_key'
-  ) THEN
-    ALTER TABLE "idempotency_keys" ADD CONSTRAINT "idempotency_keys_companySlug_endpoint_key_key" UNIQUE ("companySlug", "endpoint", "key");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for idempotency_keys_companySlug_endpoint_key_key — constraint already created by CREATE UNIQUE INDEX IF NOT EXISTS in earlier migration
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 10. PAYMENT_TRANSACTIONS — add plan, provider, currency, providerPaymentId,
@@ -205,13 +177,7 @@ ALTER TABLE "setup_wizard_progress" ADD COLUMN IF NOT EXISTS "data" TEXT;
 --     Current schema has `key @unique` but API uses `where: { identifier }`.
 -- ════════════════════════════════════════════════════════════════════════════
 ALTER TABLE "modules" ADD COLUMN IF NOT EXISTS "identifier" TEXT;
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'modules_identifier_key'
-  ) THEN
-    ALTER TABLE "modules" ADD CONSTRAINT "modules_identifier_key" UNIQUE ("identifier");
-  END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for modules_identifier_key — constraint already created by CREATE UNIQUE INDEX IF NOT EXISTS in earlier migration
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- 13. ACCOUNTS — add nameAr / nameEn columns (used by onboarding wizard when

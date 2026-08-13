@@ -383,8 +383,8 @@ function WebhookStatsCard() {
           <h2 className="text-sm font-bold text-white">إحصائيات الـ Webhooks (آخر 24 ساعة)</h2>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 animate-pulse">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <div key={n} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 animate-pulse">
               <div className="h-3 bg-white/[0.06] rounded w-2/3 mb-2" />
               <div className="h-6 bg-white/[0.06] rounded w-1/2" />
             </div>
@@ -425,8 +425,8 @@ function WebhookStatsCard() {
         <div>
           <p className="text-[11px] text-muted-foreground mb-2">الإيصالات بالساعة (آخر 24 ساعة)</p>
           <div className="flex items-end gap-1 h-24">
-            {data.byHour.map((h, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center justify-end gap-0.5 group relative">
+            {data.byHour.map((h) => (
+              <div key={h.hour} className="flex-1 flex flex-col items-center justify-end gap-0.5 group relative">
                 <div className="w-full rounded-t-sm bg-gradient-to-t from-emerald-500/40 to-emerald-500/80 transition-all group-hover:from-emerald-400 group-hover:to-emerald-300"
                      style={{ height: `${(h.count / maxHourCount) * 100}%`, minHeight: h.count > 0 ? "4px" : "0" }} />
                 {/* Tooltip */}

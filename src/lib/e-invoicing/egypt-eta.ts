@@ -75,6 +75,8 @@ export interface EgyptEtaInvoicePayload {
   // ── Seller ───────────────────────────────────────────────────────────
   sellerNameAr: string;
   sellerNameEn: string;
+  companySlug?: string; // P1 FIX: actual company slug (was using sellerNameEn)
+  invoiceId?: number; // P1 FIX: actual invoice ID (was 0)
   sellerAddressAr: string;
   sellerAddressEn: string;
   sellerTaxRegistrationNumber: string; // TRN — mandatory for ETA
@@ -495,8 +497,9 @@ export function validateEgyptEtaInvoice(
           });
         }
       }
-    } catch {
+    } catch (error) {
       // If lineItems can't be parsed, skip line item validation
+      logger.error("Egypt ETA line items validation parse failed", { error });
     }
   }
 
@@ -625,7 +628,8 @@ export function generateEgyptEtaInvoicePayload(
   let parsedItems: LineItem[] = [];
   try {
     parsedItems = JSON.parse(lineItemsRaw);
-  } catch {
+  } catch (error) {
+    logger.error("Egypt ETA line items JSON parse failed", { error });
     parsedItems = [];
   }
 
@@ -767,8 +771,8 @@ export async function submitEgyptEtaInvoice(
           submissionStatus: "pending",
           uuid: payload.uuid,
           rawXml: JSON.stringify(payload),
-          companySlug: payload.sellerNameEn,
-          invoiceId: 0,
+          companySlug: payload.companySlug || payload.sellerNameEn,
+          invoiceId: payload.invoiceId || 0,
           invoiceNumber: payload.invoiceNumber,
           authority: EGYPT_ETA_AUTHORITY,
           status: "pending",
@@ -812,8 +816,8 @@ export async function submitEgyptEtaInvoice(
           submissionStatus: "rejected",
           uuid: payload.uuid,
           rawXml: JSON.stringify(payload),
-          companySlug: payload.sellerNameEn,
-          invoiceId: 0,
+          companySlug: payload.companySlug || payload.sellerNameEn,
+          invoiceId: payload.invoiceId || 0,
           invoiceNumber: payload.invoiceNumber,
           authority: EGYPT_ETA_AUTHORITY,
           status: "rejected",
@@ -843,8 +847,8 @@ export async function submitEgyptEtaInvoice(
         submissionStatus: "submitted",
         uuid: etaResult.uuid || payload.uuid,
         rawXml: JSON.stringify(payload),
-        companySlug: payload.sellerNameEn,
-        invoiceId: 0,
+        companySlug: payload.companySlug || payload.sellerNameEn,
+        invoiceId: payload.invoiceId || 0,
         invoiceNumber: payload.invoiceNumber,
         authority: EGYPT_ETA_AUTHORITY,
         status: "submitted",

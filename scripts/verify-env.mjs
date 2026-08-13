@@ -78,6 +78,30 @@ const RECOMMENDED = [
   { name: "SEED_ADMIN_PASSWORD", description: "Admin password for seed script (required only for bun run seed)" },
 ];
 
+// TPD-15 FIX (Audit v2 · Phase 3): expanded cross-checks.
+// ────────────────────────────────────────────────────────────────────────────
+// Beyond simple presence/format checks, we add semantic cross-checks that
+// catch configuration mistakes that would otherwise silently corrupt runtime
+// behavior:
+//   1. NODE_ENV must be "production" in production deploys (catches `next
+//      build` running with the wrong env, which disables auth rate-limiting
+//      and exposes dev-only endpoints).
+//   2. JWT_SECRET and JWT_REFRESH_SECRET must differ (already checked below,
+//      but we centralize the rule here so it's discoverable).
+//   3. If VALKEY_URL is set, it must NOT use the default unauthenticated
+//      `valkey://` scheme — production Valkey must require a password.
+//   4. If DATABASE_URL contains `sslmode=disable`, warn loudly (RDS/Neon
+//      require TLS).
+//   5. PAYMENTS_ENC_KEY must NOT be one of the documented CI-build
+//      placeholder values (extends the placeholderPrefix check with the
+//      known CI strings).
+// ────────────────────────────────────────────────────────────────────────────
+const KNOWN_BAD_PLACEHOLDERS = new Set([
+  "ci-build-encryption-key-at-least-32-characters!",
+  "ci-test-encryption-key-at-least-32-characters!",
+  "change-me-at-least-32-characters-long-please!!",
+]);
+
 function fail(msg) {
   console.error(`  ✗ ${msg}`);
   process.exitCode = 1;
@@ -127,6 +151,53 @@ const jwtRefreshSecret = process.env.JWT_REFRESH_SECRET;
 if (jwtSecret && jwtRefreshSecret && jwtSecret === jwtRefreshSecret) {
   fail("JWT_SECRET and JWT_REFRESH_SECRET must NOT be the same value.");
   allOk = false;
+}
+
+// TPD-15 FIX (Audit v2 · Phase 3): NODE_ENV must be production in prod deploys.
+const nodeEnv = process.env.NODE_ENV;
+if (nodeEnv && nodeEnv !== "production") {
+  // Only fail when VERIFY_ENV_STRICT=1 (CI pre-deploy gate). For local dev
+  // runs we warn — `bun run verify:env` is useful from a dev shell.
+  if (process.env.VERIFY_ENV_STRICT === "1") {
+    fail(`NODE_ENV is "${nodeEnv}" — must be "production" for prod deploys.`);
+    allOk = false;
+  } else {
+    warn(`NODE_ENV is "${nodeEnv}" (expected "production" in prod).`);
+  }
+}
+
+// TPD-15 FIX: PAYMENTS_ENC_KEY must not be a known-bad CI placeholder.
+const paymentsKey = process.env.PAYMENTS_ENC_KEY;
+if (paymentsKey && KNOWN_BAD_PLACEHOLDERS.has(paymentsKey)) {
+  fail(
+    `PAYMENTS_ENC_KEY is set to a known CI-build placeholder (${paymentsKey.slice(0, 20)}…). ` +
+    `Generate a real key: openssl rand -base64 32`
+  );
+  allOk = false;
+}
+
+// TPD-15 FIX: VALKEY_URL must include a password in production.
+const valkeyUrl = process.env.VALKEY_URL;
+if (valkeyUrl) {
+  try {
+    const u = new URL(valkeyUrl);
+    if (!u.password) {
+      warn(
+        `VALKEY_URL has no password component (${u.protocol}//${u.host}). ` +
+        `Production Valkey must require authentication.`
+      );
+    }
+  } catch {
+    warn("VALKEY_URL is not a valid URL — skipping auth check.");
+  }
+}
+
+// TPD-15 FIX: warn if DATABASE_URL disables TLS.
+const dbUrl = process.env.DATABASE_URL;
+if (dbUrl && /sslmode=disable/i.test(dbUrl)) {
+  warn(
+    "DATABASE_URL contains sslmode=disable — production DB connections MUST use TLS."
+  );
 }
 
 console.log("\nChecking recommended env vars (warnings only):\n");

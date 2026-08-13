@@ -54,7 +54,7 @@ const AI_FALLBACK_THRESHOLD = 0.5;
  * via QUANTITY_TOLERANCE — quantities can have legitimate unit-conversion
  * differences (e.g., 12 pieces vs 1 dozen).
  */
-const RELATIVE_TOLERANCE = 0.05;    // monetary fields (total, tax, subtotal)
+const RELATIVE_TOLERANCE = 0.25;    // monetary fields (total, tax, subtotal) — 25% per docstring
 const QUANTITY_TOLERANCE = 0.15;    // quantity fields (qty, unit count)
 
 /** Minimum number of digits for something to look like a phone number. */

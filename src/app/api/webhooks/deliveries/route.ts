@@ -19,15 +19,18 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
 
   const user = result.user;
-  const companySlug = user.companies?.[0];
+  // SEC: Accept companySlug from query param for multi-company users.
+  const query = getQuery(req);
+  const queryCompanySlug = query.companySlug;
+  const companySlug = queryCompanySlug && user.companies?.includes(queryCompanySlug)
+    ? queryCompanySlug
+    : user.companies?.[0];
   if (!companySlug) return apiError("No company associated", 400);
 
   const isFounder = isFounderEmail(user.email);
   if (user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can view webhook deliveries", 403);
   }
-
-  const query = getQuery(req);
   const limit = Math.min(parseInt(query.limit || "50", 10), 200);
   const offset = parseInt(query.offset || "0", 10);
   const status = query.status; // pending | success | failed | retried
@@ -76,15 +79,19 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   const user = result.user;
-  const companySlug = user.companies?.[0];
+  // SEC: Accept companySlug from body for multi-company users.
+  const body = await parseJsonBody(req);
+  const parsedBody = (body && typeof body === "object") ? body as Record<string, unknown> : {};
+  const bodyCompanySlug = typeof parsedBody.companySlug === "string" ? parsedBody.companySlug : undefined;
+  const companySlug = bodyCompanySlug && user.companies?.includes(bodyCompanySlug)
+    ? bodyCompanySlug
+    : user.companies?.[0];
   if (!companySlug) return apiError("No company associated", 400);
 
   const isFounder = isFounderEmail(user.email);
   if (user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can retry deliveries", 403);
   }
-
-  const body = await parseJsonBody(req);
   if (!body || typeof body !== "object") return apiError("Invalid JSON body", 400);
 
   const { deliveryId } = body as { deliveryId?: string };

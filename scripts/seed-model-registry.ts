@@ -27,6 +27,45 @@ interface SeedModel {
 // The fleet. Ordered by priority — the auto-benchmark will rank them by health
 // score, but the seed order is the "safe default" if benchmarks haven't run.
 const FLEET: SeedModel[] = [
+  // ── 🟢 DeepSeek DIRECT API (PRIMARY — P1 decision 2026-08-10) ──
+  // Direct API = no OpenRouter intermediary = no extra fees, no shared RPM
+  {
+    provider: "deepseek",
+    model: "deepseek-chat",
+    displayName: "DeepSeek Chat (Direct API) ⭐ PRIMARY",
+    capabilities: ["chat", "invoice-extraction", "reasoning"],
+    tier: "paid",
+    costPer1kIn: 0.00014,   // $0.14 / 1M input
+    costPer1kOut: 0.00028,  // $0.28 / 1M output
+    maxTokens: 8192,
+    contextWindow: 64000,
+  },
+  {
+    provider: "deepseek",
+    model: "deepseek-reasoner",
+    displayName: "DeepSeek Reasoner (Direct API) — للتحليل المعقد",
+    capabilities: ["reasoning", "invoice-extraction"],
+    tier: "paid",
+    costPer1kIn: 0.00055,   // $0.55 / 1M input
+    costPer1kOut: 0.00219,  // $2.19 / 1M output
+    maxTokens: 8192,
+    contextWindow: 64000,
+  },
+
+  // ── 🟠 DeepSeek via OpenRouter (legacy fallback path) ──
+  {
+    provider: "openrouter",
+    model: "deepseek/deepseek-chat",
+    displayName: "DeepSeek V3 (via OpenRouter — legacy)",
+    capabilities: ["chat", "invoice-extraction", "reasoning"],
+    tier: "paid",
+    costPer1kIn: 0.00014,
+    costPer1kOut: 0.00028,
+    maxTokens: 8192,
+    contextWindow: 64000,
+  },
+
+  // ── 🔵 Free fallbacks (OpenRouter free tier) ──
   {
     provider: "openrouter",
     model: "tencent/hy3:free",
@@ -51,19 +90,21 @@ const FLEET: SeedModel[] = [
   },
   {
     provider: "openrouter",
-    model: "deepseek/deepseek-chat",
-    displayName: "DeepSeek V3 (Paid)",
-    capabilities: ["chat", "invoice-extraction", "reasoning"],
-    tier: "paid",
-    costPer1kIn: 0.00014,
-    costPer1kOut: 0.00028,
-    maxTokens: 8192,
-    contextWindow: 64000,
+    model: "deepseek/deepseek-chat:free",
+    displayName: "DeepSeek V3 (Free via OpenRouter)",
+    capabilities: ["chat", "invoice-extraction"],
+    tier: "free",
+    costPer1kIn: 0,
+    costPer1kOut: 0,
+    maxTokens: 4096,
+    contextWindow: 32768,
   },
+
+  // ── Sandbox fallback (dev only — no API key needed) ──
   {
     provider: "z-ai",
     model: "z-ai-glm",
-    displayName: "z-ai / GLM (Sandbox Free)",
+    displayName: "z-ai / GLM (Sandbox Free — dev only)",
     capabilities: ["chat", "invoice-extraction", "reasoning"],
     tier: "free",
     costPer1kIn: 0,

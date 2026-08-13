@@ -3,7 +3,7 @@
  * POST — add a reply to a ticket (owner or admin/founder)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { dbTyped as db } from "@/lib/db";
+import { dbTyped as db, dbAsAny } from "@/lib/db";
 import { resolveAuth } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { logAudit } from "@/lib/audit";
@@ -56,23 +56,12 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   let senderRole = user.role;
   if (isFounder) senderRole = "founder";
 
-  // Create reply + refresh ticket's updatedAt in one transaction
-  // NOTE: `ticketReply` is not in prisma schema.prisma — the table is created
-  // by an unrelated migration and was previously accessed via `db: any`. We
-  // cast the transaction client through `unknown` to keep the runtime call
-  // intact without re-introducing `any`.
+  // Create reply + refresh ticket's updatedAt in one transaction.
+  // P1-4 ESCAPE: `ticketReply` is not in prisma schema.prisma — the table is
+  // created by an unrelated migration. Using dbAsAny for the non-schema
+  // model access inside the transaction.
   const reply = await db.$transaction(async (tx) => {
-    const r = await (tx as unknown as {
-      ticketReply: {
-        create: (args: {
-          data: {
-            ticketId: string;
-            authorEmail: string;
-            body: string;
-          };
-        }) => Promise<{ id: string } & Record<string, unknown>>;
-      };
-    }).ticketReply.create({
+    const r = await (tx as typeof dbAsAny).ticketReply.create({
       data: {
         ticketId: existing.id,
         authorEmail: user.email,

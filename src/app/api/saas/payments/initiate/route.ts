@@ -16,6 +16,7 @@
  * Security: MyFatoorah/Paymob base_url is validated at connect time (SSRF protection).
  *           This route only reads the stored, validated config.
  */
+import { fetchSafe } from "@/lib/ssrf";
 import { NextRequest, NextResponse } from "next/server";
 import { parseJsonBody } from "@/lib/api";
 import { resolveAuth } from "@/lib/auth";
@@ -43,7 +44,7 @@ async function callMyFatoorah(
 ): Promise<{ ok: boolean; data?: any; error?: string }> {
   try {
     const url = `${baseUrl.replace(/\/+$/, "")}${path}`;
-    const res = await fetch(url, {
+    const res = await fetchSafe(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -118,7 +119,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       const { stripeProvider } = await import("@/lib/integrations/stripe");
       const stripeAmount = Math.round(amount * 100); // Stripe uses smallest currency unit
 
-      const stripeResult = await (stripeProvider as unknown as {
+      const stripeResult = await (stripeProvider as  {
         createPaymentIntent: (params: {
           amount: number;
           currency?: string;

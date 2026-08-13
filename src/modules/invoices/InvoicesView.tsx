@@ -65,7 +65,7 @@ export function InvoicesView() {
   const recordPaymentMutation = useRecordPayment();
   const updateStatusMutation = useUpdateInvoiceStatus();
 
-  const allInvoices = ((invoicesQuery.data as any)?.invoices ?? []) as Invoice[];
+  const allInvoices = ((invoicesQuery.data as  { invoices?: Invoice[] })?.invoices ?? []) as Invoice[];
   const loading = invoicesQuery.isLoading;
 
   // Local UI state
@@ -92,6 +92,7 @@ export function InvoicesView() {
     // Also check localStorage on mount
     try {
       const saved = localStorage.getItem("garfix:selected-warehouse");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time localStorage read on mount (inside subscription effect)
       if (saved) setWarehouseFilter(saved);
     } catch { /* ignore */ }
     return () => window.removeEventListener("garfix:warehouse-changed", handler as EventListener);
@@ -272,7 +273,7 @@ export function InvoicesView() {
           <AlertDescription>
             <ul className="list-disc pr-5 text-sm space-y-1 mt-1">
               {inventoryWarnings.slice(0, 5).map((w, i) => (
-                <li key={i}>{w}</li>
+                <li key={`${w}-${i}`}>{w}</li>
               ))}
               {inventoryWarnings.length > 5 && (
                 <li className="text-xs opacity-70">+ {inventoryWarnings.length - 5} تحذيرات أخرى…</li>
@@ -306,7 +307,7 @@ export function InvoicesView() {
             <div className="flex flex-col gap-2">
               <ul className="m-0 ps-5 flex flex-col gap-1 list-disc">
                 {reviewQueueWarnings.slice(0, 5).map((w, i) => (
-                  <li key={i} className="text-[12px] leading-[1.5] text-foreground">
+                  <li key={`${w}-${i}`} className="text-[12px] leading-[1.5] text-foreground">
                     {w}
                   </li>
                 ))}
@@ -1304,7 +1305,7 @@ function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoic
             )}
             <div className="flex justify-between py-2.5 border-t-2 border-[#047857] mt-1.5 text-[16px] font-black text-[#047857]">
               <span>الإجمالي</span>
-              <span className="[direction:ltr]">{invoice.total.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} {(invoice as any).currency || company.currency}</span>
+              <span className="[direction:ltr]">{invoice.total.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} {(invoice as  { currency?: string }).currency || company.currency}</span>
             </div>
             {invoice.paid > 0 && (
               <>

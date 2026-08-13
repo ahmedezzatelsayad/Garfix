@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * saas-readiness.test.ts — 40 tests for SaaS readiness features.
  *
@@ -27,6 +26,7 @@ mock.module("@/lib/db", () => ({
     invoice: { findMany: mock(() => Promise.resolve([])), count: mock(() => Promise.resolve(5)) },
     notification: { create: mock(() => Promise.resolve({})), findMany: mock(() => Promise.resolve([])) },
   },
+  get dbTyped() { return this.db; },
 }));
 
 // ─── Pure logic (imported) ─────────────────────────────────────────────────
@@ -330,7 +330,7 @@ describe("GDPR data deletion", () => {
   });
 
   it("deletion is idempotent (0 rows deleted is ok)", () => {
-    let deleted = 0;
+    const deleted = 0;
     const result = deleted;
     expect(result).toBe(0);
   });

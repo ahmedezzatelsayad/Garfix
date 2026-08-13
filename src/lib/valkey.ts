@@ -67,10 +67,13 @@ export async function getValkeyClient(): Promise<RedisClient | null> {
     // BullMQ queues use connection.duplicate() which inherits the db index —
     // to isolate queues, pass db: 1 in the VALKEY_URL for BullMQ specifically.
     // For now, the shared client uses db 0 (default) with key prefixes:
-    //   cache:    "cache:" prefix (cache.ts)
-    //   rate-limit: "ai:rl:" prefix (valkey-rate-limiter.ts)
-    //   session:  "session:" prefix (passwordPolicy.ts)
-    //   BullMQ:   no prefix (BullMQ manages its own keyspace)
+    //   cache:       "cache:" prefix (cache.ts)
+    //   rate-limit:  "rl:{scope}:{id}" prefix (valkey-rate-limiter.ts)
+    //                AI-17 FIX (Audit v2 · Phase 4): standardized from the
+    //                legacy "ai:rl:" to "rl:{scope}:{id}". See
+    //                buildRateLimitKey() in valkey-rate-limiter.ts.
+    //   session:     "session:" prefix (passwordPolicy.ts)
+    //   BullMQ:      no prefix (BullMQ manages its own keyspace)
     sharedClient = new Redis(url, {
       lazyConnect: true,
       maxRetriesPerRequest: 3,
@@ -144,13 +147,43 @@ export async function closeValkey(): Promise<void> {
   }
 }
 
-/** Health check — ping Valkey. */
-export async function valkeyHealthCheck(): Promise<{ ok: boolean; latencyMs?: number }> {
+/**
+ * Health check — ping Valkey.
+ *
+ * TPD-09 FIX (Audit v2 · Phase 2): accepts an optional AbortSignal so the
+ * /api/health caller can cancel the in-flight ping when its timeout fires.
+ * ioredis' `ping()` does not natively honour AbortSignal, so when the
+ * signal aborts we explicitly reject via Promise.race — the underlying
+ * ioredis command will eventually time out on its own socket timeout, but
+ * at least the health-route caller is unblocked immediately. Other
+ * callers (scripts/, metrics) keep working because the parameter is
+ * optional.
+ */
+export async function valkeyHealthCheck(
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; latencyMs?: number }> {
   const client = await getValkeyClient();
   if (!client) return { ok: false };
   const start = Date.now();
   try {
-    await client.ping();
+    // If the caller already aborted before we even started, short-circuit.
+    if (signal?.aborted) return { ok: false };
+    // Race the ping against the abort signal so the health route is
+    // never blocked longer than its timeout even if ioredis hangs.
+    if (signal) {
+      await Promise.race([
+        client.ping(),
+        new Promise<never>((_, reject) => {
+          signal.addEventListener(
+            "abort",
+            () => reject(new Error("valkeyHealthCheck aborted")),
+            { once: true },
+          );
+        }),
+      ]);
+    } else {
+      await client.ping();
+    }
     return { ok: true, latencyMs: Date.now() - start };
   } catch {
     return { ok: false };

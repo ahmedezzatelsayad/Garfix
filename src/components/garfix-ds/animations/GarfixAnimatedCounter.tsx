@@ -135,6 +135,7 @@ export function GarfixAnimatedCounter({
   
   useEffect(() => {
     if (prefersReducedMotion()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- animation: set final value immediately when reduced motion is preferred
       setDisplayValue(value);
       onComplete?.(value);
       return;
@@ -233,6 +234,7 @@ export function GarfixCircularProgress({
   
   useEffect(() => {
     if (prefersReducedMotion()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- animation: set final value immediately when reduced motion is preferred
       setAnimatedOffset(offset);
       return;
     }

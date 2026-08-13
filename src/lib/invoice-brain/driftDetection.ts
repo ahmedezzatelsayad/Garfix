@@ -338,7 +338,7 @@ export class DriftDetector {
     const checkedFields = ["total", "subtotal", "tax"];
     
     for (const field of checkedFields) {
-      const value = (data as any)[field];
+      const value = (data as Record<string, unknown>)[field];
       if (typeof value !== "number") continue;
       
       const fieldBaseline = baseline.valueBaselines[field];
@@ -502,7 +502,7 @@ export class DriftDetector {
     let encodingAnomalies = 0;
     
     for (const field of textFields) {
-      const value = (data as any)[field];
+      const value = (data as Record<string, unknown>)[field];
       if (typeof value !== "string") continue;
       
       // Check for mixed encodings or unusual characters
@@ -598,7 +598,7 @@ export class DriftDetector {
     const numericFields = ["total", "subtotal", "tax", "discount"];
     
     for (const field of numericFields) {
-      const value = (data as any)[field];
+      const value = (data as Record<string, unknown>)[field];
       if (typeof value !== "number" || isNaN(value)) continue;
       
       if (!baseline.valueBaselines[field]) {
@@ -609,11 +609,11 @@ export class DriftDetector {
           max: value,
           lastUpdated: new Date().toISOString(),
           sampleCount: 1,
-        } as any;
+        } as  { mean: number; stdDev: number; min: number; max: number; sampleCount: number; lastUpdated: string };
         continue;
       }
       
-      const fieldBaseline = baseline.valueBaselines[field] as any;
+      const fieldBaseline = baseline.valueBaselines[field] as  { mean: number; stdDev: number; min: number; max: number; sampleCount: number; lastUpdated: string };
       const n = fieldBaseline.sampleCount;
       
       // Online mean/stddev update

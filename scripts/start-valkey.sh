@@ -13,7 +13,7 @@ set -e
 CONTAINER_NAME="garfix-valkey"
 IMAGE="valkey/valkey:8.1"
 PORT="${VALKEY_PORT:-6379}"
-PASSWORD="${VALKEY_PASSWORD:-garfix_dev_2024}"
+PASSWORD="${VALKEY_PASSWORD:?VALKEY_PASSWORD must be set — never use a hardcoded default in production}"
 
 # Colors
 RED='\033[0;31m'

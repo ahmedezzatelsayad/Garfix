@@ -23,7 +23,7 @@
  * separately as a CI step against a staging database.
  */
 
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 
 // ── Mock @/lib/db with an in-memory SessionRegistry store ────────────────
 // The mock tracks every call so tests can assert on side-effects.
@@ -126,7 +126,7 @@ const dbMock = {
   },
 };
 
-mock.module("@/lib/db", () => ({ db: dbMock }));
+mock.module("@/lib/db", () => ({ db: dbMock, dbTyped: dbMock }));
 
 // Import AFTER mock is set up so the module captures our mocked db.
 const {
@@ -154,7 +154,7 @@ const {
 beforeEach(() => {
   sessions.clear();
   for (const fn of Object.values(dbMock.sessionRegistry)) {
-    (fn as unknown as { mockClear: () => void }).mockClear();
+    (fn as  { mockClear: () => void }).mockClear();
   }
 });
 
@@ -238,8 +238,8 @@ describe("SessionRegistry schema (P1-B static checks)", () => {
     const sqlPath = path.join(migrationsDir, p1Migration!, "migration.sql");
     const sql = fs.readFileSync(sqlPath, "utf8");
 
-    expect(sql).toContain('CREATE INDEX "SessionRegistry_userUid_idx" ON "SessionRegistry"("userUid")');
-    expect(sql).toContain('CREATE INDEX "SessionRegistry_expiresAt_idx" ON "SessionRegistry"("expiresAt")');
+    expect(sql).toContain('CREATE INDEX IF NOT EXISTS "SessionRegistry_userUid_idx" ON "SessionRegistry"("userUid")');
+    expect(sql).toContain('CREATE INDEX IF NOT EXISTS "SessionRegistry_expiresAt_idx" ON "SessionRegistry"("expiresAt")');
   });
 
   it("prisma client has sessionRegistry model with all required fields", () => {
@@ -524,3 +524,6 @@ describe("Full lifecycle: Login → Refresh → Logout → Revoke-all", () => {
     expect(await getActiveSessionCount("user-concurrent")).toBe(0);
   });
 });
+
+// P0 FIX: Restore all mocked modules to prevent cross-test contamination.
+afterAll(() => { mock.restore(); });

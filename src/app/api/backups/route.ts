@@ -12,18 +12,14 @@
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
-import { resolveAuth } from "@/lib/auth";
-import { isFounderEmail } from "@/lib/founder";
+import { requireFounder } from "@/lib/middleware";
 import { logger } from "@/lib/logger";
 import { withErrorHandler } from "@/lib/api";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
-  const result = await resolveAuth(req);
-  if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!isFounderEmail(result.user.email)) {
-    return NextResponse.json({ error: "Founder only" }, { status: 403 });
-  }
+  const founderAccess = await requireFounder(req);
+  if (founderAccess instanceof NextResponse) return founderAccess;
   const { listBackups } = await import("@/lib/backup");
   const backups = await listBackups();
   return NextResponse.json({ backups });
@@ -34,12 +30,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const rl = await rateLimitResponse(req, "post:backups", LIMITS.API_WRITE);
   if (rl) return rl;
 
-  const result = await resolveAuth(req);
-  if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!isFounderEmail(result.user.email)) {
-    return NextResponse.json({ error: "Founder only" }, { status: 403 });
-  }
-  logger.info("[backups] manual backup triggered", { user: result.user.email });
+  const founderAccess = await requireFounder(req);
+  if (founderAccess instanceof NextResponse) return founderAccess;
+  logger.info("[backups] manual backup triggered", { user: founderAccess.user.email });
   const { runBackup } = await import("@/lib/backup");
   const backup = await runBackup("manual");
   if (!backup.ok) {

@@ -10,6 +10,27 @@
  * the rate table + two pure functions.
  */
 
+// AI-11 FIX (Audit v2 · Phase 3): Cost-rates versioning.
+//
+// Problem: when a model's per-token rate changes (e.g. OpenAI cuts GPT-4o
+// pricing), historical AIUsageLog rows are re-computed at the NEW rate
+// whenever a dashboard aggregates costs. This silently rewrites history —
+// a $50 spend from last month becomes $30 in this month's report.
+//
+// Fix: stamp every cost computation + every persisted AIUsageLog row with
+// the COST_RATES_VERSION that was active when the rate was looked up. The
+// version is bumped monotonically whenever COST_PER_1K_TOKENS changes.
+// Dashboards can then group/filter by version to compare like-for-like.
+//
+// Version history:
+//   v1 — initial table (pre-2026-08-13).
+//   v2 — 2026-08-13: added DeepSeek direct-API rates + OpenAI gpt-4o-mini.
+//   v3 — 2026-08-13: AI-11 introduced the version stamp itself (no rate
+//        change; this is the first version that is PERSISTED on rows).
+export const COST_RATES_VERSION = 3 as const;
+
+export type CostRatesVersion = typeof COST_RATES_VERSION;
+
 /**
  * Per-model cost rates in USD per 1K tokens.
  *
@@ -19,6 +40,10 @@
  *
  * Sources: provider pricing pages as of 2026-Q3. Update when providers
  * change their pricing.
+ *
+ * AI-11 FIX (Audit v2 · Phase 3): whenever you edit this table, bump
+ * `COST_RATES_VERSION` above so historical rows can be partitioned by the
+ * version that was active when they were written.
  */
 export const COST_PER_1K_TOKENS: Record<string, { input: number; output: number }> = {
   "z-ai-glm": { input: 0, output: 0 }, // free in sandbox
@@ -33,6 +58,11 @@ export const COST_PER_1K_TOKENS: Record<string, { input: number; output: number 
   "deepseek/deepseek-chat:free": { input: 0, output: 0 },               // free tier
   "deepseek/deepseek-r1": { input: 0.00055, output: 0.00219 },          // DeepSeek R1 — $0.55/$2.19 per 1M
   "deepseek/deepseek-r1:free": { input: 0, output: 0 },                 // free tier
+  // ── DeepSeek DIRECT API (P1 — 2026-08-10: primary provider) ──
+  // Same pricing as via OpenRouter, but no intermediary fees
+  "deepseek-chat": { input: 0.00014, output: 0.00028 },                // Direct API — primary
+  "deepseek-reasoner": { input: 0.00055, output: 0.00219 },            // Direct API — reasoning
+  "deepseek-coder": { input: 0.00014, output: 0.00028 },               // Direct API — code generation
   // ── OpenAI ──
   "gpt-4o-mini": { input: 0.00015, output: 0.0006 },
   "gpt-4o": { input: 0.005, output: 0.015 },

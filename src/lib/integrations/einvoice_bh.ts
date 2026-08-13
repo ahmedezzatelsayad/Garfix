@@ -19,6 +19,7 @@
  */
 'use node';
 
+import { fetchSafe } from "@/lib/ssrf";
 import { logger } from '@/lib/logger';
 import type { IntegrationProvider } from './types';
 import { getIntegrationConfig, setIntegrationConfig, disconnectIntegration } from './registry';
@@ -55,7 +56,7 @@ class EinvoiceBhProvider implements IntegrationProvider {
     }
 
     try {
-      const res = await fetch(`${cfg.api_base_url}/taxpayer/profile`, {
+      const res = await fetchSafe(`${cfg.api_base_url}/taxpayer/profile`, {
         method: 'GET',
         headers: {
           'X-API-Key': cfg.api_key,

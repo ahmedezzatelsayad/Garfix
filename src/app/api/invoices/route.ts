@@ -124,7 +124,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       subtotal: true,
       taxAmount: true,
       createdAt: true,
-      // Note: lineItems, notes, Kuwait-compliance fields, currency, etc. are NOT
+      lineItems: true, // Include lineItems so the list view can parse it for the client
+      // Note: notes, Kuwait-compliance fields, currency, etc. are NOT
       // selected — clients that need them should use GET /api/invoices/[id].
     },
   });
@@ -137,7 +138,11 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   return NextResponse.json({
     invoices: items.map((inv) => ({
       ...inv,
-      // Phase 6 P1: lineItems NOT included in list view (use GET /api/invoices/[id] for full record)
+      // Parse lineItems JSON string into array for client convenience
+      lineItems: (() => {
+        try { return typeof inv.lineItems === "string" ? JSON.parse(inv.lineItems) : (inv.lineItems || []); }
+        catch { return []; }
+      })(),
       subtotal: num(inv.subtotal, 3),
       taxAmount: num(inv.taxAmount, 3),
       total: num(inv.total, 3),

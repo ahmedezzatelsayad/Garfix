@@ -70,6 +70,8 @@ export interface OmanTaxInvoicePayload {
 
   // ── Seller ───────────────────────────────────────────────────────────
   sellerNameAr: string;
+  companySlug?: string; // P1 FIX: actual company slug
+  invoiceId?: number; // P1 FIX: actual invoice ID
   sellerNameEn: string | null; // Optional for Oman
   sellerAddressAr: string;
   sellerAddressEn: string | null;
@@ -485,7 +487,8 @@ export function generateOmanTaxInvoicePayload(
   let parsedItems: LineItem[] = [];
   try {
     parsedItems = JSON.parse(lineItemsRaw);
-  } catch {
+  } catch (error) {
+    logger.error("Oman Tax line items JSON parse failed", { error });
     parsedItems = [];
   }
 
@@ -597,8 +600,8 @@ export async function submitOmanTaxInvoice(
         submissionStatus: "pending",
         uuid: payload.uuid,
         rawXml: JSON.stringify(payload),
-        companySlug: payload.sellerNameAr, // Temporary — should use actual companySlug
-        invoiceId: 0, // Placeholder — should link to actual invoice
+        companySlug: payload.companySlug ?? payload.sellerNameAr,
+        invoiceId: payload.invoiceId ?? 0,
         invoiceNumber: payload.invoiceNumber,
         authority: OMAN_TAX_AUTHORITY,
         status: "pending",

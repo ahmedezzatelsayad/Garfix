@@ -25,6 +25,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckSquare, Square } from 'lucide-react';
 
 // ── GarfiX DS Imports ──────────────────────────────────────
@@ -136,20 +137,25 @@ const FEATURES = [
 ] as const;
 
 const AI_MODELS = [
-  // ── 🟢 DeepSeek Models (Recommended - Cheap & Fast!) ──
-  { value: 'deepseek/deepseek-chat-v3-0324', label: 'DeepSeek V3 Chat (⭐ أنصح)', provider: 'openrouter', badge: '⭐ الأفضل', color: 'emerald' },
-  { value: 'deepseek/deepseek-r1-0528', label: 'DeepSeek R1 (Reasoning)', provider: 'openrouter', badge: 'ذكاء', color: 'emerald' },
-  { value: 'deepseek/deepseek-v3-0324:free', label: 'DeepSeek V3 Free (مجاني!)', provider: 'openrouter', badge: 'مجاني', color: 'green' },
-  
-  // ── 🔵 Gemini Models (Google) ──
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (سريع + مجاني)', provider: 'gemini', badge: 'مجاني', color: 'blue' },
+  // ── 🟢 DeepSeek Direct API (PRIMARY — Recommended 2026-08) ──
+  // Direct API = no OpenRouter intermediary = no extra fees, no shared rate limits
+  { value: 'deepseek-chat', label: 'DeepSeek Chat — مباشر (⭐ افتراضي وموصى به)', provider: 'deepseek', badge: '⭐ افتراضي', color: 'emerald' },
+  { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner (للتحليل المعقد)', provider: 'deepseek', badge: 'ذكاء', color: 'emerald' },
+
+  // ── 🟢 DeepSeek via OpenRouter (legacy fallback path) ──
+  { value: 'deepseek/deepseek-chat-v3-0324', label: 'DeepSeek V3 Chat (عبر OpenRouter)', provider: 'openrouter', color: 'emerald' },
+  { value: 'deepseek/deepseek-r1-0528', label: 'DeepSeek R1 (عبر OpenRouter)', provider: 'openrouter', color: 'emerald' },
+  { value: 'deepseek/deepseek-v3-0324:free', label: 'DeepSeek V3 Free (مجاني عبر OpenRouter)', provider: 'openrouter', badge: 'مجاني', color: 'green' },
+
+  // ── 🔵 Gemini Models (Google) — fallback only ──
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (احتياطي)', provider: 'gemini', badge: 'احتياطي', color: 'blue' },
   { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash', provider: 'gemini', color: 'blue' },
   { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (متقدم)', provider: 'gemini', badge: 'Pro', color: 'indigo' },
-  
-  // ── 🟢 OpenAI Models ──
+
+  // ── 🟢 OpenAI Models (expensive — not recommended) ──
   { value: 'gpt-4o-mini', label: 'GPT-4o Mini (اقتصادي)', provider: 'openai', color: 'green' },
   { value: 'gpt-4o', label: 'GPT-4o (متقدم)', provider: 'openai', badge: 'قوي', color: 'green' },
-  
+
   // ── 🟠 OpenRouter Models (Multi-provider) ──
   { value: 'google/gemini-pro-1.5', label: 'Gemini Pro 1.5 via Router', provider: 'openrouter', color: 'orange' },
   { value: 'meta-llama/llama-3.1-70b-instruct', label: 'Llama 3.1 70B', provider: 'openrouter', color: 'purple' },
@@ -160,10 +166,10 @@ const AI_MODELS = [
 const PROVIDER_CATEGORIES = {
   deepseek: {
     icon: '🟢',
-    name: 'DeepSeek',
-    description: 'أسرع وأرخص - أنصح به!',
+    name: 'DeepSeek (مباشر)',
+    description: '⭐ الافتراضي — أرخص وأسرع، بدون وسطاء، يدعم العربية ممتاز',
     color: 'emerald',
-    models: AI_MODELS.filter(m => m.value.includes('deepseek')),
+    models: AI_MODELS.filter(m => m.provider === 'deepseek'),
   },
   gemini: {
     icon: '🔵',
@@ -255,10 +261,12 @@ export default function CompaniesPerFeatureAIPage() {
   
   // Reset page when search changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset page when search changes
     setCurrentPage(1);
   }, [searchQuery]);
   
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching on mount
     fetchCompanies();
   }, []);
 
@@ -279,7 +287,7 @@ export default function CompaniesPerFeatureAIPage() {
         setAlert({ type: 'error', message: data.error || 'فشل تحميل الشركات' });
       }
     } catch (error) {
-      console.error('Fetch companies error:', error);
+      logger.error('Fetch companies error:', { err: error });
       setAlert({ type: 'error', message: 'خطأ في الاتصال بالخادم' });
     } finally {
       setIsLoading(false);
@@ -309,7 +317,7 @@ export default function CompaniesPerFeatureAIPage() {
       }
       return null;
     } catch (error) {
-      console.error('Fetch AI config error:', error);
+      logger.error('Fetch AI config error:', { err: error });
       return null;
     }
   };
@@ -372,7 +380,7 @@ export default function CompaniesPerFeatureAIPage() {
         setAlert({ type: 'error', message: data.error || 'فشل الحفظ' });
       }
     } catch (error) {
-      console.error('Save error:', error);
+      logger.error('Save error:', { err: error });
       setAlert({ type: 'error', message: 'خطأ في الاتصال' });
     } finally {
       setIsSaving(false);
@@ -422,7 +430,7 @@ export default function CompaniesPerFeatureAIPage() {
         }
       }
     } catch (error) {
-      console.error('Test error:', error);
+      logger.error('Test error:', { err: error });
       setTestResults(prev => ({
         ...prev,
         [featureKey]: { success: false, latencyMs: 0, model: '', error: 'خطأ في الاتصال', feature: featureKey },
@@ -786,8 +794,8 @@ export default function CompaniesPerFeatureAIPage() {
         {/* ══ Companies List ══ */}
         {isLoading ? (
           <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <GarfixCard key={i}>
+            {[1, 2, 3].map((n) => (
+              <GarfixCard key={n}>
                 <GarfixSkeleton className="h-32 w-full" />
               </GarfixCard>
             ))}

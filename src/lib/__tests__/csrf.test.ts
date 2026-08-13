@@ -42,8 +42,8 @@ describe("CSRF cookie module", () => {
     expect(CSRF_COOKIE_OPTS.httpOnly).toBe(false);
   });
 
-  it("CSRF_COOKIE_OPTS has sameSite='lax'", () => {
-    expect(CSRF_COOKIE_OPTS.sameSite).toBe("lax");
+  it("CSRF_COOKIE_OPTS has sameSite='strict'", () => {
+    expect(CSRF_COOKIE_OPTS.sameSite).toBe("strict")  // Phase 9 P1: strict (was lax);
   });
 
   it("CSRF_TTL is 1800 seconds (30 min)", () => {

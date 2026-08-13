@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * multi-tenant-isolation.test.ts — 80 tests for multi-tenant data isolation.
  *
@@ -28,6 +27,7 @@ mock.module("@/lib/db", () => ({
     findMany: mock(() => Promise.resolve([])),
     findUnique: mock(() => Promise.resolve(null)),
   },
+  get dbTyped() { return this.db; },
 }));
 
 // ─── Real imports (tenantScope is pure, no DB needed) ────────────────────

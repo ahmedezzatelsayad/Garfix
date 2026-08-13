@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from "bun:test";
 import { TelemetryCollector, calculateMetrics, type TelemetryEntry } from "../index";
 

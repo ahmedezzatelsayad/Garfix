@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { 
   Activity, 
   Zap, 
@@ -344,7 +345,9 @@ function MetricCard({
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <Icon className="h-4 w-4 text-muted-foreground" />
         </div>
-        <div className="flex items-baseline gap-1">
+        {/* FE-14 FIX (Audit v2 · Phase 3): mark the dynamic KPI value as a
+            polite live region so screen readers announce updates on refresh. */}
+        <div className="flex items-baseline gap-1" aria-live="polite" aria-atomic="true" role="status">
           <span className="text-2xl font-bold">{value}</span>
           {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
         </div>
@@ -417,8 +420,9 @@ function KeyHealthCard({ keyData }: { keyData: KeyHealthStatus }) {
         </div>
 
         {/* Error Message */}
+        {/* FE a11y sweep FIX (Audit v2 · Phase 2): added role=alert */}
         {keyData.lastError && (
-          <div className="text-xs p-2 rounded bg-red-50 text-red-700 border border-red-200">
+          <div role="alert" className="text-xs p-2 rounded bg-red-50 text-red-700 border border-red-200">
             ⚠️ {keyData.lastError}
           </div>
         )}
@@ -531,7 +535,7 @@ export function AIMetricsDashboard() {
       setMetrics(data);
       setLastRefresh(new Date());
     } catch (err: any) {
-      console.error('Failed to fetch AI metrics:', err);
+      logger.error('Failed to fetch AI metrics:', { err });
       setError(err.message);
       
       // Use mock data for demo/development
@@ -544,6 +548,7 @@ export function AIMetricsDashboard() {
 
   // Initial fetch and auto-refresh
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching with auto-refresh interval
     fetchMetrics();
     
     let interval: NodeJS.Timeout;
@@ -579,7 +584,7 @@ export function AIMetricsDashboard() {
         fetchMetrics(); // Refresh metrics
       }
     } catch (err) {
-      console.error('Failed to reset quotas:', err);
+      logger.error('Failed to reset quotas:', { err });
     }
   };
 

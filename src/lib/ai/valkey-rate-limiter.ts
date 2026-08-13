@@ -15,8 +15,20 @@
  *   - ده atomic ومش بيسبق race conditions
  *   - لو Valkey مش متوفر (dev environment)، بنرجع للـ in-memory fallback
  *
- * الـ key format:
- *   `ai:rl:{companyId}:{feature}` — sorted set of timestamps
+ * الـ key format (AI-17 FIX — Audit v2 · Phase 4):
+ *   `rl:{scope}:{id}` — sorted set of timestamps
+ *
+ *   - `scope` identifies the rate-limit domain: `ai` for AI features,
+ *     `api` for general API routes, `auth` for login attempts, etc.
+ *   - `id` is the unique identifier within that scope: typically
+ *     `{companyId}:{feature}` for AI rate limits.
+ *
+ *   Example: `rl:ai:comp_abc:chat` → AI chat rate limit for company comp_abc.
+ *
+ *   Previous format was `ai:rl:{companyId}:{feature}` — inconsistent with
+ *   the rest of the keyspace (which uses `<category>:<rest>`). The new
+ *   `rl:{scope}:{id}` format is consistent with the convention used by
+ *   `cache:{key}` (cache.ts) and `session:{key}` (passwordPolicy.ts).
  *
  * TTL: 90 ثانية (أكبر من نافذة الـ دقيقة بـ 50% عشان الـ cleanup)
  *
@@ -37,7 +49,60 @@ export interface RateLimitResult {
 
 const WINDOW_MS = 60_000; // 1 minute
 const KEY_TTL_SECONDS = 90; // 1.5x window — conservative cleanup
-const KEY_PREFIX = "ai:rl";
+
+// AI-17 FIX (Audit v2 · Phase 4): standardized rate-limit key format.
+//
+// All rate-limit keys now follow `rl:{scope}:{id}`:
+//   - `rl`     — fixed prefix (rate-limit domain)
+//   - `scope`  — the rate-limit category (e.g. "ai", "api", "auth")
+//   - `id`     — the unique identifier within that scope
+//
+// For backward compatibility with existing in-flight keys, the legacy
+// `ai:rl:*` prefix is still recognized on READ (peekRateLimit) — both
+// formats are checked. New writes always use the new format.
+//
+// The TTL on existing keys is 90s, so within 90 seconds of deploy the
+// old keyspace is fully drained and only the new format remains.
+const KEY_PREFIX = "rl";
+const DEFAULT_SCOPE = "ai";
+const LEGACY_KEY_PREFIX = "ai:rl"; // pre-AI-17 format — kept for read-compat
+
+/**
+ * AI-17 FIX (Audit v2 · Phase 4): standardized rate-limit key builder.
+ *
+ * Constructs a key in the canonical `rl:{scope}:{id}` format. All new
+ * writes go through this function so the format can't drift again.
+ *
+ * @param scope - rate-limit domain ("ai", "api", "auth", ...)
+ * @param id    - unique identifier within the scope
+ * @returns e.g. "rl:ai:comp_abc:chat"
+ */
+export function buildRateLimitKey(scope: string, id: string): string {
+  // Defensive: trim + lowercase scope so "AI" and "ai" map to the same
+  // keyspace. `id` is case-sensitive (companyIds are cuid-cased).
+  const s = scope.trim().toLowerCase();
+  if (!s) {
+    throw new Error("buildRateLimitKey: scope must be a non-empty string");
+  }
+  if (!id) {
+    throw new Error("buildRateLimitKey: id must be a non-empty string");
+  }
+  return `${KEY_PREFIX}:${s}:${id}`;
+}
+
+/**
+ * AI-17 FIX (Audit v2 · Phase 4): legacy key builder (deprecated).
+ *
+ * Returns the OLD `ai:rl:{companyId}:{feature}` key — used ONLY by
+ * peekRateLimit() to read in-flight keys that were written before the
+ * AI-17 deploy. New code MUST NOT call this; it exists purely so the
+ * 90s transition window doesn't drop rate-limit state.
+ *
+ * @deprecated use buildRateLimitKey() instead — removed in Phase 5.
+ */
+function buildLegacyRateLimitKey(companyId: string, feature: string): string {
+  return `${LEGACY_KEY_PREFIX}:${companyId}:${feature}`;
+}
 
 // ── Atomic Sliding-Window Lua Script ──────────────────────────────────
 //
@@ -217,7 +282,10 @@ export async function checkAndRecordRateLimit(
   limitRpm: number
 ): Promise<RateLimitResult> {
   const now = Date.now();
-  const key = `${KEY_PREFIX}:${companyId}:${feature}`;
+  // AI-17 FIX (Audit v2 · Phase 4): use standardized rl:{scope}:{id} format.
+  // The id is `${companyId}:${feature}` — colon-separated to keep the
+  // keyspace hierarchy flat (no nested namespaces that complicate SCAN).
+  const key = buildRateLimitKey(DEFAULT_SCOPE, `${companyId}:${feature}`);
 
   // Fast path: no Valkey configured → use in-memory fallback
   if (!VALKEY_CONFIGURED) {
@@ -339,10 +407,16 @@ export async function peekRateLimit(
 ): Promise<{ currentUsage: number; windowMs: number }> {
   const now = Date.now();
   const windowStart = now - WINDOW_MS;
-  const key = `${KEY_PREFIX}:${companyId}:${feature}`;
+  // AI-17 FIX (Audit v2 · Phase 4): use the new standardized key format.
+  // The legacy `ai:rl:*` key is also checked as a fallback during the
+  // 90s transition window after deploy (existing in-flight keys).
+  const key = buildRateLimitKey(DEFAULT_SCOPE, `${companyId}:${feature}`);
+  const legacyKey = buildLegacyRateLimitKey(companyId, feature);
 
+  // In-memory fallback store uses the NEW key only — the legacy compat
+  // only applies to Valkey-backed reads.
   if (!VALKEY_CONFIGURED) {
-    const entry = fallbackStore.get(key);
+    const entry = fallbackStore.get(key) ?? fallbackStore.get(legacyKey);
     if (!entry) return { currentUsage: 0, windowMs: WINDOW_MS };
     const recent = entry.timestamps.filter((t) => t > windowStart);
     return { currentUsage: recent.length, windowMs: WINDOW_MS };
@@ -351,13 +425,14 @@ export async function peekRateLimit(
   try {
     const valkey = await getValkeyClient();
     if (!valkey) {
-      const entry = fallbackStore.get(key);
+      const entry = fallbackStore.get(key) ?? fallbackStore.get(legacyKey);
       if (!entry) return { currentUsage: 0, windowMs: WINDOW_MS };
       const recent = entry.timestamps.filter((t) => t > windowStart);
       return { currentUsage: recent.length, windowMs: WINDOW_MS };
     }
 
-    // Cleanup + count in one pipeline
+    // Cleanup + count in one pipeline.
+    // AI-17: clean up BOTH the new and legacy keys so old keyspace drains.
     const pipeline = valkey.pipeline();
     pipeline.zremrangebyscore(key, 0, windowStart);
     pipeline.zcard(key);
@@ -365,9 +440,24 @@ export async function peekRateLimit(
     if (!results) return { currentUsage: 0, windowMs: WINDOW_MS };
 
     const countTuple = results[1] as [Error | null, number];
-    return { currentUsage: countTuple[1] || 0, windowMs: WINDOW_MS };
+    const newCount = countTuple[1] || 0;
+
+    // If new-format key has no entries, check the legacy key for backward
+    // compat during the 90s transition window after deploy.
+    if (newCount === 0) {
+      const legacyPipeline = valkey.pipeline();
+      legacyPipeline.zremrangebyscore(legacyKey, 0, windowStart);
+      legacyPipeline.zcard(legacyKey);
+      const legacyResults = await legacyPipeline.exec();
+      if (legacyResults) {
+        const legacyCountTuple = legacyResults[1] as [Error | null, number];
+        return { currentUsage: legacyCountTuple[1] || 0, windowMs: WINDOW_MS };
+      }
+    }
+
+    return { currentUsage: newCount, windowMs: WINDOW_MS };
   } catch {
-    const entry = fallbackStore.get(key);
+    const entry = fallbackStore.get(key) ?? fallbackStore.get(legacyKey);
     if (!entry) return { currentUsage: 0, windowMs: WINDOW_MS };
     const recent = entry.timestamps.filter((t) => t > windowStart);
     return { currentUsage: recent.length, windowMs: WINDOW_MS };

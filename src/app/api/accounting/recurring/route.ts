@@ -191,7 +191,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       startDate,
       endDate,
       nextRunDate: startDate,
-      templateLines: data.templateLines as unknown as object,
+      templateLines: data.templateLines as  object,
       autoPost: data.autoPost,
       requireApproval: data.requireApproval,
       isActive: true,

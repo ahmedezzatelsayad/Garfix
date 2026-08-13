@@ -95,12 +95,12 @@ export function HRView() {
   const deleteLeaveMutation = useDeleteLeave();
   const deletePerformanceMutation = useDeletePerformance();
 
-  const employees = (employeesQuery.data as any)?.employees ?? [] as Employee[];
-  const attendance = (attendanceQuery.data as any)?.attendance ?? [] as Attendance[];
-  const salaries = (salariesQuery.data as any)?.salaries ?? [] as Salary[];
-  const commissions = (commissionsQuery.data as any)?.commissions ?? [] as Commission[];
-  const leaves = (leavesQuery.data as any)?.leaves ?? [] as LeaveRequest[];
-  const performances = (performanceQuery.data as any)?.performance ?? [] as Performance[];
+  const employees = employeesQuery.data?.employees ?? [];
+  const attendance = attendanceQuery.data?.attendance ?? [];
+  const salaries = salariesQuery.data?.salaries ?? [];
+  const commissions = commissionsQuery.data?.commissions ?? [];
+  const leaves = leavesQuery.data?.leaves ?? [];
+  const performances = performanceQuery.data?.performance ?? [];
   
   const loading = employeesQuery.isLoading;
   const error = employeesQuery.isError;
@@ -245,7 +245,7 @@ export function HRView() {
   // ─── Guard ────────────────────────────────────────────────────────────
 
   if (!activeCompany) return (
-    <div className="p-8 md:p-12 text-center">
+    <div className="p-8 md:block md:p-12 text-center">
       <GarfixEmptyState 
         title="اختر شركة"
         description="يرجى اختيار شركة لعرض بيانات الموارد البشرية"
@@ -456,9 +456,9 @@ export function HRView() {
             <div className="kpi-label">إجمالي الموظفين</div>
             <div className="sparkline-container mt-2">
               <div className="flex items-end gap-0.5 h-8">
-                {[40, 65, 45, 80, 55, 70, 60].map((h, i) => (
+                {[40, 65, 45, 80, 55, 70, 60].map((h) => (
                   <div 
-                    key={i} 
+                    key={h} 
                     className="flex-1 bg-primary/30 rounded-sm min-w-[4px]" 
                     style={{ height: `${h}%` }}
                   />
@@ -724,7 +724,7 @@ function HRForm({ tab, company, employees, editItem, onClose, onSaved }: {
   const [period, setPeriod] = useState<string>(editPerformance?.period || `${new Date().getFullYear()}-Q${Math.floor(new Date().getMonth() / 3) + 1}`);
   const [kpiScore, setKpiScore] = useState<number>(editPerformance?.kpiScore ?? 80);
   const [overallScore, setOverallScore] = useState<number>(editPerformance?.overallScore ?? 80);
-  const [rating, setRating] = useState<string>(editPerformance?.rating || "جيد");
+  const [rating, setRating] = useState<string>(String(editPerformance?.rating || "جيد"));
 
   const createEmployeeMutation = useCreateEmployee();
   const updateEmployeeMutation = useUpdateEmployee();

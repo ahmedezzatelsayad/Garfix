@@ -23,7 +23,7 @@ export interface CatalogItem {
   unitPrice: number;
   category?: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 interface CatalogListResponse {
@@ -42,7 +42,7 @@ export interface CreateCatalogItemPayload {
   sku: string;
   unitPrice: number;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 interface UpdateCatalogItemPayload {
@@ -50,7 +50,7 @@ interface UpdateCatalogItemPayload {
   name?: string;
   sku?: string;
   unitPrice?: number;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 // ─── useCatalog ─────────────────────────────────────────────────────────────

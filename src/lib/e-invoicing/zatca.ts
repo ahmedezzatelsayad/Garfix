@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { fetchSafe } from "@/lib/ssrf";
 /**
  * zatca.ts — Saudi ZATCA Phase 2 e-invoicing compliance module.
  *
@@ -476,7 +477,7 @@ export function validateZatcaInvoice(
   const lineItems = invoice.lineItems as LineItem[] | string | undefined;
   let parsedItems: LineItem[] = [];
   if (typeof lineItems === "string") {
-    try { parsedItems = JSON.parse(lineItems); } catch { parsedItems = []; }
+    try { parsedItems = JSON.parse(lineItems); } catch (error) { logger.error("ZATCA line items JSON parse failed", { error }); parsedItems = []; }
   } else if (Array.isArray(lineItems)) {
     parsedItems = lineItems;
   }
@@ -484,7 +485,7 @@ export function validateZatcaInvoice(
   const lineItemsAr = invoice.lineItemsAr as string | undefined;
   let parsedItemsAr: unknown[] = [];
   if (lineItemsAr) {
-    try { parsedItemsAr = JSON.parse(lineItemsAr); } catch { parsedItemsAr = []; }
+    try { parsedItemsAr = JSON.parse(lineItemsAr); } catch (error) { logger.error("ZATCA Arabic line items JSON parse failed", { error }); parsedItemsAr = []; }
   }
   if (parsedItems.length > 0 && parsedItemsAr.length !== parsedItems.length) {
     errors.push(ERROR_MESSAGES.LINE_ITEMS_ARABIC_MISSING);
@@ -558,7 +559,7 @@ export function generateZatcaUblXml(
   const rawLineItems = invoice.lineItems as LineItem[] | string;
   let parsedItems: LineItem[] = [];
   if (typeof rawLineItems === "string") {
-    try { parsedItems = JSON.parse(rawLineItems); } catch { parsedItems = []; }
+    try { parsedItems = JSON.parse(rawLineItems); } catch (error) { logger.error("ZATCA line items JSON parse failed", { error }); parsedItems = []; }
   } else if (Array.isArray(rawLineItems)) {
     parsedItems = rawLineItems;
   }
@@ -938,6 +939,7 @@ export async function submitZatcaInvoice(
   certificate: string,
   companySlug: string,
   invoiceId?: number,
+  csidSecret?: string, // P1 FIX: CSID secret for Bearer auth (was missing)
 ): Promise<ZatcaSubmissionResult> {
   logger.info("[zatca] submitting invoice to ZATCA portal", {
     invoiceType,
@@ -954,13 +956,23 @@ export async function submitZatcaInvoice(
       ? ZATCA_CLEARED_SIMULATION_ENDPOINT
       : ZATCA_REPORTED_SIMULATION_ENDPOINT;
 
-    // Determine production vs simulation URL
+    // P1 FIX (audit): Production URL transformation was broken.
+    // Old: .replace("/simulation/", "/") → produced wrong path "e-invoice" not "e-invoicing/production"
+    // New: use the correct production URL constant directly.
     const isProduction = process.env.ZATCA_PRODUCTION_MODE === "true";
     const baseUrl = isProduction
-      ? ZATCA_PORTAL_BASE_URL.replace("/simulation/", "/")
+      ? "https://gw-fatoora.zatca.gov.sa/e-invoicing/production/v2"
       : ZATCA_PORTAL_BASE_URL;
 
-    // Sign the UBL XML with ECDSA-SHA256 using the CCD private key
+    // P1 FIX (audit): Use the correct endpoint — strip "/simulation" suffix in production
+    const cleanEndpoint = isProduction
+      ? endpoint.replace("/simulation", "")
+      : endpoint;
+
+    // P1 FIX (audit): ZATCA uses Bearer token from CSID (Compliance CSID secret),
+    // NOT Basic auth with the certificate. The `certificate` parameter is the
+    // X.509 cert (for signing), not the auth credential. Auth uses the CSID
+    // secret stored in ZatcaCertificate.csidSecret (passed via `csidSecret` param).
     const signResult = crypto.sign("sha256", Buffer.from(signedXml, "utf-8"), {
       key: certificate, // CCD private key PEM
       dsaEncoding: "der",
@@ -968,18 +980,19 @@ export async function submitZatcaInvoice(
     const signedInvoiceB64 = signResult.toString("base64");
     const invoiceHash = computeInvoiceHash(signedXml);
 
-    // Submit to ZATCA API
-    const zatcaResponse = await fetch(`${baseUrl}${endpoint}`, {
+    // Submit to ZATCA API — Bearer auth with CSID secret
+    const zatcaResponse = await fetchSafe(`${baseUrl}${cleanEndpoint}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "Authorization": `Basic ${Buffer.from(certificate).toString("base64")}`,
+        "Authorization": `Bearer ${csidSecret}`,
+        "Accept-Language": "en",
       },
       body: JSON.stringify({
         invoice: signedInvoiceB64,
         invoiceHash,
-        invoiceType: invoiceType === "standard" ? 388 : 388, // ZATCA invoice type code
+        invoiceType: invoiceType === "standard" ? 388 : 388,
         certificate: Buffer.from(certificate).toString("base64"),
       }),
       signal: AbortSignal.timeout(45_000),
@@ -1009,7 +1022,7 @@ export async function submitZatcaInvoice(
             rejectionReason: errorBody.slice(0, 500),
             submittedAt: new Date(),
           },
-        }).catch(() => {});
+        }).catch((error) => { logger.error("ZATCA rejected EInvoice stub create failed", { error }); });
       }
 
       return {

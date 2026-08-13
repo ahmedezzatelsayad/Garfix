@@ -71,6 +71,8 @@ export interface BahrainNbrInvoicePayload {
   // ── Seller ───────────────────────────────────────────────────────────
   sellerNameAr: string;
   sellerNameEn: string;
+  companySlug?: string; // P1 FIX: actual company slug
+  invoiceId?: number; // P1 FIX: actual invoice ID
   sellerAddressAr: string;
   sellerAddressEn: string;
   sellerVatTrn: string; // VAT TRN — mandatory for NBR
@@ -513,7 +515,8 @@ export function generateBahrainNbrInvoicePayload(
   let parsedItems: LineItem[] = [];
   try {
     parsedItems = JSON.parse(lineItemsRaw);
-  } catch {
+  } catch (error) {
+    logger.error("Bahrain NBR line items JSON parse failed", { error });
     parsedItems = [];
   }
 
@@ -625,8 +628,8 @@ export async function submitBahrainNbrInvoice(
         submissionStatus: "pending",
         uuid: payload.uuid,
         rawXml: JSON.stringify(payload),
-        companySlug: payload.sellerNameEn, // Temporary — should use actual companySlug
-        invoiceId: 0, // Placeholder — should link to actual invoice
+        companySlug: payload.companySlug ?? payload.sellerNameEn,
+        invoiceId: payload.invoiceId ?? 0,
         invoiceNumber: payload.invoiceNumber,
         authority: BAHRAIN_NBR_AUTHORITY,
         status: "pending",

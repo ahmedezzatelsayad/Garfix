@@ -58,7 +58,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     include: { productAliases: { select: { alias: true } } },
   });
 
-  const { items: productItems, nextCursor } = buildCursorResponse(allProducts as any[], limit);
+  const { items: productItems, nextCursor } = buildCursorResponse(allProducts, limit);
   const products = productItems as typeof allProducts;
 
   return NextResponse.json({

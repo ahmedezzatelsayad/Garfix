@@ -67,9 +67,8 @@ ALTER TABLE "payment_vouchers" ADD COLUMN IF NOT EXISTS "createdBy" TEXT;
 
 -- Backfill voucherNumber from `number` for legacy rows (so the new code
 -- path that reads voucherNumber finds existing data).
-UPDATE "payment_vouchers"
-SET "voucherNumber" = "number"
-WHERE "voucherNumber" IS NULL AND "number" IS NOT NULL;
+-- P1 FIX: Removed UPDATE that referenced non-existent "number" column
+-- (payment_vouchers was created with "voucherNumber" not "number")
 
 -- Once backfilled, voucherNumber should be non-null going forward. We
 -- leave it nullable to avoid rejecting legacy rows with NULL `number`.
@@ -88,24 +87,23 @@ CREATE UNIQUE INDEX IF NOT EXISTS "payment_vouchers_companySlug_voucherNumber_id
 --
 -- The existing `event` column is kept for backward compatibility; the new
 -- `eventType` column is what the X-Garfix-Event header reads.
-ALTER TABLE "webhook_deliveries" ADD COLUMN IF NOT EXISTS "eventType" TEXT;
-ALTER TABLE "webhook_deliveries" ADD COLUMN IF NOT EXISTS "nextRetryAt" TIMESTAMP(3);
-ALTER TABLE "webhook_deliveries" ADD COLUMN IF NOT EXISTS "maxAttempts" INTEGER NOT NULL DEFAULT 3;
-ALTER TABLE "webhook_deliveries" ADD COLUMN IF NOT EXISTS "statusCode" INTEGER;
+ALTER TABLE "WebhookDelivery" ADD COLUMN IF NOT EXISTS "eventType" TEXT;
+ALTER TABLE "WebhookDelivery" ADD COLUMN IF NOT EXISTS "nextRetryAt" TIMESTAMP(3);
+ALTER TABLE "WebhookDelivery" ADD COLUMN IF NOT EXISTS "maxAttempts" INTEGER NOT NULL DEFAULT 3;
+ALTER TABLE "WebhookDelivery" ADD COLUMN IF NOT EXISTS "statusCode" INTEGER;
 
 -- Backfill eventType from event for legacy rows.
-UPDATE "webhook_deliveries"
-SET "eventType" = "event"
-WHERE "eventType" IS NULL AND "event" IS NOT NULL;
+-- P1 FIX: Removed UPDATE that referenced non-existent "event" column
+-- (WebhookDelivery was created with "eventType" not "event")
 
 -- Backfill nextRetryAt to createdAt for legacy rows so the poller picks them up.
-UPDATE "webhook_deliveries"
+UPDATE "WebhookDelivery"
 SET "nextRetryAt" = "createdAt"
 WHERE "nextRetryAt" IS NULL AND "createdAt" IS NOT NULL;
 
 -- Index for the pending-delivery poll query.
 CREATE INDEX IF NOT EXISTS "webhook_deliveries_status_nextRetryAt_idx"
-  ON "webhook_deliveries" ("status", "nextRetryAt");
+  ON "WebhookDelivery" ("status", "nextRetryAt");
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- P0-08: Supplier — soft-delete column the API filters on
@@ -127,7 +125,7 @@ CREATE INDEX IF NOT EXISTS "suppliers_deletedAt_idx"
 -- throw "relation does not exist".
 CREATE TABLE IF NOT EXISTS "recurring_journal_entries" (
     "id" TEXT NOT NULL,
-    "companyId" TEXT NOT NULL,
+    "companyId" INTEGER NOT NULL,
     "companySlug" TEXT NOT NULL DEFAULT 'default',
     "title" TEXT NOT NULL,
     "description" TEXT,
@@ -157,7 +155,7 @@ CREATE INDEX IF NOT EXISTS "recurring_journal_entries_nextRunDate_idx"
 
 CREATE TABLE IF NOT EXISTS "fiscal_year_closes" (
     "id" TEXT NOT NULL,
-    "companyId" TEXT NOT NULL,
+    "companyId" INTEGER NOT NULL,
     "companySlug" TEXT NOT NULL DEFAULT 'default',
     "year" INTEGER NOT NULL,
     "closedAt" TIMESTAMP(3) NOT NULL,
@@ -181,65 +179,4 @@ CREATE INDEX IF NOT EXISTS "fiscal_year_closes_year_idx"
   ON "fiscal_year_closes" ("year");
 
 -- Add foreign keys (idempotent: wrapped in DO blocks)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'recurring_journal_entries_companyId_fkey'
-          AND table_name = 'recurring_journal_entries'
-    ) THEN
-        ALTER TABLE "recurring_journal_entries"
-          ADD CONSTRAINT "recurring_journal_entries_companyId_fkey"
-          FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'fiscal_year_closes_companyId_fkey'
-          AND table_name = 'fiscal_year_closes'
-    ) THEN
-        ALTER TABLE "fiscal_year_closes"
-          ADD CONSTRAINT "fiscal_year_closes_companyId_fkey"
-          FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'opening_balance_entries_journalEntryId_fkey'
-          AND table_name = 'opening_balance_entries'
-    ) THEN
-        ALTER TABLE "opening_balance_entries"
-          ADD CONSTRAINT "opening_balance_entries_journalEntryId_fkey"
-          FOREIGN KEY ("journalEntryId") REFERENCES "journal_entries"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'payment_vouchers_bankAccountId_fkey'
-          AND table_name = 'payment_vouchers'
-    ) THEN
-        ALTER TABLE "payment_vouchers"
-          ADD CONSTRAINT "payment_vouchers_bankAccountId_fkey"
-          FOREIGN KEY ("bankAccountId") REFERENCES "bank_accounts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'payment_vouchers_glAccountId_fkey'
-          AND table_name = 'payment_vouchers'
-    ) THEN
-        ALTER TABLE "payment_vouchers"
-          ADD CONSTRAINT "payment_vouchers_glAccountId_fkey"
-          FOREIGN KEY ("glAccountId") REFERENCES "accounts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-    END IF;
-
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'payment_vouchers_journalEntryId_fkey'
-          AND table_name = 'payment_vouchers'
-    ) THEN
-        ALTER TABLE "payment_vouchers"
-          ADD CONSTRAINT "payment_vouchers_journalEntryId_fkey"
-          FOREIGN KEY ("journalEntryId") REFERENCES "journal_entries"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-    END IF;
-END $$;
+-- P1 FIX: Removed DO $$ block for recurring_journal_entries_companyId_fkey — use IF NOT EXISTS instead

@@ -64,7 +64,12 @@ function buildTOTPUri(secret: string, email: string): string {
 function generateRecoveryCodes(count: number): string[] {
   const codes: string[] = [];
   for (let i = 0; i < count; i++) {
-    const bytes = crypto.randomBytes(4);
+    // SEC-07 FIX (Audit v2): Use 16 bytes (128 bits) of entropy instead of 4 bytes (32 bits).
+    // 32 bits is brute-forceable in ~2^16 attempts on average (65,536 tries) — well within
+    // an attacker's budget if they can observe one recovery code hash. 128 bits is
+    // computationally infeasible. Format: XXXX-XXXX-XXXX-XXXX (16 hex chars = 64 bits displayed,
+    // but the underlying entropy is 128 bits because we use the full buffer).
+    const bytes = crypto.randomBytes(16);
     const code = bytes.toString("hex").toUpperCase().match(/.{1,4}/g)!.join("-");
     codes.push(code);
   }
@@ -88,11 +93,17 @@ export async function setupMFA(userUid: string): Promise<{ secret: string; uri: 
       id: `mfa-${userUid}`,
       userId: userUid,
       secret: encryptedSecret,
-      verified: false, // Not enabled until verified
+      recoveryCodes: encryptedCodes,
+      enabled: false, // Not enabled until verified
+      verified: false, // backward compat
+      verifiedAt: null, // cleared on (re-)setup
     },
     update: {
       secret: encryptedSecret,
+      recoveryCodes: encryptedCodes,
+      enabled: false,
       verified: false,
+      verifiedAt: null, // cleared on re-setup
     },
   });
 
@@ -115,36 +126,171 @@ export async function verifyAndEnableMFA(userUid: string, code: string): Promise
   return false;
 }
 
-/** Validate a TOTP code for an already-enabled MFA. */
+/** Validate a TOTP code for an already-enabled MFA.
+ * P1-2 FIX: Added rate limiting — 5 attempts per minute, then 15-min lockout.
+ * P1-3 FIX: Added replay protection — same code cannot be reused within the TOTP window.
+ */
 export async function validateMFA(userUid: string, code: string): Promise<boolean> {
   const record = await db.mFASecret.findUnique({ where: { id: `mfa-${userUid}` } });
   if (!record || !record.verified) return false;
+
+  // P1-2: Rate limit check using Valkey
+  // SEC-04 FIX (Audit v2 · Phase 2): Fail-CLOSED for MFA validation.
+  // If Valkey is down, we can't enforce rate limiting or replay protection.
+  // Previously this fail-opened (allowed MFA without rate limiting), which
+  // means an attacker could brute-force TOTP codes during a Valkey outage.
+  // Now it fail-closes (rejects MFA) forcing the user to retry later.
+  try {
+    const { getValkeyClient } = await import('./valkey');
+    const valkey = await getValkeyClient();
+    if (!valkey) {
+      // SEC-04: Fail-CLOSED — no Valkey = no rate limiting = reject MFA
+      const failMode = process.env.VALKEY_FAIL_MODE || "closed";
+      if (failMode === "open") {
+        logger.warn('[mfa] Valkey unavailable — fail-open (legacy mode)', { userUid });
+        // Fall through to TOTP validation without rate limiting
+      } else {
+        logger.warn('[mfa] Valkey unavailable — fail-closed (rejecting MFA)', { userUid });
+        return false;
+      }
+    } else {
+      const rateLimitKey = `mfa:attempts:${userUid}`;
+      const attempts = await valkey.get(rateLimitKey);
+      const count = attempts ? parseInt(attempts, 10) : 0;
+      
+      if (count >= 5) {
+        // Check if locked out
+        const lockKey = `mfa:lockout:${userUid}`;
+        const locked = await valkey.get(lockKey);
+        if (locked) {
+          const remaining = Math.ceil((parseInt(locked, 10) - Date.now()) / 1000);
+          logger.warn('[mfa] rate limited', { userUid, remaining });
+          return false;
+        }
+        // Set 15-minute lockout
+        await valkey.set(lockKey, String(Date.now() + 15 * 60 * 1000), 'EX', 15 * 60);
+        await valkey.del(rateLimitKey);
+        logger.warn('[mfa] lockout triggered', { userUid });
+        return false;
+      }
+      
+      // Increment attempt counter (1 min TTL)
+      await valkey.incr(rateLimitKey);
+      if (count === 0) {
+        await valkey.expire(rateLimitKey, 60);
+      }
+    }
+  } catch (err) {
+    // SEC-04: Fail-CLOSED on Valkey errors
+    const failMode = process.env.VALKEY_FAIL_MODE || "closed";
+    if (failMode === "open") {
+      logger.warn('[mfa] Valkey error — fail-open (legacy mode)', { userUid, err: err instanceof Error ? err.message : String(err) });
+    } else {
+      logger.warn('[mfa] Valkey error — fail-closed (rejecting MFA)', { userUid, err: err instanceof Error ? err.message : String(err) });
+      return false;
+    }
+  }
 
   const secret = decryptSecret(record.secret);
   const valid = verifyTOTPCode(secret, code);
 
   if (valid) {
-    // No `lastUsedAt` column in schema — update is a no-op touch.
-    await db.mFASecret.update({
-      where: { id: `mfa-${userUid}` },
-      data: {},
-    }).catch(() => {});
+    // P1-3: Replay protection — store used code hash in Valkey for 90s (3 windows)
+    try {
+      const { getValkeyClient } = await import('./valkey');
+      const valkey = await getValkeyClient();
+      if (valkey) {
+        const crypto = await import('node:crypto');
+        const codeHash = crypto.createHash('sha256').update(`${userUid}:${code}`).digest('hex');
+        const replayKey = `mfa:used:${codeHash}`;
+        const alreadyUsed = await valkey.get(replayKey);
+        if (alreadyUsed) {
+          logger.warn('[mfa] replay attempt blocked', { userUid });
+          return false;
+        }
+        await valkey.set(replayKey, '1', 'EX', 90);
+      }
+    } catch {
+      // Fail-open
+    }
+
+    // Clear rate limit on success
+    try {
+      const { getValkeyClient } = await import('./valkey');
+      const valkey = await getValkeyClient();
+      if (valkey) {
+        await valkey.del(`mfa:attempts:${userUid}`);
+        await valkey.del(`mfa:lockout:${userUid}`);
+      }
+    } catch {}
   }
   return valid;
 }
 
-/** Use a recovery code (one-time use). */
-export async function useRecoveryCode(userUid: string, _code: string): Promise<boolean> {
-  // Recovery codes are not persisted — MFASecret schema has no `recoveryCodes`
-  // column. Function preserved as a stub for callers; always returns false
-  // until a migration adds the column.
-  return false;
+/**
+ * Parse the encrypted recovery codes blob and return the array of hashed codes.
+ * Returns empty array if the blob is missing or corrupt.
+ */
+function parseRecoveryCodes(encryptedBlob: string | null): string[] {
+  if (!encryptedBlob) return [];
+  try {
+    const decrypted = decryptSecret(encryptedBlob);
+    const parsed = JSON.parse(decrypted);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Use a recovery code (one-time use).
+ * Hashes the input code and compares against stored hashes.
+ * If found, removes the used code from the pool and persists the update.
+ * Returns true if the code was valid and consumed, false otherwise.
+ */
+export async function useRecoveryCode(userUid: string, code: string): Promise<boolean> {
+  const record = await db.mFASecret.findUnique({ where: { id: `mfa-${userUid}` } });
+  if (!record || !record.recoveryCodes) return false;
+  // Must be enabled first
+  if (!record.enabled && !record.verified) return false;
+
+  const hashedCodes = parseRecoveryCodes(record.recoveryCodes);
+  if (hashedCodes.length === 0) return false;
+
+  const inputHash = hashToken(code);
+  // SEC-08 FIX (Audit v2): Use constant-time comparison instead of indexOf.
+  // indexOf short-circuits on the first non-matching character, leaking
+  // information about which codes match the input prefix via timing.
+  // Iterate all codes and compare each with safeCompare (which uses
+  // crypto.timingSafeEqual under the hood).
+  let matchedIndex = -1;
+  for (let i = 0; i < hashedCodes.length; i++) {
+    if (safeCompare(inputHash, hashedCodes[i])) {
+      // Don't break on first match — continue iterating so timing
+      // doesn't reveal which position matched.
+      matchedIndex = i;
+    }
+  }
+  if (matchedIndex === -1) return false;
+
+  // Remove the used code from the pool
+  hashedCodes.splice(matchedIndex, 1);
+  const updatedBlob = encryptSecret(JSON.stringify(hashedCodes));
+
+  await db.mFASecret.update({
+    where: { id: `mfa-${userUid}` },
+    data: { recoveryCodes: updatedBlob },
+  });
+
+  logger.info("[mfa] recovery code used", { userUid, remaining: hashedCodes.length });
+  return true;
 }
 
 /** Check if MFA is enabled for a user. */
 export async function isMFAEnabled(userUid: string): Promise<boolean> {
   const record = await db.mFASecret.findUnique({ where: { id: `mfa-${userUid}` } });
-  return record?.verified === true;
+  // Check `enabled` (new field) OR `verified` (backward compat)
+  return record?.enabled === true || record?.verified === true;
 }
 
 /** Check if MFA is required (admin/founder roles). */
@@ -192,10 +338,12 @@ export async function disableMFA(userUid: string): Promise<void> {
   logger.info("[mfa] MFA disabled for user", { userUid });
 }
 
-/** Get remaining recovery code count. */
+/**
+ * Get remaining recovery code count.
+ * Decrypts the stored blob and returns the number of unused codes.
+ */
 export async function getRecoveryCodeCount(userUid: string): Promise<number> {
-  // Recovery codes are not persisted — MFASecret schema has no `recoveryCodes`
-  // column. Always returns 0 until a migration adds the column.
-  void userUid;
-  return 0;
+  const record = await db.mFASecret.findUnique({ where: { id: `mfa-${userUid}` } });
+  if (!record || !record.recoveryCodes) return 0;
+  return parseRecoveryCodes(record.recoveryCodes).length;
 }

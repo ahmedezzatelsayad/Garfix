@@ -19,6 +19,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckSquare, Square, Search, Filter } from 'lucide-react';
 
 // ── GarfiX DS Imports ──────────────────────────────────────
@@ -99,7 +100,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   revoked: { label: 'ملغي', color: 'text-gray-700', bg: 'bg-gray-100' },
 };
 
-const DEFAULT_MODEL = 'deepseek/deepseek-chat-v3-0324';
+const DEFAULT_MODEL = 'deepseek-chat'; // P1: DeepSeek Direct API (no OpenRouter prefix)
 
 // ── Main Component ──────────────────────────────────────────
 
@@ -116,7 +117,7 @@ export default function FounderApiKeyPoolPage() {
   
   // Form state
   const [newKeysText, setNewKeysText] = useState('');
-  const [selectedProvider, setSelectedProvider] = useState('openrouter');
+  const [selectedProvider, setSelectedProvider] = useState('deepseek'); // P1: DeepSeek Direct API is default
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
   const [notes, setNotes] = useState('');
   
@@ -165,7 +166,7 @@ export default function FounderApiKeyPoolPage() {
         setAlert({ type: 'error', message: data.error || 'فشل تحميل البيانات' });
       }
     } catch (error) {
-      console.error('Fetch pool error:', error);
+      logger.error('Fetch pool error:', { err: error });
       setAlert({ type: 'error', message: 'خطأ في الاتصال بالخادم' });
     } finally {
       setIsLoading(false);
@@ -221,7 +222,7 @@ export default function FounderApiKeyPoolPage() {
         setAlert({ type: 'error', message: data.error || 'فشل إضافة المفاتيح' });
       }
     } catch (error) {
-      console.error('Add keys error:', error);
+      logger.error('Add keys error:', { err: error });
       setAlert({ type: 'error', message: 'خطأ في الاتصال' });
     } finally {
       setIsAdding(false);
@@ -256,6 +257,7 @@ export default function FounderApiKeyPoolPage() {
   
   // Reset page when filters change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset page when filter deps change
     setCurrentPage(1);
   }, [searchQuery, statusFilter]);
 
@@ -762,9 +764,10 @@ export default function FounderApiKeyPoolPage() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 نوع المفتاح (Provider)
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                 {[
-                  { value: 'openrouter', label: '🟠 OpenRouter', desc: 'DeepSeek + الكل' },
+                  { value: 'deepseek', label: '🟢 DeepSeek', desc: '⭐ مباشر (أنصح)' },
+                  { value: 'openrouter', label: '🟠 OpenRouter', desc: 'وسيط (legacy)' },
                   { value: 'gemini', label: '🔵 Gemini', desc: 'Google Flash' },
                   { value: 'openai', label: '🟢 OpenAI', desc: 'GPT-4o' },
                 ].map(provider => (
@@ -796,9 +799,13 @@ export default function FounderApiKeyPoolPage() {
                 onChange={(e) => setSelectedModel(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-gray-200"
               >
-                <optgroup label="🟢 DeepSeek (أنصح)">
-                  <option value="deepseek/deepseek-chat-v3-0324">DeepSeek V3 Chat (⭐)</option>
-                  <option value="deepseek/deepseek-r1-0528">DeepSeek R1 Reasoning</option>
+                <optgroup label="🟢 DeepSeek Direct API (⭐ أنصح — بدون وسيط)">
+                  <option value="deepseek-chat">DeepSeek Chat — مباشر (⭐ افتراضي)</option>
+                  <option value="deepseek-reasoner">DeepSeek Reasoner (للتحليل المعقد)</option>
+                </optgroup>
+                <optgroup label="🟠 DeepSeek via OpenRouter (legacy)">
+                  <option value="deepseek/deepseek-chat-v3-0324">DeepSeek V3 Chat (عبر OpenRouter)</option>
+                  <option value="deepseek/deepseek-r1-0528">DeepSeek R1 Reasoning (عبر OpenRouter)</option>
                 </optgroup>
                 <optgroup label="🔵 Gemini">
                   <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
@@ -817,12 +824,18 @@ export default function FounderApiKeyPoolPage() {
               <GarfixTextarea
                 value={newKeysText}
                 onChange={(e) => setNewKeysText(e.target.value)}
-                placeholder={`sk-or-v1-xxxxxxxxxxx\nsk-or-v1-yyyyyyyyyyy\n...`}
+                placeholder={selectedProvider === 'deepseek'
+                  ? `sk-xxxxxxxxxxx\nsk-yyyyyyyyyyy\n...\n(DeepSeek Direct API keys from platform.deepseek.com)`
+                  : selectedProvider === 'openrouter'
+                  ? `sk-or-v1-xxxxxxxxxxx\nsk-or-v1-yyyyyyyyyyy\n...`
+                  : selectedProvider === 'gemini'
+                  ? `AIzaSyXXXXXXXXXXX\nAIzaSyYYYYYYYYYYY\n...`
+                  : `sk-xxxxxxxxxxx\nsk-yyyyyyyyyyy\n...`}
                 rows={5}
                 className="font-mono text-sm"
               />
               <p className="text-xs text-gray-500 mt-1">
-                أدخل كل مفتاح في سطر منفصل. يدعم OpenRouter (sk-or-), Gemini (AIza), OpenAI (sk-)
+                أدخل كل مفتاح في سطر منفصل. يدعم DeepSeek (sk-), OpenRouter (sk-or-), Gemini (AIza), OpenAI (sk-)
               </p>
             </div>
 

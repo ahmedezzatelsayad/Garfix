@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * tamperAudit.test.ts — 50 tests for the tamper-evident audit chain module.
  *
@@ -58,6 +57,7 @@ mock.module("@/lib/db", () => {
       ...dbMock,
       $transaction: mock((cb: (tx: typeof dbMock) => Promise<unknown>) => cb(dbMock)),
     },
+    get dbTyped() { return this.db; },
   };
 });
 

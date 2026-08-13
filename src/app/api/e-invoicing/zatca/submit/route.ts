@@ -95,11 +95,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     // ── 4. Build ZatcaInvoicePayload from the invoice ────────────────────
     // Use autoPopulateZatcaFields to fill in ZATCA-specific fields (UUID, dates, etc.)
-    const invoiceData = autoPopulateZatcaFields(invoice as unknown as Record<string, unknown>, company as unknown as Record<string, unknown>);
-    const invoiceType = determineZatcaInvoiceType(invoice as unknown as Record<string, unknown>);
+    const invoiceData = autoPopulateZatcaFields(invoice as  Record<string, unknown>, company as  Record<string, unknown>);
+    const invoiceType = determineZatcaInvoiceType(invoice as  Record<string, unknown>);
 
     // ── 5. Validate ──────────────────────────────────────────────────────
-    const validation = validateZatcaInvoice(invoiceData, company as unknown as Record<string, unknown>);
+    const validation = validateZatcaInvoice(invoiceData, company as  Record<string, unknown>);
     if (!validation.valid) {
       return NextResponse.json({
         ok: false,
@@ -117,7 +117,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     }
 
     // ── 6. Generate UBL XML ──────────────────────────────────────────────
-    const xmlResult = generateZatcaUblXml(invoiceData, company as unknown as Record<string, unknown>);
+    const xmlResult = generateZatcaUblXml(invoiceData, company as  Record<string, unknown>);
     logger.info("[zatca/submit] XML generated", {
       invoiceId, companySlug,
       xmlLength: xmlResult.xml.length,

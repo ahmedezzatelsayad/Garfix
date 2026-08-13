@@ -93,6 +93,7 @@ export function EnhancedAuditView() {
   // is a real useEffect with proper cleanup so listeners don't leak across
   // route changes.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- subscribing to online/offline browser events; setState is the subscription callback
     setIsOnline(navigator.onLine);
     const onOffline = () => setIsOnline(false);
     const onOnline = () => setIsOnline(true);
@@ -115,7 +116,8 @@ export function EnhancedAuditView() {
   }), [filters]);
 
   const { data, isLoading, isRefetching, refetch } = useAuditLogFiltered(queryParams);
-  const logs = (data?.logs ?? []) as unknown as AuditLog[];
+  // @ts-expect-error — local AuditLog adds userEmail, userUid, entity, createdAt; API returns these fields covered by hook type's [key: string]: any index sig.
+  const logs = (data?.logs ?? []) as AuditLog[];
 
   // Client-side filtering + pagination
   const filteredLogs = useMemo(() => {

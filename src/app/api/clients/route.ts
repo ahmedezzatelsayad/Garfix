@@ -66,7 +66,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     orderBy: pagination.orderBy,
   });
 
-  const { items: clients, nextCursor } = buildCursorResponse(allClients as any[], limit);
+  const { items: clients, nextCursor } = buildCursorResponse(allClients, limit);
   return NextResponse.json({ clients, nextCursor });
 });
 

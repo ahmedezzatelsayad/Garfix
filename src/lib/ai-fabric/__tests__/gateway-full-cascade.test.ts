@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * gateway-full-cascade.test.ts — 70 tests for the gateway cascade.
  * Uses mock.module from bun:test for DB and logger mocking.

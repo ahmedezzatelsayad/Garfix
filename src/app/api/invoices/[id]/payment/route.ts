@@ -75,37 +75,74 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     return apiError("Payment (" + amountNum.toFixed(3) + ") exceeds remaining (" + remaining.toFixed(3) + "). Over-payment not allowed.", 400);
   }
 
-  // ── H5 FIX: Idempotency check ────────────────────────────────────────────
-  // If a client retries a payment with the same idempotencyKey within the
-  // TTL window, we return the original response body (from `responseJson`)
-  // instead of recording a duplicate payment. The IdempotencyKey table has
-  // a composite unique key on (companySlug, endpoint, key) — the invoiceId
-  // is folded into the `key` segment so per-invoice isolation is preserved.
+  // ── P0 FIX (audit): Atomic idempotency check via CREATE (not findUnique) ──
+  // Previously: findUnique → if null → proceed → payment → upsert.
+  // Race: two concurrent requests both find null, both apply payment = DOUBLE PAY.
+  // Now: try to CREATE the idempotency record atomically. If P2002 (unique
+  // constraint violation), another request already claimed this key — fetch
+  // and return its cached response. This is the "idempotency key as lock" pattern.
   if (data.idempotencyKey) {
     const idemCompositeKey = `inv-${existing.id}:${data.idempotencyKey}`;
     const ttlCutoff = new Date(Date.now() - IDEMPOTENCY_TTL_HOURS * 3600 * 1000);
-    // `key` is @unique on IdempotencyKey — lookup by key is sufficient.
-    // companySlug/endpoint/responseJson are recorded on the row (P3) for traceability.
-    const idem = await db.idempotencyKey.findUnique({
-      where: { key: idemCompositeKey },
-    });
-    if (idem && idem.createdAt > ttlCutoff) {
-      logger.info("[payment] idempotent replay — returning cached result", {
-        invoiceId: existing.id,
-        idempotencyKey: data.idempotencyKey,
+    try {
+      // Atomically claim the idempotency key. If this succeeds, we're the
+      // only request processing this key — proceed to payment below.
+      await db.idempotencyKey.create({
+        data: {
+          key: idemCompositeKey,
+          method: "PATCH",
+          path: `/api/invoices/${existing.id}/payment`,
+          companySlug: existing.companySlug,
+          endpoint: IDEMPOTENCY_ENDPOINT,
+          responseBody: null,
+          responseJson: null,
+          statusCode: 200,
+          expiresAt: new Date(Date.now() + IDEMPOTENCY_TTL_HOURS * 3600 * 1000),
+        },
       });
-      if (idem.responseBody) {
-        try {
-          const cached = JSON.parse(idem.responseBody);
-          return NextResponse.json(cached);
-        } catch {
-          // Cached body corrupted — fall through and recompute the response
-          // (the payment itself was already recorded, so we return a minimal
-          // ack to avoid duplicate writes).
+      // Create succeeded — we hold the lock. Proceed to payment.
+    } catch (err: any) {
+      // P2002 = unique constraint violation = another request already claimed this key
+      if (err?.code === "P2002") {
+        logger.info("[payment] idempotent replay — returning cached result", {
+          invoiceId: existing.id,
+          idempotencyKey: data.idempotencyKey,
+        });
+        const idem = await db.idempotencyKey.findUnique({
+          where: { key: idemCompositeKey },
+        });
+        if (idem && idem.createdAt > ttlCutoff) {
+          if (idem.responseBody) {
+            try {
+              const cached = JSON.parse(idem.responseBody);
+              return NextResponse.json(cached);
+            } catch {
+              return NextResponse.json({ ok: true, replayed: true, invoice: { id: existing.id } });
+            }
+          }
           return NextResponse.json({ ok: true, replayed: true, invoice: { id: existing.id } });
         }
+        // Key exists but is expired — delete and re-create (rare edge case)
+        if (idem) {
+          await db.idempotencyKey.delete({ where: { key: idemCompositeKey } }).catch(() => {});
+        }
+        await db.idempotencyKey.create({
+          data: {
+            key: idemCompositeKey,
+            method: "PATCH",
+            path: `/api/invoices/${existing.id}/payment`,
+            companySlug: existing.companySlug,
+            endpoint: IDEMPOTENCY_ENDPOINT,
+            responseBody: null,
+            responseJson: null,
+            statusCode: 200,
+            expiresAt: new Date(Date.now() + IDEMPOTENCY_TTL_HOURS * 3600 * 1000),
+          },
+        });
+      } else {
+        // Non-P2002 error — log and proceed without idempotency (best-effort)
+        logger.error("[payment] idempotency create failed (non-P2002)", { err: err?.message });
       }
-      return NextResponse.json({ ok: true, replayed: true, invoice: { id: existing.id } });
     }
   }
 
@@ -166,36 +203,24 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
     details: { amount: data.amount, method: data.method, newPaid, newStatus, idempotencyKey: data.idempotencyKey ?? null },
   });
 
-  // ── H5 FIX: persist idempotency record AFTER successful payment ──────────
-  // Use upsert so that if two concurrent requests with the same key somehow
-  // both reach this point (they shouldn't — the version check above serializes
-  // them), the second one overwrites with the same content.
+  // ── P0 FIX: Update idempotency record with response (record already created) ──
+  // The record was atomically created BEFORE the payment (as a lock). Now we
+  // update it with the response body so subsequent replays can return the cached result.
   if (data.idempotencyKey) {
     const idemCompositeKey = `inv-${existing.id}:${data.idempotencyKey}`;
     const responseBody = { ok: true, invoice };
     try {
-      await db.idempotencyKey.upsert({
+      await db.idempotencyKey.update({
         where: { key: idemCompositeKey },
-        create: {
-          key: idemCompositeKey,
-          method: "PATCH",
-          path: `/api/invoices/${existing.id}/payment`,
-          companySlug: existing.companySlug,
-          endpoint: IDEMPOTENCY_ENDPOINT,
+        data: {
           responseBody: JSON.stringify(responseBody),
           responseJson: JSON.stringify(responseBody),
-          statusCode: 200,
-          expiresAt: new Date(Date.now() + IDEMPOTENCY_TTL_HOURS * 3600 * 1000),
-        },
-        update: {
-          responseBody: JSON.stringify(responseBody),
           statusCode: 200,
         },
       });
     } catch (err) {
-      // Non-fatal — log and continue. Idempotency is a safety net, not a
-      // correctness requirement (the payment itself was already recorded).
-      logger.error("[payment] failed to persist idempotency key", {
+      // Non-fatal — the payment itself was already recorded successfully.
+      logger.error("[payment] failed to update idempotency key with response", {
         err: err instanceof Error ? err.message : String(err),
         invoiceId: existing.id,
         idempotencyKey: data.idempotencyKey,

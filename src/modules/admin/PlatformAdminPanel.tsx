@@ -54,16 +54,16 @@ export function PlatformAdminPanel() {
   const clearQueueFailuresMutation = useClearQueueFailures();
   const deleteTenantMutation = useDeletePlatformTenant();
 
-  const stats = (statsQuery.data ?? null) as unknown as Stats | null;
+  const stats = (statsQuery.data ?? null) as  Stats | null;
   // Each hook now returns its proper wrapper shape — unwrap to the array.
   // Previously all hooks were typed as bare arrays but the APIs return
   // { tenants: [...] } / { announcements: [...] } / etc, so the casts lied
   // and `tenants.map(...)` threw TypeError when data was present.
-  const tenants = (tenantsQuery.data?.tenants ?? []) as unknown as Tenant[];
-  const announcements = (announcementsQuery.data?.announcements ?? []) as unknown as Announcement[];
-  const tickets = (ticketsQuery.data?.tickets ?? []) as unknown as Ticket[];
-  const audit = (auditQuery.data?.logs ?? []) as unknown as AdminAudit[];
-  const queueFailures = (queueFailuresQuery.data?.failures ?? []) as unknown as QueueFailure[];
+  const tenants = tenantsQuery.data?.tenants ?? [];
+  const announcements = announcementsQuery.data?.announcements ?? [];
+  const tickets = ticketsQuery.data?.tickets ?? [];
+  const audit = auditQuery.data?.logs ?? [];
+  const queueFailures = queueFailuresQuery.data?.failures ?? [];
   const loading = statsQuery.isLoading || tenantsQuery.isLoading;
 
   const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
@@ -82,9 +82,9 @@ export function PlatformAdminPanel() {
   // Applied filters for TanStack Query — only updated on button click.
   const [stockLedgerApplied, setStockLedgerApplied] = useState<{ companySlug: string; productName?: string; from?: string; to?: string } | null>(null);
   const stockMovementsQuery = useInventoryMovementsFiltered(stockLedgerApplied ?? { companySlug: "" });
-  const stockMovements = (stockMovementsQuery.data as any)?.movements ?? [] as StockMovement[];
+  const stockMovements = stockMovementsQuery.data?.movements ?? [];
   const [reviewQueueSlug, setReviewQueueSlug] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Tenant | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<typeof tenants[number] | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   // TanStack Query replaces load(), loadQueueFailures(), loadStockMovements()
@@ -390,7 +390,7 @@ export function PlatformAdminPanel() {
                           <td className="px-3 py-2.5 text-[13px]"><TicketStatusBadge status={t.status} /></td>
                           <td className="px-3 py-2.5 text-[13px]">{new Date(t.createdAt).toLocaleDateString("ar-EG")}</td>
                           <td className="px-3 py-2.5 text-[13px]">
-                            <IconBtn color="#3b82f6" onClick={() => setSelectedTicketId(t.id)} title="فتح التذكرة" aria-label="فتح التذكرة">
+                            <IconBtn color="#3b82f6" onClick={() => setSelectedTicketId(String(t.id))} title="فتح التذكرة" aria-label="فتح التذكرة">
                               <Eye size={14} />
                             </IconBtn>
                           </td>

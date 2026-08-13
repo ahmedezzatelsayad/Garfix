@@ -1,14 +1,17 @@
 /**
- * /invoices — Pure HTML invoices page (Vercel) / AppShell view (AWS).
- * Vercel: fetches /api/invoices and renders table with inline JS.
- * AWS: redirects to / (AppShell loads invoices view).
+ * /invoices — AppShell invoices view (AWS/Docker/Vercel).
+ *
+ * Always redirects to / where the AppShell loads the invoices view.
+ *
+ * // FE-05 FIX (Audit v2 · Phase 1) — Vercel escape-hatch (VercelInvoices)
+ * deleted; the AppShell invoices view is the single source of truth.
+ *
+ * DEPLOYMENT FIX: force-dynamic prevents prerender failure when
+ * process.env.VERCEL is undefined during next build.
  */
+export const dynamic = 'force-dynamic';
 import { redirect } from "next/navigation";
-import VercelInvoices from "./VercelInvoices";
 
 export default function InvoicesPage() {
-  if (process.env.VERCEL === "1") {
-    return <VercelInvoices />;
-  }
   redirect("/");
 }

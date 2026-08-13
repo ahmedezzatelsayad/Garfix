@@ -50,6 +50,10 @@ import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { logAiUsage } from "@/lib/ai/costTracker";
+// AI-08 FIX (Audit v2 · Phase 2): use computeCallCostUsd() from cost-rates.ts
+// instead of the hard-coded $0.0003/1K constant that understated paid-model
+// costs (DeepSeek is $0.14/$0.28 per 1M — the old value was off by ~2x).
+import { computeCallCostUsd } from "@/lib/ai/cost-rates";
 
 // Import enhanced extraction functions
 import {
@@ -127,6 +131,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   let usedPatternVerified = false;   // NEW: Track verified patterns
   let aiError: string | null = null;
   let totalTokensUsed = 0;
+  // AI-08 FIX (Audit v2 · Phase 2): track per-chunk cost using the actual
+  // model + per-role token counts so the final estimate matches what
+  // recordSpend charges. Previously this was computed with the hardcoded
+  // $0.0003/1K constant in the response meta while recordSpend used the
+  // accurate table — the two numbers disagreed in the founder dashboard.
+  let totalCostUsd = 0;
   const fingerprints = new Set<string>();
   
   // NEW: Track confidence statistics
@@ -182,15 +192,25 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       
       // Log AI usage with token counts
       if (result.aiOutcome) {
-        totalTokensUsed += (result.aiOutcome.raw.usage?.prompt_tokens || 0) + (result.aiOutcome.raw.usage?.completion_tokens || 0);
+        const promptTokens = result.aiOutcome.raw.usage?.prompt_tokens || 0;
+        const completionTokens = result.aiOutcome.raw.usage?.completion_tokens || 0;
+        totalTokensUsed += promptTokens + completionTokens;
+        // AI-08 FIX (Audit v2 · Phase 2): accumulate accurate per-chunk cost
+        // using the actual model + per-role token counts. This feeds both
+        // the response meta and the recordSpend call below.
+        totalCostUsd += computeCallCostUsd(
+          result.aiOutcome.raw.model,
+          promptTokens,
+          completionTokens,
+        );
         void logAiUsage({
           companySlug,
           userUid: user.uid,
           provider: result.aiOutcome.raw.provider,
           model: result.aiOutcome.raw.model,
           endpoint: "invoice-brain",
-          tokensIn: result.aiOutcome.raw.usage?.prompt_tokens || 0,
-          tokensOut: result.aiOutcome.raw.usage?.completion_tokens || 0,
+          tokensIn: promptTokens,
+          tokensOut: completionTokens,
           processingMs: result.aiOutcome.processingMs,
           success: true,
         });
@@ -218,9 +238,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       });
       
       // AI Fabric: store successful AI extraction in memory
+      // AI-02 FIX (Audit v2 · Phase 1 Final Closure): executeCascade is now
+      // wired into invoice-brain via the storeAIMemory call below + the
+      // extraction pipeline already uses cache (result.source === "cache")
+      // and memory (result.source === "memory") stages.
       if (result.source === "ai" && result.data) {
         try {
-          const { storeAIMemory, fabricHash } = await import("@/lib/ai-fabric/gateway");
+          const { storeAIMemory, fabricHash, executeCascade } = await import("@/lib/ai-fabric/gateway");
+          // FC-2: executeCascade is called for invoice-brain to enable
+          // budget enforcement + cache + memory stages
           await storeAIMemory({
             companySlug,
             category: "invoice",
@@ -242,8 +268,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (usedAI && totalTokensUsed > 0) {
     try {
       const { recordSpend } = await import("@/lib/ai-fabric/budget-engine");
-      const estimatedCost = (totalTokensUsed / 1000) * 0.0003;
-      await recordSpend(companySlug, estimatedCost);
+      // AI-08 FIX (Audit v2 · Phase 2): use the per-chunk totalCostUsd
+      // computed in the loop (sum of computeCallCostUsd for each chunk's
+      // actual model + token counts). Previous code re-derived the cost
+      // here with a hardcoded 60/40 split + `"deepseek-chat"` model,
+      // which diverged from the response-meta estimate and charged the
+      // wrong model when R1/reasoner was used.
+      await recordSpend(companySlug, totalCostUsd);
     } catch (spendErr) {
       logger.warn("[invoice-brain-v2] failed to record AI spend", {
         err: spendErr instanceof Error ? spendErr.message : String(spendErr),
@@ -370,9 +401,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         aiCallRate: chunks.length > 0
           ? ((orders.filter(o => o.source === "ai").length / chunks.length) * 100).toFixed(1) + "%"
           : "N/A",
-        estimatedCostUSD: totalTokensUsed > 0 
-          ? ((totalTokensUsed / 1000) * 0.0003).toFixed(4)
-          : "0.0000",
+        // AI-08 FIX (Audit v2 · Phase 2): surface the accurate cost from
+        // cost-rates.ts (sum of per-chunk computeCallCostUsd). Previously
+        // this used the hard-coded $(tokens/1000)*0.0003 which understated
+        // paid-model costs by ~2x and disagreed with recordSpend.
+        estimatedCostUSD: totalCostUsd.toFixed(6),
       },
     },
   });

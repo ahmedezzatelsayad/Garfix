@@ -63,9 +63,14 @@ export const GET = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
     return apiError("القيد الدوري غير موجود", 404);
   }
 
-  // Verify company access
+  // Always verify the user has access to the entry's company, even when
+  // companySlug is not provided in the query — prevents cross-tenant IDOR.
   const sp = req.nextUrl.searchParams;
   const companySlug = sp.get("companySlug");
+  const effectiveSlug = companySlug || entry.companySlug;
+  if (!result.user.companies || !result.user.companies.includes(effectiveSlug)) {
+    return apiError("ممنوع", 403);
+  }
   if (companySlug && entry.companySlug !== companySlug) {
     return apiError("ممنوع", 403);
   }
@@ -132,7 +137,7 @@ export const PUT = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
       return apiError("بعض الحسابات غير موجودة أو غير نشطة", 400);
     }
 
-    updateData.templateLines = data.templateLines as unknown as object;
+    updateData.templateLines = data.templateLines as  object;
   }
 
   // Recalculate nextRunDate if schedule changed

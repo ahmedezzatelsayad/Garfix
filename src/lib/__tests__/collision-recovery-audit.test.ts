@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * collision-recovery-audit.test.ts — Full behavior coverage of the inventory
  * sync entrypoints in src/lib/inventorySync.ts.

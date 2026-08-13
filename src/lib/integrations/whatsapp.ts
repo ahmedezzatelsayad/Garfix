@@ -11,7 +11,7 @@
  */
 import { logger } from "@/lib/logger";
 import type { IntegrationProvider } from "./types";
-import { getIntegrationConfig, setIntegrationConfig, disconnectIntegration } from "./registry";
+import { getIntegrationConfig, setIntegrationConfig, disconnectIntegration, purgeIntegrationCache } from "./registry";
 
 const GRAPH_API_VERSION = "v18.0";
 
@@ -41,8 +41,15 @@ class WhatsAppProvider implements IntegrationProvider {
       return { ok: false, error: "بيانات الاعتماد غير مُهيّأة (phone_number_id و access_token مطلوبة)" };
     }
     try {
-      const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${cfg.phone_number_id}?access_token=${encodeURIComponent(cfg.access_token)}`;
-      const res = await fetch(url, { method: "GET" });
+      // SEC-12 FIX (Audit v2 · Phase 3): move access_token from the URL query
+      // string to the `Authorization: Bearer <token>` header. Query strings are
+      // logged by every reverse proxy, CDN, and WAF in the request path,
+      // leaking the long-lived Meta System User token. Headers are not.
+      const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${cfg.phone_number_id}`;
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${cfg.access_token}` },
+      });
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as {
           error?: { message?: string };
@@ -81,6 +88,8 @@ class WhatsAppProvider implements IntegrationProvider {
     }
     try {
       const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${cfg.phone_number_id}/messages`;
+      // SEC-12 FIX (Audit v2 · Phase 3): access_token sent via Authorization
+      // header, never as a URL query parameter.
       const res = await fetch(url, {
         method: "POST",
         headers: {
@@ -100,8 +109,14 @@ class WhatsAppProvider implements IntegrationProvider {
         } | null;
         return { ok: false, error: errBody?.error?.message || `HTTP ${res.status}` };
       }
+      // SEC-14 FIX (Audit v2 · Phase 3): explicitly purge the plaintext
+      // credentials from the in-process cache now that the send is complete,
+      // so the access_token is not retained in memory any longer than needed.
+      purgeIntegrationCache(this.type);
       return { ok: true };
     } catch (err) {
+      // SEC-14 FIX: also purge on error so the plaintext doesn't linger.
+      purgeIntegrationCache(this.type);
       return {
         ok: false,
         error: err instanceof Error ? err.message : String(err),

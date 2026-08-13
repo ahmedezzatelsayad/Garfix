@@ -161,6 +161,9 @@ function getPoolStatus(utilizationPct: number, healthyRatio: number): 'healthy' 
 
 // ── Main Endpoint ───────────────────────────────────────────
 
+// Sprint 28: use public accessor getWorkerAndPoolStats() for worker/pool metrics.
+
+
 export const GET = async (req: NextRequest) => {
   try {
     // Auth check
@@ -205,6 +208,9 @@ export const GET = async (req: NextRequest) => {
       // Queue tables might not exist yet
     }
 
+    // Sprint 28: use public accessor for worker/pool metrics.
+    const { workers: workersMap, pool: poolStats } = aiMetrics.getWorkerAndPoolStats();
+
     // Build response
     const response: MetricsResponse = {
       success: true,
@@ -240,22 +246,22 @@ export const GET = async (req: NextRequest) => {
           lastError: key.lastError,
           lastUsed: key.lastSuccessTime?.toISOString(),
         })),
-        workers: (Array.from((aiMetrics as any).metrics?.workers?.entries() || []) as [string, any][]).map(([type, m]) => ({
-          type: type as string,
-          activeJobs: m?.activeJobs,
-          processedToday: m?.processedToday,
-          avgLatencyMs: (m?.completedCount || 0) > 0 ? Math.round(m?.totalLatency / m?.completedCount) : 0,
+        workers: Array.from(workersMap.entries()).map(([type, m]) => ({
+          type,
+          activeJobs: m.activeJobs,
+          processedToday: m.processedToday,
+          avgLatencyMs: m.completedCount > 0 ? Math.round(m.totalLatency / m.completedCount) : 0,
         })),
         queue: {
           ...queueStats,
           estimatedWaitTimeMs: lbMetrics?.estimatedWaitTimeMs || 0,
         },
         today: {
-          totalRequests: (aiMetrics as any).metrics?.pool?.totalRequests || 0,
-          totalTokens: (aiMetrics as any).metrics?.pool?.totalTokens || 0,
-          totalFailures: (aiMetrics as any).metrics?.pool?.totalFailures || 0,
-          rejectionRate: ((aiMetrics as any).metrics?.pool?.totalRequests || 0) > 0 
-            ? Math.round((((aiMetrics as any).metrics?.pool?.rejectedJobs || 0) / ((aiMetrics as any).metrics?.pool?.totalRequests || 1)) * 100)
+          totalRequests: poolStats.totalRequests,
+          totalTokens: poolStats.totalTokens,
+          totalFailures: poolStats.totalFailures,
+          rejectionRate: poolStats.totalRequests > 0
+            ? Math.round((poolStats.rejectedJobs / poolStats.totalRequests) * 100)
             : 0,
         },
         alerts: generateAlerts(lbMetrics),

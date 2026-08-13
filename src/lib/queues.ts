@@ -751,8 +751,15 @@ export function getWorkerId(): string {
 /**
  * Get BullMQ queue counts (for admin dashboards).
  * Returns null if BullMQ is not active.
+ *
+ * TPD-09 FIX (Audit v2 · Phase 2): accepts an optional AbortSignal so the
+ * /api/health caller can cancel the in-flight iteration when its timeout
+ * fires. When the signal aborts, the loop short-circuits and returns the
+ * partial stats collected so far — never blocking the caller longer than
+ * its timeout. Other callers (metrics route) keep working because the
+ * parameter is optional.
  */
-export async function getBullMQStats(): Promise<Record<string, {
+export async function getBullMQStats(signal?: AbortSignal): Promise<Record<string, {
   waiting: number;
   active: number;
   completed: number;
@@ -763,14 +770,33 @@ export async function getBullMQStats(): Promise<Record<string, {
 
   const stats: Record<string, { waiting: number; active: number; completed: number; failed: number; delayed: number }> = {};
   for (const [name, queue] of Array.from(bullQueues.entries())) {
+    // TPD-09: short-circuit if the caller aborted between iterations.
+    if (signal?.aborted) break;
     try {
-      const [waiting, active, completed, failed, delayed] = await Promise.all([
+      const countsPromise = Promise.all([
         queue.getWaitingCount(),
         queue.getActiveCount(),
         queue.getCompletedCount(),
         queue.getFailedCount(),
         queue.getDelayedCount(),
       ]);
+      // If a signal is provided, race the counts against the abort event
+      // so a slow queue.get*Count() call cannot hold the health route
+      // past its timeout. On abort, fall back to zeros for this queue
+      // and break out of the loop.
+      const [waiting, active, completed, failed, delayed] = signal
+        ? await Promise.race([
+            countsPromise,
+            new Promise<never>((_, reject) => {
+              if (signal.aborted) reject(new Error("aborted"));
+              else signal.addEventListener(
+                "abort",
+                () => reject(new Error("aborted")),
+                { once: true },
+              );
+            }),
+          ]).catch(() => [0, 0, 0, 0, 0] as const)
+        : await countsPromise;
       stats[name] = { waiting, active, completed, failed, delayed };
     } catch (err) {
       stats[name] = { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 };

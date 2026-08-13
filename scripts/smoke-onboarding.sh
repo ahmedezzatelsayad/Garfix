@@ -1,17 +1,26 @@
 #!/bin/bash
 # Test the onboarding flow: register → login → create company → verify
+#
+# P0 FIX (audit): All secrets were hardcoded here — Neon DB password, JWT
+# secrets, PAYMENTS_ENC_KEY — and committed to git. They are now read from
+# environment variables with `:?` to fail-fast if missing.
+#
+# Usage:
+#   source .env  # or export vars manually before running this script
+#   ./scripts/smoke-onboarding.sh
 set -e
-cd /home/z/my-project/audit/Garfix
+cd "${GARFIX_DIR:-/home/z/my-project/audit/Garfix}"
 
-export DATABASE_URL="postgresql://neondb_owner:npg_RLakgGtKZo32@ep-rapid-star-av3i9hx7-pooler.c-11.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require&pgbouncer=true&connect_timeout=15"
-export JWT_SECRET="kmAx2zk9egTo37Jv/H8+Y2zhI0dwOFvzURFoCcxWdRU4/Mh0v/JmGl2kscKWhlF0"
-export JWT_REFRESH_SECRET="qj9il53wB9TUQnHLLk/jhsSarZM0jsnDSxjfU2h9icSqNy/sMrD7ratV8RN2OTTY"
-export FOUNDER_EMAIL="founder@garfix.app"
-export BCRYPT_ROUNDS=12 BCRYPT_MIN_ROUNDS=12
-export PAYMENTS_ENC_KEY="iJ3psB6gclX3Eiq+2SSBsAwIF26O+4mEfCSw7QVyA6k="
-export MAX_SESSIONS_PER_USER=5
-export NODE_ENV=production
-export PORT=3101
+: "${DATABASE_URL:?DATABASE_URL must be set — copy from .env}"
+: "${JWT_SECRET:?JWT_SECRET must be set — copy from .env}"
+: "${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET must be set — copy from .env}"
+: "${PAYMENTS_ENC_KEY:?PAYMENTS_ENC_KEY must be set — copy from .env}"
+: "${FOUNDER_EMAIL:=founder@garfix.app}"
+export DATABASE_URL JWT_SECRET JWT_REFRESH_SECRET PAYMENTS_ENC_KEY FOUNDER_EMAIL
+export BCRYPT_ROUNDS=${BCRYPT_ROUNDS:-12}
+export MAX_SESSIONS_PER_USER=${MAX_SESSIONS_PER_USER:-5}
+export NODE_ENV=${NODE_ENV:-production}
+export PORT=${PORT:-3101}
 
 ./node_modules/.bin/next start -p 3101 > /tmp/garfix-onboard.log 2>&1 &
 SERVER_PID=$!

@@ -23,13 +23,28 @@ import { logAudit } from "@/lib/audit";
 import { rateLimitResponse, clearRateLimit, getClientIp, LIMITS } from "@/lib/rateLimit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { isMFAEnabled, validateMFA } from "@/lib/mfa";
 
 // SEC-M2 FIX (Cycle 1): pin to Node.js runtime — Prisma + bcrypt + Valkey.
 export const runtime = "nodejs";
 
+// P1 FIX (audit): Added optional mfaCode field for MFA-protected accounts.
+// If the user has MFA enabled, the first login attempt (without mfaCode)
+// returns { mfaRequired: true } so the frontend can prompt for the code.
+// The second attempt includes mfaCode and validates it before issuing session.
+//
+// SEC-06 FIX (Audit v2 · Phase 2): the generic message below is returned for
+// EVERY authentication failure (wrong password / user not found / MFA missing /
+// MFA wrong) so an attacker cannot distinguish which step failed. The previous
+// implementation returned `{ mfaRequired: true }` after a correct password,
+// leaking credential validity and enabling MFA brute-force once the password
+// was known. Rate limits (IP + email) are now cleared only AFTER full MFA
+// validation succeeds — not after the password check.
+const AUTH_GENERIC_ERROR = "بيانات الدخول غير صحيحة أو التحقق الثنائي مطلوب";
 const LoginSchema = z.object({
   email: z.string().email("صيغة البريد الإلكتروني غير صحيحة"),
   password: z.string().min(1, "كلمة المرور مطلوبة"),
+  mfaCode: z.string().optional(), // P1 FIX: MFA code for MFA-protected accounts
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
@@ -43,7 +58,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (!parsed.success) {
     return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
   }
-  const { email, password } = parsed.data;
+  const { email, password, mfaCode } = parsed.data;
   const normalizedEmail = email.trim().toLowerCase();
 
   // SEC-M1 FIX (Cycle 1): per-email rate limit. We check this AFTER parsing
@@ -60,8 +75,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const user = await db.appUser.findUnique({ where: { email: normalizedEmail } });
   if (!user) {
-    // Anti-enumeration: same message for "wrong password" as "no such user"
-    return apiError("البريد الإلكتروني أو كلمة المرور غير صحيحة", 401);
+    // SEC-06 FIX (Audit v2 · Phase 2): anti-enumeration — return the same
+    // byte-for-byte generic error as the wrong-password / MFA-missing /
+    // MFA-wrong cases below. Do NOT reveal that the email doesn't exist.
+    return apiError(AUTH_GENERIC_ERROR, 401);
   }
 
   const ok = await verifyPasswordAndMaybeRehash(password, user.passwordHash, user.uid);
@@ -73,7 +90,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       entity: "auth",
       details: { ip },
     });
-    return apiError("البريد الإلكتروني أو كلمة المرور غير صحيحة", 401);
+    // SEC-06 FIX (Audit v2 · Phase 2): same generic error — do not reveal
+    // that the password was the failing step.
+    return apiError(AUTH_GENERIC_ERROR, 401);
   }
   // HIGH-005 FIX (Cycle 2): if the stored hash was at a lower bcrypt cost
   // factor and we just upgraded it, log it so we can monitor migration
@@ -88,8 +107,44 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     });
   }
 
-  // Success — clear both rate limits (IP and email) so a legitimate user
-  // who fat-fingered their password a few times isn't penalized.
+  // P1 FIX (audit): MFA check — if the user has MFA enabled, require a valid
+  // TOTP code before issuing the session. This prevents password-only login
+  // for admin/founder accounts.
+  //
+  // SEC-06 FIX (Audit v2 · Phase 2): rate limits (IP + email) are cleared
+  // ONLY AFTER MFA validation succeeds (see below). Previously they were
+  // cleared immediately after the password check, which meant an attacker
+  // with the right password could brute-force MFA codes without throttling.
+  const mfaEnabled = await isMFAEnabled(user.uid).catch(() => false);
+  if (mfaEnabled) {
+    if (!mfaCode) {
+      // SEC-06 FIX (Audit v2 · Phase 2): do NOT return { mfaRequired: true } —
+      // that leaked that the password was correct. Return the same generic
+      // error as a wrong password so the attacker can't tell which step
+      // failed.
+      return apiError(AUTH_GENERIC_ERROR, 401);
+    }
+    // Validate the MFA code
+    const mfaValid = await validateMFA(user.uid, mfaCode).catch(() => false);
+    if (!mfaValid) {
+      await logAudit({
+        userEmail: normalizedEmail,
+        userUid: user.uid,
+        action: "mfa_failure",
+        entity: "auth",
+        details: { ip },
+      });
+      // SEC-06 FIX (Audit v2 · Phase 2): same generic error — do not reveal
+      // that the MFA code (not the password) was the failing step.
+      return apiError(AUTH_GENERIC_ERROR, 401);
+    }
+  }
+
+  // SEC-06 FIX (Audit v2 · Phase 2): full authentication (password + MFA)
+  // has succeeded — NOW it is safe to clear the rate limits. A legitimate
+  // user who fat-fingered their password a few times isn't penalized, and an
+  // attacker who only had the password can no longer brute-force MFA without
+  // throttling.
   await clearRateLimit("auth:login", ip);
   await clearRateLimit("auth:login-email", normalizedEmail);
 

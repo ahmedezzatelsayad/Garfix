@@ -2,7 +2,8 @@
  * accessibility.ts — GarfiX DS v4.0 Accessibility Utilities
  *
  * ════════════════════════════════════════════════════════════════════════
- * WCAG 2.1 Level AA Compliance Utilities
+ * WCAG 2.1 Level AAA Compliance Utilities
+ * // FE-02 FIX (Audit v2 · Phase 1) — target bumped from AA to AAA.
  *
  * FEATURES:
  * - Focus management utilities

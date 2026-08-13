@@ -18,6 +18,11 @@
 import { dbTyped as db } from "./db";
 import { logger } from "./logger";
 import { callAI, type ProviderType } from "./aiProvider";
+// AI-05 FIX (Audit v2 · Phase 2): log every AI product-matching call so
+// the cost is tracked in ai_usage_logs. Previously resolveAmbiguousMatch
+// called the AI but never invoked logAiUsage — all product-matching
+// spend (DeepSeek paid calls) was invisible in the cost dashboard.
+import { logAiUsage } from "@/lib/ai/costTracker";
 
 const SYSTEM_PROMPT = `أنت مساعد متخصص في مطابقة أسماء المنتجات لنظام ERP متعدد المستأجرين.
 مهمتك: تحديد هل الاسمين يشيران لنفس المنتج أم لمنتجين مختلفين.
@@ -82,6 +87,7 @@ export async function resolveAmbiguousMatch(
 Similarity: ${fuzzyScore.toFixed(2)}`;
 
   try {
+    const t0 = Date.now();
     const result = await callAI({
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -89,6 +95,24 @@ Similarity: ${fuzzyScore.toFixed(2)}`;
       ],
       temperature: 0,
       maxTokens: 500,
+    });
+    const processingMs = Date.now() - t0;
+
+    // AI-05 FIX (Audit v2 · Phase 2): record the AI call in cost tracking.
+    // logAiUsage is fire-and-forget (it swallows internal errors) so it's
+    // safe to await inline without affecting resolver latency.
+    // We log with success=true here because the provider call itself
+    // succeeded; downstream JSON parse failures are logged separately below.
+    void logAiUsage({
+      companySlug,
+      userUid: null,
+      provider: result.provider,
+      model: result.model,
+      endpoint: "product-resolver",
+      tokensIn: result.usage?.prompt_tokens || 0,
+      tokensOut: result.usage?.completion_tokens || 0,
+      processingMs,
+      success: true,
     });
 
     const raw = result.content || "";
@@ -104,6 +128,23 @@ Similarity: ${fuzzyScore.toFixed(2)}`;
     return validated;
   } catch (err) {
     logger.warn("[ai-resolver] call failed", { err: err instanceof Error ? err.message : String(err) });
+    // AI-05 FIX (Audit v2 · Phase 2): even on failure, the AI call may have
+    // consumed tokens before throwing (e.g. network timeout after partial
+    // response). We can't access result.* here, so log with provider/model
+    // unknown + 0 tokens — the failure itself is what matters for the
+    // effectiveness dashboard's error-rate metric.
+    void logAiUsage({
+      companySlug,
+      userUid: null,
+      provider: "unknown",
+      model: "unknown",
+      endpoint: "product-resolver",
+      tokensIn: 0,
+      tokensOut: 0,
+      processingMs: 0,
+      success: false,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
     return null;
   }
 }

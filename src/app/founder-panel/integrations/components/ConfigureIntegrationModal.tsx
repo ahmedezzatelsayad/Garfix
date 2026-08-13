@@ -178,6 +178,7 @@ export const ConfigureIntegrationModal: React.FC<ConfigureIntegrationModalProps>
         }
       });
       
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing integration prop to form state
       setValues(defaults);
       setErrors({});
       setShowOptional(false);

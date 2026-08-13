@@ -65,6 +65,11 @@ function normalizeItem(raw: unknown): ParsedItem | null {
 async function callAI(systemPrompt: string, userText: string): Promise<{
   content: string;
   usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+  // AI-04 FIX (Audit v2 · Phase 2): expose the actual model used by the
+  // underlying provider (DeepSeek, z-ai, etc.) so logAiUsage records the
+  // real model — previously hard-coded to 'z-ai-glm', which made every
+  // paid DeepSeek call look free in the cost dashboard.
+  model: string;
   processingMs: number;
 }> {
   const t0 = Date.now();
@@ -81,7 +86,7 @@ async function callAI(systemPrompt: string, userText: string): Promise<{
       capability: "invoice-extraction",
     });
     const usage = result.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
-    return { content: result.content || "{}", usage: { prompt_tokens: usage.prompt_tokens || 0, completion_tokens: usage.completion_tokens || 0, total_tokens: usage.total_tokens || 0 }, processingMs: Date.now() - t0 };
+    return { content: result.content || "{}", usage: { prompt_tokens: usage.prompt_tokens || 0, completion_tokens: usage.completion_tokens || 0, total_tokens: usage.total_tokens || 0 }, model: result.model || "z-ai-glm", processingMs: Date.now() - t0 };
   } catch (fallbackErr) {
     try {
       const ZAI = (await import("z-ai-web-dev-sdk")).default;
@@ -91,7 +96,7 @@ async function callAI(systemPrompt: string, userText: string): Promise<{
         temperature: 0.1,
         max_tokens: 4000,
       });
-      return { content: completion.choices?.[0]?.message?.content || "{}", usage: completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, processingMs: Date.now() - t0 };
+      return { content: completion.choices?.[0]?.message?.content || "{}", usage: completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, model: "z-ai-glm", processingMs: Date.now() - t0 };
     } catch { throw fallbackErr; }
   }
 }
@@ -124,12 +129,23 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const t0 = Date.now();
   logger.info("[parse-file] starting", { user: user.uid ?? "", companySlug, fileName, size: fileBase64.length });
 
+  // AI-04 FIX (Audit v2 · Phase 2): hoist `aiResult` out of the try block so
+  // the catch handler can read the actual model used (e.g. 'deepseek-chat')
+  // when the AI call completed but a downstream step (JSON parse, DB write)
+  // threw. Previously the catch hard-coded 'z-ai-glm' which made every paid
+  // DeepSeek failure look free in the cost dashboard.
+  let aiResult: { content: string; provider?: string; model?: string; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }; processingMs: number } | null = null;
+
   try {
     // Parse the Excel file using exceljs
     const ExcelJS = (await import("exceljs")).default;
     const buffer = Buffer.from(fileBase64.replace(/^data:[^;]+;base64,/, ""), "base64");
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
+    // ExcelJS.xlsx.load accepts Buffer | ArrayBuffer.
+    // Node.js Buffer has extra properties not on ArrayBuffer, so extract
+    // the underlying ArrayBuffer for type compatibility.
+    const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+    await workbook.xlsx.load(arrayBuffer);
     const firstSheet = workbook.worksheets[0];
     if (!firstSheet) {
       return apiError("الملف لا يحتوي على أوراق عمل", 400);
@@ -181,8 +197,39 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 أجب فقط بـ JSON:
 {"orders":[{"clientName":"","clientPhone":"","clientAddress":"","items":[{"name":"","qty":1,"unitPrice":0.0}],"taxRate":0,"shipping":0,"discount":0,"notes":""}]}`;
 
-    const aiResult = await callAI(systemPrompt, `أعمدة الملف: ${headerKeys.join(", ")}\n\nالبيانات:\n${textRows}`);
-    const content = aiResult.content;
+    // AI-02 FIX (Audit v2 · Phase 1 Final Closure): Wrap callAI in executeCascade
+    // so parse-file benefits from cache → pattern → rule → memory → budget → AI.
+    const { executeCascade } = await import("@/lib/ai-fabric/gateway");
+    // `aiResult` is declared in the outer scope (above the try) so the
+    // catch handler can read it for cost logging.
+    const cascadeResult = await executeCascade<string>(
+      {
+        companySlug: companySlug || "__global",
+        requestType: "extraction",
+        normalizedInput: textRows.slice(0, 500),
+        rawInput: textRows,
+        context: { systemPrompt, headerKeys },
+      },
+      {
+        aiFn: async (): Promise<{ data: string; provider: string; tokensUsed: number; costUsd: number }> => {
+          const result = await callAI(systemPrompt, `أعمدة الملف: ${headerKeys.join(", ")}\n\nالبيانات:\n${textRows}`);
+          aiResult = result;
+          return {
+            data: result.content,
+            provider: "z-ai",
+            tokensUsed: (result.usage?.prompt_tokens || 0) + (result.usage?.completion_tokens || 0),
+            costUsd: 0,
+          };
+        },
+      },
+    );
+    const content = String(cascadeResult.data || "");
+    // If cascade resolved via cache, aiResult may be undefined — use safe defaults.
+    // AI-04 FIX (Audit v2 · Phase 2): carry through the actual model when AI
+    // was invoked; for cache/pattern/rule resolutions fall back to the
+    // cascade's `resolvedBy` stage name so the log still records something
+    // meaningful (no paid tokens consumed in those cases anyway).
+    const _aiResult = aiResult ?? { content, provider: cascadeResult.resolvedBy as string, model: `cascade/${cascadeResult.resolvedBy}`, usage: {} as { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }, processingMs: cascadeResult.latencyMs };
 
     let orders: ParsedOrder[] = [];
     try {
@@ -193,15 +240,18 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       logger.error("[parse-file] JSON parse failed", { err: err instanceof Error ? err.message : String(err) });
       // P0 FIX: log the AI call even though JSON parsing failed — the
       // provider call itself succeeded; the failure is downstream.
+      // AI-04 FIX (Audit v2 · Phase 2): use the actual model returned by
+      // callAI (e.g. 'deepseek-chat') instead of hard-coded 'z-ai-glm',
+      // otherwise paid DeepSeek calls were logged with $0 cost.
       void logAiUsage({
         companySlug: companySlug ?? "",
         userUid: user.uid ?? "",
         provider: "z-ai",
-        model: 'z-ai-glm',
+        model: _aiResult.model || "z-ai-glm",
         endpoint: "parse-file",
-        tokensIn: aiResult.usage.prompt_tokens || 0,
-        tokensOut: aiResult.usage.completion_tokens || 0,
-        processingMs: aiResult.processingMs,
+        tokensIn: _aiResult.usage?.prompt_tokens || 0 || 0,
+        tokensOut: _aiResult.usage?.completion_tokens || 0 || 0,
+        processingMs: _aiResult.processingMs || 0,
         success: false,
         errorMessage: `JSON parse failed: ${err instanceof Error ? err.message : String(err)}`,
       });
@@ -216,16 +266,19 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
     // P0 FIX (AI Effectiveness prompt): log every parse-file AI call to
     // ai_usage_logs with real token counts + the AI provider call latency
-    // (aiResult.processingMs), distinct from the whole-handler processingMs.
+    // (_aiResult.processingMs || 0), distinct from the whole-handler processingMs.
+    // AI-04 FIX (Audit v2 · Phase 2): use _aiResult.model so DeepSeek/paid
+    // calls are billed at the correct rate from cost-rates.ts (previously
+    // every call was logged as 'z-ai-glm' → costUsd always $0).
     void logAiUsage({
       companySlug: companySlug ?? "",
       userUid: user.uid ?? "",
       provider: "z-ai",
-      model: 'z-ai-glm',
+      model: _aiResult.model || "z-ai-glm",
       endpoint: "parse-file",
-      tokensIn: aiResult.usage.prompt_tokens || 0,
-      tokensOut: aiResult.usage.completion_tokens || 0,
-      processingMs: aiResult.processingMs,
+      tokensIn: _aiResult.usage?.prompt_tokens || 0 || 0,
+      tokensOut: _aiResult.usage?.completion_tokens || 0 || 0,
+      processingMs: _aiResult.processingMs || 0,
       success: true,
     });
 
@@ -235,7 +288,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         requestType: "parse-file",
         provider: "z-ai",
         latencyMs: processingMs,
-        tokensUsed: aiResult.usage.total_tokens || 0,
+        tokensUsed: _aiResult.usage?.total_tokens || 0 || 0,
         success: true,
       },
     });
@@ -243,17 +296,17 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     await logAudit({
       userEmail: user.email, userUid: user.uid ?? "",
       action: "ai_parse_file", entity: "ai", companySlug: companySlug ?? "",
-      details: { fileName, rowsParsed: rows.length, ordersExtracted: orders.length, processingMs, aiMs: aiResult.processingMs },
+      details: { fileName, rowsParsed: rows.length, ordersExtracted: orders.length, processingMs, aiMs: _aiResult.processingMs || 0 },
     });
 
     return NextResponse.json({
       orders,
       meta: {
         processingMs,
-        aiMs: aiResult.processingMs,
-        inputTokens: aiResult.usage.prompt_tokens || 0,
-        outputTokens: aiResult.usage.completion_tokens || 0,
-        totalTokens: aiResult.usage.total_tokens || 0,
+        aiMs: _aiResult.processingMs || 0,
+        inputTokens: _aiResult.usage?.prompt_tokens || 0 || 0,
+        outputTokens: _aiResult.usage?.completion_tokens || 0 || 0,
+        totalTokens: _aiResult.usage?.total_tokens || 0 || 0,
         rowsParsed: rows.length,
         ordersCount: orders.length,
         itemsCount,
@@ -264,14 +317,28 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     logger.error("[parse-file] failed", { err: err instanceof Error ? err.message : String(err), processingMs });
     // P0 FIX: log the failed AI call when the handler itself errored
     // (e.g. upstream provider threw before returning a completion).
+    // AI-04 FIX (Audit v2 · Phase 2): don't assume 'z-ai-glm' — if the AI
+    // call completed before the error (e.g. AI succeeded but the cascade
+    // wrapper threw), use the real model. Falls back to 'z-ai-glm' when no
+    // AI call was made (e.g. import failure).
+    //
+    // Note: TypeScript's CFA does not track assignments to `aiResult` made
+    // inside the `aiFn` callback above, so the narrowed type at this point
+    // is `null`. We cast back to the declared shape so the optional-chain
+    // works against `{ model?, usage? } | null`, not the (incorrectly)
+    // narrowed `null`/`never`.
+    const _aiResultForLog = aiResult as {
+      model?: string;
+      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+    } | null;
     void logAiUsage({
       companySlug: companySlug ?? "",
       userUid: user.uid ?? "",
       provider: "z-ai",
-      model: 'z-ai-glm',
+      model: _aiResultForLog?.model || "z-ai-glm",
       endpoint: "parse-file",
-      tokensIn: 0,
-      tokensOut: 0,
+      tokensIn: _aiResultForLog?.usage?.prompt_tokens || 0,
+      tokensOut: _aiResultForLog?.usage?.completion_tokens || 0,
       processingMs,
       success: false,
       errorMessage: err instanceof Error ? err.message : String(err),

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * rbac.test.ts — 50 tests for the enhanced RBAC system.
  *
@@ -29,6 +28,7 @@ mock.module("@/lib/db", () => ({
     auditLog: { create: mock(() => Promise.resolve({})) },
     adminAuditLog: { create: mock(() => Promise.resolve({})) },
   },
+  get dbTyped() { return this.db; },
 }));
 
 // NOTE: We do NOT mock @/lib/cryptoVault. rbac.ts's import chain

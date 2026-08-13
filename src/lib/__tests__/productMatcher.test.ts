@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * productMatcher.test.ts — Bilingual product matching tests.
  *
@@ -68,7 +67,7 @@ const dbMock = {
   },
 };
 
-mock.module("@/lib/db", () => ({ db: dbMock }));
+mock.module("@/lib/db", () => ({ db: dbMock, dbTyped: dbMock }));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

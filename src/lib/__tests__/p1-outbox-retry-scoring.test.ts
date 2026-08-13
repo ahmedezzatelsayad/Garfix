@@ -47,7 +47,7 @@ describe("P1.1: Outbox pattern", () => {
       },
       _store: store,
     };
-    mock.module("@/lib/db", () => ({ db: dbMock }));
+    mock.module("@/lib/db", () => ({ db: dbMock, dbTyped: dbMock }));
     // Mock queues.enqueue
     mock.module("@/lib/queues", () => ({
       enqueue: mock(async () => ({ id: "job-1" })),
@@ -126,11 +126,11 @@ describe("P1.1: Outbox pattern", () => {
     });
 
     // First attempt: failed
-    let r1 = await processOutboxBatch();
+    const r1 = await processOutboxBatch();
     expect(r1.failed).toBe(1);
     expect(r1.dead).toBe(0);
     // Second attempt: dead
-    let r2 = await processOutboxBatch();
+    const r2 = await processOutboxBatch();
     expect(r2.dead).toBe(1);
     expect((db as any)._store[0].status).toBe("dead");
 
@@ -276,6 +276,7 @@ describe("P1.4: AI provider scoring + circuit breaker", () => {
     // Reset module state between tests
     mock.module("@/lib/valkey", () => ({
       getValkeyClient: mock(async () => null), // no Valkey in tests
+      getValkeySubscriber: mock(() => Promise.resolve(null)),
       VALKEY_CONFIGURED: false,
     }));
   });

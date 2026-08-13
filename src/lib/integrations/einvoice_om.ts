@@ -21,6 +21,7 @@
  */
 'use node';
 
+import { fetchSafe } from "@/lib/ssrf";
 import { logger } from '@/lib/logger';
 import type { IntegrationProvider } from './types';
 import { getIntegrationConfig, setIntegrationConfig, disconnectIntegration } from './registry';
@@ -65,7 +66,7 @@ class EinvoiceOmProvider implements IntegrationProvider {
         client_secret: cfg.client_secret,
       });
 
-      const res = await fetch(url, {
+      const res = await fetchSafe(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body,

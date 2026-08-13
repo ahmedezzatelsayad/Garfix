@@ -212,7 +212,7 @@ export function CatalogView() {
   ];
 
   if (!activeCompany) return (
-    <div className="p-8 md:p-12 text-center text-muted-foreground flex items-center justify-center min-h-[400px]">
+    <div className="p-8 md:block md:p-12 text-center text-muted-foreground flex items-center justify-center min-h-[400px]">
       اختر شركة
     </div>
   );

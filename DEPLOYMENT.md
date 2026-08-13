@@ -1,3 +1,5 @@
+> ⚠️ This document may be stale. Refer to the latest deployment process in the worklog.
+>
 # 🚀 GarfiX EOS v0.2.0 - Deployment & Operations Guide
 
 ## 📋 Table of Contents
@@ -284,13 +286,24 @@ The project includes `vercel.json` with optimal settings:
 # Health check
 curl https://your-domain.vercel.app/api/health
 
-# Expected response:
+# Expected response (matches src/app/api/health/route.ts:142-154):
 {
-  "status": "healthy",
-  "version": "12.0.0",
-  "database": "connected",
-  "timestamp": "2026-07-21T..."
+  "status": "ok",
+  "version": "0.2.0",
+  "commitSha": "88d09d1",
+  "buildTime": "...",
+  "uptime": 1234,
+  "latencyMs": 12,
+  "checks": {
+    "db": { "ok": true },
+    "valkey": { "ok": true, "configured": true },
+    "queues": { "mode": "bullmq", "bullmq": true },
+    "memory": { "rssMB": 156, "heapMB": 88, "systemTotalMB": 8192, "rssPercent": "1.9" },
+    "disk": { "ok": true, "storageDir": "/app/storage" }
+  },
+  "timestamp": "2026-08-10T..."
 }
+# HTTP status: 200 if all critical checks pass, 503 if any failed.
 ```
 
 ---

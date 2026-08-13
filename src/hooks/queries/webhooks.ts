@@ -24,7 +24,7 @@ export interface WebhookEndpoint {
   isActive: boolean;
   createdAt: string;
   companySlug?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 interface WebhookDelivery {
@@ -34,14 +34,14 @@ interface WebhookDelivery {
   status: "success" | "failed" | "pending";
   attempts: number;
   createdAt: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 interface WebhookEvent {
   type: string;
   timestamp: string;
   payload: Record<string, unknown>;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 interface WebhookEndpointListResponse {
@@ -64,7 +64,7 @@ interface CreateWebhookEndpointPayload {
   url: string;
   events: string[];
   companySlug?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 interface UpdateWebhookEndpointPayload {
@@ -72,7 +72,7 @@ interface UpdateWebhookEndpointPayload {
   url?: string;
   events?: string[];
   isActive?: boolean;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 // ─── useWebhookEndpoints ─────────────────────────────────────────────────────
@@ -233,7 +233,7 @@ export interface WebhookDeliveriesFilterParams {
   eventType?: string;
   endpointId?: string;
   limit?: number;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 interface WebhookDeliveriesFilteredResponse {

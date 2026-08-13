@@ -18,7 +18,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveAuth } from '@/lib/auth';
+import { requireFounder } from '@/lib/middleware';
 import { z } from 'zod';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
@@ -262,9 +262,9 @@ export async function POST(request: NextRequest) {
   if (rl) return rl;
 
   return withErrorHandler(async () => {
-    // Authenticate
-    const auth = await resolveAuth(request);
-    if (!auth.user) return apiError('Unauthorized', 401);
+    // SEC: Require founder — this endpoint tests arbitrary API keys (SSRF risk)
+    const founderAccess = await requireFounder(request);
+    if (founderAccess instanceof NextResponse) return founderAccess;
     
     // Parse body
     const body = await request.json().catch(() => ({}));

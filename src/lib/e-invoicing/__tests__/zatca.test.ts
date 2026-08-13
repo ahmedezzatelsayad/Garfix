@@ -13,6 +13,16 @@
  */
 
 import { describe, it, expect } from "bun:test";
+import crypto from "node:crypto";
+
+// P2 FIX (audit): Generate real ECDSA P-256 key pair for signing tests.
+// Previously tests passed "placeholder-private-key-data" which the hardened
+// signZatcaInvoice() correctly refuses (it requires a real PEM with PRIVATE KEY).
+// Now we generate a fresh ECDSA P-256 key pair at module load for test use.
+const ecKeyPair = crypto.generateKeyPairSync("ec", { namedCurve: "P-256" });
+const TEST_PRIVATE_KEY_PEM = ecKeyPair.privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+const TEST_CERT_PEM = ecKeyPair.publicKey.export({ type: "spki", format: "pem" }).toString();
+
 import {
   validateZatcaInvoice,
   generateZatcaUblXml,
@@ -474,8 +484,8 @@ describe("generateZatcaUblXml", () => {
 describe("signZatcaInvoice", () => {
   it("should return a signed XML with signature embedded", () => {
     const xmlResult = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
-    const certificate = "placeholder-certificate-data";
-    const privateKey = "placeholder-private-key-data";
+    const certificate = TEST_CERT_PEM;
+    const privateKey = TEST_PRIVATE_KEY_PEM;
 
     const result = signZatcaInvoice(xmlResult.xml, certificate, privateKey);
     expect(result.signedXml).toBeTruthy();
@@ -486,8 +496,8 @@ describe("signZatcaInvoice", () => {
 
   it("should include certificate hash in the signed XML", () => {
     const xmlResult = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
-    const certificate = "placeholder-certificate-data";
-    const privateKey = "placeholder-private-key-data";
+    const certificate = TEST_CERT_PEM;
+    const privateKey = TEST_PRIVATE_KEY_PEM;
 
     const result = signZatcaInvoice(xmlResult.xml, certificate, privateKey);
     expect(result.signedXml).toContain("<cbc:CertificateHash>");
@@ -496,8 +506,8 @@ describe("signZatcaInvoice", () => {
 
   it("should include invoice hash reference in signed XML", () => {
     const xmlResult = generateZatcaUblXml(validSaudiStandardInvoice, saudiCompany);
-    const certificate = "placeholder-certificate-data";
-    const privateKey = "placeholder-private-key-data";
+    const certificate = TEST_CERT_PEM;
+    const privateKey = TEST_PRIVATE_KEY_PEM;
 
     const result = signZatcaInvoice(xmlResult.xml, certificate, privateKey);
     expect(result.signedXml).toContain("<cbc:Reference>");
@@ -506,10 +516,11 @@ describe("signZatcaInvoice", () => {
   it("should produce consistent certificate hash for the same certificate", () => {
     const xml1 = "<Invoice>test1</Invoice>";
     const xml2 = "<Invoice>test2</Invoice>";
-    const cert = "same-certificate";
+    const cert = TEST_CERT_PEM;
+    const key = TEST_PRIVATE_KEY_PEM;
 
-    const result1 = signZatcaInvoice(xml1, cert, "key1");
-    const result2 = signZatcaInvoice(xml2, cert, "key2");
+    const result1 = signZatcaInvoice(xml1, cert, key);
+    const result2 = signZatcaInvoice(xml2, cert, key);
 
     expect(result1.certificateHash).toBe(result2.certificateHash);
   });
@@ -518,8 +529,8 @@ describe("signZatcaInvoice", () => {
     const xml1 = "<Invoice>content A</Invoice>";
     const xml2 = "<Invoice>content B</Invoice>";
 
-    const result1 = signZatcaInvoice(xml1, "cert", "key");
-    const result2 = signZatcaInvoice(xml2, "cert", "key");
+    const result1 = signZatcaInvoice(xml1, TEST_CERT_PEM, TEST_PRIVATE_KEY_PEM);
+    const result2 = signZatcaInvoice(xml2, TEST_CERT_PEM, TEST_PRIVATE_KEY_PEM);
 
     expect(result1.digitalSignature).not.toBe(result2.digitalSignature);
   });

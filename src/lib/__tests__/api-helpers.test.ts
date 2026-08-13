@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * api-helpers.test.ts — tests for the shared Route Handler helpers in
  * `src/lib/api.ts`.
@@ -47,6 +46,7 @@ mock.module("@/lib/db", () => ({
       },
     })),
   },
+  get dbTyped() { return this.db; },
 }));
 
 mock.module("@/lib/logger", () => ({

@@ -11,6 +11,7 @@ import {
   RotateCcw, FileText, ArrowUpDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
 
@@ -110,7 +111,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
       setEntries(response.entries);
       setPagination(response.pagination);
     } catch (err) {
-      console.error("Error fetching recurring entries:", err);
+      logger.error("Error fetching recurring entries:", { err });
       toast.error("خطأ في تحميل القيود الدورية");
     } finally {
       setLoading(false);
@@ -118,6 +119,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
   }, [companySlug, pagination.page, pagination.pageSize, statusFilter, searchQuery]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching
     fetchEntries();
   }, [fetchEntries]);
 
@@ -138,8 +140,8 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
   const handleRunNow = async (id: string) => {
     setActionLoading(id);
     try {
-      const response = await apiPost(`/api/accounting/recurring/${id}/run`, {});
-      toast.success((response as any).message || "تم تشغيل القيد بنجاح");
+      await apiPost(`/api/accounting/recurring/${id}/run`, {});
+      toast.success("تم تشغيل القيد بنجاح");
       fetchEntries();
     } catch (err) {
       toast.error("خطأ في تشغيل القيد");
@@ -298,7 +300,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
         <div className="flex gap-2">
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
+            onChange={(e) => setStatusFilter(e.target.value as "active" | "all" | "paused")}
             className={cn(
               "px-4 py-2 rounded-lg",
               "border border-gray-200 dark:border-gray-600",
@@ -655,7 +657,7 @@ function RecurringEntryModal({
   useEffect(() => {
     apiGet<any>(`/api/accounting/accounts?companySlug=${companySlug}`)
       .then((res) => setAccounts(res.accounts || []))
-      .catch(console.error);
+      .catch((err: unknown) => logger.error("Error fetching recurring accounts", { err }));
   }, [companySlug]);
 
   // Handlers

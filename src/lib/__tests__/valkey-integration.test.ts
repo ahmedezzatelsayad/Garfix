@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * valkey-integration.test.ts — Comprehensive test suite for Valkey + BullMQ migration.
  *
@@ -34,6 +33,7 @@ mock.module("@/lib/db", () => ({
     },
     auditLog: { create: mock(() => Promise.resolve({ id: "mock-audit" })) },
   },
+  get dbTyped() { return this.db; },
 }));
 
 mock.module("@/lib/queue-pgboss", () => ({
@@ -53,7 +53,7 @@ mock.module("@/lib/queue-pgboss", () => ({
 const RedisMock = (await import("ioredis-mock")).default;
 
 // Create a shared mock instance that all modules will use
-let sharedMockRedis: InstanceType<typeof RedisMock> | null = null;
+const sharedMockRedis: InstanceType<typeof RedisMock> | null = null;
 
 function createMockRedis(): InstanceType<typeof RedisMock> {
   const r = new RedisMock();
@@ -363,9 +363,17 @@ describe("auth.ts — Token Blacklist (No Valkey)", () => {
   beforeEach(async () => {
     delete process.env.VALKEY_URL;
     delete process.env.REDIS_URL;
+    // SEC-04 FIX: isTokenBlacklisted now defaults to fail-CLOSED when
+    // Valkey is unavailable. Set VALKEY_FAIL_MODE=open to get the legacy
+    // fail-open behavior for these tests.
+    process.env.VALKEY_FAIL_MODE = "open";
     const mod = await import("@/lib/auth");
     isTokenBlacklisted = mod.isTokenBlacklisted;
     blacklistToken = mod.blacklistToken;
+  });
+
+  afterEach(() => {
+    delete process.env.VALKEY_FAIL_MODE;
   });
 
   it("returns false when no Valkey is configured (fail-open)", async () => {
@@ -373,11 +381,10 @@ describe("auth.ts — Token Blacklist (No Valkey)", () => {
     expect(result).toBe(false);
   });
 
-  it("blacklistToken is no-op when no Valkey is configured", async () => {
-    // Should not throw
-    await blacklistToken("jti-test-456", 3600);
-    const result = await isTokenBlacklisted("jti-test-456");
-    expect(result).toBe(false);
+  it("blacklistToken throws when no Valkey is configured (fail-closed for writes)", async () => {
+    // SEC-04 FIX: blacklistToken now throws when Valkey is unavailable
+    // (fail-closed for writes — the caller must know revocation failed).
+    await expect(blacklistToken("jti-test-456", 3600)).rejects.toThrow();
   });
 });
 
@@ -464,8 +471,10 @@ describe("queues.ts — Job Queue (In-Process Mode)", () => {
     expect(QUEUE_NAMES.AI).toBe("ai-jobs");
     expect(QUEUE_NAMES.EMAIL).toBe("email-jobs");
     expect(QUEUE_NAMES.WHATSAPP).toBe("whatsapp-jobs");
+    expect(QUEUE_NAMES.SMS).toBe("sms-jobs");
     expect(QUEUE_NAMES.BACKUP).toBe("backup-jobs");
     expect(QUEUE_NAMES.SCHEDULER).toBe("scheduler-jobs");
+    expect(QUEUE_NAMES.EVENTS).toBe("events-jobs");
   });
 });
 
@@ -617,11 +626,22 @@ describe("Chaos Tests — Graceful Degradation", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("auth blacklist fails open (no Valkey = accept all)", async () => {
+  it("auth blacklist fails closed by default (no Valkey = reject token)", async () => {
     delete process.env.VALKEY_URL;
+    delete process.env.VALKEY_FAIL_MODE;
     const mod = await import("@/lib/auth?chaos=3");
     const result = await mod.isTokenBlacklisted("chaos-jti");
-    expect(result).toBe(false); // fail-open
+    // SEC-04 FIX: fail-closed — no Valkey means token is assumed blacklisted
+    expect(result).toBe(true);
+  });
+
+  it("auth blacklist can be set to fail-open via VALKEY_FAIL_MODE=open", async () => {
+    delete process.env.VALKEY_URL;
+    process.env.VALKEY_FAIL_MODE = "open";
+    const mod = await import("@/lib/auth?chaos=3b");
+    const result = await mod.isTokenBlacklisted("chaos-jti-open");
+    expect(result).toBe(false); // fail-open when explicitly configured
+    delete process.env.VALKEY_FAIL_MODE;
   });
 
   it("queue dead-letters job when handler throws", { timeout: 30_000 }, async () => {

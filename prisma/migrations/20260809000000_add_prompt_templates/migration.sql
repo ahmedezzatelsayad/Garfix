@@ -1,4 +1,4 @@
-CREATE TABLE "prompt_templates" (
+CREATE TABLE IF NOT EXISTS "prompt_templates" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "version" INTEGER NOT NULL DEFAULT 1,
@@ -10,9 +10,9 @@ CREATE TABLE "prompt_templates" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "prompt_templates_pkey" PRIMARY KEY ("id")
 );
-CREATE UNIQUE INDEX "prompt_templates_name_version_key" ON "prompt_templates"("name", "version");
-CREATE INDEX "prompt_templates_name_active_idx" ON "prompt_templates"("name", "active");
-CREATE INDEX "prompt_templates_active_idx" ON "prompt_templates"("active");
+CREATE UNIQUE INDEX IF NOT EXISTS "prompt_templates_name_version_key" ON "prompt_templates"("name", "version");
+CREATE INDEX IF NOT EXISTS "prompt_templates_name_active_idx" ON "prompt_templates"("name", "active");
+CREATE INDEX IF NOT EXISTS "prompt_templates_active_idx" ON "prompt_templates"("active");
 
 INSERT INTO "prompt_templates" ("id", "name", "version", "content", "changeLog", "active", "createdBy", "createdAt", "updatedAt") VALUES
   ('seed-garfix-persona-v1', 'garfix-persona', 1, 'أنت جارفيكس، مساعد ذكاء اصطناعي متخصص في ERP والفوترة الإلكترونية للشرق الأوسط.', 'Initial seed', true, 'system@seed', NOW(), NOW()),

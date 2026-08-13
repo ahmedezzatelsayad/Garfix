@@ -10,6 +10,22 @@
 #
 # Runs on every push & PR to main/develop
 # Jobs: lint → typecheck → build → unit-tests → integration-tests → summary → deploy
+#
+# TPD-13 FIX (Audit v2 · Phase 3): Security scanning (Trivy container scan,
+# TruffleHog + Gitleaks secret scan, CodeQL SAST, Bun dependency audit, license
+# compliance) lives in the dedicated `.github/workflows/security.yml` workflow.
+# That workflow triggers on push/PR to main + a weekly Monday 06:00 UTC schedule
+# + manual dispatch. It runs in parallel with this CI pipeline; both must pass
+# before a PR can merge (status checks are required in branch protection).
+#
+# Why split: security scans are CPU-heavy (CodeQL builds the full app, Trivy
+# builds + scans the Docker image) and would push CI past the 30-min GHA limit
+# if they ran inline. Splitting also lets us run them on a weekly schedule even
+# when no PR is open — catching newly-disclosed CVEs in dependency graphs.
+#
+# The Trivy / TruffleHog action versions are pinned, and Trivy SARIF results
+# are uploaded to the GitHub Security tab (where GHAS is available) and always
+# uploaded as a workflow artifact for offline review.
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: GarfiX CI v12
@@ -29,11 +45,17 @@ env:
   # PostgreSQL (Unified for all environments)
   DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public&connection_limit=5"
   DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
+  # Valkey (for cache + rate limiting + queues)
+  VALKEY_URL: "valkey://localhost:6379"
   # Auth secrets (test values)
   JWT_SECRET: "ci-test-jwt-secret-at-least-32-characters-long!!"
   JWT_REFRESH_SECRET: "ci-test-refresh-secret-at-least-32-chars!!"
   FOUNDER_EMAIL: "founder@test.com"
+  FOUNDER_PASSWORD: "CiTestFounderPassword2026!"
   PAYMENTS_ENC_KEY: "ci-test-encryption-key-at-least-32-characters!"
+  # DeepSeek (test placeholder — real key set via secrets in production deploys)
+  DEEPSEEK_API_KEY: "sk-ci-test-placeholder-deepseek-key"
+  DEEPSEEK_MODEL: "deepseek-chat"
 
 jobs:
   # ── Job 1: Lint & Code Quality ──────────────────────────────────────────
@@ -301,7 +323,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: garfix_test
           POSTGRES_PASSWORD: garfix_test_pass
@@ -310,6 +332,15 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      valkey:
+        image: valkey/valkey:8.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -349,18 +380,32 @@ jobs:
             sleep 2
           done
 
+      - name: Wait for Valkey to be ready
+        run: |
+          echo "Waiting for Valkey..."
+          for i in $(seq 1 10); do
+            if (echo > /dev/tcp/localhost/6379) 2>/dev/null; then
+              echo "✅ Valkey is ready"
+              break
+            fi
+            echo "Attempt $i/10 - waiting..."
+            sleep 2
+          done
+
       - name: Sync database schema
         run: |
-          echo "Pushing database schema (prisma db push)..."
-          # Use db:push instead of migrate deploy because the migration files
-          # were generated for SQLite (AUTOINCREMENT syntax) and fail on PostgreSQL.
-          # db:push reads the Prisma schema directly and syncs it to the database.
-          if ! bunx prisma db push --accept-data-loss 2>&1 | tee migrate-output.txt; then
-            echo "❌ Prisma db push FAILED — database schema is not ready for tests"
+          echo "Running prisma migrate deploy on fresh PostgreSQL..."
+          # P1 FIX (audit): Migrations are now PostgreSQL-compatible (SQLite
+          # syntax fixed: AUTOINCREMENT→SERIAL, DATETIME→TIMESTAMP(3)).
+          # CI uses 'prisma migrate deploy' to verify all 29 migrations run
+          # from scratch on a fresh PostgreSQL 17 database — this is the
+          # same command production deploy uses.
+          if ! bunx prisma migrate deploy 2>&1 | tee migrate-output.txt; then
+            echo "❌ prisma migrate deploy FAILED — migrations are not PostgreSQL-compatible"
             echo "Review migrate-output.txt for details"
             exit 1
           fi
-          echo "✅ Database schema synced successfully"
+          echo "✅ All migrations applied successfully via prisma migrate deploy"
 
       - name: Run unit tests (all test files)
         run: |
@@ -400,7 +445,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: garfix_test
           POSTGRES_PASSWORD: garfix_test_pass
@@ -409,6 +454,15 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      valkey:
+        image: valkey/valkey:8.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -448,17 +502,28 @@ jobs:
             sleep 2
           done
 
+      - name: Wait for Valkey to be ready
+        run: |
+          echo "Waiting for Valkey..."
+          for i in $(seq 1 10); do
+            if (echo > /dev/tcp/localhost/6379) 2>/dev/null; then
+              echo "✅ Valkey is ready"
+              break
+            fi
+            echo "Attempt $i/10 - waiting..."
+            sleep 2
+          done
+
       - name: Sync database schema
         run: |
-          echo "Pushing database schema (prisma db push)..."
-          # Use db:push instead of migrate deploy because the migration files
-          # were generated for SQLite (AUTOINCREMENT syntax) and fail on PostgreSQL.
-          if ! bunx prisma db push --accept-data-loss 2>&1 | tee migrate-output.txt; then
-            echo "❌ Prisma db push FAILED — database schema is not ready for tests"
+          echo "Running prisma migrate deploy on fresh PostgreSQL..."
+          # P1 FIX: same as unit-tests — migrate deploy (not db push)
+          if ! bunx prisma migrate deploy 2>&1 | tee migrate-output.txt; then
+            echo "❌ prisma migrate deploy FAILED"
             echo "Review migrate-output.txt for details"
             exit 1
           fi
-          echo "✅ Database schema synced successfully"
+          echo "✅ All migrations applied successfully"
 
       - name: Seed test database
         run: bun run seed 2>&1 || echo "Seed completed with warnings"

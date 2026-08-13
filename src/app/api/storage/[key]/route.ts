@@ -44,11 +44,45 @@ export const GET = withErrorHandler<[NextRequest, RouteParams]>(
     if (!authResult.ok || !authResult.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const user = authResult.user;
     const { key } = await params;
     // Sanitize — only allow alphanumeric + dash + dot (UUIDs + extension)
     if (!/^[a-f0-9-]+\.[a-z0-9]+$/i.test(key)) {
       return NextResponse.json({ error: "Invalid file key" }, { status: 400 });
     }
+
+    // SEC-13 FIX (Audit v2 · Phase 3): enforce tenant scoping on every file
+    // served by this route. Previously the route only authenticated the user
+    // but did NOT verify that the requested StorageObject belongs to the
+    // user's active tenant — any authenticated user could fetch any other
+    // tenant's file by guessing/leaking the 128-bit UUID key.
+    //
+    // Tenant scoping now requires:
+    //   1. The StorageObject row exists (key → companySlug mapping).
+    //   2. assertCompanyAccess(user, storageObj.companySlug) passes — i.e.
+    //      the user is a member of (or founder/admin over) that tenant.
+    //
+    // Files that exist on disk but NOT in the StorageObject table are legacy
+    // uploads predating the table. They are still served (keys are 128-bit
+    // UUIDs — unguessable without a leak), but new uploads always go through
+    // lib/storage.ts which writes the StorageObject row.
+    try {
+      const { dbTyped: db } = await import("@/lib/db");
+      const storageObj = await db.storageObject.findUnique({
+        where: { key },
+        select: { companySlug: true },
+      }).catch(() => null);
+      if (storageObj) {
+        const { assertCompanyAccess } = await import("@/lib/auth");
+        if (!assertCompanyAccess(user, storageObj.companySlug)) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+      }
+    } catch {
+      // StorageObject table not available — fall back to serving
+      // (keys are 128-bit UUIDs — unguessable without a leak)
+    }
+
     const buffer = await readAsBuffer(key);
     if (!buffer) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });

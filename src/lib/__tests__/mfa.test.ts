@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * mfa.test.ts — 60 tests for the TOTP-based MFA module.
  *
@@ -48,6 +47,7 @@ mock.module("@/lib/db", () => ({
     company: { findMany: mock(() => Promise.resolve([])) },
     notification: { create: mock(() => Promise.resolve({})) },
   },
+  get dbTyped() { return this.db; },
 }));
 
 mock.module("@/lib/logger", () => ({
@@ -106,10 +106,13 @@ describe("MFA Module", () => {
       expect(result.recoveryCodes).toHaveLength(10);
     });
 
-    it("recovery codes are in XXXX-XXXX format", async () => {
+    // SEC-07 FIX (Audit v2): recovery codes now use 128 bits of entropy
+    // (16 random bytes → 32 hex chars → 8 groups of 4 → XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX).
+    // Previously was 32 bits (4 bytes → 8 hex chars → XXXX-XXXX).
+    it("recovery codes are in XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX format (128-bit entropy)", async () => {
       const result = await setupMFA("user-1");
       for (const code of result.recoveryCodes) {
-        expect(code).toMatch(/^[A-F0-9]{4}-[A-F0-9]{4}$/);
+        expect(code).toMatch(/^[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}$/);
       }
     });
 

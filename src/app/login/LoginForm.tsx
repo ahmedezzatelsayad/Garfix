@@ -15,6 +15,10 @@ import {
   Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
 } from "@/components/ui/card";
 import { AlertTriangle, BarChart3, Loader2, ShieldCheck } from "lucide-react";
+// FE-15 FIX (Audit v2 · Phase 3): login page is outside AppShell, so it
+// never got the shared skip-links. We render them directly here and add
+// matching id targets on <header> / <main> / <footer>.
+import { GarfixSkipLinks } from "@/components/garfix-ds";
 
 export function LoginForm() {
   const router = useRouter();
@@ -50,7 +54,9 @@ export function LoginForm() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0b1220]" dir="rtl">
-      <header className="px-6 py-5">
+      {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
+      <GarfixSkipLinks />
+      <header id="main-navigation" className="px-6 py-5">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg">
             <BarChart3 className="h-5 w-5 text-white" />
@@ -59,7 +65,7 @@ export function LoginForm() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-4 py-8">
+      <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center px-4 py-8">
         <Card className="w-full max-w-md shadow-brand-xl glass-strong border-emerald-500/20">
           <CardHeader className="space-y-3 text-center pb-2">
             <div className="mx-auto relative">
@@ -76,7 +82,15 @@ export function LoginForm() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm">
+                // FE-16 FIX (Audit v2 · Phase 3): expose the error message
+                // element to assistive tech via aria-describedby on each input.
+                // The same element serves as the form-level error region.
+                <div
+                  id="login-form-error"
+                  role="alert"
+                  aria-live="assertive"
+                  className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm"
+                >
                   <AlertTriangle size={16} />
                   <span>{error}</span>
                 </div>
@@ -93,6 +107,10 @@ export function LoginForm() {
                   required
                   dir="ltr"
                   className="bg-background"
+                  // FE-16 FIX (Audit v2 · Phase 3): tie invalid state +
+                  // error message to the input for SR users.
+                  aria-invalid={!!error}
+                  aria-describedby={error ? "login-form-error" : undefined}
                 />
               </div>
 
@@ -107,6 +125,9 @@ export function LoginForm() {
                   required
                   dir="ltr"
                   className="bg-background"
+                  // FE-16 FIX (Audit v2 · Phase 3): aria-invalid + describedby.
+                  aria-invalid={!!error}
+                  aria-describedby={error ? "login-form-error" : undefined}
                 />
               </div>
 
@@ -127,7 +148,7 @@ export function LoginForm() {
             </form>
           </CardContent>
 
-          <CardFooter className="flex flex-col gap-3">
+          <CardFooter id="main-footer" className="flex flex-col gap-3">
             <p className="text-sm text-muted-foreground text-center">
               أو مستخدم جديد؟{" "}
               <Link href="/signup" className="text-emerald-500 hover:text-emerald-400 font-medium">

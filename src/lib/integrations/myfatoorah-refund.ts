@@ -16,6 +16,7 @@
  */
 'use node';
 
+import { fetchSafe } from "@/lib/ssrf";
 import { dbTyped as db } from "@/lib/db";
 import { logger } from '@/lib/logger';
 import { getIntegrationConfig } from '@/lib/integrations/registry';
@@ -109,7 +110,7 @@ export async function initiateRefund(
   // 4. Call MyFatoorah Refund API
   const baseUrl = cfg.base_url.replace(/\/+$/, '');
   try {
-    const refundRes = await fetch(`${baseUrl}/api/v2/Refund`, {
+    const refundRes = await fetchSafe(`${baseUrl}/api/v2/Refund`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${cfg.api_key}`,
@@ -261,7 +262,7 @@ export async function getRefundStatus(
 
     try {
       const baseUrl = cfg.base_url.replace(/\/+$/, '');
-      const res = await fetch(`${baseUrl}/api/v2/GetRefundStatus`, {
+      const res = await fetchSafe(`${baseUrl}/api/v2/GetRefundStatus`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${cfg.api_key}`,

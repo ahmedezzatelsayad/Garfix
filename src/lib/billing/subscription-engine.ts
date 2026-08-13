@@ -22,7 +22,8 @@
  */
 'use node';
 
-import { dbTyped as db } from '@/lib/db';
+import { fetchSafe } from "@/lib/ssrf";
+import { dbTyped as db, withTenantTx } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { enqueueBackground, QUEUE_NAMES } from '@/lib/queues';
 import { getIntegrationConfig } from '@/lib/integrations/registry';
@@ -97,23 +98,40 @@ export async function createSubscription(input: CreateSubscriptionInput): Promis
     return { ok: false, error: 'يوجد جدول اشتراك نشط أو متأخر لهذه الشركة — يرجى إلغائه أولاً' };
   }
 
-  const schedule = await db.subscriptionSchedule.create({
-    data: {
-      companySlug,
-      plan,
-      billingCycle: billingPeriod,
-      status: 'active',
-      amount: String(amount),
-      currency: pricing.currency,
-      provider,
-      paymentMethod,
-      nextBillingDate: now,
-      cycleStart,
-      cycleEnd,
-      maxRetries: MAX_RETRIES,
-      downgradePlan: 'trial',
-      createdBy,
-    },
+  // DB-16 FIX (Audit v2 · Phase 3): Wrap schedule.create + company.update in
+  // a single $transaction. Without this, a crash between the two writes would
+  // leave an "active" schedule with a stale company.currentBillingCycleEnd —
+  // the scheduler would then re-charge a company whose billing-cycle end has
+  // not advanced, double-charging the customer.
+  const schedule = await withTenantTx(async (tx) => {
+    const created = await tx.subscriptionSchedule.create({
+      data: {
+        companySlug,
+        plan,
+        billingCycle: billingPeriod,
+        status: 'active',
+        amount: String(amount),
+        currency: pricing.currency,
+        provider,
+        paymentMethod,
+        nextBillingDate: now,
+        cycleStart,
+        cycleEnd,
+        maxRetries: MAX_RETRIES,
+        downgradePlan: 'trial',
+        createdBy,
+      },
+    });
+
+    // Update company billing cycle (same tx — atomic with the schedule create)
+    await tx.company.update({
+      where: { slug: companySlug },
+      data: {
+        currentBillingCycleEnd: cycleEnd,
+      },
+    });
+
+    return created;
   });
 
   logger.info('[subscription-engine] schedule created', {
@@ -124,14 +142,6 @@ export async function createSubscription(input: CreateSubscriptionInput): Promis
     amount,
     currency: pricing.currency,
     nextBillingDate: schedule.nextBillingDate.toISOString(),
-  });
-
-  // Update company billing cycle
-  await db.company.update({
-    where: { slug: companySlug },
-    data: {
-      currentBillingCycleEnd: cycleEnd,
-    },
   });
 
   // Enqueue the first charge immediately
@@ -202,23 +212,30 @@ export async function processScheduledCharge(scheduleId: string): Promise<{
     const nextBillingDate = computeCycleEnd(now, schedule.billingCycle as BillingPeriod);
     const cycleEnd = nextBillingDate;
 
-    await db.subscriptionSchedule.update({
-      where: { id: scheduleId },
-      data: {
-        status: 'active',
-        retryCount: 0,
-        nextBillingDate,
-        cycleStart: now,
-        cycleEnd,
-      },
-    });
+    // DB-16 FIX (Audit v2 · Phase 3): Wrap schedule.update + company.update
+    // in a single $transaction. Without this, a crash between the two writes
+    // would leave the schedule "active" with nextBillingDate advanced but
+    // company.currentBillingCycleEnd stale — the company would lose access
+    // prematurely on the next billing-cycle check.
+    await withTenantTx(async (tx) => {
+      await tx.subscriptionSchedule.update({
+        where: { id: scheduleId },
+        data: {
+          status: 'active',
+          retryCount: 0,
+          nextBillingDate,
+          cycleStart: now,
+          cycleEnd,
+        },
+      });
 
-    // Update company billing cycle
-    await db.company.update({
-      where: { slug: schedule.companySlug },
-      data: {
-        currentBillingCycleEnd: cycleEnd,
-      },
+      // Update company billing cycle (same tx — atomic with the schedule update)
+      await tx.company.update({
+        where: { slug: schedule.companySlug },
+        data: {
+          currentBillingCycleEnd: cycleEnd,
+        },
+      });
     });
 
     logger.info('[subscription-engine] charge succeeded', {
@@ -243,22 +260,29 @@ export async function processScheduledCharge(scheduleId: string): Promise<{
       downgradePlan: schedule.downgradePlan,
     });
 
-    await db.subscriptionSchedule.update({
-      where: { id: scheduleId },
-      data: {
-        status: 'cancelled',
-        retryCount: newRetryCount,
-      },
-    });
+    // DB-16 FIX (Audit v2 · Phase 3): Wrap schedule.update (cancel) +
+    // company.update (downgrade) in a single $transaction. Without this,
+    // a crash between the two writes would leave the schedule "cancelled"
+    // while the company stays on the paid plan — the customer keeps
+    // getting billed for a cancelled subscription.
+    await withTenantTx(async (tx) => {
+      await tx.subscriptionSchedule.update({
+        where: { id: scheduleId },
+        data: {
+          status: 'cancelled',
+          retryCount: newRetryCount,
+        },
+      });
 
-    // Downgrade company plan
-    await db.company.update({
-      where: { slug: schedule.companySlug },
-      data: {
-        plan: schedule.downgradePlan,
-        subscriptionStatus: 'downgraded',
-        currentBillingCycleEnd: null,
-      },
+      // Downgrade company plan (same tx — atomic with the schedule cancel)
+      await tx.company.update({
+        where: { slug: schedule.companySlug },
+        data: {
+          plan: schedule.downgradePlan,
+          subscriptionStatus: 'downgraded',
+          currentBillingCycleEnd: null,
+        },
+      });
     });
 
     logger.info('[subscription-engine] company downgraded', {
@@ -354,27 +378,34 @@ export async function reactivateSubscription(
     const now = new Date();
     const cycleEnd = computeCycleEnd(now, cancelled.billingCycle as BillingPeriod);
 
-    await db.subscriptionSchedule.update({
-      where: { id: cancelled.id },
-      data: {
-        status: 'active',
-        plan,
-        amount: String(amount),
-        currency: countryPricing.currency,
-        nextBillingDate: now,
-        retryCount: 0,
-        cycleStart: now,
-        cycleEnd,
-      },
-    });
+    // DB-16 FIX (Audit v2 · Phase 3): Wrap schedule.update (reactivate) +
+    // company.update (restore plan) in a single $transaction. Without this,
+    // a crash between the two writes would leave the schedule "active" while
+    // the company stays on the downgrade plan — the customer would be
+    // charged on a reactivated schedule but locked out of paid features.
+    await withTenantTx(async (tx) => {
+      await tx.subscriptionSchedule.update({
+        where: { id: cancelled.id },
+        data: {
+          status: 'active',
+          plan,
+          amount: String(amount),
+          currency: countryPricing.currency,
+          nextBillingDate: now,
+          retryCount: 0,
+          cycleStart: now,
+          cycleEnd,
+        },
+      });
 
-    await db.company.update({
-      where: { slug: companySlug },
-      data: {
-        plan,
-        subscriptionStatus: 'active',
-        currentBillingCycleEnd: cycleEnd,
-      },
+      await tx.company.update({
+        where: { slug: companySlug },
+        data: {
+          plan,
+          subscriptionStatus: 'active',
+          currentBillingCycleEnd: cycleEnd,
+        },
+      });
     });
 
     // Enqueue immediate charge
@@ -510,7 +541,7 @@ async function initiateProviderCharge(
       const apiKey = cfg.api_key || '';
 
       // Initiate payment
-      const initiateRes = await fetch(`${baseUrl}/api/v2/InitiatePayment`, {
+      const initiateRes = await fetchSafe(`${baseUrl}/api/v2/InitiatePayment`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -538,7 +569,7 @@ async function initiateProviderCharge(
         : 1;
 
       // Execute payment
-      const executeRes = await fetch(`${baseUrl}/api/v2/ExecutePayment`, {
+      const executeRes = await fetchSafe(`${baseUrl}/api/v2/ExecutePayment`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -614,7 +645,7 @@ async function initiateProviderCharge(
       const apiKey = cfg.api_key || '';
 
       // Auth token
-      const authRes = await fetch('https://accept.paymob.com/api/auth/tokens', {
+      const authRes = await fetchSafe('https://accept.paymob.com/api/auth/tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ api_key: apiKey }),
@@ -631,7 +662,7 @@ async function initiateProviderCharge(
       const authToken = authData.token;
 
       // Create order
-      const orderRes = await fetch('https://accept.paymob.com/api/ecommerce/orders', {
+      const orderRes = await fetchSafe('https://accept.paymob.com/api/ecommerce/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -662,7 +693,7 @@ async function initiateProviderCharge(
       const orderId = orderData.id;
 
       // Payment key
-      const payKeyRes = await fetch('https://accept.paymob.com/api/acceptance/payment_keys', {
+      const payKeyRes = await fetchSafe('https://accept.paymob.com/api/acceptance/payment_keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

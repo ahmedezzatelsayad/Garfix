@@ -1,20 +1,90 @@
+# ═════════════════════════════════════════════════════════════
+# GarfiX v12 — Production Docker Compose (self-contained)
+# ═════════════════════════════════════════════════════════════
+#
+# P0 FIX (audit): Previously this file only had override fragments for
+# postgres/valkey (no image, no config). Now it's fully self-contained —
+# you can run `docker compose -f docker-compose.prod.yml up` directly.
+#
+# Usage:
+#   1. Copy .env.example to .env and fill in real values
+#   2. docker compose -f docker-compose.prod.yml up -d
+#
+# All secrets are required via ${VAR:?msg} — compose will refuse to start
+# if any are missing.
+# ═════════════════════════════════════════════════════════════
+
 services:
-  valkey:
-    networks: [garfix-net]
-    deploy:
-      resources:
-        limits: { memory: 1G }
+  # ── PostgreSQL 17 ──────────────────────────────────────────
   postgres:
+    image: postgres:17-alpine
+    container_name: garfix-postgres-prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-garfix}
+      POSTGRES_PASSWORD: ${DB_PASS:?DB_PASS must be set}
+      POSTGRES_DB: ${DB_NAME:-garfix}
+      # Tune for 2GB memory limit
+      PG_SHARED_BUFFERS: 512MB
+      PG_WORK_MEM: 8MB
+      PG_MAINTENANCE_WORK_MEM: 256MB
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     networks: [garfix-net]
+    # NO host port exposure — only app needs to reach Postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-garfix} -d ${DB_NAME:-garfix}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     deploy:
       resources:
         limits: { memory: 2G, cpus: "2.0" }
+        reservations: { memory: 512M }
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+  # ── Valkey 8.1 (Redis-compatible) ─────────────────────────
+  valkey:
+    image: valkey/valkey:8.1-alpine
+    container_name: garfix-valkey-prod
+    restart: always
+    command: >
+      valkey-server
+      --requirepass ${VALKEY_PASSWORD:?VALKEY_PASSWORD must be set}
+      --maxmemory ${VALKEY_MAXMEMORY:-512mb}
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+      --save 60 1000
+      --save 300 100
+    volumes:
+      - valkey-data:/data
+    networks: [garfix-net]
+    # NO host port exposure — only app needs to reach Valkey
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits: { memory: 1G }
+        reservations: { memory: 128M }
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # ── GarfiX App ────────────────────────────────────────────
   app:
     image: ${GARFIX_IMAGE_TAG:-garfix:latest}
     container_name: garfix-app-prod
     restart: always
     ports:
-      - "127.0.0.1:${APP_PORT:-3000}:3000"
+      - "127.0.0.1:${APP_PORT:-3000}:3000"  # loopback only — Nginx proxies
     networks: [garfix-net]
     environment:
       NODE_ENV: production
@@ -22,15 +92,33 @@ services:
       DATABASE_URL: postgresql://${DB_USER:-garfix}:${DB_PASS:?DB_PASS}@postgres:5432/${DB_NAME:-garfix}?schema=public&connection_limit=20&pool_timeout=30
       DATABASE_DIRECT_URL: postgresql://${DB_USER:-garfix}:${DB_PASS:?DB_PASS}@postgres:5432/${DB_NAME:-garfix}
       VALKEY_URL: valkey://:${VALKEY_PASSWORD:?VALKEY_PASSWORD}@valkey:6379
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET}
-      FOUNDER_EMAIL: ${FOUNDER_EMAIL:?FOUNDER_EMAIL}
-      PAYMENTS_ENC_KEY: ${PAYMENTS_ENC_KEY:?PAYMENTS_ENC_KEY}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET must be set}
+      FOUNDER_EMAIL: ${FOUNDER_EMAIL:?FOUNDER_EMAIL must be set}
+      FOUNDER_PASSWORD: ${FOUNDER_PASSWORD:?FOUNDER_PASSWORD must be set}
+      PAYMENTS_ENC_KEY: ${PAYMENTS_ENC_KEY:?PAYMENTS_ENC_KEY must be set}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
+      APP_URL: ${APP_URL:-https://garfix.yourdomain.com}
       BACKUP_DIR: /app/storage/backups
       SESSION_REGISTRY_ENFORCED: "true"
-    volumes: [app-storage:/app/storage]
+      # Optional but recommended
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    volumes:
+      - app-storage:/app/storage
+    # TPD-11 FIX (Audit v2 · Phase 3): read-only root filesystem + tmpfs /tmp.
+    #   - read_only: the container's root FS is immutable; any attempt to write
+    #     outside the explicitly-writable paths fails. An attacker who achieves
+    #     RCE cannot persist a backdoor on disk.
+    #   - tmpfs /tmp with noexec/nosuid: writable scratch space for Node temp
+    #     files, but binaries dropped here CANNOT be executed (noexec) and
+    #     setuid bits are ignored (nosuid). 128MB cap prevents memory pressure.
+    #   - /app/storage is the only persistent writable path, backed by a named
+    #     volume — survives container restarts, can be snapshotted separately.
     read_only: true
-    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=128m]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=128m
     deploy:
       resources:
         limits: { memory: 4G, cpus: "2.0" }
@@ -42,15 +130,23 @@ services:
       retries: 5
       start_period: 60s
     depends_on:
-      postgres: { condition: service_healthy }
-      valkey: { condition: service_healthy }
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
     logging:
       driver: json-file
       options: { max-size: "50m", max-file: "10" }
+
 networks:
   garfix-net:
     driver: bridge
     name: garfix-net
+
 volumes:
+  postgres-data:
+    driver: local
+  valkey-data:
+    driver: local
   app-storage:
     driver: local

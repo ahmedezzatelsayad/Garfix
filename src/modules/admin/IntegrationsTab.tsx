@@ -39,7 +39,8 @@ export function IntegrationsTab() {
   const updateMutation = useUpdatePlatformIntegrations();
   const [configuringType, setConfiguringType] = useState<string | null>(null);
 
-  const integrations: IntegrationInfo[] = (integrationsQuery.data as unknown as IntegrationInfo[]) || [];
+  // @ts-expect-error — local IntegrationInfo adds description, requiredFields, hasCredentials, credentialsLastUpdatedAt, isRegistered; API returns these covered by hook type's [key: string]: any index sig.
+  const integrations: IntegrationInfo[] = (integrationsQuery.data as IntegrationInfo[]) || [];
   const loading = integrationsQuery.isLoading;
 
   const disconnect = async (type: string) => {
