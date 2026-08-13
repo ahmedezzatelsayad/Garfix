@@ -46,7 +46,7 @@ jobs:
         run: docker save garfix:${{ github.sha }} | gzip > /tmp/garfix.tar.gz
 
       - name: Copy to EC2 (staging)
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST_STAGING }}
           username: ubuntu
@@ -138,7 +138,7 @@ jobs:
         run: docker save garfix:${{ github.sha }} | gzip > /tmp/garfix.tar.gz
 
       - name: Copy to EC2 (production)
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
