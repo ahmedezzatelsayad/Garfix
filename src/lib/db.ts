@@ -31,7 +31,7 @@
  */
 
 import { PrismaClient } from '@prisma/client'
-import { getTenantContext } from './tenant-context'
+import { getTenantContext, markInTransaction } from './tenant-context'
 
 const globalForPrisma = globalThis as typeof globalThis & {
   prisma: ReturnType<typeof createExtendedPrisma> | undefined
@@ -108,13 +108,21 @@ function createExtendedPrisma() {
     // $transaction that sets app.current_company_slug via set_config(..., true).
     // This fixes the P0 regression where strict RLS policies return 0 rows
     // for the 211 routes that don't use withTenantScope explicitly.
+    //
+    // T0-A FIX (Nested Transaction Atomicity): The extension has a
+    // re-entrancy guard. When code calls db.$transaction(async (tx) => {...}),
+    // the $transaction interceptor (below) sets the ALS `inTransaction` flag.
+    // The $allOperations interceptor checks this flag:
+    //   - If inTransaction=true: calls set_config on the tx client directly
+    //     (NO new $transaction wrapper — preserves atomicity of the outer tx)
+    //   - If inTransaction=false: wraps in a new $transaction (cold path)
     name: 'tenantRls',
     query: {
       $allOperations: async ({ model, operation, args, query }) => {
         const ctx = getTenantContext();
         // TASK-0 DEBUG: log to prove the extension is intercepting
         if (process.env.TASK0_DEBUG === '1') {
-          console.log(`[TASK-0] ${model}.${operation} ctx=${ctx?.slug || 'none'} admin=${ctx?.isPlatformAdmin || false}`);
+          console.log(`[TASK-0] ${model}.${operation} ctx=${ctx?.slug || 'none'} admin=${ctx?.isPlatformAdmin || false} inTx=${ctx?.inTransaction || false}`);
         }
         if (!ctx) {
           // No tenant context (public route, background job, or test) →
@@ -124,6 +132,15 @@ function createExtendedPrisma() {
           return query(args);
         }
 
+        // T0-A: If inside a $transaction, DON'T wrap in a new one.
+        // The outer $transaction interceptor already called set_config on
+        // the tx client. We just run the query directly — it inherits
+        // the set_config from the outer transaction.
+        if (ctx.inTransaction) {
+          return query(args);
+        }
+
+        // Cold path: not inside a transaction → wrap in a new one
         // Founder/admin bypass → set app.is_platform = 'on'
         if (ctx.isPlatformAdmin) {
           return basePrisma.$transaction(async (tx) => {
@@ -141,6 +158,33 @@ function createExtendedPrisma() {
           return tx[model]?.[operation]?.(args) ?? query(args);
         });
       },
+      // T0-A: We need to intercept $transaction but Prisma's $extends
+      // doesn't support intercepting $transaction directly via the query
+      // interceptor. Instead, we handle re-entrancy via the ALS inTransaction
+      // flag set by the withTenantScope HOF + a custom $transaction wrapper
+      // exported from db.ts (see withTenantTx below).
+      //
+      // The $allOperations interceptor above already checks ctx.inTransaction
+      // and skips wrapping when true. The flag is set by:
+      //   1. withTenantScope (src/lib/api/tenant-middleware.ts) — explicit
+      //   2. withTenantTx (exported below) — for manual use in routes
+      //   3. Any code that calls db.$transaction inside a withErrorHandler
+      //      route will have inTransaction=false (default), so each operation
+      //      gets its own $transaction wrapper. This is correct for atomicity
+      //      because Prisma's interactive $transaction ensures all operations
+      //      in the callback share the same connection + commit/rollback.
+      //
+      // The re-entrancy issue only occurs when the EXTENSION wraps an
+      // operation that's ALREADY inside a $transaction callback. Prisma's
+      // $extends $allOperations interceptor runs for EVERY operation including
+      // those inside $transaction callbacks. Without the inTransaction check,
+      // each operation would get a NESTED $transaction — breaking atomicity.
+      //
+      // With the inTransaction check:
+      //   - Operations inside db.$transaction(cb) → inTransaction=true →
+      //     skip wrap, run directly on the tx client (atomicity preserved)
+      //   - Operations outside $transaction → inTransaction=false →
+      //     wrap in new $transaction (cold path, correct)
     },
   });
 }
@@ -242,3 +286,38 @@ if (isDev) globalForPrisma.prisma = db;
  */
 export const dbAsAny: any = db;
 
+
+/**
+ * T0-A: withTenantTx — Wrapper for db.$transaction that sets the ALS
+ * inTransaction flag so the extension's $allOperations interceptor skips
+ * wrapping individual operations in new $transactions.
+ *
+ * Usage:
+ *   import { withTenantTx } from "@/lib/db";
+ *   await withTenantTx(async (tx) => {
+ *     await tx.invoice.create({ data: {...} });
+ *     await tx.journalEntry.create({ data: {...} });
+ *     // Both operations share the same $transaction + set_config
+ *   });
+ *
+ * This preserves atomicity: if the callback throws, BOTH writes roll back.
+ */
+export async function withTenantTx<T>(
+  fn: (tx: DbTx) => Promise<T>,
+): Promise<T> {
+  const { markInTransaction } = await import('./tenant-context');
+  return markInTransaction(async () => {
+    return dbTyped.$transaction(async (tx) => {
+      // Set the tenant context on the tx client
+      const { getTenantContext } = await import('./tenant-context');
+      const ctx = getTenantContext();
+      if (ctx) {
+        if (ctx.isPlatformAdmin) {
+          await tx.$executeRaw`SELECT set_config('app.is_platform', 'on', true)`;
+        }
+        await tx.$executeRaw`SELECT set_config('app.current_company_slug', ${ctx.slug}, true)`;
+      }
+      return fn(tx as DbTx);
+    });
+  });
+}

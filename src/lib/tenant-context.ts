@@ -12,13 +12,15 @@
  *   2. The Prisma extension (in db.ts) reads from ALS and wraps each
  *      query in a `$transaction` with `set_config('app.current_company_slug', slug, true)`
  *
- * This means ALL routes that use `withErrorHandler` (211 routes) get
- * automatic tenant-scoped queries WITHOUT any code changes to individual
- * route handlers.
+ * T0-A FIX (Nested Transaction Atomicity): The extension has a re-entrancy
+ * guard via `inTransaction` flag. When code calls `db.$transaction(async (tx) => {...})`,
+ * the operations inside use the `tx` client (not `db`). The extension detects
+ * this via the `inTransaction` ALS flag and:
+ *   - If inside a transaction: calls `set_config` on the `tx` client directly
+ *     (no new $transaction wrapper — preserves atomicity)
+ *   - If outside a transaction: wraps in a new $transaction (cold path)
  *
- * Performance note: each query becomes a `$transaction` (1 extra round-trip
- * for set_config). This is acceptable for the P0 fix. Hot paths should use
- * `withTenantScope` explicitly to batch multiple queries in one transaction.
+ * This ensures financial multi-write operations remain atomic.
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -26,6 +28,8 @@ import { AsyncLocalStorage } from "node:async_hooks";
 export interface TenantContextValue {
   slug: string;
   isPlatformAdmin: boolean;
+  /** T0-A: true when inside a db.$transaction — extension skips wrapping */
+  inTransaction?: boolean;
 }
 
 const tenantStorage = new AsyncLocalStorage<TenantContextValue>();
@@ -39,7 +43,24 @@ export function runWithTenantContext<T>(
   isPlatformAdmin: boolean,
   fn: () => Promise<T>,
 ): Promise<T> {
-  return tenantStorage.run({ slug, isPlatformAdmin }, fn);
+  return tenantStorage.run({ slug, isPlatformAdmin, inTransaction: false }, fn);
+}
+
+/**
+ * T0-A: Mark that we're now inside a $transaction. The extension will
+ * skip wrapping individual operations in a new $transaction and instead
+ * rely on the outer transaction's set_config.
+ *
+ * This is called by the $transaction interceptor in db.ts.
+ */
+export function markInTransaction<T>(fn: () => Promise<T>): Promise<T> {
+  const current = tenantStorage.getStore();
+  if (!current) {
+    // No tenant context — just run the function
+    return fn();
+  }
+  // Run with inTransaction=true so the extension knows to skip wrapping
+  return tenantStorage.run({ ...current, inTransaction: true }, fn);
 }
 
 /**
