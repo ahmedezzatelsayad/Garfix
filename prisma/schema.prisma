@@ -2,6 +2,44 @@
 // GarfiX ERP — Prisma Schema v2 (P0-1: Full Runtime Model Sync)
 // ═══════════════════════════════════════════════════════════════════════════════
 //
+// DB-14 FIX (Audit v2 · Phase 4) — ForeignKey Naming Convention
+// ─────────────────────────────────────────────────────────────────────────────
+// All foreign-key column names in this schema MUST follow these conventions:
+//
+//   1. Singular <Entity>Id for one-to-many / many-to-one relations
+//      Example: `companyId String`, `clientId String?`, `invoiceId String`
+//      Relation field: `company Company @relation(fields: [companyId], references: [id])`
+//
+//   2. Reserved suffix `Uid` only for FKs that target a `uid` PK column
+//      (e.g. AppUser.uid, which is a cuid used as the primary identifier).
+//      Example: `userUid String` → `user AppUser @relation(fields: [userUid], references: [uid])`
+//
+//   3. Self-referential relations use named args to disambiguate:
+//      `parent  Account? @relation("AccountHierarchy", fields: [parentId], references: [id])`
+//
+//   4. When a model needs TWO FKs to the same target (e.g. a bank account
+//      AND a GL account both pointing to Account), the relation field name
+//      must be descriptive and the relation must be named:
+//      `glAccount Account? @relation("BankAccountGLAccount", fields: [glAccountId], references: [id])`
+//
+//   5. Avoid legacy camelCase renames like `warehouseRefId` — use the
+//      canonical `warehouseId` and rename the relation FIELD only if
+//      disambiguation is required (`warehouseRef Warehouse?`).
+//
+// Known inconsistencies (DO NOT rename without a coordinated migration +
+// code review — see docs/audits/db-14-fk-naming.md):
+//   - MFASecret.userId vs SessionRegistry.userUid vs CompanyMembership.userUid
+//     All three reference AppUser.uid. The `userId` variant in MFASecret is a
+//     historical artifact — the column is a `uid`, not an `id`. Renaming it
+//     requires a `prisma migrate` + updating every call site in
+//     src/app/api/auth/mfa/* + src/lib/mfa.ts. Documented; deferred.
+//   - InventoryMovement.warehouseRefId was previously a string column
+//     aliased as `warehouseRef` relation — the field is now `warehouseId`
+//     but two relation fields still carry the legacy `warehouseRef` name
+//     (PurchaseOrder.warehouseRef, InventoryItem.warehouseRef). Renaming
+//     the relation field is purely cosmetic and breaks zero code paths;
+//     it remains for backward-compat with the seed scripts.
+//
 // NOTE: Financial fields use Decimal instead of Float for production accuracy.
 // SQLite doesn't support Decimal, so in dev it falls back to Float-like behavior.
 // For PostgreSQL production, Decimal ensures exact precision (no floating-point errors).
