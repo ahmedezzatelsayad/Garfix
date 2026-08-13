@@ -107,7 +107,8 @@ function scheduleReconnect(): void {
 }
 
 try {
-  basePrisma.$on('error' as const, (e: { code?: string; message?: string }) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (basePrisma as any).$on('error', (e: { code?: string; message?: string }) => {
     if (e?.code === 'P1017' || e?.code === 'P1011' || e?.code === 'P1001') {
       lastConnectionError = { code: e.code, message: e.message || String(e) || 'DB connection lost', at: new Date() };
       console.error('[db] connection error (likely RDS failover) — scheduling reconnect', { code: e.code });
