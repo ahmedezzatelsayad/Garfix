@@ -44,11 +44,19 @@ BEGIN
 END $$;
 
 -- ─── Step 2: Ensure unique constraint on (name, version) ────────────────
+-- FIX (P3018): The prior migration 20260809000000_add_prompt_templates created
+-- this uniqueness guarantee via `CREATE UNIQUE INDEX prompt_templates_name_version_key`
+-- (a plain index, NOT a constraint). Checking only pg_constraint misses that case,
+-- so the original ADD CONSTRAINT here failed with P3018:
+--   ERROR: relation "prompt_templates_name_version_key" already exists (42P07)
+-- Fix: check pg_class for the relation name (covers both indexes and constraints).
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conname = 'prompt_templates_name_version_key'
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relname = 'prompt_templates_name_version_key'
+      AND n.nspname = current_schema()
   ) THEN
     ALTER TABLE "prompt_templates"
       ADD CONSTRAINT "prompt_templates_name_version_key" UNIQUE ("name", "version");
