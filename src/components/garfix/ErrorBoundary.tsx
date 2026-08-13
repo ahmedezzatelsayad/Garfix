@@ -43,7 +43,8 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center shadow-brand-lg">
             <AlertCircle size={40} className="text-emerald-500" />
           </div>
-          <div className="max-w-md space-y-2 glass rounded-2xl p-6">
+          <div className="max-w-md space-y-2 glass rounded-2xl p-6" role="alert" aria-live="assertive">
+            {/* FE a11y sweep FIX (Audit v2 · Phase 2): added role=alert + aria-live */}
             <h2 className="text-xl font-extrabold text-white mb-2">
               عذراً، حدث خطأ غير متوقع! 😔
             </h2>

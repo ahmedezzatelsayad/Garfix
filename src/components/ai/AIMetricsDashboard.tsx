@@ -418,8 +418,9 @@ function KeyHealthCard({ keyData }: { keyData: KeyHealthStatus }) {
         </div>
 
         {/* Error Message */}
+        {/* FE a11y sweep FIX (Audit v2 · Phase 2): added role=alert */}
         {keyData.lastError && (
-          <div className="text-xs p-2 rounded bg-red-50 text-red-700 border border-red-200">
+          <div role="alert" className="text-xs p-2 rounded bg-red-50 text-red-700 border border-red-200">
             ⚠️ {keyData.lastError}
           </div>
         )}

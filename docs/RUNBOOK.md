@@ -351,3 +351,43 @@ Alert on non-zero exit codes (route the log through the existing log shipper).
 - **`docs/RUNBOOK.md`** (this section): documents RTO/RPO targets, S3
   offsite replication, step-by-step restore procedure, and the weekly
   verification drill.
+
+## Valkey (Redis) Backup
+
+### TPD-10 FIX (Audit v2 · Phase 2): Valkey snapshot backup
+
+Valkey stores rate-limit counters, JWT blacklist, MFA attempts, and session
+registry. Loss of Valkey data forces fail-closed behavior (all tokens rejected,
+MFA blocked). Daily snapshots are required.
+
+### Backup Procedure
+```bash
+# Connect to Valkey container
+docker exec -it garfix-valkey valkey-cli SAVE
+
+# Copy the dump.rdb file
+docker cp garfix-valkey:/data/dump.rdb /backups/valkey/dump-$(date +%Y%m%d).rdb
+
+# Verify
+ls -la /backups/valkey/dump-$(date +%Y%m%d).rdb
+```
+
+### Restore Procedure
+```bash
+# Stop Valkey
+docker stop garfix-valkey
+
+# Replace dump.rdb
+docker cp /backups/valkey/dump-20260813.rdb garfix-valkey:/data/dump.rdb
+
+# Start Valkey
+docker start garfix-valkey
+
+# Verify
+docker exec garfix-valkey valkey-cli DBSIZE
+```
+
+### Cron (daily at 2 AM)
+```bash
+0 2 * * * docker exec garfix-valkey valkey-cli SAVE && docker cp garfix-valkey:/data/dump.rdb /backups/valkey/dump-$(date +\%Y\%m\%d).rdb
+```
