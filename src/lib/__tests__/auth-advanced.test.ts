@@ -329,15 +329,17 @@ describe("isTokenBlacklisted / blacklistToken", () => {
     expect(mockSet).toHaveBeenCalled();
   });
 
-  it("blacklistToken with TTL <= 0 does nothing", async () => {
+  // SEC-04 FIX (Audit v2 · Phase 2): blacklistToken now throws on invalid TTL
+  // (fail-closed for writes). Previously it silently did nothing.
+  it("blacklistToken with TTL <= 0 throws (fail-closed)", async () => {
     mockSet.mockClear();
-    await blacklistToken("jti-zero", 0);
+    await expect(blacklistToken("jti-zero", 0)).rejects.toThrow();
     expect(mockSet).not.toHaveBeenCalled();
   });
 
-  it("blacklistToken with negative TTL does nothing", async () => {
+  it("blacklistToken with negative TTL throws (fail-closed)", async () => {
     mockSet.mockClear();
-    await blacklistToken("jti-neg", -10);
+    await expect(blacklistToken("jti-neg", -10)).rejects.toThrow();
     expect(mockSet).not.toHaveBeenCalled();
   });
 });

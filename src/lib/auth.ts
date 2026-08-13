@@ -186,27 +186,59 @@ export function verifyRefreshToken(token: string): { uid: string; tv: number } |
 /**
  * Check if a token's JTI is blacklisted.
  * Returns true if blacklisted (token should be rejected).
+ *
+ * SEC-04 FIX (Audit v2 · Phase 2): Fail-CLOSED for security-critical reads.
+ * Previously, if Valkey was down, this returned `false` (accept the token) —
+ * meaning a revoked token (from logout/password change) would be accepted
+ * during a Valkey outage. Now it returns `true` (reject the token) when
+ * Valkey is unavailable, forcing re-authentication.
+ *
+ * The fail-closed behavior is gated by `VALKEY_FAIL_MODE` env var:
+ *   - "closed" (default for production): reject on Valkey failure
+ *   - "open" (legacy/dev): accept on Valkey failure
  */
 export async function isTokenBlacklisted(jti: string): Promise<boolean> {
   const client = await getValkeyClient();
-  if (!client) return false; // No Valkey = no blacklist = accept
+  if (!client) {
+    // SEC-04: Fail-CLOSED — if no Valkey, assume token is blacklisted
+    // This forces re-authentication during outages (safer than accepting)
+    const failMode = process.env.VALKEY_FAIL_MODE || "closed";
+    if (failMode === "open") return false; // Legacy/dev behavior
+    console.warn("[auth] Valkey unavailable — fail-closed (rejecting token)");
+    return true;
+  }
   try {
     return (await client.exists(`token:blacklist:${jti}`)) > 0;
-  } catch {
-    return false; // Fail-open
+  } catch (err) {
+    // SEC-04: Fail-CLOSED on Valkey errors too
+    const failMode = process.env.VALKEY_FAIL_MODE || "closed";
+    if (failMode === "open") return false;
+    console.warn("[auth] Valkey blacklist check failed — fail-closed", {
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return true;
   }
 }
 
 /**
  * Blacklist a token by its JTI for the remaining TTL.
+ *
+ * SEC-04 FIX (Audit v2 · Phase 2): Fail-CLOSED for writes.
+ * If blacklisting fails (Valkey down), throw an error so the caller
+ * knows the revocation didn't happen. Previously this silently swallowed
+ * the error, meaning logout/password-change didn't actually revoke the token.
  */
 export async function blacklistToken(jti: string, remainingTtlSeconds: number): Promise<void> {
   const client = await getValkeyClient();
-  if (!client || remainingTtlSeconds <= 0) return;
+  if (!client || remainingTtlSeconds <= 0) {
+    // SEC-04: If Valkey is down, we can't blacklist — throw so caller knows
+    throw new Error("Cannot blacklist token: Valkey unavailable");
+  }
   try {
     await client.set(`token:blacklist:${jti}`, "1", "EX", remainingTtlSeconds);
-  } catch {
-    // Fail silently — blacklist is best-effort
+  } catch (err) {
+    // SEC-04: Don't swallow — caller must know revocation failed
+    throw new Error(`Failed to blacklist token: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
