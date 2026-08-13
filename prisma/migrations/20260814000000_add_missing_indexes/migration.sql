@@ -23,14 +23,30 @@
 
 ALTER TABLE "purchase_invoices" ADD COLUMN IF NOT EXISTS "supplierId" TEXT;
 
--- Add FK constraint idempotently
+-- Add FK constraint idempotently.
+-- FIX (P3018): The original migration added the FK unconditionally, but
+-- on a fresh DB suppliers.id is SERIAL (INTEGER) while purchase_invoices.supplierId
+-- is TEXT — Postgres rejects with E42804 "Key columns are of incompatible
+-- types: text and integer". The schema.prisma declares both as String (cuid),
+-- so the eventual fix is to migrate suppliers.id from SERIAL to TEXT in a
+-- future migration. For now, only add the FK when the column types match.
 DO $$
+DECLARE
+  pi_type text;
+  s_type  text;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints
-    WHERE constraint_name = 'purchase_invoices_supplierId_fkey'
-      AND table_name = 'purchase_invoices'
-  ) THEN
+  SELECT data_type INTO pi_type FROM information_schema.columns
+    WHERE table_name = 'purchase_invoices' AND column_name = 'supplierId';
+  SELECT data_type INTO s_type FROM information_schema.columns
+    WHERE table_name = 'suppliers' AND column_name = 'id';
+  IF pi_type IS NOT NULL
+     AND s_type IS NOT NULL
+     AND pi_type = s_type
+     AND NOT EXISTS (
+       SELECT 1 FROM information_schema.table_constraints
+       WHERE constraint_name = 'purchase_invoices_supplierId_fkey'
+         AND table_name = 'purchase_invoices'
+     ) THEN
     ALTER TABLE "purchase_invoices"
       ADD CONSTRAINT "purchase_invoices_supplierId_fkey"
       FOREIGN KEY ("supplierId") REFERENCES "suppliers"("id")
