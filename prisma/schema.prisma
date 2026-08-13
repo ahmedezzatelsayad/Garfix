@@ -1695,6 +1695,7 @@ model ZatcaCertificate {
   updatedAt          DateTime  @updatedAt
 
   @@unique([companySlug, certificateType])
+  @@map("zatca_certificates")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
