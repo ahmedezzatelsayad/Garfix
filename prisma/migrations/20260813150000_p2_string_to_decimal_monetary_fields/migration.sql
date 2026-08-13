@@ -134,16 +134,26 @@ ALTER TABLE "budgets" ALTER COLUMN "variance" TYPE DECIMAL(65,30) USING "varianc
 ALTER TABLE "budgets" ALTER COLUMN "variance" SET DEFAULT 0;
 
 -- ─── 6. fx_revaluations (2 NEW fields) ───────────────────────────────────
--- These were NOT migrated by the prior migration — they're truly String→Decimal here.
+-- FIX (P3018): These columns were NEVER created by any prior migration.
+-- The original migration here used ALTER COLUMN on non-existent columns,
+-- causing P3018 "column ... does not exist" during `prisma migrate deploy`
+-- on a fresh DB. We now ADD them as DECIMAL directly; the subsequent
+-- ALTER COLUMN TYPE is a no-op when the column is already DECIMAL,
+-- and stays as a safety net for any drifted DB that still has them as TEXT.
+ALTER TABLE "fx_revaluations" ADD COLUMN IF NOT EXISTS "exchangeRate" DECIMAL(65,30) NOT NULL DEFAULT 0;
 ALTER TABLE "fx_revaluations" ALTER COLUMN "exchangeRate" DROP DEFAULT;
 ALTER TABLE "fx_revaluations" ALTER COLUMN "exchangeRate" TYPE DECIMAL(65,30) USING "exchangeRate"::numeric;
 ALTER TABLE "fx_revaluations" ALTER COLUMN "exchangeRate" SET DEFAULT 0;
 
+ALTER TABLE "fx_revaluations" ADD COLUMN IF NOT EXISTS "totalGainLoss" DECIMAL(65,30) NOT NULL DEFAULT 0;
 ALTER TABLE "fx_revaluations" ALTER COLUMN "totalGainLoss" DROP DEFAULT;
 ALTER TABLE "fx_revaluations" ALTER COLUMN "totalGainLoss" TYPE DECIMAL(65,30) USING "totalGainLoss"::numeric;
 ALTER TABLE "fx_revaluations" ALTER COLUMN "totalGainLoss" SET DEFAULT 0;
 
 -- ─── 7. landed_cost_allocations.amount (NEW field) ───────────────────────
+-- FIX (P3018): amount was never created by any prior migration
+-- (only totalCost exists on this table). ADD first, then ALTER is a no-op.
+ALTER TABLE "landed_cost_allocations" ADD COLUMN IF NOT EXISTS "amount" DECIMAL(65,30) NOT NULL DEFAULT 0;
 ALTER TABLE "landed_cost_allocations" ALTER COLUMN "amount" DROP DEFAULT;
 ALTER TABLE "landed_cost_allocations" ALTER COLUMN "amount" TYPE DECIMAL(65,30) USING "amount"::numeric;
 ALTER TABLE "landed_cost_allocations" ALTER COLUMN "amount" SET DEFAULT 0;
@@ -154,18 +164,25 @@ ALTER TABLE "hr_employees" ALTER COLUMN "baseSalary" TYPE DECIMAL(65,30) USING "
 ALTER TABLE "hr_employees" ALTER COLUMN "baseSalary" SET DEFAULT 0;
 
 -- ─── 9. purchase_invoices (4 NEW fields: subtotal, taxRate, taxAmount, paid)
+-- FIX (P3018): None of these 4 columns were ever created by a prior migration.
+-- ADD COLUMN IF NOT EXISTS first; the ALTER COLUMN TYPE is then a no-op on
+-- fresh DBs and a real conversion on any drifted DB that still has TEXT.
+ALTER TABLE "purchase_invoices" ADD COLUMN IF NOT EXISTS "subtotal" DECIMAL(65,30) NOT NULL DEFAULT 0;
 ALTER TABLE "purchase_invoices" ALTER COLUMN "subtotal" DROP DEFAULT;
 ALTER TABLE "purchase_invoices" ALTER COLUMN "subtotal" TYPE DECIMAL(65,30) USING "subtotal"::numeric;
 ALTER TABLE "purchase_invoices" ALTER COLUMN "subtotal" SET DEFAULT 0;
 
+ALTER TABLE "purchase_invoices" ADD COLUMN IF NOT EXISTS "taxRate" DECIMAL(65,30) NOT NULL DEFAULT 0;
 ALTER TABLE "purchase_invoices" ALTER COLUMN "taxRate" DROP DEFAULT;
 ALTER TABLE "purchase_invoices" ALTER COLUMN "taxRate" TYPE DECIMAL(65,30) USING "taxRate"::numeric;
 ALTER TABLE "purchase_invoices" ALTER COLUMN "taxRate" SET DEFAULT 0;
 
+ALTER TABLE "purchase_invoices" ADD COLUMN IF NOT EXISTS "taxAmount" DECIMAL(65,30) NOT NULL DEFAULT 0;
 ALTER TABLE "purchase_invoices" ALTER COLUMN "taxAmount" DROP DEFAULT;
 ALTER TABLE "purchase_invoices" ALTER COLUMN "taxAmount" TYPE DECIMAL(65,30) USING "taxAmount"::numeric;
 ALTER TABLE "purchase_invoices" ALTER COLUMN "taxAmount" SET DEFAULT 0;
 
+ALTER TABLE "purchase_invoices" ADD COLUMN IF NOT EXISTS "paid" DECIMAL(65,30) NOT NULL DEFAULT 0;
 ALTER TABLE "purchase_invoices" ALTER COLUMN "paid" DROP DEFAULT;
 ALTER TABLE "purchase_invoices" ALTER COLUMN "paid" TYPE DECIMAL(65,30) USING "paid"::numeric;
 ALTER TABLE "purchase_invoices" ALTER COLUMN "paid" SET DEFAULT 0;
@@ -205,11 +222,15 @@ ALTER TABLE "tax_filings" ALTER COLUMN "totalPurchases" DROP DEFAULT;
 ALTER TABLE "tax_filings" ALTER COLUMN "totalPurchases" TYPE DECIMAL(65,30) USING "totalPurchases"::numeric;
 ALTER TABLE "tax_filings" ALTER COLUMN "totalPurchases" SET DEFAULT 0;
 
--- outputVat / inputVat were NOT in the prior migration — truly String→Decimal.
+-- outputVat / inputVat were NEVER created by any prior migration.
+-- FIX (P3018): ADD COLUMN IF NOT EXISTS first; subsequent ALTER is a no-op
+-- on fresh DBs and a real conversion on drifted DBs that still have TEXT.
+ALTER TABLE "tax_filings" ADD COLUMN IF NOT EXISTS "outputVat" DECIMAL(65,30) NOT NULL DEFAULT 0;
 ALTER TABLE "tax_filings" ALTER COLUMN "outputVat" DROP DEFAULT;
 ALTER TABLE "tax_filings" ALTER COLUMN "outputVat" TYPE DECIMAL(65,30) USING "outputVat"::numeric;
 ALTER TABLE "tax_filings" ALTER COLUMN "outputVat" SET DEFAULT 0;
 
+ALTER TABLE "tax_filings" ADD COLUMN IF NOT EXISTS "inputVat" DECIMAL(65,30) NOT NULL DEFAULT 0;
 ALTER TABLE "tax_filings" ALTER COLUMN "inputVat" DROP DEFAULT;
 ALTER TABLE "tax_filings" ALTER COLUMN "inputVat" TYPE DECIMAL(65,30) USING "inputVat"::numeric;
 ALTER TABLE "tax_filings" ALTER COLUMN "inputVat" SET DEFAULT 0;
