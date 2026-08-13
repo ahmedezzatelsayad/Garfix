@@ -5,7 +5,7 @@
  * and monitoring dashboards.
  *
  * Checks:
- *   1. PostgreSQL — SELECT 1 with 1s timeout
+ *   1. PostgreSQL — SELECT 1 with 5s timeout (cancelable via $transaction)
  *   2. Valkey   — PING with 2s timeout
  *   3. BullMQ   — queue counts (waiting + active)
  *   4. Disk     — /app/storage writable check (100ms timeout)
@@ -17,6 +17,17 @@
  * RUNTIME: Node.js only — uses process.memoryUsage(), os module
  * Non-critical failures (disk, queue stats) are reported but don't
  * cause a 503 — the app can still serve requests.
+ *
+ * TPD-09 FIX (Audit v2 · Phase 2): every check now uses AbortController
+ * (with `setTimeout(abort, ms)`) instead of bare `Promise.race` +
+ * `setTimeout(reject, ms)`. The bare pattern does NOT cancel the
+ * underlying query, so under DB slowness the Prisma query kept running
+ * in the background even after /api/health had already replied 503 —
+ * eventually exhausting the connection pool. The new pattern:
+ *   • DB: wrapped in `db.$transaction` with `timeout` option so Prisma
+ *     actually cancels the query and releases the connection.
+ *   • Valkey & BullMQ: pass an AbortSignal to the underlying helper so
+ *     the in-flight request can be observed as aborted.
  *
  * Unauthenticated — healthchecks must succeed without cookies.
  *
@@ -35,6 +46,42 @@ const VERSION = process.env.APP_VERSION || "12.1.0";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Create an AbortController that auto-aborts after `ms` milliseconds.
+ * Returns the controller + a cleanup function that clears the timer
+ * (call it in `finally` to avoid leaking the timer when the awaited
+ * promise resolves before the timeout).
+ *
+ * TPD-09 FIX (Audit v2 · Phase 2).
+ */
+function abortAfter(ms: number, reason: string): {
+  signal: AbortSignal;
+  cleanup: () => void;
+  /** A promise that rejects with an Error(reason) when the signal aborts. */
+  timeoutPromise: Promise<never>;
+} {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error(reason)), ms);
+  const signal = controller.signal;
+  return {
+    signal,
+    cleanup: () => clearTimeout(timer),
+    timeoutPromise: new Promise<never>((_, reject) => {
+      if (signal.aborted) {
+        reject(signal.reason instanceof Error ? signal.reason : new Error(reason));
+        return;
+      }
+      signal.addEventListener(
+        "abort",
+        () => {
+          reject(signal.reason instanceof Error ? signal.reason : new Error(reason));
+        },
+        { once: true },
+      );
+    }),
+  };
+}
+
 export async function GET() {
   const started = Date.now();
   const checks: Record<string, unknown> = {};
@@ -45,14 +92,20 @@ export async function GET() {
   //   Under heavy load (e.g. backup worker running), the DB may be temporarily
   //   slow, so we use a generous timeout and treat a timeout as non-critical
   //   (the app is still running, just slow).
+  //
+  //   TPD-09 FIX (Audit v2 · Phase 2): wrap the `SELECT 1` in
+  //   `db.$transaction(..., { timeout: 5000, maxWait: 2000 })`. When the
+  //   timeout fires, Prisma cancels the underlying query and releases the
+  //   pooled connection — preventing connection-pool exhaustion under DB
+  //   slowness (the original `Promise.race` left the query running).
   let dbOk = true;
   try {
-    await Promise.race([
-      db.$queryRaw`SELECT 1`,
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("timeout 5000ms")), 5000),
-      ),
-    ]);
+    await db.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT 1`;
+      },
+      { timeout: 5_000, maxWait: 2_000 },
+    );
     checks.db = { ok: true };
   } catch (err) {
     dbOk = false;
@@ -71,32 +124,51 @@ export async function GET() {
   //   A missing Valkey must NOT cause a 503, because the app fully functions
   //   with pg-boss (PostgreSQL-backed queue). Only a *configured* but
   //   *unreachable* Valkey is a critical failure.
-  try {
-    const vh = await Promise.race([
-      valkeyHealthCheck(),
-      new Promise<{ ok: false; notConfigured?: boolean }>((resolve) =>
-        setTimeout(() => resolve({ ok: false }), 2000),
-      ),
-    ]);
-    if (!VALKEY_CONFIGURED) {
-      checks.valkey = { ok: true, configured: false, mode: "pg-boss fallback" };
-    } else {
-      checks.valkey = vh;
-      if (!vh.ok) criticalOk = false;
+  //
+  //   TPD-09 FIX (Audit v2 · Phase 2): use AbortController + pass the
+  //   signal to valkeyHealthCheck so the underlying ioredis ping can be
+  //   observed as aborted (and any future signal-aware code path benefits).
+  {
+    const vAbort = abortAfter(2_000, "timeout 2000ms");
+    try {
+      const vh = await Promise.race([
+        valkeyHealthCheck(vAbort.signal),
+        vAbort.timeoutPromise,
+      ]);
+      vAbort.cleanup();
+      if (!VALKEY_CONFIGURED) {
+        checks.valkey = { ok: true, configured: false, mode: "pg-boss fallback" };
+      } else {
+        checks.valkey = vh;
+        if (!vh.ok) criticalOk = false;
+      }
+    } catch (err) {
+      vAbort.cleanup();
+      checks.valkey = {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+      if (VALKEY_CONFIGURED) criticalOk = false;
     }
-  } catch {
-    checks.valkey = { ok: false, error: "exception" };
   }
 
   // ── 3. BullMQ Queue Stats (non-critical) ──────────────────────────────
-  try {
-    const queueStats = await Promise.race([
-      getBullMQStats(),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
-    ]);
-    checks.queues = queueStats ?? { mode: "in-process", bullmq: false };
-  } catch {
-    checks.queues = { mode: "in-process", bullmq: false };
+  //   TPD-09 FIX (Audit v2 · Phase 2): AbortController pattern; signal is
+  //   passed through to getBullMQStats so it can short-circuit remaining
+  //   queue counts if the abort fires mid-iteration.
+  {
+    const qAbort = abortAfter(2_000, "timeout 2000ms");
+    try {
+      const queueStats = await Promise.race([
+        getBullMQStats(qAbort.signal),
+        qAbort.timeoutPromise,
+      ]);
+      qAbort.cleanup();
+      checks.queues = queueStats ?? { mode: "in-process", bullmq: false };
+    } catch {
+      qAbort.cleanup();
+      checks.queues = { mode: "in-process", bullmq: false };
+    }
   }
 
   // ── 4. Cache Stats (non-critical) ──────────────────────────────────────

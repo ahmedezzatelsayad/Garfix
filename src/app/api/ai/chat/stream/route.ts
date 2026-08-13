@@ -21,6 +21,12 @@ import { z } from "zod";
 import { logAiUsage } from "@/lib/ai/costTracker";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { parseJsonBody } from "@/lib/api";
+// AI-07 FIX (Audit v2 · Phase 2): import PII redactor + trimHistory + the
+// Smart Router fallback chain so the streaming route is no longer a PII
+// regression and no longer has a single-point-of-failure on the z-ai SDK.
+import { redactPii } from "@/lib/ai/piiRedactor";
+import { trimHistory, calculateBudget } from "@/lib/ai/contextWindow";
+import { callAIWithFallback } from "@/lib/ai/smartRouter";
 
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant", "system"]),
@@ -98,8 +104,8 @@ async function callAIStream(
 ): Promise<StreamOutcome> {
   const t0 = Date.now();
   let fullReply = "";
-  const provider = "z-ai";
-  const model = "z-ai-glm";
+  let provider = "z-ai";
+  let model = "z-ai-glm";
   let tokensIn = 0;
   let tokensOut = 0;
   try {
@@ -172,20 +178,75 @@ async function callAIStream(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.error("[ai/stream] failed", { err: message });
-    const fallback = "عذراً، حدث خطأ أثناء معالجة طلبك. حاول مرة أخرى لاحقاً.";
-    fullReply = fallback;
-    onToken(fallback);
-    return {
-      reply: fullReply,
-      provider,
-      model,
-      tokensIn: 0,
-      tokensOut: 0,
-      processingMs: Date.now() - t0,
-      success: false,
-      errorMessage: message,
-    };
+    logger.warn("[ai/stream] z-ai streaming failed — escalating to fallback chain", {
+      err: message.slice(0, 200),
+    });
+
+    // AI-07 FIX (Audit v2 · Phase 2): fallback chain.
+    //
+    // Previously, a z-ai SDK failure (network blip, sandbox quota,
+    // transient auth error) would immediately surface a hard-coded
+    // Arabic "sorry, an error occurred" message to the user. That meant
+    // every streaming chat had a single point of failure on the z-ai SDK.
+    //
+    // Now we escalate to `callAIWithFallback` (the Smart Router), which
+    // consults the registry for healthy chat-capable models and tries
+    // each in turn (DeepSeek, OpenRouter, OpenAI, Anthropic, Gemini…)
+    // before falling back to the legacy chain. The result is emitted as
+    // 4-char chunks to keep the SSE protocol consistent for the client.
+    try {
+      const fallbackResult = await callAIWithFallback({
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages.map((m) => ({
+            role: m.role as "user" | "assistant" | "system",
+            content: m.content,
+          })),
+        ],
+        temperature: 0.4,
+        maxTokens: 800,
+        capability: "chat",
+      });
+      const reply =
+        typeof fallbackResult.content === "string"
+          ? fallbackResult.content
+          : String(fallbackResult.content || "");
+      // Emit in chunks to simulate streaming for the client.
+      for (let i = 0; i < reply.length; i += 4) {
+        onToken(reply.slice(i, i + 4));
+      }
+      return {
+        reply,
+        provider: fallbackResult.provider,
+        model: fallbackResult.model,
+        tokensIn: fallbackResult.usage?.prompt_tokens || 0,
+        tokensOut: fallbackResult.usage?.completion_tokens || 0,
+        processingMs: Date.now() - t0,
+        success: true,
+        // Note: we swallowed the z-ai error and recovered via fallback.
+        // The route logs this as a success since the user got a real reply.
+      };
+    } catch (fallbackErr) {
+      const fallbackMessage =
+        fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+      logger.error("[ai/stream] fallback chain also failed", {
+        zaiErr: message.slice(0, 200),
+        fallbackErr: fallbackMessage.slice(0, 200),
+      });
+      const hardFail = "عذراً، حدث خطأ أثناء معالجة طلبك. حاول مرة أخرى لاحقاً.";
+      fullReply = hardFail;
+      onToken(hardFail);
+      return {
+        reply: fullReply,
+        provider,
+        model,
+        tokensIn: 0,
+        tokensOut: 0,
+        processingMs: Date.now() - t0,
+        success: false,
+        errorMessage: `${message}; fallback: ${fallbackMessage}`,
+      };
+    }
   }
 }
 
@@ -296,7 +357,7 @@ export async function POST(req: NextRequest) {
 - عدد الموظفين: ${employeeCount}
 - إجمالي الإيرادات: ${revenue.toFixed(3)}
 - آخر 5 فواتير:
-${recentInvoices.map((i) => `  • ${i.invoiceNumber} — ${i.clientName} — ${num(i.total, 3)} — ${i.status} — ${i.issueDate}`).join("\n")}
+${recentInvoices.map((i) => `  • ${i.invoiceNumber} — ${redactPii(i.clientName || "")} — ${num(i.total, 3)} — ${i.status} — ${i.issueDate}`).join("\n")}
 `;
   }
 
@@ -311,10 +372,22 @@ ${recentInvoices.map((i) => `  • ${i.invoiceNumber} — ${i.clientName} — ${
 
 ${contextBlock}
 
-المستخدم: ${user.uid} (${user.email})
+المستخدم: ${user.uid} (${redactPii(user.email)})
 الدور: ${user.role}
 ${data.companySlug ? `الشركة النشطة: ${data.companySlug}` : "لا توجد شركة نشطة"}
 `;
+
+  // AI-07 FIX (Audit v2 · Phase 2): trim conversation history before the
+  // AI call. The streaming route previously forwarded every message
+  // verbatim — a 50-message conversation at 8000 chars each = ~200K tokens,
+  // which exceeds gpt-4o-mini's 128K context and triggers 400/413 from
+  // every provider in the fallback chain. Mirrors the non-streaming
+  // /api/ai/chat route which already does this.
+  const budget = calculateBudget();
+  const trimmedMessages = trimHistory(
+    sanitizedMessages.map((m) => ({ role: m.role, content: m.content })),
+    budget.history,
+  );
 
   // Set up SSE response
   const encoder = new TextEncoder();
@@ -323,7 +396,7 @@ ${data.companySlug ? `الشركة النشطة: ${data.companySlug}` : "لا ت
       try {
         const outcome = await callAIStream(
           systemPrompt,
-          sanitizedMessages,
+          trimmedMessages,
           (token) => {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ token })}\n\n`));
           },

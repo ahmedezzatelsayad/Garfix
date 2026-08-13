@@ -77,6 +77,12 @@ export function getLastDbConnectionError() { return lastConnectionError; }
 // Uses $extends with query-level hooks that:
 //   1. Inject deletedAt: null for soft-delete models
 //   2. Wrap each query in a $transaction with set_config for RLS (TASK-0)
+//
+// DB-09 FIX (Audit v2 · Phase 2): Previously only `findMany` and
+// `findFirst` were intercepted, which left `findUnique`, `count`,
+// `aggregate`, and `groupBy` returning tombstone rows (deleted records).
+// All four are now intercepted following the same `deletedAt: null`
+// injection pattern.
 function createExtendedPrisma() {
   return basePrisma.$extends({
     name: 'softDelete',
@@ -92,6 +98,50 @@ function createExtendedPrisma() {
           return query(args);
         },
         async findFirst({ args, query, model }) {
+          if (SOFT_DELETE_MODELS.has(model) && !(args as { where?: { deletedAt?: unknown } })?.where?.deletedAt) {
+            args = {
+              ...args,
+              where: { ...(args as { where?: Record<string, unknown> })?.where, deletedAt: null },
+            } as typeof args;
+          }
+          return query(args);
+        },
+        // DB-09 FIX (Audit v2 · Phase 2): findUnique previously bypassed
+        // soft-delete filtering, returning tombstone rows by primary key.
+        async findUnique({ args, query, model }) {
+          if (SOFT_DELETE_MODELS.has(model) && !(args as { where?: { deletedAt?: unknown } })?.where?.deletedAt) {
+            args = {
+              ...args,
+              where: { ...(args as { where?: Record<string, unknown> })?.where, deletedAt: null },
+            } as typeof args;
+          }
+          return query(args);
+        },
+        // DB-09 FIX (Audit v2 · Phase 2): count previously included
+        // tombstone rows, inflating tallies for deleted records.
+        async count({ args, query, model }) {
+          if (SOFT_DELETE_MODELS.has(model) && !(args as { where?: { deletedAt?: unknown } })?.where?.deletedAt) {
+            args = {
+              ...args,
+              where: { ...(args as { where?: Record<string, unknown> })?.where, deletedAt: null },
+            } as typeof args;
+          }
+          return query(args);
+        },
+        // DB-09 FIX (Audit v2 · Phase 2): aggregate previously summed
+        // tombstone rows into totals (e.g. revenue, balances).
+        async aggregate({ args, query, model }) {
+          if (SOFT_DELETE_MODELS.has(model) && !(args as { where?: { deletedAt?: unknown } })?.where?.deletedAt) {
+            args = {
+              ...args,
+              where: { ...(args as { where?: Record<string, unknown> })?.where, deletedAt: null },
+            } as typeof args;
+          }
+          return query(args);
+        },
+        // DB-09 FIX (Audit v2 · Phase 2): groupBy previously returned
+        // buckets containing tombstone rows, corrupting dimension cuts.
+        async groupBy({ args, query, model }) {
           if (SOFT_DELETE_MODELS.has(model) && !(args as { where?: { deletedAt?: unknown } })?.where?.deletedAt) {
             args = {
               ...args,

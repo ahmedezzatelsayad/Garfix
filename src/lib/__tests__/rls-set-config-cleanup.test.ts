@@ -75,6 +75,8 @@ describe("FC-3 set_config('app.current_company_slug', ..., true) cleanup", () =>
   });
 
   it("inside the transaction, current_setting returns the set value", async () => {
+    // T0-A: increased timeout to 15s because the Prisma extension wraps queries
+    // in $transaction + set_config, adding overhead
     let insideValue: string | null = null;
     await db.$transaction(async (tx) => {
       // set_config(..., true) — transaction-local scope
@@ -85,7 +87,7 @@ describe("FC-3 set_config('app.current_company_slug', ..., true) cleanup", () =>
       insideValue = r[0]?.v ?? null;
     });
     expect(insideValue).toBe("test-tx-scope");
-  });
+  }, 15000);
 
   it("after the transaction commits, a new query on the same client returns NULL/empty", async () => {
     // Step 1: run a $transaction that sets the var with is_local=true.
