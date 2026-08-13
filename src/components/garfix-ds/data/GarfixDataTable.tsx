@@ -38,6 +38,18 @@ import { cn } from "@/lib/utils";
 import { GarfixButton } from "../core/GarfixButton";
 import { GarfixInput } from "../core/GarfixInput";
 
+// FE-07 FIX (Audit v2 · Phase 2)
+// Accessibility hardening for the data table:
+//   • <caption> element (visually hidden via `sr-only`) gives screen-reader
+//     users an at-a-glance description of the table.
+//   • scope="col" on every <th> so AT can announce header↔cell pairings.
+//   • aria-sort="ascending|descending|none" on sortable columns so AT users
+//     know the current sort state.
+//   • tabIndex={0} + onKeyDown (Enter / Space) on sortable <th> and on
+//     clickable <tr> so keyboard-only users can trigger the same handlers
+//     as mouse users (WCAG 2.1 SC 2.1.1 Keyboard).
+//   • aria-rowindex on every <tr> so AT can announce "row N of M".
+
 // ── Types ───────────────────────────────────────────────────────────────
 
 export type TableDensity = "compact" | "normal" | "comfortable";
@@ -85,6 +97,9 @@ export interface GarfixDataTableProps<T> {
   searchPlaceholder?: string;
   /** Custom class name */
   className?: string;
+  /** Accessible caption (rendered inside <caption class="sr-only">).
+   *  Defaults to an Arabic description of the table. */
+  caption?: string;
 }
 
 // ── Density Styles ──────────────────────────────────────────────────────
@@ -111,6 +126,7 @@ export function GarfixDataTable<T extends Record<string, unknown>>({
   pagination,
   searchPlaceholder = "بحث...",
   className,
+  caption = "جدول بيانات",
 }: GarfixDataTableProps<T>) {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -196,6 +212,42 @@ export function GarfixDataTable<T extends Record<string, unknown>>({
     }
   };
 
+  // FE-07 FIX (Audit v2 · Phase 2): keyboard activation for sortable <th>.
+  // Mirrors the mouse `onClick` so keyboard-only users can sort columns.
+  const handleSortKeyDown = (
+    e: React.KeyboardEvent<HTMLTableCellElement>,
+    columnKey: string,
+    sortable?: boolean
+  ) => {
+    if (!sortable) return;
+    if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+      e.preventDefault();
+      handleSort(columnKey);
+    }
+  };
+
+  // FE-07 FIX (Audit v2 · Phase 2): keyboard activation for clickable <tr>.
+  // Mirrors `onRowClick` for keyboard users (WCAG 2.1 SC 2.1.1 Keyboard).
+  const handleRowKeyDown = (
+    e: React.KeyboardEvent<HTMLTableRowElement>,
+    row: T,
+    rowIndex: number
+  ) => {
+    if (!onRowClick) return;
+    if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+      e.preventDefault();
+      onRowClick(row, rowIndex);
+    }
+  };
+
+  // FE-07 FIX (Audit v2 · Phase 2): map internal sort state to the WAI-ARIA
+  // `aria-sort` vocabulary so screen readers can announce it.
+  const ariaSortFor = (col: Column<T>): "ascending" | "descending" | "none" | undefined => {
+    if (!col.sortable) return undefined;
+    if (sortColumn !== col.key || !sortDirection) return "none";
+    return sortDirection === "asc" ? "ascending" : "descending";
+  };
+
   // Get row key
   const getRowKey = (row: T, index: number): string => {
     return typeof rowKey === "function" ? rowKey(row, index) : String(row[rowKey]);
@@ -231,11 +283,16 @@ export function GarfixDataTable<T extends Record<string, unknown>>({
       <div className="rounded-xl border border-border overflow-hidden bg-card">
         <div className="overflow-x-auto">
           <table className="w-full">
+            {/* FE-07 FIX (Audit v2 · Phase 2): accessible caption (visually hidden). */}
+            <caption className="sr-only">{caption}</caption>
             {/* Header */}
             <thead>
               <tr className="bg-muted/50 border-b border-border">
                 {selectable && (
-                  <th className={cn(styles.header, "w-12")}>
+                  <th
+                    scope="col"
+                    className={cn(styles.header, "w-12")}
+                  >
                     <input
                       type="checkbox"
                       checked={selectedKeys.size === filteredData.length && filteredData.length > 0}
@@ -248,7 +305,12 @@ export function GarfixDataTable<T extends Record<string, unknown>>({
                 {columns.map((col) => (
                   <th
                     key={col.key}
+                    scope="col"
+                    aria-sort={ariaSortFor(col)}
                     onClick={() => col.sortable && handleSort(col.key)}
+                    onKeyDown={(e) => handleSortKeyDown(e, col.key, col.sortable)}
+                    tabIndex={col.sortable ? 0 : undefined}
+                    role={col.sortable ? "button" : undefined}
                     className={cn(
                       styles.header,
                       "font-semibold text-foreground whitespace-nowrap",
@@ -282,7 +344,7 @@ export function GarfixDataTable<T extends Record<string, unknown>>({
                   </th>
                 ))}
                 {renderRowActions && (
-                  <th className={cn(styles.header, "w-12")}></th>
+                  <th scope="col" className={cn(styles.header, "w-12")}></th>
                 )}
               </tr>
             </thead>
@@ -323,11 +385,14 @@ export function GarfixDataTable<T extends Record<string, unknown>>({
                 filteredData.map((row, rowIndex) => {
                   const key = getRowKey(row, rowIndex);
                   const isSelected = selectedKeys.has(key);
-                  
+
                   return (
                     <tr
                       key={key}
+                      aria-rowindex={rowIndex + 1}
                       onClick={() => onRowClick?.(row, rowIndex)}
+                      onKeyDown={(e) => handleRowKeyDown(e, row, rowIndex)}
+                      tabIndex={onRowClick ? 0 : undefined}
                       className={cn(
                         "border-b border-border/50 transition-colors duration-120",
                         "hover:bg-muted/30",
