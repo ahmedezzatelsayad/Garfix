@@ -345,7 +345,9 @@ function MetricCard({
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <Icon className="h-4 w-4 text-muted-foreground" />
         </div>
-        <div className="flex items-baseline gap-1">
+        {/* FE-14 FIX (Audit v2 · Phase 3): mark the dynamic KPI value as a
+            polite live region so screen readers announce updates on refresh. */}
+        <div className="flex items-baseline gap-1" aria-live="polite" aria-atomic="true" role="status">
           <span className="text-2xl font-bold">{value}</span>
           {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
         </div>

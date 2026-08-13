@@ -1,6 +1,44 @@
 import type { NextConfig } from "next";
 import { execSync } from "node:child_process";
 
+// TPD-14 FIX (Audit v2 · Phase 3): Bundle size budget + analyzer.
+// ────────────────────────────────────────────────────────────────────────────
+// Next.js does not ship a built-in size-budget enforcer, but we can:
+//   1. Conditionally enable `@next/bundle-analyzer` when ANALYZE=true so
+//      `bun run analyze` produces a per-chunk treemap (commit-by-commit
+//      regression hunting). The wrapper is applied at the bottom of this
+//      file via `withBundleAnalyzer(nextConfig)`.
+//   2. Document the size budgets that gate a merge — enforced by the
+//      `scripts/bundle-analysis.mjs` post-build step (runs in CI).
+//
+// BUDGETS (First-Load JS, gzipped, per route):
+//   /                       (AppShell dashboard)   220 kB   — heaviest route
+//   /invoices, /clients     (table views)          180 kB
+//   /settings, /account     (form views)           150 kB
+//   /login, /signup         (auth)                  90 kB
+//   /api-docs               (standalone)           140 kB
+//   Per-route budget overage of >10% fails CI (scripts/bundle-analysis.mjs).
+//
+// RATIONALE: ERP users on Gulf mobile networks (often 3G/4G with high RTT)
+// are extremely sensitive to first-load JS — a 50 kB regression adds ~1.5s
+// of blocking time on a 200 ms RTT connection. The budgets above are
+// calibrated from the v12.1 baseline + 15% headroom.
+// ────────────────────────────────────────────────────────────────────────────
+let withBundleAnalyzer:
+  | ((cfg: NextConfig) => NextConfig)
+  | undefined = undefined;
+if (process.env.ANALYZE === "true") {
+  try {
+    // Lazy require so the dep isn't pulled into every CI run / production build.
+    // @next/bundle-analyzer is a devDependency.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const analyzer = require("@next/bundle-analyzer");
+    withBundleAnalyzer = analyzer({ enabled: true });
+  } catch {
+    // @next/bundle-analyzer not installed (production Docker build) — skip.
+  }
+}
+
 // ── Build-time metadata ────────────────────────────────────────────────────
 //   Injected into the bundle so /api/health can report which commit is live.
 //   COMMIT_SHA is preferred from env (CI sets it explicitly); falls back to
@@ -105,4 +143,6 @@ const nextConfig: NextConfig = {
   // Type checking is enabled by default (Next.js default behavior).
 };
 
-export default nextConfig;
+// TPD-14 FIX (Audit v2 · Phase 3): apply the bundle-analyzer wrapper when
+// ANALYZE=true so `bun run analyze` produces the treemap reports.
+export default withBundleAnalyzer ? withBundleAnalyzer(nextConfig) : nextConfig;

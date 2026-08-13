@@ -6,6 +6,9 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { ProfessionalFooter } from "@/components/garfix/ProfessionalFooter";
+// FE-15 FIX (Audit v2 · Phase 3): /api-docs is a standalone page with no
+// AppShell — add the shared skip-links + matching id targets below.
+import { GarfixSkipLinks } from "@/components/garfix-ds";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface ApiEndpoint {
@@ -249,8 +252,10 @@ export default function ApiDocsPage() {
       className={`min-h-screen bg-[#0b1220] ${isRtl ? "rtl" : "ltr"}`}
       dir={isRtl ? "rtl" : "ltr"}
     >
+      {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
+      <GarfixSkipLinks />
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 glass-strong bg-[#111827]/90 border-b border-emerald-500/20 shadow-brand-md">
+      <header id="main-navigation" className="sticky top-0 z-40 glass-strong bg-[#111827]/90 border-b border-emerald-500/20 shadow-brand-md">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-sm shadow-brand-sm">
@@ -339,7 +344,7 @@ export default function ApiDocsPage() {
       </div>
 
       {/* ── Endpoint list ─────────────────────────────────────────── */}
-      <main className="max-w-7xl mx-auto px-4 py-4 space-y-2">
+      <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 py-4 space-y-2">
         {filtered.length === 0 && (
           <div className="text-center py-12 text-white/60 state-empty">
             {isRtl ? "لا توجد نتائج" : "No endpoints found"}
@@ -547,7 +552,9 @@ export default function ApiDocsPage() {
       </main>
 
       {/* ── Footer ────────────────────────────────────────────────── */}
-      <ProfessionalFooter variant="landing" version={process.env.NEXT_PUBLIC_APP_VERSION || "12"} />
+      <div id="main-footer">
+        <ProfessionalFooter variant="landing" version={process.env.NEXT_PUBLIC_APP_VERSION || "12"} />
+      </div>
     </div>
   );
 }

@@ -20,6 +20,10 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+// FE-15 FIX (Audit v2 · Phase 3): founder-panel pages render through
+// FounderPanelShell, which never included the shared skip-links that AppShell
+// has. Keyboard users had to Tab through the entire sidebar to reach content.
+import { GarfixSkipLinks } from "@/components/garfix-ds";
 // Phase 2 P1 fix: FounderGuard import removed — server layout does the check now.
 
 // ── Types ───────────────────────────────────────────────────────────────
@@ -152,8 +156,10 @@ export default function FounderPanelShell({
     // does the founder check BEFORE this client component renders. The
     // client-side guard was redundant and caused a flash of unauthenticated HTML.
     <div className="min-h-dvh bg-[#0b1220] text-foreground" dir="rtl">
+        {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
+        <GarfixSkipLinks />
         {/* Mobile Header */}
-        <header className="lg:hidden fixed top-0 start-0 end-0 z-40 h-16 bg-[#0f172a]/95 backdrop-blur-md border-b border-white/[0.08] flex items-center justify-between px-4">
+        <header id="main-navigation" className="lg:hidden fixed top-0 start-0 end-0 z-40 h-16 bg-[#0f172a]/95 backdrop-blur-md border-b border-white/[0.08] flex items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -337,6 +343,8 @@ export default function FounderPanelShell({
 
         {/* Main Content */}
         <main
+          id="main-content"
+          tabIndex={-1}
           className={cn(
             "min-h-dvh transition-all duration-300",
             // Offset for sidebar

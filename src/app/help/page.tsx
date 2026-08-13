@@ -166,7 +166,12 @@ export default function HelpPage() {
 
         {/* التواصل */}
         <div className="glass-strong bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-8 text-center shadow-brand-md">
-          <h3 className="font-extrabold text-white text-lg mb-2">لم تجد إجابتك؟</h3>
+          {/* FE-13 FIX (Audit v2 · Phase 3): this CTA heading was h3 while the
+              surrounding sections ("أقسام المساعدة", "أسئلة شائعة") are h2.
+              Screen-reader users navigating by heading level would land here
+              with no h2 ancestor above, signaling a broken document outline.
+              Promoted to h2 to keep the hierarchy h1 → h2 → h3 consistent. */}
+          <h2 className="font-extrabold text-white text-lg mb-2">لم تجد إجابتك؟</h2>
           <p className="text-white/60 text-sm mb-4">
             فريق الدعم الفني متاح على مدار الساعة لمساعدتك
           </p>

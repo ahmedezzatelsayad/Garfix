@@ -31,6 +31,7 @@
  */
 
 import { PrismaClient } from '@prisma/client'
+import os from 'node:os';
 import { getTenantContext, markInTransaction } from './tenant-context'
 
 const globalForPrisma = globalThis as typeof globalThis & {
@@ -39,9 +40,32 @@ const globalForPrisma = globalThis as typeof globalThis & {
 
 const isDev = process.env.NODE_ENV !== 'production';
 
+// DB-12 FIX (Audit v2 · Phase 3): Pool size now scales with vCPU when the
+// operator has not explicitly set DATABASE_POOL_SIZE. We default to
+// `2 * availableParallelism` (clamped to [5, 50]) in production, which gives
+// small instances (1–2 vCPU) a sane floor and larger instances (8+ vCPU) a
+// proportional ceiling without over-subscribing the Postgres backend.
+//
+// DATABASE_POOL_SIZE always wins if set — operators can pin a specific size
+// for capacity planning / connection-budget reasons.
+function defaultPoolSizeFromCpu(): number {
+  let cpus = 0;
+  try {
+    // Node 18.14+ exposes availableParallelism(); fall back to cpus().length.
+    cpus = typeof (os as { availableParallelism?: () => number }).availableParallelism === 'function'
+      ? (os as { availableParallelism: () => number }).availableParallelism()
+      : os.cpus().length;
+  } catch {
+    cpus = 0;
+  }
+  if (!cpus || cpus < 1) return 20;
+  const sized = cpus * 2;
+  return Math.max(5, Math.min(50, sized));
+}
+
 const poolSize = isDev
   ? 5
-  : (parseInt(process.env.DATABASE_POOL_SIZE || '20', 10) || 20);
+  : (parseInt(process.env.DATABASE_POOL_SIZE || '', 10) || defaultPoolSizeFromCpu());
 
 // P0-3: Models that support soft-delete (must have deletedAt field in schema)
 const SOFT_DELETE_MODELS = new Set([
@@ -58,11 +82,36 @@ const basePrisma = new PrismaClient({
 });
 
 let lastConnectionError: { code: string; message: string; at: Date } | null = null;
+
+// DB-12 FIX (Audit v2 · Phase 3): Auto-reconnect handler. Previously the
+// $on('error') hook only *logged* P1017/P1011/P1001 (server closed / can't
+// reach DB) events — the pool stayed poisoned until the next cold start. We
+// now schedule a fire-and-forget `$disconnect()` so Prisma tears down the
+// dead sockets and re-opens them lazily on the next query. The disconnect is
+// deferred via `setTimeout(..., 0)` to avoid re-entering Prisma while the
+// error event is still being dispatched.
+let _reconnecting = false;
+function scheduleReconnect(): void {
+  if (_reconnecting) return;
+  _reconnecting = true;
+  setTimeout(async () => {
+    try {
+      await basePrisma.$disconnect();
+    } catch {
+      // swallow — $disconnect failures are expected when the socket is gone
+    } finally {
+      _reconnecting = false;
+      lastConnectionError = null;
+    }
+  }, 0);
+}
+
 try {
   basePrisma.$on('error' as const, (e: { code?: string; message?: string }) => {
     if (e?.code === 'P1017' || e?.code === 'P1011' || e?.code === 'P1001') {
-      lastConnectionError = { code: e.code, message: e.message || String(e) || String(e) || 'DB connection lost', at: new Date() };
-      console.error('[db] connection error (likely RDS failover)', { code: e.code });
+      lastConnectionError = { code: e.code, message: e.message || String(e) || 'DB connection lost', at: new Date() };
+      console.error('[db] connection error (likely RDS failover) — scheduling reconnect', { code: e.code });
+      scheduleReconnect();
     }
   });
 } catch {}
@@ -305,9 +354,25 @@ export const dbTyped = globalForPrisma.prisma ?? extendedPrisma;
 export type DbTx = Parameters<Parameters<typeof dbTyped.$transaction>[0]>[0];
 
 function appendPoolParams(url: string, poolSize: number): string {
+  // DB-12 FIX (Audit v2 · Phase 3): Append pool tuning + query guard rails
+  // to the datasource URL so EVERY Prisma-managed connection inherits them.
+  //   - connection_limit: max simultaneous connections per Prisma client
+  //   - pool_timeout:     seconds to wait for a free connection before erroring
+  //   - statement_timeout: ms — abort any single statement that runs >30s so a
+  //     runaway query cannot pin a pool slot and starve the API
+  //   - idle_timeout:     ms — reclaim idle connections after 30s so the pool
+  //     shrinks gracefully under low load (matches pgBouncer best practice)
+  //
+  // If the caller already baked `connection_limit=` into the URL we leave it
+  // untouched (operator-managed datasource URL).
   if (url.includes('connection_limit=')) return url;
   const sep = url.includes('?') ? '&' : '?';
-  return `${url}${sep}connection_limit=${poolSize}&pool_timeout=30`;
+  return (
+    `${url}${sep}connection_limit=${poolSize}` +
+    `&pool_timeout=30` +
+    `&statement_timeout=30000` +
+    `&idle_timeout=30000`
+  );
 }
 
 let _dbInitialized = false;

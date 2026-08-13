@@ -175,7 +175,10 @@ export default function StatusPage() {
 
         {/* الاشتراك في التحديثات */}
         <div className="glass-strong bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 text-center shadow-brand-md">
-          <h3 className="font-bold text-white text-sm mb-2">اشترك في تحديثات حالة الخدمة</h3>
+          {/* FE-13 FIX (Audit v2 · Phase 3): this CTA heading was an h3 even
+              though the previous two sections are h2 — promoting to h2 keeps
+              the page outline h1 (FooterPageLayout title) → h2 → h3 flat. */}
+          <h2 className="font-bold text-white text-sm mb-2">اشترك في تحديثات حالة الخدمة</h2>
           <p className="text-white/50 text-[13px] mb-4">
             احصل على إشعارات فورية عند حدوث أي تغيير في حالة الخدمات
           </p>

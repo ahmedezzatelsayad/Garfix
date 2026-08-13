@@ -727,6 +727,11 @@ model BankTransaction {
   reconciledId    Int?
   category        String?
 
+  // DB-13 FIX (Audit v2 · Phase 3): Optimistic locking for concurrent bank
+  // transaction updates (reconciliation, import, manual edit). Bumped by the
+  // application on every write and validated via WHERE version = <expected>.
+  version Int @default(0)
+
   @@index([companySlug])
   @@index([companyId])
   // P1-3: FK index on bankAccountId — BankingView joins BankAccount -> transactions
@@ -818,6 +823,11 @@ model FixedAsset {
   glAccount             Account? @relation("FixedAssetGLAccount", fields: [glAccountId], references: [id])
   depreciationAccount   Account? @relation("FixedAssetDepreciationAccount", fields: [depreciationAccountId], references: [id])
   expenseAccount        Account? @relation("FixedAssetExpenseAccount", fields: [expenseAccountId], references: [id])
+
+  // DB-13 FIX (Audit v2 · Phase 3): Optimistic locking for concurrent asset
+  // edits (depreciation run, disposal, revaluation). Bumped on every write
+  // and validated via WHERE version = <expected> to prevent lost updates.
+  version Int @default(0)
 
   @@unique([code, companyId])
   @@index([companySlug])
@@ -1351,6 +1361,11 @@ model Quotation {
   convertedInvoiceId Int?
   createdBy          String?
 
+  // DB-13 FIX (Audit v2 · Phase 3): Optimistic locking for concurrent quote
+  // edits (send, accept, reject, convert-to-invoice). Bumped on every write
+  // and validated via WHERE version = <expected> to prevent lost updates.
+  version Int @default(0)
+
   @@index([companySlug])
   @@index([companyId])
   @@index([clientId])
@@ -1548,6 +1563,11 @@ model TaxFiling {
   submittedBy    String?
   submittedAt    DateTime?
   notes          String?
+
+  // DB-13 FIX (Audit v2 · Phase 3): Optimistic locking for concurrent tax
+  // filing updates (draft → filed → approved/rejected). Bumped on every write
+  // and validated via WHERE version = <expected> to prevent lost updates.
+  version Int @default(0)
 
   @@index([companySlug])
   @@index([companyId])
@@ -2061,6 +2081,12 @@ model AIUsageLog {
   tokensIn    Int      @default(0)
   tokensOut   Int      @default(0)
   costUsd     Decimal  @default(0)
+  // AI-11 FIX (Audit v2 · Phase 3): version of COST_PER_1K_TOKENS in
+  // src/lib/ai/cost-rates.ts that was active when this row was written.
+  // Used to re-value historical rows at their original rate when the
+  // rate table changes (instead of silently re-applying today's rate).
+  // Default 1 so pre-migration rows are treated as "v1 — initial table".
+  costRatesVersion Int @default(1)
   requestType String?
   createdAt   DateTime @default(now())
 

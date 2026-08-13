@@ -2039,6 +2039,25 @@ html.light {
   outline: none !important;
 }
 
+/* FE-17 FIX (Audit v2 · Phase 3): global default focus-visible ring.
+ *
+ * Previously, focus-visible outlines were ONLY applied inside the
+ * `.keyboard-nav` scope (a class added by JS on first Tab keypress). Before
+ * that JS runs — and on any page where the JS never boots — interactive
+ * elements (links, buttons, inputs, selects, textareas, [tabindex]) had NO
+ * visible focus indicator at all, violating WCAG 2.4.7 Focus Visible.
+ *
+ * This rule provides a default 2px emerald outline on :focus-visible for all
+ * interactive elements. Components that need a custom ring can still override
+ * with the `.focus-ring` utility class above; the `:where()` wrapper keeps
+ * specificity at 0,0,0 so overrides always win.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex], [role="button"], [role="link"]):focus-visible {
+  outline: 2px solid #047857;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .theme-transitioning,

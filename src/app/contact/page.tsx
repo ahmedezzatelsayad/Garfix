@@ -48,6 +48,12 @@ export default function ContactPage() {
   const emailId = useId();
   const subjectId = useId();
   const messageId = useId();
+  // FE-16 FIX (Audit v2 · Phase 3): per-field error element ids so we can
+  // wire aria-describedby on each input to its error message.
+  const nameErrId = `${nameId}-error`;
+  const emailErrId = `${emailId}-error`;
+  const subjectErrId = `${subjectId}-error`;
+  const messageErrId = `${messageId}-error`;
 
   const [formData, setFormData] = useState({
     name: "",
@@ -56,13 +62,28 @@ export default function ContactPage() {
     message: "",
   });
   const [submitted, setSubmitted] = useState(false);
+  // FE-16 FIX (Audit v2 · Phase 3): per-field validation errors + a "tried"
+  // flag so we don't flag invalid fields until the user has attempted submit.
+  const [tried, setTried] = useState(false);
+  const fieldErrors = {
+    name: formData.name.trim() ? null : "الاسم مطلوب",
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())
+      ? null
+      : "بريد إلكتروني غير صالح",
+    subject: formData.subject ? null : "الموضوع مطلوب",
+    message: formData.message.trim() ? null : "الرسالة مطلوبة",
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setTried(true);
+    // FE-16 FIX: block submit if any field has an error.
+    if (Object.values(fieldErrors).some(Boolean)) return;
     // In production, this would send to an API endpoint
     setSubmitted(true);
     setTimeout(() => setSubmitted(false), 5000);
     setFormData({ name: "", email: "", subject: "", message: "" });
+    setTried(false);
   };
 
   return (
@@ -135,7 +156,16 @@ export default function ContactPage() {
                   className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors"
                   placeholder="أدخل اسمك"
                   dir="rtl"
+                  // FE-16 FIX (Audit v2 · Phase 3): aria-invalid + describedby
+                  // point to the inline error message rendered below.
+                  aria-invalid={tried && !!fieldErrors.name}
+                  aria-describedby={tried && fieldErrors.name ? nameErrId : undefined}
                 />
+                {tried && fieldErrors.name && (
+                  <p id={nameErrId} role="alert" className="text-red-400 text-xs mt-1">
+                    {fieldErrors.name}
+                  </p>
+                )}
               </div>
               <div>
                 <label
@@ -151,7 +181,15 @@ export default function ContactPage() {
                   className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors"
                   placeholder="example@email.com"
                   dir="ltr"
+                  // FE-16 FIX (Audit v2 · Phase 3): aria-invalid + describedby.
+                  aria-invalid={tried && !!fieldErrors.email}
+                  aria-describedby={tried && fieldErrors.email ? emailErrId : undefined}
                 />
+                {tried && fieldErrors.email && (
+                  <p id={emailErrId} role="alert" className="text-red-400 text-xs mt-1">
+                    {fieldErrors.email}
+                  </p>
+                )}
               </div>
             </div>
             <div>
@@ -165,6 +203,9 @@ export default function ContactPage() {
                 onChange={(e) => setFormData((p) => ({ ...p, subject: e.target.value }))}
                 required
                 className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors appearance-none"
+                // FE-16 FIX (Audit v2 · Phase 3): aria-invalid + describedby.
+                aria-invalid={tried && !!fieldErrors.subject}
+                aria-describedby={tried && fieldErrors.subject ? subjectErrId : undefined}
               >
                 <option value="" className="bg-[#1a1035]">اختر الموضوع</option>
                 <option value="support" className="bg-[#1a1035]">دعم فني</option>
@@ -174,6 +215,11 @@ export default function ContactPage() {
                 <option value="feedback" className="bg-[#1a1035]">ملاحظات واقتراحات</option>
                 <option value="other" className="bg-[#1a1035]">أخرى</option>
               </select>
+              {tried && fieldErrors.subject && (
+                <p id={subjectErrId} role="alert" className="text-red-400 text-xs mt-1">
+                  {fieldErrors.subject}
+                </p>
+              )}
             </div>
             <div>
               <label
@@ -189,7 +235,15 @@ export default function ContactPage() {
                 className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors resize-y"
                 placeholder="اكتب رسالتك هنا..."
                 dir="rtl"
+                // FE-16 FIX (Audit v2 · Phase 3): aria-invalid + describedby.
+                aria-invalid={tried && !!fieldErrors.message}
+                aria-describedby={tried && fieldErrors.message ? messageErrId : undefined}
               />
+              {tried && fieldErrors.message && (
+                <p id={messageErrId} role="alert" className="text-red-400 text-xs mt-1">
+                  {fieldErrors.message}
+                </p>
+              )}
             </div>
             <button
               type="submit"

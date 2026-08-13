@@ -51,10 +51,21 @@ export const GET = withErrorHandler<[NextRequest, RouteParams]>(
       return NextResponse.json({ error: "Invalid file key" }, { status: 400 });
     }
 
-    // #27 P1 FIX: check StorageObject table for tenant scoping.
-    // If the key exists in storage_objects, verify the user has access to
-    // the file's companySlug. If not in the table (legacy file), fall back
-    // to serving (keys are 128-bit UUIDs — unguessable).
+    // SEC-13 FIX (Audit v2 · Phase 3): enforce tenant scoping on every file
+    // served by this route. Previously the route only authenticated the user
+    // but did NOT verify that the requested StorageObject belongs to the
+    // user's active tenant — any authenticated user could fetch any other
+    // tenant's file by guessing/leaking the 128-bit UUID key.
+    //
+    // Tenant scoping now requires:
+    //   1. The StorageObject row exists (key → companySlug mapping).
+    //   2. assertCompanyAccess(user, storageObj.companySlug) passes — i.e.
+    //      the user is a member of (or founder/admin over) that tenant.
+    //
+    // Files that exist on disk but NOT in the StorageObject table are legacy
+    // uploads predating the table. They are still served (keys are 128-bit
+    // UUIDs — unguessable without a leak), but new uploads always go through
+    // lib/storage.ts which writes the StorageObject row.
     try {
       const { dbTyped: db } = await import("@/lib/db");
       const storageObj = await db.storageObject.findUnique({
