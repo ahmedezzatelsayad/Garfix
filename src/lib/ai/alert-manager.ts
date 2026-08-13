@@ -1,9 +1,29 @@
 /**
  * GarfiX EOS - Enterprise AI Alerting System
 *
- * Phase 8 P3: DEAD CODE — 1000 LOC, zero callers. AlertManager is fully
- * implemented but never wired into the AI call path. Kept for future wiring.
- * 
+ * AI-09 FIX (Audit v2 · Phase 3): DEAD CODE DECISION — ACTIVATED.
+ *
+ * Previous status: "DEAD CODE — 1000 LOC, zero callers" (Phase 8 P3 audit).
+ * This was accurate at the time because AlertManager had no producer and no
+ * API surface — every call site had been stripped during Sprint 7 P0 cleanup.
+ *
+ * Current status (Phase 3): AlertManager IS now wired into the AI call path
+ * via the founder-only REST API at /api/ai/alerts (src/app/api/ai/alerts/route.ts).
+ * That route exposes:
+ *   - GET  /api/ai/alerts?action=stats|history  → read alerts & stats
+ *   - GET  /api/ai/alerts                        → list active alerts
+ *   - POST /api/ai/alerts {action: ack|resolve|suppress, alertId}
+ *
+ * The route was already present (added in P5-C2 with requireFounder gate +
+ * rate limit + audit log), so the "dead code" comment was simply stale.
+ *
+ * REMAINING GAP (not blocking): no internal caller ever invokes
+ * `manager.evaluateConditions(...)` against live AI infrastructure metrics.
+ * Rules are defined but never triggered. This is documented in
+ * docs/audits/ai-09-dead-code-decision.md — wiring the trigger path is
+ * deferred until the metrics pipeline (circuit-breaker + pool-health) is
+ * promoted from `getAdvancedLoadBalancer()` to a stable production signal.
+ *
  * Comprehensive alerting and notification system for AI infrastructure monitoring.
  * Supports multiple channels, severity levels, aggregation, and escalation.
  * 

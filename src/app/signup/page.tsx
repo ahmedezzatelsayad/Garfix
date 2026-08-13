@@ -30,6 +30,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { AlertTriangle, BarChart3, CheckCircle2, Loader2, UserPlus } from "lucide-react";
+// FE-15 FIX (Audit v2 · Phase 3): signup page lives outside AppShell, so it
+// never inherited the shared skip-links. We render them here and add matching
+// id targets on <header>/<main>/<footer> below.
+import { GarfixSkipLinks } from "@/components/garfix-ds";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -99,7 +103,9 @@ export default function SignupPage() {
   if (success) {
     return (
       <div className="min-h-screen flex flex-col bg-[#0b1220]" dir="rtl">
-        <header className="px-6 py-5">
+        {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
+        <GarfixSkipLinks />
+        <header id="main-navigation" className="px-6 py-5">
           <div className="flex items-center gap-2">
             <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-sm">
               <BarChart3 className="h-5 w-5 text-white" />
@@ -107,7 +113,7 @@ export default function SignupPage() {
             <span className="font-bold text-lg text-foreground">GarfiX EOS <span className="text-emerald-400 text-xs font-normal">v4.0</span></span>
           </div>
         </header>
-        <main className="flex-1 flex items-center justify-center px-4 py-8">
+        <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center px-4 py-8">
           <Card className="w-full max-w-md kpi-card-gold shadow-brand-xl border-emerald-500/20">
             <CardHeader className="space-y-2 text-center">
               <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-[#d4a574] to-[#c9956a] flex items-center justify-center shadow-gold-sm animate-pulse">
@@ -136,8 +142,10 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0b1220]" dir="rtl">
+      {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
+      <GarfixSkipLinks />
       {/* Header — DS v4.0 Emerald Branding */}
-      <header className="px-6 py-5">
+      <header id="main-navigation" className="px-6 py-5">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-sm">
             <BarChart3 className="h-5 w-5 text-white" />
@@ -146,7 +154,7 @@ export default function SignupPage() {
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-4 py-8">
+      <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center px-4 py-8">
         <Card className="w-full max-w-md shadow-brand-xl glass-strong border-emerald-500/20">
           {/* ── DS v4.0 Enhanced Onboarding Header ── */}
           <CardHeader className="space-y-3 text-center pb-2">
@@ -181,7 +189,9 @@ export default function SignupPage() {
               {/* ── Enhanced Error with Solution ── */}
               {error && (
                 <div
+                  id="signup-form-error"
                   role="alert"
+                  aria-live="assertive"
                   className="flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400 glass-strong shadow-brand-sm animate-shake duration-300"
                 >
                   <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0 text-red-400" />
@@ -207,6 +217,10 @@ export default function SignupPage() {
                   disabled={submitting}
                   autoFocus
                   className="focus-ring transition-all duration-150"
+                  // FE-16 FIX (Audit v2 · Phase 3): bind the input to the
+                  // shared error region so screen readers announce the error.
+                  aria-invalid={!!error}
+                  aria-describedby={error ? "signup-form-error" : undefined}
                 />
               </div>
 
@@ -222,6 +236,9 @@ export default function SignupPage() {
                   placeholder="you@example.com"
                   disabled={submitting}
                   className="focus-ring transition-all duration-150"
+                  // FE-16 FIX (Audit v2 · Phase 3): aria-invalid + describedby.
+                  aria-invalid={!!error}
+                  aria-describedby={error ? "signup-form-error" : undefined}
                 />
               </div>
 
@@ -236,6 +253,9 @@ export default function SignupPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={submitting}
                   className="focus-ring transition-all duration-150"
+                  // FE-16 FIX (Audit v2 · Phase 3): aria-invalid + describedby.
+                  aria-invalid={!!error}
+                  aria-describedby={error ? "signup-form-error" : undefined}
                 />
                 {/* Password strength meter */}
                 {password.length > 0 && (
@@ -329,7 +349,7 @@ export default function SignupPage() {
         </Card>
       </main>
 
-      <footer className="px-6 py-4 text-center text-xs text-muted-foreground border-t border-emerald-500/20">
+      <footer id="main-footer" className="px-6 py-4 text-center text-xs text-muted-foreground border-t border-emerald-500/20">
         GarfiX EOS v4.0 — AI-Native Business Platform &middot; <span className="text-emerald-500">Powered by Emerald</span>
       </footer>
     </div>

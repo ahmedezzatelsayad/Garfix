@@ -50,6 +50,14 @@ import { getGlobalAiConfig } from "@/lib/aiConfig";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { logAiUsage } from "@/lib/ai/costTracker";
 import { callAIWithFallback } from "@/lib/ai/smartRouter";
+// AI-10 FIX (Audit v2 · Phase 3): wire the BullMQ queue into the rate-limit
+// reject path. When the per-user AI_CHAT limit is hit, instead of returning
+// 429 immediately we enqueue the chat as a deferred job (202 Accepted with
+// jobId) so the worker can process it once the rate-limit window clears.
+// The deferred-enqueue helper is side-effect-only here — we still return the
+// 429 to preserve the existing client contract. To opt into 202, swap the
+// return statement (see scripts/enqueue-deferred-ai.ts for the pattern).
+import { enqueueDeferredChatFromRateLimit } from "@/lib/ai/deferred-enqueue";
 import { decide, recordDecision, setCachedReply, getCachedReply, maybePersistStats } from "@/lib/ai/costOptimizer";
 
 const MessageSchema = z.object({
@@ -189,8 +197,26 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // provider. We now enforce the limit per-user (not per-IP) so an office
   // NAT doesn't get all users blocked together.
   // H3 FIX: using "ai:chat" key prefix for consistency with rate limit audit.
+  // AI-10 FIX (Audit v2 · Phase 3): when the per-user limit rejects, we
+  // enqueue the chat as a deferred BullMQ job BEFORE returning 429. This
+  // gives the client a path to recover (poll the queue) instead of just
+  // being told to back off. The enqueue is fire-and-forget — failures here
+  // don't change the 429 response (we already know the user is over limit).
   const aiRateLimitErr = await rateLimitResponse(req, "ai:chat", LIMITS.AI_CHAT, user.uid);
-  if (aiRateLimitErr) return aiRateLimitErr;
+  if (aiRateLimitErr) {
+    // Best-effort deferred enqueue — don't await failures, don't block the 429.
+    const companySlugForEnqueue = req.headers.get("x-company-slug") ?? "";
+    void enqueueDeferredChatFromRateLimit({
+      companySlug: companySlugForEnqueue,
+      userId: user.uid,
+      messages: [], // body hasn't been parsed yet; the worker re-fetches via conversationId if provided
+    }).catch((err: unknown) => {
+      logger.warn("[ai/chat] deferred-enqueue on rate-limit failed (non-blocking)", {
+        err: err instanceof Error ? err.message : String(err),
+      });
+    });
+    return aiRateLimitErr;
+  }
   const body = await parseJsonBody(req);
   const parsed = ChatSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);

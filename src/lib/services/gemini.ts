@@ -16,6 +16,17 @@
 
 // ── Types ───────────────────────────────────────────────────
 
+// SEC-11 FIX (Audit v2 · Phase 3): SSRF-safe fetch wrapper. Previously this
+// module called the raw `fetch()` with the API key embedded in the URL query
+// string (`?key=<API_KEY>`), which is logged by every reverse proxy, CDN, and
+// WAF in the request path. We now:
+//   1. Route every outbound call through `fetchSafe()` from `@/lib/ssrf`, which
+//      validates the URL, blocks private/link-local/cloud-metadata IPs, and
+//      defends against DNS-rebinding.
+//   2. Move the API key from the query string to the `x-goog-api-key` header,
+//      which is NOT logged by default by proxies/CDNs.
+import { fetchSafe } from "@/lib/ssrf";
+
 export interface GeminiConfig {
   /** Google AI API Key */
   apiKey: string;
@@ -94,15 +105,17 @@ export class GeminiService {
     const startTime = Date.now();
     
     try {
+      // SEC-11 FIX (Audit v2 · Phase 3): use fetchSafe + header-based key.
       const url = this.buildUrl('generateContent');
-      
+      const headers = this.buildHeaders();
+
       const body = this.buildRequestBody([
         { role: 'user', parts: [{ text: prompt }] }
       ]);
       
-      const response = await fetch(url, {
+      const response = await fetchSafe(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body,
         signal: AbortSignal.timeout(60000),
       });
@@ -126,13 +139,15 @@ export class GeminiService {
     const startTime = Date.now();
     
     try {
+      // SEC-11 FIX (Audit v2 · Phase 3): fetchSafe + header-based key.
       const url = this.buildUrl('generateContent');
+      const headers = this.buildHeaders();
       const contents = this.formatMessages(messages);
       const body = this.buildRequestBody(contents);
       
-      const response = await fetch(url, {
+      const response = await fetchSafe(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body,
         signal: AbortSignal.timeout(60000),
       });
@@ -157,15 +172,17 @@ export class GeminiService {
     let fullText = '';
     
     try {
+      // SEC-11 FIX (Audit v2 · Phase 3): fetchSafe + header-based key.
       const url = this.buildUrl('streamGenerateContent?alt=sse');
-      
+      const headers = this.buildHeaders();
+
       const body = this.buildRequestBody([
         { role: 'user', parts: [{ text: prompt }] }
       ]);
       
-      const response = await fetch(url, {
+      const response = await fetchSafe(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body,
         signal: AbortSignal.timeout(120000),
       });
@@ -228,11 +245,13 @@ export class GeminiService {
    * Count tokens in a text
    */
   async countTokens(text: string): Promise<number> {
+    // SEC-11 FIX (Audit v2 · Phase 3): fetchSafe + header-based key.
     const url = this.buildUrl('countTokens');
+    const headers = this.buildHeaders();
     
-    const response = await fetch(url, {
+    const response = await fetchSafe(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         contents: [{ parts: [{ text }] }],
       }),
@@ -274,9 +293,12 @@ export class GeminiService {
    * List available models
    */
   static async listModels(apiKey: string): Promise<Array<{ name: string; displayName: string }>> {
-    const url = `${GEMINI_BASE_URL}/models?key=${apiKey}`;
-    
-    const response = await fetch(url);
+    // SEC-11 FIX (Audit v2 · Phase 3): fetchSafe + header-based key.
+    const url = `${GEMINI_BASE_URL}/models`;
+    const response = await fetchSafe(url, {
+      method: 'GET',
+      headers: { 'x-goog-api-key': apiKey },
+    });
     
     if (!response.ok) {
       throw new Error(`Failed to list models: ${response.status}`);
@@ -294,8 +316,24 @@ export class GeminiService {
   // ── Private Methods ──────────────────────────────────────
   
   private buildUrl(endpoint: string): string {
+    // SEC-11 FIX (Audit v2 · Phase 3): the API key is NO LONGER embedded in
+    // the URL query string — it is sent via the `x-goog-api-key` header
+    // (see buildHeaders()). URL now contains only the model + endpoint.
     const baseUrl = this.config.baseUrl || GEMINI_BASE_URL;
-    return `${baseUrl}/models/${this.config.model}:${endpoint}?key=${this.config.apiKey}`;
+    return `${baseUrl}/models/${this.config.model}:${endpoint}`;
+  }
+
+  /**
+   * Build the request headers, including the API key via the
+   * `x-goog-api-key` header (Google's documented mechanism).
+   * This keeps the secret out of URL/query strings that get logged.
+   */
+  private buildHeaders(): Record<string, string> {
+    // SEC-11 FIX (Audit v2 · Phase 3): API key in header, not in URL.
+    return {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': this.config.apiKey,
+    };
   }
   
   private buildRequestBody(contents: any[]): string {

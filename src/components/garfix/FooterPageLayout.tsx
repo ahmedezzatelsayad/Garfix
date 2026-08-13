@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { ProfessionalFooter } from "./ProfessionalFooter";
+// FE-15 FIX (Audit v2 · Phase 3): pages rendered through FooterPageLayout
+// (contact, help, privacy, terms, refund, partners, cookies, status) were
+// missing the skip-nav that the AppShell provides. Keyboard users had no way
+// to jump past the long nav/hero to the main content. We render the shared
+// GarfixSkipLinks component here and add matching id targets below.
+import { GarfixSkipLinks } from "@/components/garfix-ds";
 
 interface FooterPageLayoutProps {
   title: string;
@@ -24,8 +30,10 @@ export function FooterPageLayout({
       dir="rtl"
       className="min-h-dvh bg-[#0b1220] text-white"
     >
+      {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
+      <GarfixSkipLinks />
       {/* ── Nav ──────────────────────────────────────────────────────── */}
-      <nav className="py-5 px-[5%] flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20">
+      <nav id="main-navigation" className="py-5 px-[5%] flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20">
         <Link href="/" className="flex items-center gap-3 no-underline">
           <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 flex items-center justify-center text-[22px] font-black text-white shadow-brand-sm">
             G
@@ -67,14 +75,16 @@ export function FooterPageLayout({
       </header>
 
       {/* ── Content ─────────────────────────────────────────────────────── */}
-      <main className="px-[5%] pb-20 max-w-[900px] mx-auto">
+      <main id="main-content" tabIndex={-1} className="px-[5%] pb-20 max-w-[900px] mx-auto">
         <div className="bg-[#111827]/80 border border-white/[0.08] rounded-2xl p-6 md:p-10 shadow-brand-sm backdrop-blur-sm">
           {children}
         </div>
       </main>
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
-      <ProfessionalFooter variant="landing" version="12" />
+      <div id="main-footer">
+        <ProfessionalFooter variant="landing" version="12" />
+      </div>
     </div>
   );
 }
