@@ -475,7 +475,7 @@ export function validateUaeFtaInvoice(
   const lineItems = invoice.lineItems as LineItem[] | string | undefined;
   let parsedItems: LineItem[] = [];
   if (typeof lineItems === "string") {
-    try { parsedItems = JSON.parse(lineItems); } catch { parsedItems = []; }
+    try { parsedItems = JSON.parse(lineItems); } catch (error) { logger.error("UAE FTA line items JSON parse failed", { error }); parsedItems = []; }
   } else if (Array.isArray(lineItems)) {
     parsedItems = lineItems;
   }
@@ -573,7 +573,7 @@ export function generateUaeFtaUblXml(
   const rawLineItems = invoice.lineItems as LineItem[] | string;
   let parsedItems: LineItem[] = [];
   if (typeof rawLineItems === "string") {
-    try { parsedItems = JSON.parse(rawLineItems); } catch { parsedItems = []; }
+    try { parsedItems = JSON.parse(rawLineItems); } catch (error) { logger.error("UAE FTA line items JSON parse failed", { error }); parsedItems = []; }
   } else if (Array.isArray(rawLineItems)) {
     parsedItems = rawLineItems;
   }
@@ -995,8 +995,10 @@ export async function submitUaeFtaInvoice(
 
     const invoiceHash = computeUaeFtaInvoiceHash(signedXml);
 
-    // Simulate Peppol response
-    const isSimulation = true; // Placeholder flag — will be false in production
+    // P1 FIX (audit): isSimulation was hardcoded to true. Now controlled by env var.
+    // In production with a real Peppol Access Point contract, set UAE_FTA_PRODUCTION_MODE=true.
+    // Until then, submissions are simulated (UAE FTA Peppol AP requires a commercial contract).
+    const isSimulation = process.env.UAE_FTA_PRODUCTION_MODE !== "true";
     const submissionStatus = isSimulation
       ? (invoiceType === "standard" ? "cleared" : "accepted")
       : "pending";

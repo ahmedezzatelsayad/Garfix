@@ -185,30 +185,53 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       return apiError("الصورة غير صالحة — البايتات الأولى لا تطابق النوع المُصرَّح به", 415);
     }
 
-    // P0.2 FIX (AI Effectiveness prompt): measure the AI provider call
-    // latency specifically (not the whole handler, which includes base64
-    // decoding + auto-product-add + DB writes).
+    // AI-02 FIX (Audit v2 · Phase 1 Final Closure): Wrap the VLM call in
+    // executeCascade so parse-image benefits from cache + budget enforcement.
     const aiT0 = Date.now();
-    const completion = await ai.chat.completions.createVision({
-      model: "z-ai-glm",
-      messages: [
-        { role: "system", content: buildVisionPrompt() },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "حلّل هذه الفاتورة/الإيصال واستخرج البيانات المنظمة." },
-            {
-              type: "image_url",
-              image_url: { url: `data:${mimeType};base64,${cleaned}` },
-            },
-          ],
+    const { executeCascade } = await import("@/lib/ai-fabric/gateway");
+    const cascadeResult = await executeCascade<unknown>(
+      {
+        companySlug: companySlug || "__global",
+        requestType: "extraction",
+        normalizedInput: `vision:${mimeType}:${cleaned.slice(0, 100)}`,
+        rawInput: `vision:${mimeType}`,
+        context: { imageBase64: cleaned, mimeType, systemPrompt: buildVisionPrompt() },
+      },
+      {
+        // Vision uses the full cascade: cache → pattern → rule → memory → budget → AI
+        aiFn: async (): Promise<{ data: unknown; provider: string; tokensUsed: number; costUsd: number }> => {
+          const ZAI = (await import("z-ai-web-dev-sdk")).default;
+          const ai = await ZAI.create();
+          const completion = await ai.chat.completions.createVision({
+            model: "z-ai-glm",
+            messages: [
+              { role: "system", content: buildVisionPrompt() },
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: "حلّل هذه الفاتورة/الإيصال واستخرج البيانات المنظمة." },
+                  {
+                    type: "image_url",
+                    image_url: { url: `data:${mimeType};base64,${cleaned}` },
+                  },
+                ],
+              },
+            ],
+          });
+          return {
+            data: completion,
+            provider: "z-ai-vlm",
+            tokensUsed: (completion.usage?.total_tokens || 0),
+            costUsd: 0,
+          };
         },
-      ],
-    });
+      },
+    );
     const aiMs = Date.now() - aiT0;
-
-    const content = completion.choices?.[0]?.message?.content || "{}";
-    const usage = completion.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    // Extract completion from cascade result (cascade may return cached data)
+    const completion = cascadeResult.data as { choices?: Array<{ message?: { content?: string } }>; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } } | null;
+    const content = completion?.choices?.[0]?.message?.content || "{}";
+    const usage = completion?.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
     let orders: ParsedOrder[] = [];
     try {

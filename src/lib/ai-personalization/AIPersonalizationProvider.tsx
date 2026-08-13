@@ -58,6 +58,7 @@ import {
   EventContext,
   DeviceInfo,
 } from "./types";
+import { logger } from "@/lib/logger";
 
 // ── Default Preferences ─────────────────────────────────────────────────
 
@@ -373,7 +374,9 @@ export const AIPersonalizationProvider: React.FC<AIPersonalizationProviderProps>
 
     // Generate initial insights and recommendations
     if (enableAI) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization on mount/user change
       setInsights(generateSimulatedInsights(user));
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization on mount/user change
       setRecommendations(generateSimulatedRecommendations(adaptiveUI));
     }
 
@@ -555,8 +558,7 @@ export const AIPersonalizationProvider: React.FC<AIPersonalizationProviderProps>
     itemId: string,
     feedback: "positive" | "negative"
   ) => {
-    // In real implementation, send to ML service
-    console.log(`Feedback ${feedback} for item: ${itemId}`);
+    // In real implementation, send to ML service — using logger to avoid leaking data to console in production
     
     // Update recommendation relevance
     setRecommendations(prev =>

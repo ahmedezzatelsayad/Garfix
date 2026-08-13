@@ -33,6 +33,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useBrand } from "@/context/BrandContext";
+import { logger } from "@/lib/logger";
 import { useDashboardStats } from "@/hooks/queries/dashboard";
 import {
   FileText, Users, DollarSign, TrendingUp, AlertCircle, ArrowLeft,
@@ -116,6 +117,7 @@ function useAnimatedValue(target: number, duration = 800): number {
 
   useEffect(() => {
     if (target === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- animation: reset value when target is 0
       setCurrent(0);
       return;
     }
@@ -362,7 +364,7 @@ export function DashboardView() {
   }
 
   if (statsError) {
-    console.error("[Dashboard] Error loading stats:", statsError);
+    logger.error("[Dashboard] Error loading stats:", { err: statsError });
   }
 
   if (!stats) {
@@ -576,6 +578,10 @@ export function DashboardView() {
 
         {/* ════════════════════════════════════════════════════════════════
             SECTION 4: KPI CARDS ROW (Enhanced)
+            FE-14 FIX (Audit v2 · Phase 3): every KPI value container now
+            carries aria-live="polite" + aria-atomic="true" + role="status"
+            so screen readers announce the new value when the dashboard
+            re-fetches data (every 30s) instead of silently updating.
            ════════════════════════════════════════════════════════════════ */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 animate-fade-in" style={{ animationDelay: '200ms' }}>
           
@@ -594,7 +600,7 @@ export function DashboardView() {
                 <TrendingUp size={16} className="text-emerald-400" />
               </div>
               
-              <div className="text-2xl md:text-3xl font-black text-foreground tabular-nums mb-2" dir="ltr">
+              <div className="text-2xl md:text-3xl font-black text-foreground tabular-nums mb-2" dir="ltr" aria-live="polite" aria-atomic="true" role="status">
                 <AnimatedCounter value={stats.totalInvoices} />
               </div>
               
@@ -624,7 +630,7 @@ export function DashboardView() {
                 <span className="ai-badge text-[10px]">✦</span>
               </div>
               
-              <div className="text-2xl md:text-3xl font-black text-gradient-gold tabular-nums mb-2" dir="ltr">
+              <div className="text-2xl md:text-3xl font-black text-gradient-gold tabular-nums mb-2" dir="ltr" aria-live="polite" aria-atomic="true" role="status">
                 <AnimatedCounter 
                   value={Math.round(stats.totalRevenue)} 
                   suffix={` ${activeCompany?.currency || ""}`}
@@ -656,7 +662,7 @@ export function DashboardView() {
                 <ProgressRing percentage={collectionRate} size={36} strokeWidth={3} />
               </div>
               
-              <div className="text-2xl md:text-3xl font-black text-foreground tabular-nums mb-2" dir="ltr">
+              <div className="text-2xl md:text-3xl font-black text-foreground tabular-nums mb-2" dir="ltr" aria-live="polite" aria-atomic="true" role="status">
                 <AnimatedCounter 
                   value={Math.round(stats.totalPaid)} 
                   suffix={` ${activeCompany?.currency || ""}`}
@@ -697,7 +703,7 @@ export function DashboardView() {
                 )}
               </div>
               
-              <div className="text-2xl md:text-3xl font-black text-foreground tabular-nums mb-2" dir="ltr">
+              <div className="text-2xl md:text-3xl font-black text-foreground tabular-nums mb-2" dir="ltr" aria-live="polite" aria-atomic="true" role="status">
                 <AnimatedCounter 
                   value={Math.round(stats.totalOutstanding)} 
                   suffix={` ${activeCompany?.currency || ""}`}
@@ -734,7 +740,7 @@ export function DashboardView() {
                 )}
               </div>
               
-              <div className="text-2xl md:text-3xl font-black text-foreground tabular-nums mb-2" dir="ltr">
+              <div className="text-2xl md:text-3xl font-black text-foreground tabular-nums mb-2" dir="ltr" aria-live="polite" aria-atomic="true" role="status">
                 <AnimatedCounter value={stats.clientsCount} />
               </div>
               

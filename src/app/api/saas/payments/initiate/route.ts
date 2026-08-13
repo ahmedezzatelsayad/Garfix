@@ -119,7 +119,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       const { stripeProvider } = await import("@/lib/integrations/stripe");
       const stripeAmount = Math.round(amount * 100); // Stripe uses smallest currency unit
 
-      const stripeResult = await (stripeProvider as unknown as {
+      const stripeResult = await (stripeProvider as  {
         createPaymentIntent: (params: {
           amount: number;
           currency?: string;

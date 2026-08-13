@@ -482,41 +482,50 @@ export async function submitEInvoice(
     }
 
     case "kuwait_decree_10_2026": {
-      // Kuwait: MOCI portal not yet published — placeholder
-      logger.info("[e-invoicing-router] Kuwait MOCI portal not yet published — placeholder submission", {
+      // Kuwait: MOCI portal not yet published — stub submission
+      // P1 FIX (audit): Was returning fake submissionId with ok:true, falsely
+      // reporting success. Now returns ok:false with clear message.
+      logger.info("[e-invoicing-router] Kuwait MOCI portal not yet published — stub submission", {
         invoiceNumber: invoice.invoiceNumber,
       });
       return {
-        ok: true,
+        ok: false,
         submissionStatus: "pending",
         authority: "kuwait_decree_10_2026",
-        submissionId: `KUWAIT-PLACEHOLDER-${Date.now()}`,
+        submissionId: undefined,
+        error: "Kuwait MOCI portal API not yet published. EInvoice record created locally but not submitted to authority.",
       };
     }
 
     case "zatca": {
-      // ZATCA: Requires signing certificates first — placeholder for routing
-      logger.info("[e-invoicing-router] ZATCA submission requires signing certificates — placeholder via router", {
+      // ZATCA: Requires signing certificates first — stub via router
+      // P1 FIX (audit): Was returning fake submissionId with ok:true.
+      // Real ZATCA submission should go through the dedicated /api/e-invoicing/submit
+      // route which calls submitZatcaInvoice() directly with real CSID credentials.
+      logger.info("[e-invoicing-router] ZATCA submission requires signing certificates — use /api/e-invoicing/submit for real submission", {
         invoiceNumber: invoice.invoiceNumber,
       });
       return {
-        ok: true,
+        ok: false,
         submissionStatus: "pending",
         authority: "zatca",
-        submissionId: `ZATCA-PLACEHOLDER-${Date.now()}`,
+        submissionId: undefined,
+        error: "ZATCA submission requires CSID credentials. Use the dedicated /api/e-invoicing/submit endpoint with certificate onboarding first.",
       };
     }
 
     case "uae_fta": {
-      // UAE FTA: Requires Peppol Access Point — placeholder for routing
-      logger.info("[e-invoicing-router] UAE FTA submission requires Peppol AP — placeholder via router", {
+      // UAE FTA: Requires Peppol Access Point — stub via router
+      // P1 FIX (audit): Was returning fake submissionId with ok:true.
+      logger.info("[e-invoicing-router] UAE FTA submission requires Peppol AP — stub", {
         invoiceNumber: invoice.invoiceNumber,
       });
       return {
-        ok: true,
+        ok: false,
         submissionStatus: "pending",
         authority: "uae_fta",
-        submissionId: `UAE-FTA-PLACEHOLDER-${Date.now()}`,
+        submissionId: undefined,
+        error: "UAE FTA submission requires a Peppol Access Point contract. Use /api/e-invoicing/submit for local stub submission.",
       };
     }
 

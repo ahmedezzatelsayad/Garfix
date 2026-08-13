@@ -88,7 +88,7 @@ const patternCache = new Map<string, Map<string, LearnedPattern>>();
 const MAX_PATTERNS_PER_COMPANY = 1000;
 
 /** Global stats counter */
-let globalStats: MLModelStats = {
+const globalStats: MLModelStats = {
   totalCorrections: 0,
   totalPatterns: 0,
   patternsByCompany: {},

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * verifyExtraction.test.ts — tests for the post-extraction verification layer.
  *

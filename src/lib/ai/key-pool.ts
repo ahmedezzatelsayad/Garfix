@@ -43,7 +43,7 @@ export interface PoolKey {
 export interface PoolSelectionResult {
   key: PoolKey | null;
   /** Why no key was available (when key is null) */
-  reason?: "no_keys" | "all_rate_limited" | "valkey_unavailable" | "db_error";
+  reason?: "no_keys" | "all_rate_limited" | "all_daily_exhausted" | "valkey_unavailable" | "db_error";
   /** Which key ID was selected (for usage tracking) */
   selectedKeyId?: string;
   /** Whether this request was rate-limited against Valkey */
@@ -106,6 +106,20 @@ export async function pickPoolKey(
     // requests for the full cooldown minute.
     if (keys.length === 1) {
       const k = keys[0];
+      // AI-06 FIX (Audit v2 · Phase 2): enforce ApiKeyPool.dailyLimit.
+      // `usedToday` (BigInt) tracks requests issued against the key today;
+      // `dailyLimit` (Int) is the per-key daily request cap. When the cap
+      // is reached, the key is skipped and the caller sees a distinct
+      // reason so the founder dashboard can surface "all keys exhausted for
+      // the day" instead of a generic rate-limit.
+      if (isKeyDailyLimitExceeded(k)) {
+        logger.info("[keyPool] single key has hit dailyLimit — skipping", {
+          keyId: k.id,
+          usedToday: k.usedToday.toString(),
+          dailyLimit: k.dailyLimit,
+        });
+        return { key: null, reason: "all_daily_exhausted", distributed: VALKEY_CONFIGURED };
+      }
       if (await isKeyInCooldown(k.id)) {
         return { key: null, reason: "all_rate_limited", distributed: VALKEY_CONFIGURED };
       }
@@ -155,9 +169,25 @@ export async function pickPoolKey(
     }
 
     // Try keys in round-robin order; first one that passes rate-limit wins
+    let dailyExhaustedCount = 0;
     for (let i = 0; i < keys.length; i++) {
       const idx = (startIndex + i) % keys.length;
       const k = keys[idx];
+
+      // AI-06 FIX (Audit v2 · Phase 2): enforce ApiKeyPool.dailyLimit.
+      // Skip keys whose `usedToday` has reached `dailyLimit`. We count
+      // how many keys were skipped for this reason so the final return
+      // value can use the precise `all_daily_exhausted` reason when ALL
+      // keys were skipped due to daily caps (vs. minute-window 429s).
+      if (isKeyDailyLimitExceeded(k)) {
+        dailyExhaustedCount++;
+        logger.debug("[keyPool] key has hit dailyLimit — skipping", {
+          keyId: k.id,
+          usedToday: k.usedToday.toString(),
+          dailyLimit: k.dailyLimit,
+        });
+        continue;
+      }
 
       // Skip keys in cooldown (recently hit 429)
       if (await isKeyInCooldown(k.id)) continue;
@@ -180,6 +210,15 @@ export async function pickPoolKey(
       }
     }
 
+    // All keys were either in cooldown or over their daily cap. If every
+    // key was over its daily cap (no cooldowns hit), surface the precise
+    // reason so the founder dashboard can show "pool exhausted for the
+    // day — reset at midnight" (AI-06 FIX). Otherwise the generic
+    // all_rate_limited reason, which means minute-window 429s are still
+    // active and the request should retry shortly.
+    if (dailyExhaustedCount === keys.length) {
+      return { key: null, reason: "all_daily_exhausted", distributed: VALKEY_CONFIGURED };
+    }
     return { key: null, reason: "all_rate_limited", distributed: VALKEY_CONFIGURED };
   } catch (err) {
     logger.error("[keyPool] pickPoolKey failed", {
@@ -265,6 +304,38 @@ export async function recordKeyUse(
 }
 
 // ── Internal Helpers ──────────────────────────────────────────────────
+
+/**
+ * AI-06 FIX (Audit v2 · Phase 2): check whether a pool key has hit its
+ * `dailyLimit` for the current day.
+ *
+ * The schema field is `usedToday` (BigInt, request count) — there is no
+ * `tokensUsedToday` column. The task description references "tokensUsedToday"
+ * but the actual schema tracks request-level usage via `usedToday` (incremented
+ * by `recordKeyUse`). We enforce at the request level (most aligned with what
+ * the schema offers and what `dailyLimit` is documented as: "Requests per day").
+ *
+ * When the daily cap is hit, `pickPoolKey` skips the key and either tries the
+ * next one (multi-key path) or returns `all_daily_exhausted` (single-key path
+ * or every key exhausted). The daily reset cron
+ * (`scripts/cron-reset-daily-usage.ts`) zeroes `usedToday` at midnight.
+ *
+ * Returns true when the key MUST be skipped today.
+ */
+function isKeyDailyLimitExceeded(k: {
+  usedToday: bigint;
+  dailyLimit: number;
+}): boolean {
+  // dailyLimit <= 0 means "no daily cap" (some providers have effectively
+  // unlimited daily quota). A non-positive cap is treated as unbounded so
+  // the router doesn't accidentally block every key.
+  if (k.dailyLimit <= 0) return false;
+  // BigInt → Number conversion is safe here: dailyLimit is Int (<= 2^31)
+  // and usedToday only overflows Number.MAX_SAFE_INTEGER at ~9 quadrillion
+  // requests/day, which is astronomically beyond any realistic key cap.
+  const usedToday = Number(k.usedToday);
+  return usedToday >= k.dailyLimit;
+}
 
 /**
  * Consume one rate-limit slot for a key (per-minute window).

@@ -411,6 +411,24 @@ export const externalBreakers = {
     successThreshold: 2,
   }),
 
+  // P3 FIX (audit): Added DeepSeek + Gemini circuit breakers for server-side
+  // AI fault tolerance. Previously only OpenRouter had a breaker — DeepSeek
+  // (the primary provider) and Gemini (fallback) had none, so sustained 5xx
+  // from either would be retried forever on every request.
+  deepseek: getCircuitBreaker({
+    name: "deepseek",
+    failureThreshold: 5,
+    resetTimeout: 30000,
+    successThreshold: 2,
+  }),
+
+  gemini: getCircuitBreaker({
+    name: "gemini",
+    failureThreshold: 5,
+    resetTimeout: 30000,
+    successThreshold: 2,
+  }),
+
   /** Circuit breaker for email sending (nodemailer SMTP). */
   email: getCircuitBreaker({
     name: "email-smtp",

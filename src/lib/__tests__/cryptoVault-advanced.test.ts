@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * cryptoVault-advanced.test.ts — 40 tests for the crypto vault.
  *

@@ -497,8 +497,9 @@ export function validateEgyptEtaInvoice(
           });
         }
       }
-    } catch {
+    } catch (error) {
       // If lineItems can't be parsed, skip line item validation
+      logger.error("Egypt ETA line items validation parse failed", { error });
     }
   }
 
@@ -627,7 +628,8 @@ export function generateEgyptEtaInvoicePayload(
   let parsedItems: LineItem[] = [];
   try {
     parsedItems = JSON.parse(lineItemsRaw);
-  } catch {
+  } catch (error) {
+    logger.error("Egypt ETA line items JSON parse failed", { error });
     parsedItems = [];
   }
 

@@ -53,9 +53,9 @@ export async function handleBackupJob(data: Record<string, unknown>): Promise<vo
 
   switch (jobType) {
     case BACKUP_JOB_TYPES.BACKUP:
-      return handleBackup(payload as unknown as BackupJobData);
+      return handleBackup(payload as  BackupJobData);
     case BACKUP_JOB_TYPES.VERIFY_BACKUP:
-      return handleVerifyBackup(payload as unknown as VerifyBackupJobData);
+      return handleVerifyBackup(payload as  VerifyBackupJobData);
     default:
       throw new Error(`backupWorker: unknown job type "${jobType}"`);
   }
@@ -109,11 +109,18 @@ async function handleVerifyBackup(data: VerifyBackupJobData): Promise<void> {
   //
   // New approach: read the file, decrypt it, and verify it contains valid
   // PostgreSQL SQL statements (e.g., "CREATE TABLE", "INSERT", "COPY", "SET").
+  //
+  // TPD-02 FIX (Audit v2): The decrypted content is BASE64-encoded SQL
+  // (because runBackup does: rawBuffer.toString("base64") → encryptSecret).
+  // The previous check looked for "create table" in the base64 string —
+  // which NEVER matches because base64 output doesn't contain plaintext
+  // SQL keywords. Every real backup was incorrectly marked "corrupt".
+  // Fix: decode base64 first, THEN check for SQL patterns.
   const { decryptSecret } = await import("@/lib/cryptoVault");
   const encryptedContent = await fs.readFile(backupPath, "utf8");
-  let decryptedContent: string;
+  let decryptedB64: string;
   try {
-    decryptedContent = decryptSecret(encryptedContent);
+    decryptedB64 = decryptSecret(encryptedContent);
   } catch (err) {
     throw new Error(
       `backupWorker.verify-backup: failed to decrypt "${target.name}" — ` +
@@ -122,7 +129,19 @@ async function handleVerifyBackup(data: VerifyBackupJobData): Promise<void> {
     );
   }
 
-  // Verify the decrypted content looks like valid PostgreSQL SQL
+  // Decode the base64 payload to recover the actual SQL dump
+  let decryptedContent: string;
+  try {
+    decryptedContent = Buffer.from(decryptedB64, "base64").toString("utf8");
+  } catch (err) {
+    throw new Error(
+      `backupWorker.verify-backup: decrypted content of "${target.name}" ` +
+      `is not valid base64 — likely corrupt. Original error: ` +
+      (err instanceof Error ? err.message : String(err))
+    );
+  }
+
+  // Verify the decoded content looks like valid PostgreSQL SQL
   const sqlLower = decryptedContent.toLowerCase();
   const hasValidSqlPatterns =
     sqlLower.includes("create table") ||
@@ -133,7 +152,7 @@ async function handleVerifyBackup(data: VerifyBackupJobData): Promise<void> {
     sqlLower.includes("postgresql database dump");
   if (!hasValidSqlPatterns) {
     throw new Error(
-      `backupWorker.verify-backup: decrypted content of "${target.name}" ` +
+      `backupWorker.verify-backup: decoded content of "${target.name}" ` +
       `does not contain valid PostgreSQL SQL statements — likely corrupt`
     );
   }

@@ -119,7 +119,7 @@ function buildCspHeaders(nonce: string): Record<string, string> {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data: blob: https:",
-      "connect-src 'self' https://api.openrouter.ai https://generativelanguage.googleapis.com",
+      "connect-src 'self' https://api.openrouter.ai https://generativelanguage.googleapis.com https://api.deepseek.com https://api.openai.com https://accept.paymob.com https://api.stripe.com https://api.twilio.com https://api.sendgrid.com https://gw-fatoora.zatca.gov.sa https://invoicing.eta.gov.eg",
       "frame-src 'none'",
       "object-src 'none'",
       "base-uri 'self'",
@@ -138,6 +138,11 @@ const STATIC_SECURITY_HEADERS: Record<string, string> = {
   "X-XSS-Protection": "0",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  // P3 FIX (audit): COEP/COOP were claimed in comments but never actually set.
+  // Now properly added for Spectre-class side-channel isolation.
+  // credentialless (not require-corp) so cross-CDN assets (Google Fonts, etc.) work.
+  "Cross-Origin-Embedder-Policy": "credentialless",
+  "Cross-Origin-Opener-Policy": "same-origin",
 };
 
 function withSecurityHeaders(response: NextResponse, pathname?: string): NextResponse {
@@ -217,4 +222,4 @@ export function middleware(req: NextRequest): NextResponse {
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|_next/data|favicon.ico|robots.txt|manifest.json|icons|sw.js).*)"],
-} as const;
+};

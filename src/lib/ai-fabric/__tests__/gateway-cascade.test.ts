@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * gateway-cascade.test.ts — Comprehensive tests for the AI Fabric 5-stage cascade gateway.
  *

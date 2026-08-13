@@ -65,11 +65,18 @@ describe("P3.3 db-rls (SQLite / dev path — wrapper is a no-op)", () => {
     mock.restore();
   });
 
-  it("withTenant returns the original db unchanged on SQLite", async () => {
+  it("withTenant returns a passthrough Proxy with __tenantSlug on SQLite", async () => {
     const { withTenant } = await import("../db-rls");
     const fakeDb = makeFakeDb();
     const wrapped = withTenant(fakeDb as any, "acme");
-    expect(wrapped).toBe(fakeDb);
+    // On SQLite, withTenant returns a Proxy that passthrough-delegates to
+    // the original db but adds the `__tenantSlug` property. It is NOT the
+    // same reference (Proxy ≠ target), but all model access passes through.
+    expect((wrapped as any).__tenantSlug).toBe("acme");
+    // Verify passthrough: accessing a model property on the proxy returns
+    // the same value as on the original db.
+    expect(wrapped.$transaction).toBe(fakeDb.$transaction);
+    expect(wrapped.invoice).toBe(fakeDb.invoice);
   });
 
   it("runWithTenantContext calls fn() directly on SQLite (no $transaction)", async () => {

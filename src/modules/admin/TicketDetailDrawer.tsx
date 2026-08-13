@@ -7,7 +7,8 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import type { Ticket, TicketReply } from "./types";
+import type { TicketReply } from "./types";
+import type { PlatformTicket } from "@/hooks/queries/platform-admin";
 import {
   useUpdatePlatformTicket,
   useReplyToTicket,
@@ -21,11 +22,11 @@ export function TicketDetailDrawer({
   ticketId, tickets, onClose, onUpdated,
 }: {
   ticketId: string;
-  tickets: Ticket[];
+  tickets: PlatformTicket[];
   onClose: () => void;
   onUpdated: () => void;
 }) {
-  const ticket = tickets.find((t) => t.id === ticketId);
+  const ticket = tickets.find((t) => String(t.id) === ticketId);
   const updateMutation = useUpdatePlatformTicket();
   const replyMutation = useReplyToTicket();
 
@@ -42,9 +43,7 @@ export function TicketDetailDrawer({
     if (!replyBody.trim()) return;
     setSending(true);
     try {
-      const data = await replyMutation.mutateAsync({ id: parseInt(ticketId), message: replyBody.trim() });
-      const reply = (data as unknown as Record<string, unknown>)?.reply as TicketReply | undefined;
-      if (reply) setLocalReplies((prev) => [...prev, reply]);
+      await replyMutation.mutateAsync({ id: parseInt(ticketId), message: replyBody.trim() });
       setReplyBody("");
       toast.success("تم إرسال الرد");
       onUpdated();

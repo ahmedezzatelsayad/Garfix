@@ -160,7 +160,14 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
       try {
         const valkey = await getValkeyClient();
         if (valkey) {
-          const ttlSeconds = await valkey.ttl(key);
+          // TPD-08 FIX (Audit v2 · Phase 2): query TTL with the PREFIXED
+          // key. Valkey stores every cache entry under `cache:${key}` (see
+          // valkeySet/valkeyGet above), but the old code passed the bare
+          // `key` — Valkey then returned -2 (no such key) on every call,
+          // so `l1TtlMs` always fell through to the 300_000 fallback and
+          // L1 entries expired at the wrong time (often later than L2,
+          // serving stale data after Valkey had already evicted it).
+          const ttlSeconds = await valkey.ttl(`cache:${key}`);
           if (ttlSeconds > 0) {
             l1TtlMs = ttlSeconds * 1000; // use the actual remaining TTL
           }

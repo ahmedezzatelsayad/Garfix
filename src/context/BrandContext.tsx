@@ -9,10 +9,11 @@
  */
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { useTheme } from "next-themes";
 import { useAuth } from "./AuthContext";
 import { useCompanies } from "@/hooks/queries";
+import { logger } from "@/lib/logger";
 import type { Company as QueryCompany } from "@/hooks/queries/dashboard";
 
 export interface CompanyInfo {
@@ -70,6 +71,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   }, [theme, setNextTheme]);
 
   // Sync companies from TanStack Query to local state
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!user) {
       setCompanies([]);
@@ -119,11 +121,12 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       // spams the console on every page load before the user signs in.
       const status = (companiesQuery.error as { status?: number } | null)?.status;
       if (status !== 401) {
-        console.error("[brand] failed to load companies:", companiesQuery.error);
+        logger.error("[brand] failed to load companies:", { err: companiesQuery.error });
       }
       setCompanies([]);
     }
   }, [user, companiesQuery.data, companiesQuery.isLoading, companiesQuery.isError]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // When the user logs in (transitions from null → set), force a refetch of
   // companies. Without this, TanStack's cached 401 from the unauthenticated
@@ -153,10 +156,10 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
 
   const activeCompany = companies.find((c) => c.slug === activeSlug) || null;
 
+  const value = useMemo(() => ({ companies, activeCompany, setActiveSlug, loadingCompanies, refreshCompanies, theme, toggleTheme }), [companies, activeCompany, setActiveSlug, loadingCompanies, refreshCompanies, theme, toggleTheme]);
+
   return (
-    <BrandContext.Provider
-      value={{ companies, activeCompany, setActiveSlug, loadingCompanies, refreshCompanies, theme, toggleTheme }}
-    >
+    <BrandContext.Provider value={value}>
       {children}
     </BrandContext.Provider>
   );

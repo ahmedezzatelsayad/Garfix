@@ -408,6 +408,7 @@ export function GarfixEditableCell({
 
   // Sync external value
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing controlled prop to internal state
     setInternalValue(String(value))
   }, [value])
 

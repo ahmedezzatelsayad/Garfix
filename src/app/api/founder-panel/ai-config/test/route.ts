@@ -63,9 +63,7 @@ export async function POST(request: NextRequest) {
     const validated = TestConnectionSchema.safeParse(body);
     if (!validated.success) return apiError('Validation failed', 400, validated.error.issues);
     const { feature, apiKey, model } = validated.data;
-    const membership = await (db as unknown as {
-      companyMember: { findFirst: (args: { where: { userId?: string; role?: string } }) => Promise<{ companyId: string } | null> };
-    }).companyMember.findFirst({ where: { userId: auth.user.uid, role: 'founder' } });
+    const membership = await db.companyMembership.findFirst({ where: { userUid: auth.user.uid, role: 'founder' } });
     if (!membership) return apiError('Only founders can test API connections', 403);
     const result = await testGeminiConnection(apiKey, model || 'gemini-2.0-flash', feature);
     await logAudit({

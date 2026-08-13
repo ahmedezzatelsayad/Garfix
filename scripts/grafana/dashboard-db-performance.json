@@ -1,0 +1,10 @@
+{
+  "dashboard": {
+    "title": "Garfix DB Performance",
+    "panels": [
+      { "title": "Query Rate (q/s)", "type": "graph", "targets": [{ "expr": "rate(garfix_db_query_count_total[1m])" }] },
+      { "title": "Active Connections", "type": "stat", "targets": [{ "expr": "pg_stat_activity_count" }] },
+      { "title": "Slow Queries (>1s)", "type": "graph", "targets": [{ "expr": "pg_stat_statements_mean_time > 1000" }] }
+    ]
+  }
+}

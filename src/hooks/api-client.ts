@@ -131,9 +131,9 @@ function handle401(): void {
     // Phase 2 P2 fix: removed "/dashboard" from publicPaths. /dashboard is a
     // protected route — if the session expires while viewing it, the global
     // 401 handler SHOULD redirect to /login (not silently stay on stale data).
-    // On Vercel, VercelDashboard does its own auth check via /api/auth/me and
-    // redirects client-side, but that's a separate concern from the global
-    // 401 handler.
+    // FE-05 FIX (Audit v2 · Phase 1) — VercelDashboard was deleted; the
+    // AppShell dashboard view now handles auth via AuthContext + this 401
+    // handler uniformly across all deployment targets.
     const publicPaths = ["/", "/login", "/signup", "/help", "/status", "/privacy", "/terms", "/cookies", "/contact", "/partners", "/refund", "/api-docs"];
     if (publicPaths.includes(path)) return;
   }

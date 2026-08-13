@@ -104,13 +104,16 @@ pre, code, kbd, samp, .font-mono, .garfix-mono {
   --card-foreground: #0b1220;
   --popover: #ffffff;
   --popover-foreground: #0b1220;
-  /* Brand — EMERALD DEEP PRIMARY */
-  --primary: #047857;                       /* emerald-700 */
+  /* Brand — EMERALD DEEP PRIMARY
+   * // FE-04 FIX (Audit v2 · Phase 1) — darken --primary from #047857 to #065f46
+   * and --muted-foreground from #6b7280 to #4b5563 to meet WCAG AAA 7:1 on white.
+   * Computed: #065f46 on #ffffff ≈ 7.91:1, #4b5563 on #ffffff ≈ 7.69:1. */
+  --primary: #065f46;                       /* emerald-800 — AAA on white */
   --primary-foreground: #ffffff;            /* white on emerald */
   --secondary: #ecfdf5;                     /* emerald-50 soft */
   --secondary-foreground: #064e3b;          /* emerald-900 */
   --muted: #f0fdf4;                         /* emerald-50 */
-  --muted-foreground: #6b7280;              /* gray-500 */
+  --muted-foreground: #4b5563;              /* gray-600 — AAA on white */
   /* ⚠️ ACCENT IS CHAMPAGNE GOLD — RESTRICTED USE! ⚠️ */
   --accent: #d4a574;                        /* champagne gold */
   --accent-foreground: #0b1220;             /* navy on gold */
@@ -2034,6 +2037,25 @@ html.light {
 
 .mouse-nav :focus-visible {
   outline: none !important;
+}
+
+/* FE-17 FIX (Audit v2 · Phase 3): global default focus-visible ring.
+ *
+ * Previously, focus-visible outlines were ONLY applied inside the
+ * `.keyboard-nav` scope (a class added by JS on first Tab keypress). Before
+ * that JS runs — and on any page where the JS never boots — interactive
+ * elements (links, buttons, inputs, selects, textareas, [tabindex]) had NO
+ * visible focus indicator at all, violating WCAG 2.4.7 Focus Visible.
+ *
+ * This rule provides a default 2px emerald outline on :focus-visible for all
+ * interactive elements. Components that need a custom ring can still override
+ * with the `.focus-ring` utility class above; the `:where()` wrapper keeps
+ * specificity at 0,0,0 so overrides always win.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex], [role="button"], [role="link"]):focus-visible {
+  outline: 2px solid #047857;
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /* Reduced motion support */

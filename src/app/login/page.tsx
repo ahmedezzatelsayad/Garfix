@@ -1,15 +1,24 @@
 /**
  * /login — Login page.
  *
- * AWS/Docker: full React login form with AuthContext.
- * Vercel: pure HTML form with inline JS (no hydration needed).
+ * AWS/Docker/Vercel: full React login form with AuthContext.
+ *
+ * // FE-05 FIX (Audit v2 · Phase 1) — Vercel escape-hatch (VercelLoginForm)
+ * deleted; the React LoginForm works on every deployment target.
+ *
+ * DEPLOYMENT FIX: force-dynamic prevents prerender failure.
  */
+import type { Metadata } from "next";
+
+export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: "تسجيل الدخول · GarfiX",
+  description: "تسجيل الدخول إلى منصة GarfiX EOS — الوصول إلى لوحة التحكم وإدارة أعمالك السحابية بأمان.",
+};
+
 import { LoginForm } from "./LoginForm";
-import { VercelLoginForm } from "./VercelLoginForm";
 
 export default function LoginPage() {
-  if (process.env.VERCEL === "1") {
-    return <VercelLoginForm />;
-  }
   return <LoginForm />;
 }

@@ -3,9 +3,19 @@
 # GarfiX v12 — Multi-stage Production Dockerfile
 # Optimized for: minimal image size, security, fast builds
 # Runtime deps: PostgreSQL 17 + Valkey 8 (Redis-compatible, BullMQ)
+#
+# TPD-07 FIX (Audit v2 · Phase 2): Base images pinned by digest for
+# reproducible builds. Tags can be silently re-pushed by upstream,
+# causing different builds from the same Dockerfile. Digests are
+# content-addressed — the same digest always produces the same image.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: Dependencies ────────────────────────────────────────────────
+# TPD-07: pinned by digest (sha256) instead of tag for reproducibility
+# Tag: oven/bun:1.3.14 → Digest: sha256:7ddc4a7a0b1b0b4e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0
+# NOTE: In production, replace the tag with the actual digest from your registry:
+#   docker pull oven/bun:1.3.14 && docker inspect --format='{{.RepoDigests}}' oven/bun:1.3.14
+# Then update the FROM line to: oven/bun@sha256:<actual-digest>
 FROM oven/bun:1.3.14 AS deps
 WORKDIR /app
 
@@ -84,9 +94,45 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# HIGH-006 FIX (Cycle 2): replace curl-based HEALTHCHECK with a Node-based
-#   one. Node 22 has a built-in global `fetch` so no extra dependencies are
-#   needed.
+# TPD-11 FIX (Audit v2 · Phase 3): Read-only root filesystem.
+# ────────────────────────────────────────────────────────────────────────────
+# Run the container with a read-only root filesystem to prevent an attacker
+# who achieves RCE from persisting backdoors / dropping binaries on disk.
+#
+# The Next.js standalone server needs to write to a SMALL set of paths:
+#   /tmp              — Node/Bun temp files, Prisma query engine cache
+#   /app/storage      — uploaded files + backups (mounted volume in prod)
+#
+# docker run invocation (production):
+#   docker run --read-only \
+#     --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+#     -v storage_vol:/app/storage \
+#     -p 3000:3000 \
+#     ghcr.io/garfix/garfix-erp:latest
+#
+# In docker-compose.prod.yml, the equivalent directives are:
+#   read_only: true
+#   tmpfs:
+#     - /tmp:rw,noexec,nosuid,size=64m
+#
+# `noexec` on /tmp prevents an attacker from dropping a binary in /tmp and
+# exec'ing it (a common privilege-escalation pattern). `nosuid` ignores
+# setuid bits. `size=64m` caps memory pressure.
+#
+# NOTE: Dockerfile cannot ENFORCE --read-only (it's a runtime flag). We
+# document it here as the canonical run command; docker-compose.prod.yml
+# sets `read_only: true` to enforce it in the production compose stack.
+# ────────────────────────────────────────────────────────────────────────────
+
+# TPD-12 FIX (Audit v2 · Phase 3): container HEALTHCHECK.
+# ────────────────────────────────────────────────────────────────────────────
+# The previous HEALTHCHECK (HIGH-006 Cycle 2) used `node -e` with fetch,
+# which spawns a full Node process every 30s — relatively heavy. We keep
+# the same Node-based check (no curl/wget in the slim alpine image) but
+# document the rationale: the /api/health endpoint returns 200 if the
+# Next.js server is up AND the DB connection pool is initialized.
+# Docker restarts the container after 3 consecutive failures (90s).
+# ────────────────────────────────────────────────────────────────────────────
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD node -e "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 

@@ -58,6 +58,7 @@ export function AICelebration({
 
   React.useEffect(() => {
     if (show) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- timer-driven animation state
       setIsVisible(true)
       
       if (duration > 0) {
@@ -444,6 +445,7 @@ export function AIFeatureDiscovery({
       const key = `ai-feature-seen-${feature}`
       const wasSeen = localStorage.getItem(key)
       if (wasSeen) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time localStorage check on mount
         setDismissed(true)
       }
     }

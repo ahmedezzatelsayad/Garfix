@@ -290,7 +290,7 @@ async function testSchemaValidation(): Promise<boolean> {
     ],
   };
   
-  let allPassed = true;
+  const allPassed = true;
   
   for (const [feature, fields] of Object.entries(expectedFields)) {
     const icon = feature === 'chat' ? '💬' : feature === 'invoice' ? '📄' : feature === 'parse' ? '🔍' : '🧠';

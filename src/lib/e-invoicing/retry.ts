@@ -310,11 +310,11 @@ export async function submitWithRetry<TSubmitState extends string, TAckState ext
   const parsed = opts.parseSubmitResponse(submitRaw);
 
   // 2. If sync final state, return immediately
-  const submitSuccess = opts.successStates.includes(parsed.state as unknown as TAckState);
-  const submitFailure = opts.failureStates.includes(parsed.state as unknown as TAckState);
+  const submitSuccess = opts.successStates.includes(parsed.state as string as TAckState);
+  const submitFailure = opts.failureStates.includes(parsed.state as string as TAckState);
   if (submitSuccess || submitFailure) {
     return {
-      finalState: parsed.state as unknown as TAckState,
+      finalState: parsed.state as string as TAckState,
       ok: submitSuccess,
       raw: parsed.raw ?? submitRaw,
       submitAttempts,
@@ -327,7 +327,7 @@ export async function submitWithRetry<TSubmitState extends string, TAckState ext
   if (!opts.checkAckStatus || !parsed.ackToken) {
     // No ack polling possible — return the pending state as-is (caller must handle)
     return {
-      finalState: parsed.state as unknown as TAckState,
+      finalState: parsed.state as string as TAckState,
       ok: false,
       raw: parsed.raw ?? submitRaw,
       submitAttempts,

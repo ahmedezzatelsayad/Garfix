@@ -296,8 +296,9 @@ export function GarfiXChat({
         )}
 
         {/* Error Message */}
+        {/* FE a11y sweep FIX (Audit v2 · Phase 2): added role=alert + aria-live */}
         {error && (
-          <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-xl flex items-start gap-2">
+          <div role="alert" aria-live="assertive" className="p-3 bg-destructive/10 text-destructive text-sm rounded-xl flex items-start gap-2">
             <span>⚠️</span>
             <div>
               <p>{error}</p>

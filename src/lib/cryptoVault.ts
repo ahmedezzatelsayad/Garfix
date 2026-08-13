@@ -66,6 +66,38 @@ function getEncryptionKey(): string {
   if (!_encKeyEnv) _encKeyEnv = resolveEncryptionKey();
   return _encKeyEnv;
 }
+
+// SEC-16 FIX (Audit v2 · Phase 4): invalidation hook for the derived-key cache.
+//
+// Problem: `cachedKey` and `cachedSalt` are computed once via scryptSync() and
+// then reused for every encrypt/decrypt call (good — scrypt is expensive).
+// BUT: when PAYMENTS_ENC_KEY or VAULT_SALT is rotated (e.g. via the
+// scripts/rotate-vault-salt.ts script), the cache still holds the OLD derived
+// key, so the next encrypt() call uses the OLD key — breaking decryption of
+// values just re-encrypted with the NEW key.
+//
+// Before SEC-16, the rotation script worked around this by deriving its OWN
+// keys independently (via `deriveKey()` in scripts/rotate-vault-salt.ts) and
+// bypassing the cache entirely. That worked for the script, but if the
+// LONG-RUNNING APP PROCESS was running when the rotation happened, the app
+// would keep using the cached OLD key — silently corrupting values until
+// the process was restarted.
+//
+// Fix: export `invalidateVaultCache()` so the rotation script (and any other
+// caller that changes PAYMENTS_ENC_KEY/VAULT_SALT at runtime) can clear the
+// cache. The next encrypt/decrypt call re-derives the key from the (now
+// updated) env var.
+//
+// The rotation script calls this AFTER updating env vars and BEFORE running
+// re-encryption — so the running process picks up the new key immediately.
+export function invalidateVaultCache(): void {
+  cachedKey = null;
+  cachedSalt = null;
+  _encKeyEnv = undefined;
+  // Log so the operator can verify the invalidation fired during rotation.
+  // Use logger (not console) so it goes through the structured logger.
+  logger.info("[vault] SEC-16: derived-key cache invalidated");
+}
 const ALGO = "aes-256-gcm";
 const IV_LEN = 12;
 const TAG_LEN = 16;
@@ -78,8 +110,32 @@ let cachedSalt: Buffer | null = null;
 
 function getSalt(): Buffer {
   if (cachedSalt) return cachedSalt;
-  // Derive a stable salt from the env var (deterministic per environment)
-  cachedSalt = crypto.scryptSync(getEncryptionKey(), "garfix-vault-salt", KEY_LEN, { N: SCRYPT_N }).slice(0, 16);
+  // SEC-02 FIX (Audit v2): Use a per-deployment salt derived from a
+  // dedicated env var (VAULT_SALT) instead of the hardcoded string
+  // "garfix-vault-salt". The hardcoded salt meant that attackers who
+  // knew the source code (open-source or leaked) could pre-compute
+  // rainbow tables for common passphrases and instantly decrypt any
+  // vault encrypted with a weak PAYMENTS_ENC_KEY.
+  //
+  // The new approach:
+  //   1. If VAULT_SALT env var is set (>= 16 chars), use it directly.
+  //   2. Otherwise, derive a stable salt from PAYMENTS_ENC_KEY itself
+  //      (deterministic per environment, but not publicly known).
+  //   3. As a last resort, fall back to the legacy hardcoded salt with
+  //      a loud warning (dev-only — production throws in resolveEncryptionKey).
+  const envSalt = process.env.VAULT_SALT;
+  if (envSalt && envSalt.length >= 16) {
+    cachedSalt = crypto.scryptSync(getEncryptionKey(), envSalt, KEY_LEN, { N: SCRYPT_N }).slice(0, 16);
+    return cachedSalt;
+  }
+  // Derive salt from the key itself — deterministic but not publicly known.
+  // This is weaker than a dedicated VAULT_SALT but far better than the
+  // hardcoded "garfix-vault-salt" string.
+  const derivedSaltMaterial = `${getEncryptionKey()}-vault-salt-v2`;
+  cachedSalt = crypto.scryptSync(getEncryptionKey(), derivedSaltMaterial, KEY_LEN, { N: SCRYPT_N }).slice(0, 16);
+  if (process.env.NODE_ENV === "production" && !envSalt) {
+    console.warn("⚠️  VAULT_SALT env var not set — using key-derived salt. Set VAULT_SALT to a random 16+ char string for maximum security.");
+  }
   return cachedSalt;
 }
 

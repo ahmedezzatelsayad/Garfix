@@ -24,7 +24,11 @@ export const GET = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
   }
 
   const { id } = await ctx.params;
-  const companySlug = result.user.companies?.[0];
+  // SEC: Accept companySlug from query param for multi-company users.
+  const queryCompanySlug = req.nextUrl.searchParams.get("companySlug");
+  const companySlug = queryCompanySlug && result.user.companies?.includes(queryCompanySlug)
+    ? queryCompanySlug
+    : result.user.companies?.[0];
   const isFounder = isFounderEmail(result.user.email);
   // IDOR fix: tenant filter in WHERE; founder bypasses via findUnique
   const endpoint = isFounder
@@ -58,7 +62,13 @@ export const PUT = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
   }
 
   const { id } = await ctx.params;
-  const companySlug = result.user.companies?.[0];
+  // SEC: Accept companySlug from body for multi-company users.
+  const body = await parseJsonBody(req);
+  const parsedBody = (body && typeof body === "object") ? body as Record<string, unknown> : {};
+  const bodyCompanySlug = typeof parsedBody.companySlug === "string" ? parsedBody.companySlug : undefined;
+  const companySlug = bodyCompanySlug && result.user.companies?.includes(bodyCompanySlug)
+    ? bodyCompanySlug
+    : result.user.companies?.[0];
   const isFounder = isFounderEmail(result.user.email);
   if (result.user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can manage webhooks", 403);
@@ -69,7 +79,6 @@ export const PUT = withErrorHandler(async (req: NextRequest, ctx: RouteContext) 
     : await db.webhookEndpoint.findFirst({ where: { id: id, companySlug } });
   if (!endpoint) return apiError("Endpoint not found", 404);
 
-  const body = await parseJsonBody(req);
   const validation = validateBody(UpdateEndpointSchema, body);
   if (!validation.ok) return validation.response;
 
@@ -112,7 +121,11 @@ export const DELETE = withErrorHandler(async (req: NextRequest, ctx: RouteContex
   }
 
   const { id } = await ctx.params;
-  const companySlug = result.user.companies?.[0];
+  // SEC: Accept companySlug from query param for multi-company users.
+  const queryCompanySlug = req.nextUrl.searchParams.get("companySlug");
+  const companySlug = queryCompanySlug && result.user.companies?.includes(queryCompanySlug)
+    ? queryCompanySlug
+    : result.user.companies?.[0];
   const isFounder = isFounderEmail(result.user.email);
   if (result.user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can manage webhooks", 403);

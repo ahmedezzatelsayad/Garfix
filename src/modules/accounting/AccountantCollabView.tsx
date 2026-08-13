@@ -68,8 +68,13 @@ export function AccountantCollabView() {
   const revokeAccessMutation = useRevokeAccountantAccess();
   const exportExcelMutation = useExportExcel();
 
-  const accessList = (accessQuery.data?.accesses ?? []) as unknown as AccountantAccess[];
-  const auditEntries = (auditQuery.data?.entries ?? []) as unknown as AuditEntry[];
+  // View-local types add fields (grantedAt, active, userId, userName, entity) not declared
+  // in the hook's AccountantAccess/AccountingAuditEntry types; covered by their
+  // [key: string]: any index sig at runtime.
+  // @ts-expect-error — local AccountantAccess adds grantedAt & active
+  const accessList = (accessQuery.data?.accesses ?? []) as AccountantAccess[];
+  // @ts-expect-error — local AuditEntry uses different field names (userId/userName/entity vs actor/target)
+  const auditEntries = (auditQuery.data?.entries ?? []) as AuditEntry[];
   const loading = (tab === "access" && accessQuery.isLoading) || (tab === "audit-trail" && auditQuery.isLoading);
 
   const [showGrantForm, setShowGrantForm] = useState(false);

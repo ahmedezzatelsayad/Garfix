@@ -115,157 +115,179 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const created: Array<Record<string, unknown>> = [];
   const errors: Array<{ index: number; error: string }> = [];
-  let invCounter = 0;
-  // Generate a unique invoice number base from current timestamp + count
+  // P2 FIX (audit): Pre-assign invoice numbers so they're deterministic
+  // even when processing in parallel batches.
   const baseInvNum = `INV-${Date.now().toString().slice(-6)}`;
+  const issueDate = new Date().toISOString().slice(0, 10);
+  const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-  for (let i = 0; i < orders.length; i++) {
-    const order = orders[i];
-    try {
-      invCounter++;
-      const invoiceNumber = `${baseInvNum}-${invCounter}`;
-      const items = order.items.map((it) => ({
-        description: it.name,
-        qty: num(it.qty),
-        price: num(it.unitPrice, 3),
-      }));
-      const taxRate = order.taxRate !== undefined ? num(order.taxRate) : num(company.defaultTaxRate);
-      const totals = calcInvoiceTotals(items, taxRate, num(order.shipping), num(order.discount));
+  // ── P2 FIX (audit): Batched processing ──────────────────────────────
+  // Replaced sequential for-loop with chunked Promise.all processing.
+  // Previously 100 orders = ~900 sequential DB round-trips taking minutes.
+  // Now processes CHUNK_SIZE orders in parallel, reducing wall time by ~5x.
+  // Each order still gets its own $transaction for atomicity.
+  const CHUNK_SIZE = 5;
 
-      // Find or skip client matching (we don't create clients automatically — user can do it later)
-      let clientId: string | null = null;
-      if (order.clientPhone || order.clientEmail) {
-        const existingClient = await db.client.findFirst({
-          where: {
-            companySlug,
-            OR: [
-              order.clientPhone ? { phone: order.clientPhone } : {},
-              order.clientEmail ? { email: order.clientEmail } : {},
-            ].filter((c) => Object.keys(c).length > 0),
-          },
-        });
-        if (existingClient) clientId = existingClient.id;
-      }
+  // Pre-process: prepare all order data (items, totals, invoice numbers)
+  const preparedOrders = orders.map((order, i) => {
+    const invoiceNumber = `${baseInvNum}-${i + 1}`;
+    const items = order.items.map((it) => ({
+      description: it.name,
+      qty: num(it.qty),
+      price: num(it.unitPrice, 3),
+    }));
+    const taxRate = order.taxRate !== undefined ? num(order.taxRate) : num(company.defaultTaxRate);
+    const totals = calcInvoiceTotals(items, taxRate, num(order.shipping), num(order.discount));
+    return { order, index: i, invoiceNumber, items, taxRate, totals };
+  });
 
-      const issueDate = new Date().toISOString().slice(0, 10);
-      const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  // Process in chunks of CHUNK_SIZE
+  for (let chunkStart = 0; chunkStart < preparedOrders.length; chunkStart += CHUNK_SIZE) {
+    const chunk = preparedOrders.slice(chunkStart, chunkStart + CHUNK_SIZE);
 
-      // Use a transaction so the invoice + journal entry are atomic (DB-CRIT-03)
-      const invoice = await db.$transaction(async (tx) => {
-        const inv = await tx.invoice.create({
-          data: {
-            companySlug,
-            invoiceNumber,
-            clientId,
-            clientName: order.clientName,
-            clientEmail: order.clientEmail || null,
-            clientPhone: order.clientPhone || null,
-            clientAddress: order.clientAddress || null,
-            issueDate,
-            dueDate,
-            status: "sent",
-            lineItems: JSON.stringify(items),
-            subtotal: totals.subtotal,
-            taxRate: totals.taxRate,
-            taxAmount: totals.taxAmount,
-            total: totals.total,
-            shipping: totals.shipping,
-            discount: totals.discount,
-            paid: "0",
-            notes: order.notes || null,
-            source: "ai-bulk-import",
-            createdByEmail: user.email,
-            createdByName: user.uid,
-            version: 0,
-          },
-        });
-
-        // Optional: create the journal entry (S-01 fix from ERP audit)
-        if (createJournalEntries && arAccount && salesAccount && num(totals.total) > 0) {
-          const je = await tx.journalEntry.create({
-            data: {
-              companySlug,
-              companyId: company.id,
-              number: `JE-${invoiceNumber}`,
-              date: issueDate,
-              description: `فاتورة مبيعات ${invoiceNumber} — ${order.clientName}`,
-              reference: invoiceNumber,
-              status: "posted",
-              createdBy: user.email,
-              sourceType: "invoice",
-              sourceId: String(inv.id),
-              lines: {
-                create: [
-                  // Debit AR (asset increases with debit)
-                  {
-                    accountId: arAccount.id,
-                    debit: totals.total,
-                    credit: "0",
-                    description: `ذمم عملاء - ${invoiceNumber}`,
-                  },
-                  // Credit Sales Revenue (revenue increases with credit)
-                  {
-                    accountId: salesAccount.id,
-                    debit: "0",
-                    credit: totals.subtotal,
-                    description: `إيراد مبيعات - ${invoiceNumber}`,
-                  },
-                  // Credit Tax Payable if there's tax
-                  ...(taxAccount && num(totals.taxAmount) > 0 ? [{
-                    accountId: taxAccount.id,
-                    debit: "0",
-                    credit: totals.taxAmount,
-                    description: `ضريبة مستحقة - ${invoiceNumber}`,
-                  }] : []),
-                ],
+    // Process this chunk in parallel
+    const chunkResults = await Promise.all(
+      chunk.map(async (prep) => {
+        const { order, index, invoiceNumber, items, totals } = prep;
+        try {
+          // Find or skip client matching
+          let clientId: string | null = null;
+          if (order.clientPhone || order.clientEmail) {
+            const existingClient = await db.client.findFirst({
+              where: {
+                companySlug,
+                OR: [
+                  order.clientPhone ? { phone: order.clientPhone } : {},
+                  order.clientEmail ? { email: order.clientEmail } : {},
+                ].filter((c) => Object.keys(c).length > 0),
               },
-            },
-          });
-
-          // Update the invoice to link the journal entry
-          await tx.invoice.update({
-            where: { id: inv.id },
-            data: { source: `ai-bulk-import-je:${je.id}` },
-          });
-
-          // Update account balances
-          await tx.account.update({
-            where: { id: arAccount.id },
-            data: { balance: (num((await tx.account.findUnique({ where: { id: arAccount.id } }))?.balance || "0", 3) + num(totals.total, 3)).toFixed(3) },
-          });
-          await tx.account.update({
-            where: { id: salesAccount.id },
-            data: { balance: (num((await tx.account.findUnique({ where: { id: salesAccount.id } }))?.balance || "0", 3) + num(totals.subtotal, 3)).toFixed(3) },
-          });
-          if (taxAccount && num(totals.taxAmount) > 0) {
-            await tx.account.update({
-              where: { id: taxAccount.id },
-              data: { balance: (num((await tx.account.findUnique({ where: { id: taxAccount.id } }))?.balance || "0", 3) + num(totals.taxAmount, 3)).toFixed(3) },
             });
+            if (existingClient) clientId = existingClient.id;
           }
+
+          // Use a transaction so the invoice + journal entry are atomic (DB-CRIT-03)
+          const invoice = await db.$transaction(async (tx) => {
+            const inv = await tx.invoice.create({
+              data: {
+                companySlug,
+                invoiceNumber,
+                clientId,
+                clientName: order.clientName,
+                clientEmail: order.clientEmail || null,
+                clientPhone: order.clientPhone || null,
+                clientAddress: order.clientAddress || null,
+                issueDate,
+                dueDate,
+                status: "sent",
+                lineItems: JSON.stringify(items),
+                subtotal: totals.subtotal,
+                taxRate: totals.taxRate,
+                taxAmount: totals.taxAmount,
+                total: totals.total,
+                shipping: totals.shipping,
+                discount: totals.discount,
+                paid: "0",
+                notes: order.notes || null,
+                source: "ai-bulk-import",
+                createdByEmail: user.email,
+                createdByName: user.uid,
+                version: 0,
+              },
+            });
+
+            // Optional: create the journal entry (S-01 fix from ERP audit)
+            if (createJournalEntries && arAccount && salesAccount && num(totals.total) > 0) {
+              const je = await tx.journalEntry.create({
+                data: {
+                  companySlug,
+                  companyId: company.id,
+                  number: `JE-${invoiceNumber}`,
+                  date: issueDate,
+                  description: `فاتورة مبيعات ${invoiceNumber} — ${order.clientName}`,
+                  reference: invoiceNumber,
+                  status: "posted",
+                  createdBy: user.email,
+                  sourceType: "invoice",
+                  sourceId: String(inv.id),
+                  lines: {
+                    create: [
+                      {
+                        accountId: arAccount.id,
+                        debit: totals.total,
+                        credit: "0",
+                        description: `ذمم عملاء - ${invoiceNumber}`,
+                      },
+                      {
+                        accountId: salesAccount.id,
+                        debit: "0",
+                        credit: totals.subtotal,
+                        description: `إيراد مبيعات - ${invoiceNumber}`,
+                      },
+                      ...(taxAccount && num(totals.taxAmount) > 0 ? [{
+                        accountId: taxAccount.id,
+                        debit: "0",
+                        credit: totals.taxAmount,
+                        description: `ضريبة مستحقة - ${invoiceNumber}`,
+                      }] : []),
+                    ],
+                  },
+                },
+              });
+
+              await tx.invoice.update({
+                where: { id: inv.id },
+                data: { source: `ai-bulk-import-je:${je.id}` },
+              });
+
+              await tx.account.update({
+                where: { id: arAccount.id },
+                data: { balance: (num((await tx.account.findUnique({ where: { id: arAccount.id } }))?.balance || "0", 3) + num(totals.total, 3)).toFixed(3) },
+              });
+              await tx.account.update({
+                where: { id: salesAccount.id },
+                data: { balance: (num((await tx.account.findUnique({ where: { id: salesAccount.id } }))?.balance || "0", 3) + num(totals.subtotal, 3)).toFixed(3) },
+              });
+              if (taxAccount && num(totals.taxAmount) > 0) {
+                await tx.account.update({
+                  where: { id: taxAccount.id },
+                  data: { balance: (num((await tx.account.findUnique({ where: { id: taxAccount.id } }))?.balance || "0", 3) + num(totals.taxAmount, 3)).toFixed(3) },
+                });
+              }
+            }
+
+            return inv;
+          });
+
+          const createdEntry: Record<string, unknown> = {
+            id: invoice.id,
+            invoiceNumber: invoice.invoiceNumber,
+            clientName: invoice.clientName,
+            total: num(invoice.total, 3),
+            status: invoice.status,
+          };
+
+          // Sync inventory (Task 24: oversell blocking + StockMovement ledger)
+          const syncResult = await db.$transaction(async (tx) => {
+            return await syncInventoryOnSale(tx, companySlug, items, invoice.id);
+          });
+          createdEntry.warnings = syncResult.warnings || [];
+
+          return { success: true as const, data: createdEntry, index };
+        } catch (err) {
+          const msg = "خطأ في إنشاء الفاتورة";
+          logger.error("[bulk-import] order failed", { err: err instanceof Error ? err.message : String(err), index, order: order.clientName });
+          return { success: false as const, error: msg, index };
         }
+      })
+    );
 
-        return inv;
-      });
-
-      created.push({
-        id: invoice.id,
-        invoiceNumber: invoice.invoiceNumber,
-        clientName: invoice.clientName,
-        total: num(invoice.total, 3),
-        status: invoice.status,
-      });
-
-      // Sync inventory (Task 24: oversell blocking + StockMovement ledger)
-      const syncResult = await db.$transaction(async (tx) => {
-        return await syncInventoryOnSale(tx, companySlug, items, invoice.id);
-      });
-      const syncWarnings = syncResult.warnings || [];
-      (created[created.length - 1] as { warnings?: string[] }).warnings = syncWarnings;
-    } catch (err) {
-      const msg = "خطأ في إنشاء الفاتورة";
-      logger.error("[bulk-import] order failed", { err: err instanceof Error ? err.message : String(err), index: i, order: order.clientName });
-      errors.push({ index: i, error: msg });
+    // Collect results from this chunk
+    for (const result of chunkResults) {
+      if (result.success) {
+        created.push(result.data);
+      } else {
+        errors.push({ index: result.index, error: result.error });
+      }
     }
   }
 

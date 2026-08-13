@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * oversell-behavior.test.ts
  *
@@ -37,10 +36,10 @@ interface MockStockMovement {
 let mockMovements: MockStockMovement[] = [];
 let movementIdCounter = 1;
 
-const originalStockMovement = (db as unknown as { stockMovement: unknown }).stockMovement;
+const originalStockMovement = (db as  { stockMovement: unknown }).stockMovement;
 
 beforeAll(() => {
-  (db as unknown as { stockMovement: unknown }).stockMovement = {
+  (db as  { stockMovement: unknown }).stockMovement = {
     create: async ({ data }: { data: Partial<MockStockMovement> }) => {
       const movement: MockStockMovement = {
         id: movementIdCounter++,
@@ -60,7 +59,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  (db as unknown as { stockMovement: unknown }).stockMovement = originalStockMovement;
+  (db as  { stockMovement: unknown }).stockMovement = originalStockMovement;
 });
 
 beforeEach(() => {

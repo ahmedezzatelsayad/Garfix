@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * webhook-enhanced.test.ts — 50 tests for the enhanced webhook system.
  *
