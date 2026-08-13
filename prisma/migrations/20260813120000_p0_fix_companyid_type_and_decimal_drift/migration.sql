@@ -10,13 +10,13 @@
 -- cuid string → Postgres throws "invalid input syntax for type integer".
 -- The recurring-JE and fiscal-year-close endpoints are unusable on Postgres.
 --
--- DB-06: fiscal_year_closes.openingRetainedEarnings was DECIMAL(65,3) while
+-- DB-06 FIX (Audit v2 · Phase 0): fiscal_year_closes.openingRetainedEarnings was DECIMAL(65,3) while
 -- every other monetary field in the schema is DECIMAL(65,30). This caused
 -- silent truncation of opening balances beyond 3 decimal places.
 --
 -- DB-07: opening_balance_entries.amount has the same DECIMAL(65,3) drift.
 --
--- DB-05: journal_entry_lines index was created on "entryId" (legacy column name)
+-- DB-05 FIX (Audit v2 · Phase 0): journal_entry_lines index was created on "entryId" (legacy column name)
 -- but the Prisma schema declares the FK as "journalEntryId". The index should
 -- be on the actual FK column. We check for both column names and handle
 -- whichever exists (the table was created with "entryId" in the init migration
