@@ -20,7 +20,7 @@ import {
   ShieldAlert
 } from "lucide-react";
 
-export default function GlobalError({
+export default function ErrorPage({
   error,
   reset,
 }: {
@@ -28,7 +28,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[GlobalError]", error);
+    console.error("[ErrorPage]", error);
   }, [error]);
 
   // Determine error type for better messaging

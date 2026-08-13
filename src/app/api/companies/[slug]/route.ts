@@ -36,6 +36,7 @@ import { logAudit, logAdminAction } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
+import { logger } from "@/lib/logger";
 
 const UpdateSchema = z.object({
   name: z.string().min(1).optional(),
@@ -162,46 +163,46 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   const now = new Date();
   const founderEmail = founder.email;
   await db.$transaction(async (tx) => {
-    await tx.inventoryItem.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.warehouse.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.productCatalog.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    await tx.inventoryItem.deleteMany({ where: { companySlug: slug } }).catch((error) => { logger.error("Hard-delete cascade: inventoryItem delete failed", { slug, error }); });
+    await tx.warehouse.deleteMany({ where: { companySlug: slug } }).catch((error) => { logger.error("Hard-delete cascade: warehouse delete failed", { slug, error }); });
+    await tx.productCatalog.deleteMany({ where: { companySlug: slug } }).catch((error) => { logger.error("Hard-delete cascade: productCatalog delete failed", { slug, error }); });
     // Note (P2): HR sub-models have no companySlug column — filter via employee relation.
-    await tx.hRAttendance.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
-    await tx.hRSalary.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
-    await tx.hRCommission.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
-    await tx.hRLeaveRequest.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
-    await tx.hRPerformance.deleteMany({ where: { employee: { companySlug: slug } } }).catch(() => {});
-    await tx.employee.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+    await tx.hRAttendance.deleteMany({ where: { employee: { companySlug: slug } } }).catch((error) => { logger.error("Hard-delete cascade: hRAttendance delete failed", { slug, error }); });
+    await tx.hRSalary.deleteMany({ where: { employee: { companySlug: slug } } }).catch((error) => { logger.error("Hard-delete cascade: hRSalary delete failed", { slug, error }); });
+    await tx.hRCommission.deleteMany({ where: { employee: { companySlug: slug } } }).catch((error) => { logger.error("Hard-delete cascade: hRCommission delete failed", { slug, error }); });
+    await tx.hRLeaveRequest.deleteMany({ where: { employee: { companySlug: slug } } }).catch((error) => { logger.error("Hard-delete cascade: hRLeaveRequest delete failed", { slug, error }); });
+    await tx.hRPerformance.deleteMany({ where: { employee: { companySlug: slug } } }).catch((error) => { logger.error("Hard-delete cascade: hRPerformance delete failed", { slug, error }); });
+    await tx.employee.deleteMany({ where: { companySlug: slug } }).catch((error) => { logger.error("Hard-delete cascade: employee delete failed", { slug, error }); });
     // Fix: relation name is `journalEntry` (not `entry`). Without this fix,
     // Prisma throws "Unknown argument 'entry'" synchronously, which aborts
     // the entire hard-delete transaction.
-    await tx.journalEntryLine.deleteMany({ where: { journalEntry: { companySlug: slug } } }).catch(() => {});
+    await tx.journalEntryLine.deleteMany({ where: { journalEntry: { companySlug: slug } } }).catch((error) => { logger.error("Hard-delete cascade: journalEntryLine delete failed", { slug, error }); });
     await tx.journalEntry.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now } }).catch(() => {});
-    await tx.account.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+      data: { deletedAt: now } }).catch((error) => { logger.error("Hard-delete cascade: journalEntry soft-delete failed", { slug, error }); });
+    await tx.account.deleteMany({ where: { companySlug: slug } }).catch((error) => { logger.error("Hard-delete cascade: account delete failed", { slug, error }); });
     await tx.invoice.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now } }).catch(() => {});
+      data: { deletedAt: now } }).catch((error) => { logger.error("Hard-delete cascade: invoice soft-delete failed", { slug, error }); });
     await tx.purchaseInvoice.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now } }).catch(() => {});
-    await tx.client.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+      data: { deletedAt: now } }).catch((error) => { logger.error("Hard-delete cascade: purchaseInvoice soft-delete failed", { slug, error }); });
+    await tx.client.deleteMany({ where: { companySlug: slug } }).catch((error) => { logger.error("Hard-delete cascade: client delete failed", { slug, error }); });
     await tx.eInvoice.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now } }).catch(() => {});
+      data: { deletedAt: now } }).catch((error) => { logger.error("Hard-delete cascade: eInvoice soft-delete failed", { slug, error }); });
     // OrderDelivery model was removed from schema.prisma; the previous call
     // threw `Cannot read properties of undefined (reading 'deleteMany')`
     // synchronously, aborting the whole cascade. Removed.
     // (If you re-add an OrderDelivery model later, restore this line.)
     await tx.paymentTransaction.updateMany({
       where: { companySlug: slug, deletedAt: null },
-      data: { deletedAt: now } }).catch(() => {});
-    await tx.stockMovement.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.productMatchAudit.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.setupWizardProgress.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.invoiceTemplate.deleteMany({ where: { companySlug: slug } }).catch(() => {});
-    await tx.automationRule.deleteMany({ where: { companySlug: slug } }).catch(() => {});
+      data: { deletedAt: now } }).catch((error) => { logger.error("Hard-delete cascade: paymentTransaction soft-delete failed", { slug, error }); });
+    await tx.stockMovement.deleteMany({ where: { companySlug: slug } }).catch((error) => { logger.error("Hard-delete cascade: stockMovement delete failed", { slug, error }); });
+    await tx.productMatchAudit.deleteMany({ where: { companySlug: slug } }).catch((error) => { logger.error("Hard-delete cascade: productMatchAudit delete failed", { slug, error }); });
+    await tx.setupWizardProgress.deleteMany({ where: { companySlug: slug } }).catch((error) => { logger.error("Hard-delete cascade: setupWizardProgress delete failed", { slug, error }); });
+    await tx.invoiceTemplate.deleteMany({ where: { companySlug: slug } }).catch((error) => { logger.error("Hard-delete cascade: invoiceTemplate delete failed", { slug, error }); });
+    await tx.automationRule.deleteMany({ where: { companySlug: slug } }).catch((error) => { logger.error("Hard-delete cascade: automationRule delete failed", { slug, error }); });
     await tx.company.delete({ where: { slug } });
   });
 

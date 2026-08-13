@@ -120,7 +120,7 @@ function VATReturnView({ returns, result, setResult, company, onRefresh }: {
     createTaxFilingMutation.mutate(
       { type: "vat", country, periodFrom, periodTo, companySlug: company.slug },
       {
-        onSuccess: (data) => { setResult((data as unknown as { return: VATReturn }).return); toast.success("تم إنشاء الإقرار"); setGenerating(false); onRefresh(); },
+        onSuccess: (data) => { setResult((data as  { return: VATReturn }).return); toast.success("تم إنشاء الإقرار"); setGenerating(false); onRefresh(); },
         onError: (err) => { toast.error(err.message || "تعذّر إنشاء الإقرار"); setGenerating(false); },
       },
     );
@@ -205,7 +205,7 @@ function ZakatView({ records, result, setResult, company, onRefresh }: {
     createZakatMutation.mutate(
       { type: "zakat", year, companySlug: company.slug },
       {
-        onSuccess: (data) => { setResult((data as unknown as { record: ZakatRecord }).record); toast.success("تم حساب الزكاة"); setCalculating(false); onRefresh(); },
+        onSuccess: (data) => { setResult((data as  { record: ZakatRecord }).record); toast.success("تم حساب الزكاة"); setCalculating(false); onRefresh(); },
         onError: (err) => { toast.error(err.message || "تعذّر حساب الزكاة"); setCalculating(false); },
       },
     );

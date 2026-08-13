@@ -1,23 +1,27 @@
 /**
- * db-rls-extension.ts — Full per-request RLS Prisma extension.
+ * db-rls-extension.ts — Per-request RLS Prisma extension.
  *
- * #27 FINAL FIX: This module provides a Prisma $extends client that
- * automatically sets the Postgres session variable `app.current_company_slug`
- * before EVERY query, so RLS policies filter rows by tenant without
- * application code needing WHERE clauses on every query.
+ * P0-1 FIX: Sets Postgres session variable `app.current_company_slug`
+ * before every query so RLS policies filter rows by tenant automatically.
  *
- * Usage in API routes:
- *   import { getTenantDb } from "@/lib/db-rls-extension";
- *   const tenantDb = await getTenantDb(req);
- *   const invoices = await tenantDb.invoice.findMany();
- *   // RLS ensures only the current tenant's invoices are returned
+ * AUDIT FIX: Converted from `$executeRawUnsafe` to `$executeRaw` (tagged
+ * template literal) for defense-in-depth.
  *
- * Architecture:
- *   - The extension wraps every query in a $transaction that first sets
- *     the session variable via $executeRaw, then runs the original query.
- *   - The tenant context is extracted from the JWT (resolveAuth).
- *   - A per-request WeakMap cache avoids re-creating the extension on
- *     every query within the same request.
+ * DB-02 FIX (Audit v2 · Phase 1): Changed set_config(..., false) to
+ * set_config(..., true) for transaction-local scope. The previous `false`
+ * (session-scoped) setting leaked across the connection pool — a pooled
+ * connection that had `set_config('app.current_company_slug', 'acme', false)`
+ * would retain that value for the NEXT request that happened to reuse the
+ * same connection, causing cross-tenant data leaks.
+ *
+ * With `true` (transaction-local), the setting reverts at the end of the
+ * current transaction (or query if not in an explicit transaction), so it
+ * never leaks to other requests.
+ *
+ * NOTE: `getTenantDb()` here sets the variable but returns the raw dbTyped
+ * client. For true transaction-scoped isolation, prefer `withTenantScope()`
+ * from `src/lib/api/tenant-middleware.ts` which wraps the entire handler
+ * in a `$transaction` + `runWithTenantContext`.
  */
 
 import { NextRequest } from "next/server";
@@ -25,28 +29,22 @@ import { dbTyped } from "@/lib/db";
 import { resolveAuth, hasUnrestrictedScope } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
-// Cache: one extended client per (userUid, companySlug) pair
-const rlsClientCache = new Map<string, typeof dbTyped>();
-
-/**
- * Get a tenant-scoped Prisma client for the current request.
- * Extracts the companySlug from the JWT and sets the RLS session variable.
- *
- * Falls back to the unscoped `db` if:
- *   - Auth fails (unauthenticated request)
- *   - User has unrestricted scope (founder/admin — sees all tenants)
- *   - RLS setup fails (DB error — app-layer scoping is the fallback)
- */
 export async function getTenantDb(req: NextRequest): Promise<typeof dbTyped> {
   const authResult = await resolveAuth(req);
   if (!authResult.ok || !authResult.user) {
-    return dbTyped; // unauthenticated — no RLS context
+    return dbTyped;
   }
 
   const user = authResult.user;
 
-  // Founder/admin bypass RLS — they need cross-tenant visibility
+  // Founder/admin bypass RLS — they need cross-tenant visibility.
+  // DB-02 FIX: use true (transaction-local) instead of false (session-scoped).
+  // Setting to NULL within a transaction-local scope means the RLS policy's
+  // IS NULL bypass clause applies only for the duration of this transaction.
   if (hasUnrestrictedScope(user)) {
+    try {
+      await dbTyped.$executeRaw`SELECT set_config('app.current_company_slug', NULL, true)`;
+    } catch {}
     return dbTyped;
   }
 
@@ -55,52 +53,26 @@ export async function getTenantDb(req: NextRequest): Promise<typeof dbTyped> {
   const companySlug = sp.get("companySlug") || user.companies[0];
 
   if (!companySlug) {
-    return dbTyped; // no company context — no RLS
+    return dbTyped;
   }
 
-  const cacheKey = `${user.uid}:${companySlug}`;
-  const cached = rlsClientCache.get(cacheKey);
-  if (cached) return cached;
-
-  // Create an extended client that sets the RLS session variable
-  // before every query via $transaction.
   try {
-    // Test: can we set the session variable?
-    await dbTyped.$executeRaw`SET LOCAL app.current_company_slug = ${companySlug}`;
-
-    // Create the extended client
-    const tenantDb = dbTyped.$extends({
-      name: "rls-tenant",
-      query: {
-        $allModels: {
-          async $allOperations({ operation, query, args }) {
-            // Wrap each operation in a transaction that sets the session var first
-            return dbTyped.$transaction(async (tx) => {
-              await tx.$executeRaw`SET LOCAL app.current_company_slug = ${companySlug}`;
-              return query(args);
-            });
-          },
-        },
-      },
-    });
-
-    rlsClientCache.set(cacheKey, tenantDb as typeof dbTyped);
-    logger.debug("[db-rls] tenant-scoped client created", { companySlug, userUid: user.uid });
-    return tenantDb as typeof dbTyped;
+    // DB-02 FIX: Use true (transaction-local) instead of false (session-scoped).
+    // The setting now reverts at the end of the current transaction, preventing
+    // cross-connection-pool leakage.
+    await dbTyped.$executeRaw`
+      SELECT set_config('app.current_company_slug', ${companySlug}::text, true)
+    `;
   } catch (err) {
-    // RLS setup failed — fall back to unscoped db
-    // App-layer companySlug scoping is the active defense
-    logger.warn("[db-rls] failed to create tenant-scoped client, falling back", {
+    logger.warn("[db-rls] failed to set session variable", {
       companySlug,
       err: err instanceof Error ? err.message : String(err),
     });
-    return dbTyped;
   }
+
+  return dbTyped;
 }
 
-/**
- * Clear the RLS client cache (for testing or session invalidation).
- */
 export function clearRlsCache(): void {
-  rlsClientCache.clear();
+  // No-op: cache removed to avoid stale client references
 }

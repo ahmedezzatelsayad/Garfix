@@ -8,7 +8,7 @@
  */
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 
 /** Cookie name for CSRF double-submit (same as server-side CSRF_COOKIE in cookies.ts). */
 const CSRF_COOKIE_NAME = "inv_csrf";
@@ -193,8 +193,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const canEdit = !!perms.edit_invoice;
   const allowedCompanies = user?.companies || [];
 
+  const value = useMemo(() => ({ user, loading, isAdmin, isFounder, canEdit, allowedCompanies, perms, login, logout, refresh }), [user, loading, isAdmin, isFounder, canEdit, allowedCompanies, perms, login, logout, refresh]);
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, isFounder, canEdit, allowedCompanies, perms, login, logout, refresh }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

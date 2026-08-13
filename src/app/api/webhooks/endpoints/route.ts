@@ -22,7 +22,11 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
 
   const user = result.user;
-  const companySlug = user.companies?.[0];
+  // SEC: Accept companySlug from query param for multi-company users.
+  const queryCompanySlug = req.nextUrl.searchParams.get("companySlug");
+  const companySlug = queryCompanySlug && user.companies?.includes(queryCompanySlug)
+    ? queryCompanySlug
+    : user.companies?.[0];
   if (!companySlug) {
     return apiError("No company associated with this user", 400);
   }
@@ -65,7 +69,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   const user = result.user;
-  const companySlug = user.companies?.[0];
+  // SEC: Accept companySlug from body for multi-company users.
+  const body = await parseJsonBody(req);
+  const parsedBody = (body && typeof body === "object") ? body as Record<string, unknown> : {};
+  const bodyCompanySlug = typeof parsedBody.companySlug === "string" ? parsedBody.companySlug : undefined;
+  const companySlug = bodyCompanySlug && user.companies?.includes(bodyCompanySlug)
+    ? bodyCompanySlug
+    : user.companies?.[0];
   if (!companySlug) {
     return apiError("No company associated with this user", 400);
   }
@@ -74,8 +84,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (user.role !== "admin" && !isFounder) {
     return apiError("Only admin or founder can manage webhooks", 403);
   }
-
-  const body = await parseJsonBody(req);
   const validation = validateBody(RegisterEndpointSchema, body);
   if (!validation.ok) return validation.response;
 

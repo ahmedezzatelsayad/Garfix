@@ -181,6 +181,7 @@ export function useAIMetrics(options: UseAPIOptions = {}) {
   
   useEffect(() => {
     if (autoFetch) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching with auto-refresh interval
       fetchMetrics();
       
       if (refreshInterval > 0) {
@@ -241,6 +242,7 @@ export function useAIConfig(options: UseAPIOptions = {}) {
   
   useEffect(() => {
     if (autoFetch) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching on mount
       fetchConfig();
     }
   }, [autoFetch, fetchConfig]);
@@ -280,6 +282,7 @@ export function useAIUsage(days: number = 30) {
   }, [days]);
   
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching on mount
     fetchUsage();
   }, [fetchUsage]);
   

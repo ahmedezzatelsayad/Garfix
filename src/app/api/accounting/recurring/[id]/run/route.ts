@@ -82,7 +82,7 @@ export const POST = withErrorHandler(async (req: NextRequest, ctx: RouteContext)
   const user = access.user;
 
   // Parse template lines
-  const templateLines = recurring.templateLines as unknown as Array<{
+  const templateLines = recurring.templateLines as  Array<{
     accountId: string;
     debit: number | string;
     credit: number | string;

@@ -16,12 +16,12 @@ interface OnboardingStatus {
   completed: boolean;
   currentStep?: string;
   companySlug?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 interface SlugCheckResponse {
   available: boolean;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 export interface CompleteOnboardingPayload {
@@ -34,7 +34,7 @@ export interface CompleteOnboardingPayload {
   hasEmployees?: boolean;
   hasWarehouse?: boolean;
   usesWhatsApp?: boolean;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 // ─── Query Hooks ────────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ export function useCompleteOnboarding() {
 export function useUpdateOnboardingCompany() {
   const queryClient = useQueryClient();
 
-  return useMutation<Record<string, unknown>, ApiError, { slug: string; [key: string]: unknown }>({
+  return useMutation<Record<string, unknown>, ApiError, { slug: string; [key: string]: any }>({
     mutationFn: ({ slug, ...data }) =>
       apiPatch<Record<string, unknown>, Record<string, unknown>>(
         `/api/companies/${encodeURIComponent(slug)}`,

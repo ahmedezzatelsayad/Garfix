@@ -24,7 +24,7 @@
 
 "use client";
 
-import React, { forwardRef, useState, InputHTMLAttributes } from "react";
+import React, { forwardRef, useId, useState, InputHTMLAttributes } from "react";
 import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -110,8 +110,13 @@ export const GarfixInput = forwardRef<HTMLInputElement, GarfixInputProps>(
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = providedType === "password";
     const type = isPassword ? (showPassword ? "text" : "password") : providedType;
-    
-    const generatedId = `garfix-input-${Math.random().toString(36).substr(2, 9)}`;
+
+    // FE-10 FIX (Audit v2 · Phase 2)
+    // Replaced Math.random()-based id with React's useId().
+    // Math.random() produces a different value on server vs client which
+    // triggers a React hydration mismatch warning and can break label↔input
+    // associations after hydration. useId() is SSR-safe and stable.
+    const generatedId = `garfix-input-${useId()}`;
     const id = providedId || generatedId;
     
     const hasError = state === "error" || !!error;
@@ -234,7 +239,11 @@ export const GarfixInput = forwardRef<HTMLInputElement, GarfixInputProps>(
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className={cn(sizeStyles[size].icon, "text-muted-foreground hover:text-foreground transition-colors")}
-                tabIndex={-1}
+                // FE-11 FIX (Audit v2 · Phase 2)
+                // tabIndex was -1, which made the toggle unreachable by
+                // keyboard users — a WCAG 2.1 SC 2.1.1 Keyboard violation.
+                // Changed to 0 so it joins the natural tab order.
+                tabIndex={0}
                 aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
               >
                 {showPassword ? <EyeOff /> : <Eye />}

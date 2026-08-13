@@ -650,8 +650,8 @@ export async function calculateFxRevaluation(
     }
 
     const details: FxRevaluationDetail[] = [];
-    let realizedGain = 0;
-    let realizedLoss = 0;
+    const realizedGain = 0;
+    const realizedLoss = 0;
     let unrealizedGain = 0;
     let unrealizedLoss = 0;
 

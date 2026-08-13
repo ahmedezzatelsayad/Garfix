@@ -23,37 +23,10 @@ import {
 
 type Tab = "warehouses" | "stock";
 
-interface Warehouse {
-  id: number;
-  name: string;
-  code: string;
-  address?: string | null;
-  isActive: boolean;
-  itemCount: number;
-}
+import type { Warehouse, InventoryItem } from "@/hooks/queries/inventory";
+import type { CatalogItem } from "@/hooks/queries/catalog";
 
-interface InventoryItem {
-  id: number;
-  warehouseId: number;
-  warehouseName: string;
-  warehouseCode: string;
-  productId: number;
-  productCode: string | null;
-  productName: string;
-  quantity: number;
-  reorderLevel: number;
-  reorderQty: number;
-  batchNumber?: string | null;
-  expiryDate?: string | null;
-  status: "OK" | "Low" | "Out";
-  updatedAt: string;
-}
-
-interface Product {
-  id: number;
-  code: string | null;
-  name: string;
-}
+type Product = CatalogItem;
 
 const PAGE_SIZE = 20;
 
@@ -69,11 +42,10 @@ export function InventoryView() {
   const deleteWarehouseMutation = useDeleteWarehouse();
 
   // ── Derived data from queries ──────────────────────────────────────────────
-  const warehouses = (warehousesQuery.data?.warehouses ?? []) as unknown as Warehouse[];
-  const items = (itemsQuery.data?.items ?? []) as unknown as InventoryItem[];
-  const summary = (itemsQuery.data as unknown as Record<string, unknown> | undefined)?.summary as { total: number; ok: number; low: number; out: number } | null | undefined;
-  // useCatalog now correctly typed to { products: CatalogItem[]; nextCursor }.
-  const products = (catalogQuery.data?.products ?? []) as unknown as Product[];
+  const warehouses = warehousesQuery.data?.warehouses ?? [];
+  const items = itemsQuery.data?.items ?? [];
+  const summary = itemsQuery.data?.summary;
+  const products = catalogQuery.data?.products ?? [];
   const loading = tab === "warehouses" ? warehousesQuery.isLoading : itemsQuery.isLoading;
 
   // ── Low stock items for AI suggestion ─────────────────────────────────────
@@ -263,7 +235,7 @@ export function InventoryView() {
                 />
               ) : (
                 <GarfixEnterpriseTable
-                  data={warehouses as unknown as Record<string, unknown>[]}
+                  data={warehouses as  Record<string, unknown>[]}
                   columns={[
                     { key: 'code', label: 'الكود', pinned: true },
                     { key: 'name', label: 'اسم المستودع' },
@@ -316,7 +288,7 @@ export function InventoryView() {
                 />
               ) : (
                 <GarfixEnterpriseTable
-                  data={items as unknown as Record<string, unknown>[]}
+                  data={items as  Record<string, unknown>[]}
                   columns={[
                     { key: 'productName', label: 'المنتج', pinned: true },
                     { key: 'warehouseName', label: 'المستودع' },
@@ -518,7 +490,7 @@ function AdjustStockForm({
 }) {
   const createItemMutation = useCreateInventoryItem();
   const [warehouseId, setWarehouseId] = useState<number | null>(warehouses[0]?.id ?? null);
-  const [productId, setProductId] = useState<number | null>(products[0]?.id ?? null);
+  const [productId, setProductId] = useState<string | null>(products[0]?.id ?? null);
   const [mode, setMode] = useState<"set" | "adjust">("set");
   const [quantity, setQuantity] = useState("0");
   const [reorderLevel, setReorderLevel] = useState("0");
@@ -532,14 +504,14 @@ function AdjustStockForm({
       await createItemMutation.mutateAsync({
         companySlug: company.slug,
         warehouseId,
-        productId,
+        productId: Number(productId),
         mode,
-        quantity,
-        reorderLevel,
-        reorderQty,
+        quantity: Number(quantity),
+        reorderLevel: Number(reorderLevel),
+        reorderQty: Number(reorderQty),
         batchNumber: batchNumber || null,
         expiryDate: expiryDate || null,
-      } as unknown as CreateInventoryItemPayload);
+      } as  any);
       toast.success(mode === "set" ? "تم تحديد المخزون" : "تم تعديل المخزون");
       onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }
@@ -590,7 +562,7 @@ function AdjustStockForm({
             <label className="block text-[11px] font-semibold text-muted-foreground mb-1">المنتج *</label>
             <select
               value={productId ?? ""}
-              onChange={(e) => setProductId(Number(e.target.value))}
+              onChange={(e) => setProductId(e.target.value)}
               className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
             >
               {products.map((p) => <option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ""}{p.name}</option>)}

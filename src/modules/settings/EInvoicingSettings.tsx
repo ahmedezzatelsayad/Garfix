@@ -117,6 +117,7 @@ function ZatcaSettings({
   }, [companySlug]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching on mount
     loadCertStatus();
   }, [loadCertStatus]);
 
@@ -303,9 +304,11 @@ function CountryEInvoiceSettings({
   }, [integrationType]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching on mount
     loadStatus();
     // Prefill VAT number from active company
     if (vatNumberDefault && fields.some((f) => f.key === "vat_number")) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- prefill form from prop
       setForm((prev) => ({ ...prev, vat_number: vatNumberDefault }));
     }
   }, [loadStatus]);
@@ -916,6 +919,7 @@ function WebhookUrlHelper({ country, companySlug }: { country: string; companySl
 
   useEffect(() => {
     if (typeof window !== "undefined") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time window.location read on mount
       setOrigin(window.location.origin);
     }
   }, []);

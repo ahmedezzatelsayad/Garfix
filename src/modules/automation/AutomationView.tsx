@@ -302,7 +302,7 @@ export function AutomationView() {
   const deleteMutation = useDeleteAutomation();
 
   // API returns { rules: [...] }
-  const rules: AutomationRule[] = (data?.rules ?? []) as unknown as AutomationRule[];
+  const rules: AutomationRule[] = (data?.rules ?? []) as  AutomationRule[];
 
   // Computed values for KPIs
   const activeCount = useMemo(() => rules.filter((r) => r.isActive).length, [rules]);

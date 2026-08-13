@@ -515,7 +515,8 @@ export function generateBahrainNbrInvoicePayload(
   let parsedItems: LineItem[] = [];
   try {
     parsedItems = JSON.parse(lineItemsRaw);
-  } catch {
+  } catch (error) {
+    logger.error("Bahrain NBR line items JSON parse failed", { error });
     parsedItems = [];
   }
 

@@ -652,6 +652,7 @@ export function AIVoiceInput({
 
   // Check browser support
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time browser capability check on mount
     setIsSupported(
       typeof window !== 'undefined' && 
       ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)

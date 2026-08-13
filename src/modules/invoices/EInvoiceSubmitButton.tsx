@@ -183,8 +183,8 @@ export function EInvoiceSubmitButton({
             أخطاء التحقق من صحة الفاتورة ({result.errors.length})
           </p>
           <ul className="space-y-1">
-            {result.errors.map((e, i) => (
-              <li key={i} className="text-red-700/80 dark:text-red-400/80">
+            {result.errors.map((e) => (
+              <li key={e.field} className="text-red-700/80 dark:text-red-400/80">
                 <span className="font-mono text-[10px] px-1 py-0.5 rounded bg-red-500/10 ml-1">{e.field}</span>
                 {e.messageAr}
               </li>

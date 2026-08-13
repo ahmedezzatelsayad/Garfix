@@ -1,9 +1,8 @@
 /**
  * POST /api/auth/forgot-password
  *
- * Generates a password-reset OTP and stores it. In production, the OTP would
- * be emailed via SMTP. In this sandbox, we return the OTP directly for demo
- * purposes (the response includes the code).
+ * Generates a password-reset OTP and stores it. In production, the OTP is
+ * emailed via SMTP.
  *
  * Anti-enumeration: always returns 200 even if the email doesn't exist,
  * so attackers can't probe which emails are registered.
@@ -64,15 +63,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     logger.info("[forgot-password] OTP generated", { email });
 
     // In production: send email via SMTP
-    // For dev/sandbox: return the code so the user can test (NEVER in production)
-    const response: Record<string, unknown> = {
+    return NextResponse.json({
       ok: true,
       message: "تم إرسال رمز التحقق إلى بريدك الإلكتروني",
-    };
-    if (process.env.NODE_ENV !== "production") {
-      response.devCode = code;
-    }
-    return NextResponse.json(response);
+    });
   }
 
   // Anti-enumeration: return the same response even if the email doesn't exist

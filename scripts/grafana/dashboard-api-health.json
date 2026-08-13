@@ -1,0 +1,28 @@
+{
+  "dashboard": {
+    "title": "Garfix API Health",
+    "schemaVersion": 38,
+    "panels": [
+      {
+        "title": "Request Rate (req/s)",
+        "type": "graph",
+        "targets": [{ "expr": "rate(garfix_request_count_total[1m])" }]
+      },
+      {
+        "title": "p95 Latency (ms)",
+        "type": "graph",
+        "targets": [{ "expr": "histogram_quantile(0.95, rate(garfix_request_duration_ms_bucket[5m]))" }]
+      },
+      {
+        "title": "Error Rate (%)",
+        "type": "stat",
+        "targets": [{ "expr": "rate(garfix_request_count_total{status=~\"5..\"}[5m]) / rate(garfix_request_count_total[5m]) * 100" }]
+      },
+      {
+        "title": "DB Query Rate (q/s)",
+        "type": "graph",
+        "targets": [{ "expr": "rate(garfix_db_query_count_total[1m])" }]
+      }
+    ]
+  }
+}

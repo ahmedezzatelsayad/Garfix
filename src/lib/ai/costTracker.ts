@@ -16,13 +16,14 @@ import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import {
   COST_PER_1K_TOKENS,
+  COST_RATES_VERSION,
   getCostRates,
   computeCallCostUsd,
 } from "./cost-rates";
 
 // Re-export for backward compatibility — existing callers import these
 // from "@/lib/ai/costTracker" and shouldn't have to change.
-export { COST_PER_1K_TOKENS, getCostRates, computeCallCostUsd };
+export { COST_PER_1K_TOKENS, COST_RATES_VERSION, getCostRates, computeCallCostUsd };
 
 export interface LogAiUsageParams {
   companySlug?: string | null;
@@ -53,6 +54,12 @@ export async function logAiUsage(params: LogAiUsageParams): Promise<void> {
     (params.tokensIn / 1000) * rates.input +
     (params.tokensOut / 1000) * rates.output;
 
+  // AI-11 FIX (Audit v2 · Phase 3): stamp the cost-rates version that was
+  // active when this row was written, so historical aggregations can be
+  // recomputed at the rate that was in effect at the time of the call
+  // rather than silently re-valued at today's rate.
+  const costRatesVersion = COST_RATES_VERSION;
+
   try {
     await db.aIUsageLog.create({
       data: {
@@ -63,6 +70,10 @@ export async function logAiUsage(params: LogAiUsageParams): Promise<void> {
         tokensOut: params.tokensOut,
         costUsd: estimatedCost,
         requestType: params.endpoint,
+        // AI-11: persisted version stamp (column added by migration
+        // 20260813200000_p3_ai_usage_cost_rates_version). Older rows
+        // implicitly have version=1 (the column default).
+        costRatesVersion,
       },
     });
   } catch (err) {

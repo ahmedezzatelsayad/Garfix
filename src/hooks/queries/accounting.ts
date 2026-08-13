@@ -26,7 +26,7 @@ export interface Account {
   balance: number;
   currency: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** A single line within a journal entry. */
@@ -43,7 +43,7 @@ export interface JournalEntry {
   description: string;
   lines: JournalLine[];
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 // ─── Payload Types ──────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ export interface CreateAccountPayload {
   type: string;
   balance: number;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for creating a new journal entry. */
@@ -64,14 +64,14 @@ export interface CreateJournalEntryPayload {
   description: string;
   lines: JournalLine[];
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Payload for reversing a journal entry. */
 export interface ReverseJournalEntryPayload {
   id: number;
   reason?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 // ─── Response Types ─────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ export interface ProfitLossResponse {
   revenue: { total: number; items: { account: string; amount: number }[] };
   expenses: { total: number; items: { account: string; amount: number }[] };
   netIncome: number;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Response shape for the balance sheet report endpoint. */
@@ -109,7 +109,7 @@ export interface BalanceSheetResponse {
   assets: { total: number; items: { account: string; amount: number }[] };
   liabilities: { total: number; items: { account: string; amount: number }[] };
   equity: { total: number; items: { account: string; amount: number }[] };
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Response shape for the cash flow report endpoint. */
@@ -118,7 +118,7 @@ export interface CashFlowResponse {
   investing: { total: number; items: { account: string; amount: number }[] };
   financing: { total: number; items: { account: string; amount: number }[] };
   netChange: number;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Response shape for the trial balance report endpoint. */
@@ -126,7 +126,7 @@ export interface TrialBalanceResponse {
   lines: { accountCode: string; accountName: string; debit: number; credit: number }[];
   totalDebit: number;
   totalCredit: number;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1214,7 +1214,7 @@ interface InterCompanyResponse {
     description?: string | null;
     status: string;
     createdAt: string;
-    [key: string]: unknown;
+    [key: string]: any;
   }>;
 }
 
@@ -1884,7 +1884,7 @@ export interface AccountantAccess {
   accessLevel: string;
   status: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Response shape for the accountant access list endpoint. */
@@ -1898,7 +1898,7 @@ export interface CreateAccountantAccessPayload {
   accountantName: string;
   accountantEmail: string;
   accessLevel: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /**
@@ -1972,7 +1972,7 @@ export interface AccountingAuditEntry {
   target: string;
   timestamp: string;
   companySlug: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 /** Response shape for the accounting audit list endpoint. */

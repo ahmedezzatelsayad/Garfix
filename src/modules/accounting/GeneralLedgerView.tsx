@@ -10,6 +10,7 @@ import {
   FileText, Eye, TrendingUp, TrendingDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
 
@@ -97,7 +98,7 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
           setSelectedAccountId(res.accounts[0].id);
         }
       })
-      .catch(console.error)
+      .catch((err: unknown) => logger.error("Error fetching GL accounts", { err }))
       .finally(() => setAccountsLoading(false));
   }, [companySlug]);
 
@@ -122,7 +123,7 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
       
       setLedgerData(response);
     } catch (err) {
-      console.error("Error fetching general ledger:", err);
+      logger.error("Error fetching general ledger:", { err });
       toast.error("خطأ في تحميل الأستاذ العام");
     } finally {
       setLoading(false);
@@ -131,6 +132,7 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
 
   useEffect(() => {
     if (selectedAccountId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching when account changes
       fetchLedger();
     }
   }, [fetchLedger, selectedAccountId]);

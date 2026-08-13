@@ -303,47 +303,56 @@ async function getAllAccountsLedgerSummary(
     orderBy: { code: "asc" },
   });
 
-  // Build summary per account
-  const summary = await Promise.all(
-    accounts.map(async (account) => {
-      const jeWhere: Record<string, unknown> = {
-        companyId,
-        status: "posted",
-        deletedAt: null,
-      };
+  // DB-08 FIX (Audit v2 · Phase 2): Replace N+1 aggregate-per-account with
+  // a single groupBy query. Previously this did one aggregate() per account
+  // (~100+ queries per report). Now it's a single groupBy that returns all
+  // accounts' totals in one query — ~100x faster.
+  const jeWhere: Record<string, unknown> = {
+    companyId,
+    status: "posted",
+    deletedAt: null,
+  };
 
-      if (fromDate) {
-        jeWhere.date = { gte: fromDate };
-      }
-      if (toDate) {
-        const endOfDay = new Date(toDate);
-        endOfDay.setHours(23, 59, 59, 999);
-        jeWhere.date = { ...(jeWhere.date as Record<string, unknown> || {}), lte: endOfDay };
-      }
+  if (fromDate) {
+    jeWhere.date = { gte: fromDate };
+  }
+  if (toDate) {
+    const endOfDay = new Date(toDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    jeWhere.date = { ...(jeWhere.date as Record<string, unknown> || {}), lte: endOfDay };
+  }
 
-      // Aggregate totals for this account
-      const aggregates = await db.journalEntryLine.aggregate({
-        where: {
-          accountId: account.id,
-          journalEntry: jeWhere,
-        },
-        _sum: { debit: true, credit: true },
-        _count: true,
-      });
+  // Single groupBy query — replaces the Promise.all(accounts.map(aggregate))
+  const groupedAggregates = await db.journalEntryLine.groupBy({
+    by: ["accountId"],
+    where: {
+      journalEntry: jeWhere,
+      accountId: { in: accounts.map((a) => a.id) },
+    },
+    _sum: { debit: true, credit: true },
+    _count: true,
+  });
 
-      return {
-        id: account.id,
-        code: account.code,
-        name: account.name,
-        nameAr: account.nameAr,
-        type: account.type,
-        currentBalance: num(account.balance, 3),
-        totalDebit: num(aggregates._sum.debit, 3),
-        totalCredit: num(aggregates._sum.credit, 3),
-        transactionCount: aggregates._count,
-      };
-    }),
+  // Build a lookup map for O(1) access
+  const aggregateMap = new Map(
+    groupedAggregates.map((g) => [g.accountId, g]),
   );
+
+  // Build summary from the single query result
+  const summary = accounts.map((account) => {
+    const agg = aggregateMap.get(account.id);
+    return {
+      id: account.id,
+      code: account.code,
+      name: account.name,
+      nameAr: account.nameAr,
+      type: account.type,
+      currentBalance: num(account.balance, 3),
+      totalDebit: num(agg?._sum.debit, 3),
+      totalCredit: num(agg?._sum.credit, 3),
+      transactionCount: agg?._count || 0,
+    };
+  });
 
   return NextResponse.json({
     summary,

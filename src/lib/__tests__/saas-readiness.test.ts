@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * saas-readiness.test.ts — 40 tests for SaaS readiness features.
  *
@@ -331,7 +330,7 @@ describe("GDPR data deletion", () => {
   });
 
   it("deletion is idempotent (0 rows deleted is ok)", () => {
-    let deleted = 0;
+    const deleted = 0;
     const result = deleted;
     expect(result).toBe(0);
   });

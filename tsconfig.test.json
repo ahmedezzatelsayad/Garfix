@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noImplicitAny": true,
+    "types": ["bun-types"]
+  },
+  "include": [
+    "src/lib/__tests__/**/*.ts",
+    "src/lib/founder-validation/__tests__/**/*.ts",
+    "src/lib/integrations/__tests__/**/*.ts",
+    "src/modules/**/__tests__/**/*.ts",
+    "__tests__/**/*.ts",
+    "__tests__/**/*.tsx"
+  ],
+  "exclude": []
+}

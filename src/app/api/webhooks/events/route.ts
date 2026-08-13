@@ -87,7 +87,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   const user = result.user;
-  const companySlug = user.companies?.[0];
+  // SEC: Accept companySlug from body for multi-company users.
+  const body = await parseJsonBody(req);
+  const parsedBody = (body && typeof body === "object") ? body as Record<string, unknown> : {};
+  const bodyCompanySlug = typeof parsedBody.companySlug === "string" ? parsedBody.companySlug : undefined;
+  const companySlug = bodyCompanySlug && user.companies?.includes(bodyCompanySlug)
+    ? bodyCompanySlug
+    : user.companies?.[0];
   if (!companySlug) return apiError("No company associated", 400);
 
   const isFounder = isFounderEmail(user.email);
@@ -95,7 +101,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError("Only admin or founder can trigger test events", 403);
   }
 
-  const body = await parseJsonBody(req);
   const validation = validateBody(TestEventSchema, body);
   if (!validation.ok) return validation.response;
 

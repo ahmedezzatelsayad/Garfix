@@ -120,7 +120,7 @@ jobs:
       - name: Sync database schema
         run: |
           echo "Pushing database schema..."
-          bunx prisma db push --accept-data-loss
+          bunx prisma migrate deploy
 
       - name: Seed test database
         run: |

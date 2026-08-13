@@ -13,7 +13,7 @@
  * tests pass.
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from "bun:test";
 
 // ── Mock the `node:dns/promises` lookup BEFORE importing fetchSafe ──────
 // We use mock.module to replace dnsLookup with a controllable stub so we
@@ -41,7 +41,7 @@ const mockFetch = mock(() =>
 );
 
 // Replace global fetch with our mock before any test runs.
-(globalThis as unknown as { fetch: typeof fetch }).fetch = mockFetch as unknown as typeof fetch;
+(globalThis as  { fetch: typeof fetch }).fetch = mockFetch as  typeof fetch;
 
 // Now safe to import the module under test.
 const {
@@ -83,6 +83,8 @@ beforeEach(() => {
 afterEach(() => {
   mockLookupImpl = async () => [{ address: "93.184.216.34", family: 4 }];
 });
+
+afterAll(() => { mock.restore(); });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 1. validateBaseUrl — syntactic + hostname-range checks

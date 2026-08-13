@@ -264,7 +264,7 @@ function restoreFetch() {
  * (which includes a static `preconnect` property).
  */
 function mockFetch(fn: (url: string | URL | Request, init?: RequestInit) => Promise<Response>): typeof fetch {
-  const mocked = fn as unknown as typeof fetch;
+  const mocked = fn as  typeof fetch;
   mocked.preconnect = originalFetch.preconnect;
   return mocked;
 }

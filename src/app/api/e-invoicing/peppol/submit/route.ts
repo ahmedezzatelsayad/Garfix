@@ -116,8 +116,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     }
 
     // ── 3. Validate ────────────────────────────────────────────────────────
-    const invoiceRec = invoice as unknown as Record<string, unknown>;
-    const companyRec = company as unknown as Record<string, unknown>;
+    const invoiceRec = invoice as  Record<string, unknown>;
+    const companyRec = company as  Record<string, unknown>;
 
     const validation = validateUaeFtaInvoice(invoiceRec, companyRec);
     if (!validation.valid) {

@@ -28,7 +28,16 @@ import {
 
 const DEFAULT_CONFIG: LoadBalancerConfig = {
   strategy: 'round-robin',
-  healthCheckInterval: 30000,    // 30 seconds
+  // AI-15 FIX (Audit v2 · Phase 4): 60s periodic health-check interval
+  // (was 30s). The 30s ping was too aggressive on Gemini's free-tier quota
+  // (5 keys × 2 pings/min = 10 tokens/min just for liveness probes). 60s
+  // halves the probe cost while still detecting recovery within a minute.
+  //
+  // Note: this is the PERIODIC ping interval only. Failure-driven
+  // markUnhealthy() is called immediately by the request-handling path
+  // (callGemini's catch block) when a real request fails — there's no
+  // delay waiting for the next periodic tick.
+  healthCheckInterval: 60000,    // 60 seconds — AI-15 FIX (was 30000)
   fallbackEnabled: true,
   retryCount: 3,
   retryDelay: 1000,              // 1 second
@@ -93,7 +102,7 @@ class GeminiKeyPool {
     // Initialize the Google Generative AI client
     const genAI = new GoogleGenerativeAI(fullConfig.apiKey);
     
-    this.keys.set(fullConfig.id, { ...fullConfig, genAI } as unknown as AIProviderConfig & { genAI: GoogleGenerativeAI });
+    this.keys.set(fullConfig.id, { ...fullConfig, genAI } as  AIProviderConfig & { genAI: GoogleGenerativeAI });
     
     logger.info("[GarfiX AI] Added key to pool", { keyId: fullConfig.id, total: this.keys.size });
   }
@@ -156,7 +165,7 @@ class GeminiKeyPool {
     selectedKey._requestCount = (selectedKey._requestCount || 0) + 1;
     selectedKey._lastUsed = Date.now();
 
-    return selectedKey as unknown as (AIProviderConfig & { genAI: GoogleGenerativeAI }) | null;
+    return selectedKey as  (AIProviderConfig & { genAI: GoogleGenerativeAI }) | null;
   }
 
   /**

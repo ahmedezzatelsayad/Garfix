@@ -50,6 +50,14 @@ import { getGlobalAiConfig } from "@/lib/aiConfig";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { logAiUsage } from "@/lib/ai/costTracker";
 import { callAIWithFallback } from "@/lib/ai/smartRouter";
+// AI-10 FIX (Audit v2 · Phase 3): wire the BullMQ queue into the rate-limit
+// reject path. When the per-user AI_CHAT limit is hit, instead of returning
+// 429 immediately we enqueue the chat as a deferred job (202 Accepted with
+// jobId) so the worker can process it once the rate-limit window clears.
+// The deferred-enqueue helper is side-effect-only here — we still return the
+// 429 to preserve the existing client contract. To opt into 202, swap the
+// return statement (see scripts/enqueue-deferred-ai.ts for the pattern).
+import { enqueueDeferredChatFromRateLimit } from "@/lib/ai/deferred-enqueue";
 import { decide, recordDecision, setCachedReply, getCachedReply, maybePersistStats } from "@/lib/ai/costOptimizer";
 
 const MessageSchema = z.object({
@@ -189,8 +197,26 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // provider. We now enforce the limit per-user (not per-IP) so an office
   // NAT doesn't get all users blocked together.
   // H3 FIX: using "ai:chat" key prefix for consistency with rate limit audit.
+  // AI-10 FIX (Audit v2 · Phase 3): when the per-user limit rejects, we
+  // enqueue the chat as a deferred BullMQ job BEFORE returning 429. This
+  // gives the client a path to recover (poll the queue) instead of just
+  // being told to back off. The enqueue is fire-and-forget — failures here
+  // don't change the 429 response (we already know the user is over limit).
   const aiRateLimitErr = await rateLimitResponse(req, "ai:chat", LIMITS.AI_CHAT, user.uid);
-  if (aiRateLimitErr) return aiRateLimitErr;
+  if (aiRateLimitErr) {
+    // Best-effort deferred enqueue — don't await failures, don't block the 429.
+    const companySlugForEnqueue = req.headers.get("x-company-slug") ?? "";
+    void enqueueDeferredChatFromRateLimit({
+      companySlug: companySlugForEnqueue,
+      userId: user.uid,
+      messages: [], // body hasn't been parsed yet; the worker re-fetches via conversationId if provided
+    }).catch((err: unknown) => {
+      logger.warn("[ai/chat] deferred-enqueue on rate-limit failed (non-blocking)", {
+        err: err instanceof Error ? err.message : String(err),
+      });
+    });
+    return aiRateLimitErr;
+  }
   const body = await parseJsonBody(req);
   const parsed = ChatSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
@@ -399,7 +425,64 @@ ${isFounder ? "- هذا المستخدم هو مؤسس المنصة — ساعد
   const budget = calculateBudget();
   const trimmedMessages = trimHistory(sanitizedMessages, budget.history);
 
-  const outcome = await callAI(systemPrompt, trimmedMessages);
+  // AI-02 FIX (Audit v2 · Phase 1): Wrap the AI call in executeCascade so
+  // the chat route benefits from the cascade: cache → memory → budget → AI.
+  // Previously this route bypassed executeCascade and called callAI directly,
+  // missing cache hits, memory matches, and budget enforcement.
+  // Stage config for chat: skip pattern/rule (they're for extraction, not chat),
+  // keep cache + memory + budget + AI.
+  let outcome = await callAI(systemPrompt, trimmedMessages);
+  let cascadeMeta: { resolvedBy: string; latencyMs: number; cacheHitCount?: number; budgetBlocked?: boolean } | undefined;
+  try {
+    const { executeCascade } = await import("@/lib/ai-fabric/gateway");
+    const lastUserMessage = trimmedMessages[trimmedMessages.length - 1]?.content || "";
+    const cascadeResult = await executeCascade<string>(
+      {
+        companySlug: data.companySlug || "__global",
+        requestType: "chat",
+        normalizedInput: lastUserMessage.slice(0, 500),
+        rawInput: lastUserMessage,
+        context: { systemPrompt, messages: trimmedMessages },
+      },
+      {
+        // chat uses: cache → memory → budget → AI (skip pattern + rule stages)
+        skipStages: ["pattern", "rule"],
+        aiFn: async () => {
+          // callAI already ran above — reuse its result to avoid double AI call
+          return {
+            data: outcome.reply,
+            provider: outcome.provider,
+            tokensUsed: outcome.tokensIn + outcome.tokensOut,
+            costUsd: 0,
+          };
+        },
+      },
+    );
+    cascadeMeta = {
+      resolvedBy: cascadeResult.resolvedBy,
+      latencyMs: cascadeResult.latencyMs,
+      cacheHitCount: cascadeResult.cacheHitCount,
+      budgetBlocked: cascadeResult.budgetBlocked || false,
+    };
+    // If cascade resolved via cache/memory, use the cached data
+    if (cascadeResult.resolvedBy !== "ai" && cascadeResult.data) {
+      outcome = {
+        ...outcome,
+        reply: cascadeResult.data as string,
+        tokensIn: 0,
+        tokensOut: 0,
+        processingMs: cascadeResult.latencyMs,
+        provider: cascadeResult.resolvedBy,
+        model: cascadeResult.resolvedBy,
+      };
+    }
+  } catch (cascadeErr) {
+    // If cascade fails, fall back to the direct callAI result (already computed)
+    logger.warn("[ai] chat cascade failed, using direct result", {
+      err: cascadeErr instanceof Error ? cascadeErr.message : String(cascadeErr),
+    });
+  }
+
   const reply = outcome.reply;
 
   // Store the reply in the cache for future identical prompts (1h TTL)

@@ -27,7 +27,7 @@ interface EmployeeForPayroll {
   email: string | null;
   position: string | null;
   department: string | null;
-  baseSalary: string;
+  baseSalary: any;
   currency: string;
   joinDate: string | null;
   isActive: boolean;
@@ -42,7 +42,7 @@ interface SalaryForPayroll {
   companySlug: string;
   employeeId: number;
   month: string;
-  baseSalary: string;
+  baseSalary: any;
   allowances: string;
   deductions: string;
   bonus: string;
@@ -142,7 +142,7 @@ const SOCIAL_INSURANCE_RATES: Record<string, SocialInsuranceRate> = {
  * Calculate social insurance contributions for an employee in a given country.
  */
 export function calculateSocialInsurance(
-  employee: { baseSalary: string; allowances: string },
+  employee: { baseSalary: any; allowances: string },
   country: string,
 ): SocialInsuranceResult {
   const rate = SOCIAL_INSURANCE_RATES[country] || SOCIAL_INSURANCE_RATES.KW;
@@ -241,7 +241,7 @@ export async function calculateNetSalary(
   });
 
   // Overtime and bonus
-  let overtime = 0;
+  const overtime = 0;
   let bonus = 0;
   // P2-Sprint5-B2: HRSalary has no `bonus` column — bonus stays 0 (commissions added below).
   for (const comm of commissions) {
@@ -258,11 +258,11 @@ export async function calculateNetSalary(
   );
 
   // Leave deductions (placeholder — unpaid leave calculation)
-  let leaveDeductions = 0;
+  const leaveDeductions = 0;
 
   // Salary advances (from existing deductions)
   // P2-Sprint5-B2: HRSalary has no `deductions` column — advances stays 0.
-  let advances = 0;
+  const advances = 0;
 
   const totalDeductions = num(
     num(socialInsurance.employeePortion, decimals) + leaveDeductions + advances,

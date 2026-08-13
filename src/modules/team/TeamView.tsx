@@ -356,7 +356,7 @@ function InviteDialog({
         email,
         displayName: displayName || undefined,
       });
-      const data = raw as unknown as Record<string, unknown>;
+      const data = raw as  Record<string, unknown>;
       if (data.created) {
         toast.success("تم إنشاء الحساب وإضافته للشركة");
       } else {

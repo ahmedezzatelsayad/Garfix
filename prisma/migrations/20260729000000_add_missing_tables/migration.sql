@@ -8,27 +8,13 @@
 -- All use CREATE TABLE IF NOT EXISTS so this migration is idempotent
 -- and safe to run on databases that may already have some of these tables.
 
--- ─── suppliers ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS "suppliers" (
-    "id" SERIAL PRIMARY KEY,
-    "name" TEXT NOT NULL,
-    "nameAr" TEXT,
-    "contactPerson" TEXT,
-    "email" TEXT,
-    "phone" TEXT,
-    "address" TEXT,
-    "taxId" TEXT,
-    "paymentTerms" TEXT,
-    "companySlug" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "suppliers_companySlug_fkey" FOREIGN KEY ("companySlug") REFERENCES "companies" ("slug") ON DELETE RESTRICT ON UPDATE CASCADE
-);
+-- ─── suppliers ──+
+-- MOVED to 20260723000000_add_accounting_module (before FK references)
 
 -- ─── installment_schedules ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "installment_schedules" (
     "id" SERIAL PRIMARY KEY,
-    "paymentVoucherId" TEXT NOT NULL,
+    "paymentVoucherId" INTEGER NOT NULL,
     "installmentNumber" INTEGER NOT NULL,
     "dueDate" TIMESTAMP(3) NOT NULL,
     "amount" TEXT NOT NULL DEFAULT '0',
@@ -70,7 +56,7 @@ CREATE TABLE IF NOT EXISTS "profit_distribution_entries" (
 -- ─── letter_of_credit_documents ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "letter_of_credit_documents" (
     "id" TEXT NOT NULL,
-    "letterOfCreditId" TEXT NOT NULL,
+    "letterOfCreditId" INTEGER NOT NULL,
     "documentType" TEXT NOT NULL,
     "fileName" TEXT NOT NULL,
     "fileUrl" TEXT,
@@ -82,9 +68,9 @@ CREATE TABLE IF NOT EXISTS "letter_of_credit_documents" (
 -- ─── budget_lines ────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "budget_lines" (
     "id" TEXT NOT NULL,
-    "budgetId" TEXT NOT NULL,
-    "accountId" TEXT NOT NULL,
-    "costCenterId" TEXT,
+    "budgetId" INTEGER NOT NULL,
+    "accountId" INTEGER NOT NULL,
+    "costCenterId" INTEGER,
     "plannedAmount" TEXT NOT NULL DEFAULT '0',
     "actualAmount" TEXT NOT NULL DEFAULT '0',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
