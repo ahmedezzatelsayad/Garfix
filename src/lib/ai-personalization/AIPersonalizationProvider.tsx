@@ -374,7 +374,9 @@ export const AIPersonalizationProvider: React.FC<AIPersonalizationProviderProps>
 
     // Generate initial insights and recommendations
     if (enableAI) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization on mount/user change
       setInsights(generateSimulatedInsights(user));
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization on mount/user change
       setRecommendations(generateSimulatedRecommendations(adaptiveUI));
     }
 

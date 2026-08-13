@@ -93,6 +93,7 @@ export function EnhancedAuditView() {
   // is a real useEffect with proper cleanup so listeners don't leak across
   // route changes.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- subscribing to online/offline browser events; setState is the subscription callback
     setIsOnline(navigator.onLine);
     const onOffline = () => setIsOnline(false);
     const onOnline = () => setIsOnline(true);

@@ -952,6 +952,7 @@ model BudgetLine {
   @@index([accountId])
   @@index([costCenterId])
   @@index([companySlug])
+  @@map("budget_lines")
 }
 
 // ─── Cost Center (matches db.costCenter) ───

@@ -71,6 +71,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   }, [theme, setNextTheme]);
 
   // Sync companies from TanStack Query to local state
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!user) {
       setCompanies([]);
@@ -125,6 +126,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       setCompanies([]);
     }
   }, [user, companiesQuery.data, companiesQuery.isLoading, companiesQuery.isError]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // When the user logs in (transitions from null → set), force a refetch of
   // companies. Without this, TanStack's cached 401 from the unauthenticated

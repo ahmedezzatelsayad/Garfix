@@ -78,6 +78,7 @@ export interface UpdateWarehousePayload {
 /** Response shape for the inventory items list endpoint. */
 interface InventoryItemListResponse {
   items: InventoryItem[];
+  summary?: { total: number; ok: number; low: number; out: number } | null;
 }
 
 /** Response shape for the inventory movements list endpoint. */

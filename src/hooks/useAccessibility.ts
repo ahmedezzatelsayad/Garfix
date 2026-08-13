@@ -129,6 +129,7 @@ export function useReducedMotion(): boolean {
   const [prefersReduced, setPrefersReduced] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- subscribing to reduced-motion preference; setState is the subscription callback
     setPrefersReduced(prefersReducedMotion());
 
     const unsubscribe = onReducedMotionChange(setPrefersReduced);

@@ -11,6 +11,11 @@ import { describe, it, expect, mock, spyOn, beforeEach, afterAll } from "bun:tes
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
+// Set fail-open mode for blacklist checks in test environment.
+// Without this, isTokenBlacklisted returns true (fail-closed) when Valkey is
+// unavailable, causing resolveAuth to always reject valid tokens in tests.
+process.env.VALKEY_FAIL_MODE = "open";
+
 const mockExists = mock(() => Promise.resolve(0));
 const mockSet = mock(() => Promise.resolve("OK"));
 

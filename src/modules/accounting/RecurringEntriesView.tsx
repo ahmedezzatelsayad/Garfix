@@ -119,6 +119,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
   }, [companySlug, pagination.page, pagination.pageSize, statusFilter, searchQuery]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching
     fetchEntries();
   }, [fetchEntries]);
 

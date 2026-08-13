@@ -92,6 +92,7 @@ export function InvoicesView() {
     // Also check localStorage on mount
     try {
       const saved = localStorage.getItem("garfix:selected-warehouse");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time localStorage read on mount (inside subscription effect)
       if (saved) setWarehouseFilter(saved);
     } catch { /* ignore */ }
     return () => window.removeEventListener("garfix:warehouse-changed", handler as EventListener);

@@ -111,6 +111,7 @@ try {
   (basePrisma as any).$on('error', (e: { code?: string; message?: string }) => {
     if (e?.code === 'P1017' || e?.code === 'P1011' || e?.code === 'P1001') {
       lastConnectionError = { code: e.code, message: e.message || String(e) || 'DB connection lost', at: new Date() };
+      // eslint-disable-next-line no-console
       console.error('[db] connection error (likely RDS failover) — scheduling reconnect', { code: e.code });
       scheduleReconnect();
     }
@@ -222,6 +223,7 @@ function createExtendedPrisma() {
         const ctx = getTenantContext();
         // TASK-0 DEBUG: log to prove the extension is intercepting
         if (process.env.TASK0_DEBUG === '1') {
+          // eslint-disable-next-line no-console
           console.log(`[TASK-0] ${model}.${operation} ctx=${ctx?.slug || 'none'} admin=${ctx?.isPlatformAdmin || false} inTx=${ctx?.inTransaction || false}`);
         }
         if (!ctx) {

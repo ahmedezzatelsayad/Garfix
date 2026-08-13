@@ -44,7 +44,7 @@ export function InventoryView() {
   // ── Derived data from queries ──────────────────────────────────────────────
   const warehouses = warehousesQuery.data?.warehouses ?? [];
   const items = itemsQuery.data?.items ?? [];
-  const summary = (itemsQuery.data as any)?.summary as { total: number; ok: number; low: number; out: number } | null | undefined;
+  const summary = itemsQuery.data?.summary;
   const products = catalogQuery.data?.products ?? [];
   const loading = tab === "warehouses" ? warehousesQuery.isLoading : itemsQuery.isLoading;
 

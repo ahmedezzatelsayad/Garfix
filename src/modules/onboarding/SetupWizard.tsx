@@ -77,13 +77,17 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
   useEffect(() => {
     if (onboardingQuery.isLoading) return;
     const d = onboardingQuery.data as Record<string, unknown> | undefined;
-    if (!d) { setLoading(false); return; }
+    if (!d) { // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing query data to local state
+      setLoading(false); return; }
     if (d.completed) {
       onComplete();
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing query data to local state
     if ((d.step as number) > 0) setStep(Math.min(d.step as number, STEPS.length - 1));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing query data to local state
     if (d.data) setData(d.data as WizardData);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing query data to local state
     setLoading(false);
   }, [onboardingQuery.isLoading, onboardingQuery.data, onComplete]);
 
@@ -102,12 +106,14 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
       .replace(/^-+|-+$/g, "");
     if (newCompanySlug === lastSuggestedSlugRef.current || !newCompanySlug) {
       lastSuggestedSlugRef.current = suggested;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-suggest slug from company name
       setNewCompanySlug(suggested);
     }
   }, [newCompanyName, newCompanySlug]);
 
   // Onboarding P2 — debounced availability check.
   // Whenever the slug changes, wait 350ms then call the check endpoint.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
     if (!newCompanySlug || newCompanySlug.length < 2) {
@@ -128,11 +134,13 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
       if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
     };
   }, [newCompanySlug]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Debounced slug check query
   const [checkSlug, setCheckSlug] = useState("");
   const slugCheckQuery = useCheckCompanySlug(checkSlug);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!slugCheckQuery.data || !checkSlug) return;
     const d = slugCheckQuery.data;
@@ -146,6 +154,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
       setSlugAvailability({ state: "taken", slug: d.slug as string });
     }
   }, [slugCheckQuery.data, checkSlug]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // If no company exists, force step to company creation; or pre-select first company slug.
   // Render-time adjustment keyed on loading/companies/step/data.companySlug — no cascading render.

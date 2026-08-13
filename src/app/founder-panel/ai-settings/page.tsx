@@ -175,6 +175,7 @@ export default function AISettingsPage() {
   
   // Fetch config on mount
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching on mount
     fetchConfig();
     fetchUsage();
   }, []);

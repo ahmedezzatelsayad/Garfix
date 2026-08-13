@@ -56,6 +56,7 @@ export function AnimationProvider({ children }: { children: React.ReactNode }) {
     
     // Check reduced motion preference
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- subscribing to reduced-motion media-query; setState is the subscription callback
     setPrefersReducedMotion(mq.matches);
     
     const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
@@ -422,6 +423,7 @@ export function useStagger(options: UseStaggerOptions): UseStaggerReturn {
   
   useEffect(() => {
     if (autoStart) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- stagger animation: auto-start on mount
       start();
     }
     return clearAllTimeouts;
@@ -525,6 +527,7 @@ export function useReducedMotion(): UseReducedMotionReturn {
   
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- subscribing to reduced-motion media-query; setState is the subscription callback
     setPrefersReduced(mq.matches);
     
     const handler = (e: MediaQueryListEvent) => setPrefersReduced(e.matches);
@@ -591,10 +594,8 @@ export function useHoverAnimation(
   const [isTouch, setIsTouch] = useState(false);
   
   useEffect(() => {
-    const checkTouch = () => {
-      setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
-    };
-    checkTouch();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time touch capability check on mount
+    setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
   }, []);
   
   const shouldAnimate = enableOnTouch || !isTouch;
@@ -761,6 +762,7 @@ export function useNumberAnimation(
   
   useEffect(() => {
     if (autoStart) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- number animation: auto-start on mount
       start();
     }
     return () => {

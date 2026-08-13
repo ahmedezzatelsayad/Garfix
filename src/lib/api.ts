@@ -210,7 +210,7 @@ export function withErrorHandler<T extends unknown[]>(
     // Determine tenant slug + platform admin status
     const user = authResult?.ok ? authResult.user : null;
     const isPlatformAdmin = user ? hasUnrestrictedScope(user) : false;
-    const sp = req?.nextUrl.searchParams;
+    const sp = req && typeof req === 'object' && 'nextUrl' in req ? req.nextUrl.searchParams : undefined;
     const companySlug = user
       ? (isPlatformAdmin && !sp?.get("companySlug")
           ? "__ALL__"

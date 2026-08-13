@@ -495,6 +495,7 @@ export const GarfixToastProvider: React.FC<GarfixToastProviderProps> = ({
 
   // Handle mounting for portal
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time mount flag for portal
     setMounted(true);
   }, []);
 

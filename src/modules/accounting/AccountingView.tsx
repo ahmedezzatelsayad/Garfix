@@ -1137,9 +1137,9 @@ function FinancialStatements({ company }: { company: { slug: string } }) {
     : statementType === "balance-sheet" ? balanceSheetQuery.error
     : cashFlowQuery.error;
   const data: ProfitLossData | BalanceSheetData | CashFlowData | null =
-    statementType === "profit-loss" ? (profitLossQuery.data as any ?? null)
-    : statementType === "balance-sheet" ? (balanceSheetQuery.data as any ?? null)
-    : (cashFlowQuery.data as any ?? null);
+    statementType === "profit-loss" ? (profitLossQuery.data as unknown as ProfitLossData ?? null)
+    : statementType === "balance-sheet" ? (balanceSheetQuery.data as unknown as BalanceSheetData ?? null)
+    : (cashFlowQuery.data as unknown as CashFlowData ?? null);
 
   const refetch = () => {
     if (statementType === "profit-loss") profitLossQuery.refetch();

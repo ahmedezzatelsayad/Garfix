@@ -66,6 +66,7 @@ export function QuickCreateProductDialog({
 
   // ─── Initialize with defaults ───────────────────────────────────────
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (open && initialData) {
       setFormData(prev => ({
@@ -82,6 +83,7 @@ export function QuickCreateProductDialog({
       setAliasInput("");
     }
   }, [open, initialData]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // ─── Form Handlers ─────────────────────────────────────────────────
 

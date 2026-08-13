@@ -125,6 +125,7 @@ export function ProductPicker({
 
   // ─── Debounced Search ────────────────────────────────────────────────
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (debounceTimer) clearTimeout(debounceTimer);
     
@@ -146,6 +147,7 @@ export function ProductPicker({
       if (timer) clearTimeout(timer);
     };
   }, [query, searchProducts]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // ─── Click Outside Handler ───────────────────────────────────────────
 

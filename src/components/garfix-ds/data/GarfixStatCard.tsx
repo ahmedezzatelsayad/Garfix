@@ -122,6 +122,7 @@ function useAnimatedValue(targetValue: number, enabled: boolean, duration = 800)
 
   useEffect(() => {
     if (!enabled || typeof targetValue !== "number") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- animation: reset value when disabled
       setCurrentValue(targetValue);
       return;
     }

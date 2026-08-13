@@ -548,6 +548,7 @@ export function AIMetricsDashboard() {
 
   // Initial fetch and auto-refresh
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching with auto-refresh interval
     fetchMetrics();
     
     let interval: NodeJS.Timeout;

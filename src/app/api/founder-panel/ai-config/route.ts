@@ -161,6 +161,7 @@ async function testGeminiConnection(
   model: string = 'gemini-2.0-flash',
   feature: string = 'chat'
 ): Promise<{ success: boolean; latencyMs: number; model: string; error?: string }> {
+  type PromptFeature = 'chat' | 'invoice' | 'parse' | 'memory';
   const startTime = Date.now();
   
   try {
@@ -179,7 +180,7 @@ async function testGeminiConnection(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{
-          parts: [{ text: (testPrompts as any)[feature] || testPrompts.chat }]
+          parts: [{ text: testPrompts[feature as PromptFeature] || testPrompts.chat }]
         }],
         generationConfig: {
           maxOutputTokens: 50,

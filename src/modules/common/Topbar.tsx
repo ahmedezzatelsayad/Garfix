@@ -35,7 +35,7 @@ export function Topbar({ user, activeCompany, onOpenMobile }: TopbarProps) {
   const companySlug = activeCompany?.slug || "";
   const warehousesQuery = useWarehouses(companySlug);
   const warehouses: Array<{ id: string; name: string; code: string }> =
-    ((warehousesQuery.data as any)?.warehouses ?? []).map((w: any) => ({ id: String(w.id), name: w.name, code: (w as any).code || '' }));
+    (warehousesQuery.data?.warehouses ?? []).map((w) => ({ id: String(w.id), name: w.name, code: String(w.code ?? '') }));
 
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("");
   const [showWarehouseMenu, setShowWarehouseMenu] = useState(false);
@@ -44,7 +44,10 @@ export function Topbar({ user, activeCompany, onOpenMobile }: TopbarProps) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem("garfix:selected-warehouse");
-      if (saved) setSelectedWarehouse(saved);
+      if (saved) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time localStorage read on mount
+        setSelectedWarehouse(saved);
+      }
     } catch { /* ignore */ }
   }, []);
 

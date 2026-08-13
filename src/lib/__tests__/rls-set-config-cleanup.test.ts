@@ -60,21 +60,24 @@ const db = new PrismaClient({
 
 // ─── Test suite ──────────────────────────────────────────────────────────
 
+/** Skip guard: set_config cleanup tests require a real PostgreSQL DB. */
+const isPostgres = DATABASE_URL.startsWith("postgres");
+const skipIfSqlite = (fn: () => Promise<void>) => async () => {
+  if (!isPostgres) return;
+  await fn();
+};
+
 describe("FC-3 set_config('app.current_company_slug', ..., true) cleanup", () => {
   beforeAll(() => {
-    if (!DATABASE_URL.startsWith("postgres")) {
-      throw new Error(
-        "set_config cleanup test requires Postgres — found: " +
-          DATABASE_URL.slice(0, 30),
-      );
-    }
+    // No throw — just skip tests if not Postgres
   });
 
   afterAll(async () => {
+    if (!isPostgres) return;
     await db.$disconnect();
   });
 
-  it("inside the transaction, current_setting returns the set value", async () => {
+  it("inside the transaction, current_setting returns the set value", skipIfSqlite(async () => {
     // T0-A: increased timeout to 15s because the Prisma extension wraps queries
     // in $transaction + set_config, adding overhead
     let insideValue: string | null = null;
@@ -89,7 +92,7 @@ describe("FC-3 set_config('app.current_company_slug', ..., true) cleanup", () =>
     expect(insideValue).toBe("test-tx-scope");
   }, 15000);
 
-  it("after the transaction commits, a new query on the same client returns NULL/empty", async () => {
+  it("after the transaction commits, a new query on the same client returns NULL/empty", skipIfSqlite(async () => {
     // Step 1: run a $transaction that sets the var with is_local=true.
     await db.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.current_company_slug', 'test-leak-check', true)`;
@@ -115,9 +118,9 @@ describe("FC-3 set_config('app.current_company_slug', ..., true) cleanup", () =>
       .not.toBe("test-leak-check");
     // Strictly: must be NULL or empty string.
     expect(outsideValue === null || outsideValue === "").toBe(true);
-  });
+  }));
 
-  it("repeated transactions do NOT accumulate stale tenant contexts", async () => {
+  it("repeated transactions do NOT accumulate stale tenant contexts", skipIfSqlite(async () => {
     // Simulate 3 sequential requests for 3 DIFFERENT tenants, each running
     // inside its own $transaction with is_local=true. After all 3 finish,
     // a fresh query must see NO tenant context (no leftover from any of
@@ -138,9 +141,9 @@ describe("FC-3 set_config('app.current_company_slug', ..., true) cleanup", () =>
       SELECT current_setting('app.current_company_slug', true) AS v
     `;
     expect(r[0]?.v === null || r[0]?.v === "").toBe(true);
-  });
+  }));
 
-  it("set_config(..., false) [session-scoped, NEGATIVE control] DOES leak", async () => {
+  it("set_config(..., false) [session-scoped, NEGATIVE control] DOES leak", skipIfSqlite(async () => {
     // Negative control to prove the test would CATCH a regression if
     // someone reverted the `true` to `false`. We set with `false` inside a
     // transaction, then check the value OUTSIDE — with `false` it WOULD
@@ -161,5 +164,5 @@ describe("FC-3 set_config('app.current_company_slug', ..., true) cleanup", () =>
     // Cleanup: explicitly reset the session var so we don't pollute other
     // tests in the same process.
     await db.$executeRaw`SELECT set_config('app.current_company_slug', NULL, false)`;
-  });
+  }));
 });

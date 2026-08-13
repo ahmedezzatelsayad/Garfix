@@ -554,6 +554,7 @@ export function GarfixEnhancedAIDashboard() {
   }, [activeTab, aiContext]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching with auto-refresh interval
     fetchMetrics();
     
     // Auto-refresh every 15 seconds

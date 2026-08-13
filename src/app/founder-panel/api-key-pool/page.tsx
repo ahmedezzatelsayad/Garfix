@@ -257,6 +257,7 @@ export default function FounderApiKeyPoolPage() {
   
   // Reset page when filters change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset page when filter deps change
     setCurrentPage(1);
   }, [searchQuery, statusFilter]);
 

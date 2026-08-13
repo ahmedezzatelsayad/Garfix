@@ -4,7 +4,7 @@
 // text-white/60 to satisfy WCAG AAA large-text contrast (≥4.5:1) on the
 // #0b1220 navy background.
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Activity, CheckCircle, AlertTriangle, XCircle, Clock, RefreshCw } from "lucide-react";
 import { FooterPageLayout } from "@/components/garfix/FooterPageLayout";
 
@@ -59,18 +59,15 @@ const INCIDENT_HISTORY = [
 ];
 
 export default function StatusPage() {
-  const [lastChecked, setLastChecked] = useState<string>("");
-  const [overallStatus, setOverallStatus] = useState<"operational" | "degraded" | "outage">("operational");
-
-  useEffect(() => {
-    const now = new Date();
-    setLastChecked(now.toLocaleString("ar-KW", { timeZone: "Asia/Kuwait" }));
-    // Determine overall status from services
+  const [lastChecked, setLastChecked] = useState<string>(() =>
+    new Date().toLocaleString("ar-KW", { timeZone: "Asia/Kuwait" })
+  );
+  const overallStatus = useMemo<"operational" | "degraded" | "outage">(() => {
     const hasOutage = SERVICES.some((s) => s.status === "outage");
     const hasDegraded = SERVICES.some((s) => s.status === "degraded");
-    if (hasOutage) setOverallStatus("outage");
-    else if (hasDegraded) setOverallStatus("degraded");
-    else setOverallStatus("operational");
+    if (hasOutage) return "outage";
+    if (hasDegraded) return "degraded";
+    return "operational";
   }, []);
 
   const overallConfig = STATUS_CONFIG[overallStatus];

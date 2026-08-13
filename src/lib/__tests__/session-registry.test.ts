@@ -23,7 +23,7 @@
  * separately as a CI step against a staging database.
  */
 
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 
 // ── Mock @/lib/db with an in-memory SessionRegistry store ────────────────
 // The mock tracks every call so tests can assert on side-effects.
@@ -524,3 +524,6 @@ describe("Full lifecycle: Login → Refresh → Logout → Revoke-all", () => {
     expect(await getActiveSessionCount("user-concurrent")).toBe(0);
   });
 });
+
+// P0 FIX: Restore all mocked modules to prevent cross-test contamination.
+afterAll(() => { mock.restore(); });

@@ -261,10 +261,12 @@ export default function CompaniesPerFeatureAIPage() {
   
   // Reset page when search changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset page when search changes
     setCurrentPage(1);
   }, [searchQuery]);
   
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching on mount
     fetchCompanies();
   }, []);
 

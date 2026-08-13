@@ -300,8 +300,10 @@ describe("queue constants", () => {
     expect(queues.QUEUE_NAMES.AI).toBe("ai-jobs");
     expect(queues.QUEUE_NAMES.EMAIL).toBe("email-jobs");
     expect(queues.QUEUE_NAMES.WHATSAPP).toBe("whatsapp-jobs");
+    expect(queues.QUEUE_NAMES.SMS).toBe("sms-jobs");
     expect(queues.QUEUE_NAMES.BACKUP).toBe("backup-jobs");
     expect(queues.QUEUE_NAMES.SCHEDULER).toBe("scheduler-jobs");
+    expect(queues.QUEUE_NAMES.EVENTS).toBe("events-jobs");
   });
 
   it("QUEUE_TTL has TTL for each queue", async () => {
@@ -309,8 +311,10 @@ describe("queue constants", () => {
     expect(queues.QUEUE_TTL["ai-jobs"]).toBe(60_000);
     expect(queues.QUEUE_TTL["email-jobs"]).toBe(30_000);
     expect(queues.QUEUE_TTL["whatsapp-jobs"]).toBe(30_000);
+    expect(queues.QUEUE_TTL["sms-jobs"]).toBe(30_000);
     expect(queues.QUEUE_TTL["backup-jobs"]).toBe(600_000);
     expect(queues.QUEUE_TTL["scheduler-jobs"]).toBe(5_000);
+    expect(queues.QUEUE_TTL["events-jobs"]).toBe(30_000);
   });
 });
 

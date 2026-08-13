@@ -132,6 +132,7 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
 
   useEffect(() => {
     if (selectedAccountId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching when account changes
       fetchLedger();
     }
   }, [fetchLedger, selectedAccountId]);

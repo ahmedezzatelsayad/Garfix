@@ -40,7 +40,7 @@ export function PurchasesView() {
   const { data, isLoading, refetch } = usePurchases(activeCompany?.slug || "");
   const deleteMutation = useDeletePurchase();
 
-  const purchases: Purchase[] = (data?.purchases ?? []) as any;
+  const purchases: Purchase[] = (data?.purchases ?? []) as unknown as Purchase[];
   const [showForm, setShowForm] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);

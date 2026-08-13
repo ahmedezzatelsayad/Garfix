@@ -72,7 +72,7 @@ export function TeamView() {
   const { activeCompany } = useBrand();
   const removeMemberMutation = useRemoveCompanyMember();
   const { data: membersData, isLoading: loading, refetch } = useCompanyMembers(activeCompany?.slug || "");
-  const members: Member[] = (membersData?.members ?? []) as any;
+  const members: Member[] = (membersData?.members ?? []) as unknown as Member[];
   const [showInvite, setShowInvite] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());

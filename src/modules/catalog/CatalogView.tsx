@@ -83,7 +83,7 @@ export function CatalogView() {
   const deleteMutation = useDeleteCatalogItem();
 
   // API returns { products: [...] }; the hook now types this correctly.
-  const products: Product[] = (data?.products ?? []) as any;
+  const products: Product[] = (data?.products ?? []) as unknown as Product[];
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
