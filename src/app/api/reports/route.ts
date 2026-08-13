@@ -14,6 +14,7 @@ import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { num } from "@/lib/money";
 import { withErrorHandler, apiError, parseJsonField } from "@/lib/api";
+import { logAudit } from "@/lib/audit";
 
 function toCsv(rows: Record<string, unknown>[], headers?: string[]): string {
   if (rows.length === 0) return "";
@@ -178,6 +179,23 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
 
   // CSV export
   if (format === "csv") {
+    // SEC-10 FIX (Audit v2 · Phase 2): record every CSV export to the audit
+    // log for SOX / GDPR compliance. Previously a user could export the
+    // entire sales / tax / cash-flow dataset with no trace — making it
+    // impossible to attribute a data exfiltration event to a specific user
+    // or to demonstrate access controls to an auditor.
+    await logAudit({
+      userEmail: access.user.email,
+      userUid: access.user.uid,
+      action: "csv_export",
+      entity: `report:${type}`,
+      companySlug,
+      details: {
+        format: "csv",
+        rowCount: reportData.length,
+        filters: { type, from, to, companySlug, cursor },
+      },
+    });
     const csv = toCsv(reportData);
     const bom = "\uFEFF"; // UTF-8 BOM for Arabic Excel compatibility
     return new NextResponse(bom + csv, {

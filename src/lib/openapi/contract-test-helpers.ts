@@ -1806,7 +1806,7 @@ const ROUTE_VALIDATORS: Record<string, Record<string, (body: unknown, errors: Co
       if (hasField(body, "notifications")) {
         validateArrayField(body, "notifications", validateNotificationDTO, true, errors, "NotificationListResponse");
       } else if (Array.isArray(body)) {
-        (body as unknown as Record<string, unknown>[]).forEach((item, i) => {
+        (body as  Record<string, unknown>[]).forEach((item, i) => {
           if (isObject(item)) validateNotificationDTO(item, errors, `NotificationDTO[${i}]`);
         });
       }

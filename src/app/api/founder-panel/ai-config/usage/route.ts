@@ -40,39 +40,27 @@ export async function GET(request: NextRequest) {
       });
       
       if (!company) return apiError('Company not found', 404);
-      
-      // Verify membership via the legacy `companyMember` table (not in prisma
-      // schema.prisma — accessed through a typed cast, see GET handler in
-      // /api/founder-panel/ai-config/route.ts for the same pattern).
-      const membership = await (db as unknown as {
-        companyMember: {
-          findFirst: (args: {
-            where: { userId?: string; companyId?: string };
-          }) => Promise<{ companyId: string } | null>;
-        };
-      }).companyMember.findFirst({
-        where: { userId: auth.user.uid, companyId: company.id },
+      // DB-04 FIX (Audit v2): Use the correct Prisma model name
+      // `companyMembership` (model: CompanyMembership, @@map: company_memberships)
+      // instead of the non-existent `companyMember`. The old code cast through
+      // `unknown` to bypass TypeScript, but at runtime `db.companyMember` is
+      // `undefined` → TypeError → 500. The actual model name in Prisma client
+      // is `companyMembership` (camelCase of the model name).
+      const membership = await db.companyMembership.findFirst({
+        where: { userUid: auth.user.uid, companySlug: company.slug },
       });
       if (!membership) return apiError('Company not found or access denied', 404);
       
       companyId = company.id;
     } else {
-      // NOTE: `companyMember` is not in prisma schema.prisma — cast through
-      // `unknown` to preserve runtime behavior without re-introducing `any`.
-      const membership = await (db as unknown as {
-        companyMember: {
-          findFirst: (args: {
-            where: { userId?: string };
-            include?: { company?: boolean };
-          }) => Promise<{ companyId: string; company?: unknown } | null>;
-        };
-      }).companyMember.findFirst({
-        where: { userId: auth.user.uid },
+      // DB-04 FIX (Audit v2): Same fix — use `companyMembership` model.
+      const membership = await db.companyMembership.findFirst({
+        where: { userUid: auth.user.uid },
         include: { company: true },
       });
       
       if (!membership) return apiError('No company membership found', 403);
-      companyId = membership.companyId;
+      companyId = membership.companySlug;
     }
     
     // Get AI config with usage

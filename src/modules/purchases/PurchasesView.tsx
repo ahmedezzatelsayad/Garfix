@@ -334,7 +334,7 @@ function PurchaseForm({ company, onClose, onSaved }: { company: { slug: string }
         num, date, supplier,
         items: payloadItems,
         notes, companySlug: company.slug,
-      } as unknown as CreatePurchasePayload);
+      } as  any);
       toast.success("تم إنشاء فاتورة الشراء");
       onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }

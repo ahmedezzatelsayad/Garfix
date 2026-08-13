@@ -3,11 +3,12 @@
 "use client";
 
 import { useState } from "react";
-import { useBrand, type CompanyInfo } from "@/context/BrandContext";
+import { type CompanyInfo } from "@/context/BrandContext";
 import { CompanySettingsForm } from "./CompanySettingsForm";
 import { TemplateSettingsForm } from "./TemplateSettingsForm";
 import { TemplateListManager } from "./TemplateListManager";
 import { EInvoicingSettings } from "./EInvoicingSettings";
+import { RecoveryCodesBanner } from "./RecoveryCodesBanner";
 import {
   Building2,
   Settings as SettingsIcon,
@@ -92,6 +93,13 @@ export function SettingsView({ activeCompany, onUpdated }: SettingsViewProps) {
           </div>
         </div>
       </header>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SECTION 1.5: Recovery Codes Regeneration Banner (SEC-07 / Phase 0 T3)
+          Shows for admin/founder accounts that haven't regenerated their
+          recovery codes after the 128-bit entropy upgrade.
+         ═══════════════════════════════════════════════════════════════ */}
+      <RecoveryCodesBanner />
 
       {/* ═══════════════════════════════════════════════════════════════
           SECTION 2: Navigation Tabs (DS v4.0 - 120ms hover transition)
@@ -265,7 +273,7 @@ function SectionCard({
 
 function calculateCompletion(company: CompanyInfo): number {
   let filled = 0;
-  let total = 8;
+  const total = 8;
   
   if (company.name) filled++;
   if (company.nameAr) filled++;

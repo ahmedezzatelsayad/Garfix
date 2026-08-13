@@ -1,6 +1,12 @@
 import { Globe, Handshake, ArrowRight, CheckCircle } from "lucide-react";
 import { FooterPageLayout } from "@/components/garfix/FooterPageLayout";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "شركاؤنا · GarfiX",
+  description: "برنامج شركاء GarfiX EOS — شركاء التكامل والمبيعات والتدريب والتطوير في منطقة الشرق الأوسط وشمال أفريقيا.",
+};
 
 const PARTNER_TYPES = [
   {
@@ -119,7 +125,12 @@ export default function PartnersPage() {
         {/* CTA */}
         <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-8 text-center">
           <Handshake size={36} className="text-emerald-400 mx-auto mb-4" />
-          <h3 className="font-extrabold text-white text-lg mb-2">هل أنت مستعد للشراكة؟</h3>
+          {/* FE-13 FIX (Audit v2 · Phase 3): the CTA heading was an h3 with no
+              preceding h2 in this section — screen-reader users navigating by
+              heading level would jump from "كيف تبدأ الشراكة" (h2) into a stray
+              h3 here at the end of the page, breaking the document outline.
+              Promoted to h2 so the outline stays h1 → h2 → h3. */}
+          <h2 className="font-extrabold text-white text-lg mb-2">هل أنت مستعد للشراكة؟</h2>
           <p className="text-white/60 text-sm mb-5 max-w-[500px] mx-auto">
             تواصل معنا اليوم واستكشف فرص الشراكة التي تناسب أعمالك
           </p>

@@ -19,6 +19,7 @@ async function seed() {
       currency: 'USD',
       vatNumber: 'US-12345',
       address: '123 Finance Street, New York, NY 10001',
+      currencyDecimalPlaces: 2,
     },
   })
   console.log(`✅ Company: ${company.name} (${company.slug})`)
@@ -30,13 +31,20 @@ async function seed() {
     create: {
       uid: 'admin-001',
       email: 'admin@garfix.com',
-      passwordHash: await hashPassword(process.env.SEED_ADMIN_PASSWORD || 'ChangeMe!2024'),
+      passwordHash: await hashPassword(
+        process.env.SEED_ADMIN_PASSWORD ||
+          (process.env.NODE_ENV === 'production'
+            ? (() => {
+                throw new Error('SEED_ADMIN_PASSWORD must be set in production')
+              })()
+            : 'ChangeMe!2024')
+      ),
       displayName: 'Admin User',
       role: 'admin',
       companies: JSON.stringify([company.slug]),
     },
   })
-  console.log(`✅ User: ${user.displayName} (${user.id})`)
+  console.log(`✅ User: ${user.displayName} (${user.uid})`)
 
   // Create chart of accounts
   const accountData = [
@@ -58,12 +66,14 @@ async function seed() {
   const accounts = await db.$transaction(
     accountData.map(a =>
       db.account.upsert({
-        where: { code_companySlug: { code: a.code, companySlug: company.slug } },
+        where: { code_companyId: { code: a.code, companyId: company.id } },
         update: {},
         create: {
           code: a.code,
+          name: a.nameAr,
           nameAr: a.nameAr,
           type: a.type,
+          companyId: company.id,
           companySlug: company.slug,
         },
       })
@@ -73,15 +83,16 @@ async function seed() {
 
   // Create financial period
   const period = await db.fiscalPeriod.upsert({
-    where: { companySlug_name: { companySlug: company.slug, name: 'FY-2025' } },
+    where: { name_companyId: { name: 'FY-2025', companyId: company.id } },
     update: {},
     create: {
       name: 'FY-2025',
-      startDate: '2025-01-01',
-      endDate: '2025-12-31',
+      startDate: new Date('2025-01-01'),
+      endDate: new Date('2025-12-31'),
       fiscalYear: 2025,
       periodType: 'yearly',
       status: 'open',
+      companyId: company.id,
       companySlug: company.slug,
     },
   })
@@ -93,14 +104,14 @@ async function seed() {
     { name: 'Beta Industries', email: 'beta@example.com' },
     { name: 'Gamma Solutions', email: 'gamma@example.com' },
   ]
-  const clients: { id: number; name: string }[] = []
+  const clients: { id: string; name: string }[] = []
   for (const c of clientData) {
     const existing = await db.client.findFirst({ where: { name: c.name, companySlug: company.slug } })
     if (existing) {
       clients.push(existing)
     } else {
       const created = await db.client.create({
-        data: { name: c.name, email: c.email, companySlug: company.slug },
+        data: { name: c.name, email: c.email, companySlug: company.slug, companyId: company.id },
       })
       clients.push(created)
     }
@@ -113,16 +124,16 @@ async function seed() {
     { name: 'Epsilon Manufacturing', code: 'SUP-002', email: 'epsilon@supplier.com' },
     { name: 'Zeta Raw Materials', code: 'SUP-003', email: 'zeta@supplier.com' },
   ]
-  const suppliers: { id: number; name: string }[] = [];
+  const suppliers: { id: string; name: string }[] = []
   for (const s of supplierData) {
-    const existing = await db.supplier.findFirst({ where: { name: s.name, companySlug: company.slug } });
+    const existing = await db.supplier.findFirst({ where: { name: s.name, companySlug: company.slug } })
     if (existing) {
-      suppliers.push(existing);
+      suppliers.push(existing)
     } else {
       const created = await db.supplier.create({
-        data: { name: s.name, code: s.code, email: s.email, companySlug: company.slug },
-      });
-      suppliers.push(created);
+        data: { name: s.name, code: s.code, email: s.email, companySlug: company.slug, companyId: company.id },
+      })
+      suppliers.push(created)
     }
   }
   console.log(`✅ ${suppliers.length} suppliers created`)
@@ -135,7 +146,7 @@ async function seed() {
     { name: 'Bolt Pack (100)', code: 'BLT-100', purchasePrice: 15.00, sellingPrice: 28.00, unit: 'pack' },
     { name: 'Motor Unit X', code: 'MTR-X', purchasePrice: 350.00, sellingPrice: 550.00, unit: 'piece' },
   ]
-  const products: { id: number; name: string }[] = []
+  const products: { id: string; name: string }[] = []
   for (const p of productData) {
     const existing = await db.productCatalog.findFirst({ where: { name: p.name, companySlug: company.slug } })
     if (existing) {
@@ -149,6 +160,7 @@ async function seed() {
           sellingPrice: new Prisma.Decimal(p.sellingPrice),
           unit: p.unit,
           companySlug: company.slug,
+          companyId: company.id,
         },
       })
       products.push(created)
@@ -156,19 +168,21 @@ async function seed() {
   }
   console.log(`✅ ${products.length} products created`)
 
-  // Create warehouses
-  const warehouseMain = await db.warehouse.upsert({
-    where: { companySlug_code: { companySlug: company.slug, code: 'WH-MAIN' } },
-    update: {},
-    create: { name: 'Main Warehouse', code: 'WH-MAIN', companySlug: company.slug },
-  })
-  const warehouseB = await db.warehouse.upsert({
-    where: { companySlug_code: { companySlug: company.slug, code: 'WH-B' } },
-    update: {},
-    create: { name: 'Warehouse B', code: 'WH-B', companySlug: company.slug },
-  })
+  // Create warehouses (no @@unique constraint, so use findFirst + create)
+  let warehouseMain = await db.warehouse.findFirst({ where: { code: 'WH-MAIN', companySlug: company.slug } })
+  if (!warehouseMain) {
+    warehouseMain = await db.warehouse.create({
+      data: { name: 'Main Warehouse', code: 'WH-MAIN', companySlug: company.slug, companyId: company.id },
+    })
+  }
+  let warehouseB = await db.warehouse.findFirst({ where: { code: 'WH-B', companySlug: company.slug } })
+  if (!warehouseB) {
+    warehouseB = await db.warehouse.create({
+      data: { name: 'Warehouse B', code: 'WH-B', companySlug: company.slug, companyId: company.id },
+    })
+  }
 
-  // Create inventory items
+  // Create inventory items (no unique constraint on warehouseId+productId, use findFirst + create)
   const inventoryData = [
     { productId: products[0].id, warehouseId: warehouseMain.id, quantity: '500' },
     { productId: products[1].id, warehouseId: warehouseMain.id, quantity: '300' },
@@ -177,16 +191,17 @@ async function seed() {
     { productId: products[4].id, warehouseId: warehouseB.id, quantity: '50' },
   ]
   for (const item of inventoryData) {
-    const existing = await db.inventoryItem.findUnique({
-      where: { warehouseId_productId: { warehouseId: item.warehouseId, productId: item.productId } },
+    const existing = await db.inventoryItem.findFirst({
+      where: { productId: item.productId, warehouseId: item.warehouseId },
     })
     if (!existing) {
       await db.inventoryItem.create({
         data: {
           warehouseId: item.warehouseId,
           productId: item.productId,
-          quantity: item.quantity,
+          quantity: new Prisma.Decimal(item.quantity),
           companySlug: company.slug,
+          companyId: company.id,
         },
       })
     }
@@ -196,14 +211,16 @@ async function seed() {
   // Create bank accounts
   const bankAccount1 = await db.bankAccount.create({
     data: {
-      bankName: 'First National Bank',
+      name: 'Main Operating Account',
       accountName: 'Main Operating Account',
+      bankName: 'First National Bank',
       accountNumber: 'ACC-001',
       currency: 'USD',
       balance: new Prisma.Decimal(50000),
       accountType: 'checking',
       glAccountId: accounts.find((a: any) => a.code === '1000')?.id,
       companySlug: company.slug,
+      companyId: company.id,
     },
   })
   console.log(`✅ Bank account created: ${bankAccount1.accountName}`)
@@ -239,16 +256,20 @@ async function seed() {
 
   for (const v of voucherData) {
     const existing = await db.paymentVoucher.findUnique({
-      where: { companySlug_voucherNumber: { companySlug: company.slug, voucherNumber: v.voucherNumber } },
+      where: { number_companyId: { number: v.voucherNumber, companyId: company.id } },
     })
     if (existing) continue
 
     await db.paymentVoucher.create({
       data: {
-        companySlug: company.slug,
+        number: v.voucherNumber,
+        paymentType: v.voucherType,
+        direction: v.voucherType === 'receipt' ? 'inbound' : 'outbound',
         voucherNumber: v.voucherNumber,
         voucherType: v.voucherType,
-        date: v.date,
+        companyId: company.id,
+        companySlug: company.slug,
+        date: new Date(v.date),
         amount: new Prisma.Decimal(v.amount),
         payee: v.payee,
         payer: v.payer,
@@ -258,18 +279,20 @@ async function seed() {
         clientId: v.clientId ?? null,
         supplierId: v.supplierId ?? null,
         bankAccountId: bankAccount1.id,
-        installments: {
+        installmentSchedules: {
           create: [
             {
               amount: new Prisma.Decimal(v.amount * 0.5),
               dueDate: new Date('2025-03-15'),
               status: v.voucherType === 'receipt' ? 'paid' : 'pending',
               paidDate: v.voucherType === 'receipt' ? new Date(v.date) : null,
+              companySlug: company.slug,
             },
             {
               amount: new Prisma.Decimal(v.amount * 0.5),
               dueDate: new Date('2025-04-15'),
               status: 'pending',
+              companySlug: company.slug,
             },
           ],
         },
@@ -296,11 +319,14 @@ async function seed() {
     },
   ]
 
+  let jeCounter = 1
   for (const j of journalData) {
     await db.journalEntry.create({
       data: {
-        date: '2025-02-15',
+        number: `JE-${String(jeCounter).padStart(3, '0')}`,
+        date: new Date('2025-02-15'),
         description: j.description,
+        companyId: company.id,
         companySlug: company.slug,
         createdBy: user.uid,
         status: 'posted',
@@ -313,6 +339,7 @@ async function seed() {
         },
       },
     })
+    jeCounter++
   }
   console.log(`✅ ${journalData.length} journal entries created`)
 
@@ -326,16 +353,18 @@ async function seed() {
 
   for (const b of balanceData) {
     const existing = await db.openingBalanceEntry.findUnique({
-      where: { companySlug_accountId_asOfDate: { companySlug: company.slug, accountId: b.accountId, asOfDate: '2025-01-01' } },
+      where: { accountId_periodId: { accountId: b.accountId, periodId: period.id } },
     })
     if (existing) continue
 
     await db.openingBalanceEntry.create({
       data: {
         accountId: b.accountId,
+        periodId: period.id,
         amount: new Prisma.Decimal(b.amount),
         asOfDate: '2025-01-01',
         status: 'posted',
+        companyId: company.id,
         companySlug: company.slug,
       },
     })
@@ -363,21 +392,23 @@ async function seed() {
 
   for (const lc of lcData) {
     const existing = await db.letterOfCredit.findUnique({
-      where: { companySlug_lcNumber: { companySlug: company.slug, lcNumber: lc.lcNumber } },
+      where: { number_companyId: { number: lc.lcNumber, companyId: company.id } },
     })
     if (existing) continue
 
     await db.letterOfCredit.create({
       data: {
-        companySlug: company.slug,
+        number: lc.lcNumber,
         lcNumber: lc.lcNumber,
         amount: new Prisma.Decimal(lc.amount),
         currency: lc.currency,
         status: lc.status,
-        issueDate: lc.issueDate,
-        expiryDate: lc.expiryDate,
+        issueDate: new Date(lc.issueDate),
+        expiryDate: new Date(lc.expiryDate),
         supplierId: lc.supplierId,
         bankAccountId: lc.bankAccountId,
+        companyId: company.id,
+        companySlug: company.slug,
       },
     })
   }
@@ -388,6 +419,7 @@ async function seed() {
   if (!existingPD) {
     await db.profitDistribution.create({
       data: {
+        companyId: company.id,
         companySlug: company.slug,
         totalProfit: new Prisma.Decimal(45000),
         retained: new Prisma.Decimal(18000),

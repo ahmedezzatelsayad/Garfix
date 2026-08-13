@@ -72,7 +72,7 @@ type StatementType = "profit-loss" | "balance-sheet" | "cash-flow";
 // client, so these local interfaces are lying about the runtime shape.
 //
 // The audit flagged this as Critical because it forces downstream code to
-// use `as unknown as` casts (72 occurrences across the codebase) to bridge
+// use `as ` casts (72 occurrences across the codebase) to bridge
 // the type gap, defeating TypeScript's safety.
 //
 // The proper fix is to derive these types from Prisma:
@@ -1137,9 +1137,9 @@ function FinancialStatements({ company }: { company: { slug: string } }) {
     : statementType === "balance-sheet" ? balanceSheetQuery.error
     : cashFlowQuery.error;
   const data: ProfitLossData | BalanceSheetData | CashFlowData | null =
-    statementType === "profit-loss" ? (profitLossQuery.data as unknown as ProfitLossData | null ?? null)
-    : statementType === "balance-sheet" ? (balanceSheetQuery.data as unknown as BalanceSheetData | null ?? null)
-    : (cashFlowQuery.data as unknown as CashFlowData | null ?? null);
+    statementType === "profit-loss" ? (profitLossQuery.data as unknown as ProfitLossData ?? null)
+    : statementType === "balance-sheet" ? (balanceSheetQuery.data as unknown as BalanceSheetData ?? null)
+    : (cashFlowQuery.data as unknown as CashFlowData ?? null);
 
   const refetch = () => {
     if (statementType === "profit-loss") profitLossQuery.refetch();

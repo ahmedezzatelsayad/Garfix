@@ -122,6 +122,7 @@ function useAnimatedValue(targetValue: number, enabled: boolean, duration = 800)
 
   useEffect(() => {
     if (!enabled || typeof targetValue !== "number") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- animation: reset value when disabled
       setCurrentValue(targetValue);
       return;
     }
@@ -194,6 +195,14 @@ export const GarfixStatCard: React.FC<GarfixStatCardProps> = ({
         })
       : displayValue.toFixed(decimals);
 
+  // FE-14 FIX (Audit v2 · Phase 3): KPI/metric values update dynamically (the
+  // animated counter re-renders every animation frame; the underlying value
+  // changes when dashboards poll). Screen-reader users had no idea a value
+  // had changed because the live region was missing. We add `aria-live="polite"`
+  // + `aria-atomic="true"` so the SR announces the new value once it settles,
+  // without interrupting the user mid-utterance.
+  const valueId = `stat-${title.replace(/\s+/g, "-").toLowerCase()}`;
+
   return (
     <GarfixCard variant="default" padding="lg" hoverable className={className}>
       <div className="space-y-4">
@@ -201,7 +210,13 @@ export const GarfixStatCard: React.FC<GarfixStatCardProps> = ({
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className={cn("text-2xl sm:text-3xl font-bold tracking-tight", colors.value)}>
+            <p
+              id={valueId}
+              aria-live="polite"
+              aria-atomic="true"
+              role="status"
+              className={cn("text-2xl sm:text-3xl font-bold tracking-tight", colors.value)}
+            >
               {prefix}{formattedValue}{unit}
             </p>
           </div>

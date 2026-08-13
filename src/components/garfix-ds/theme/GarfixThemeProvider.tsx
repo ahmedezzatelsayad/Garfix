@@ -221,11 +221,14 @@ export const GarfixThemeProvider: React.FC<GarfixThemeProviderProps> = ({
     
     // Apply initial theme
     const resolved = resolveTheme(stored);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from localStorage + system preference on mount
     setThemeState(stored);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from localStorage + system preference on mount
     setResolvedTheme(resolved);
     applyTheme(resolved);
 
     // Mark as mounted (prevents flash of wrong theme)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time mount flag
     setMounted(true);
 
     // Listen for system theme changes

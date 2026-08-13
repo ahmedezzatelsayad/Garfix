@@ -487,7 +487,8 @@ export function generateOmanTaxInvoicePayload(
   let parsedItems: LineItem[] = [];
   try {
     parsedItems = JSON.parse(lineItemsRaw);
-  } catch {
+  } catch (error) {
+    logger.error("Oman Tax line items JSON parse failed", { error });
     parsedItems = [];
   }
 

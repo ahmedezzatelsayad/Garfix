@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * invoices-crud.test.ts — Tests for the invoice REST route handlers.
  *

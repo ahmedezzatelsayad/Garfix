@@ -77,7 +77,7 @@ export const GarfixSkeleton: React.FC<GarfixSkeletonProps> = ({
       <div className={cn("space-y-3", className)} aria-hidden="true">
         {Array.from({ length: lines }).map((_, i) => (
           <div
-            key={i}
+            key={`line-${i}`}
             className={cn(baseClasses, shapeStyles.text)}
             style={{
               width: i === lines - 1 ? "70%" : "100%",
@@ -127,7 +127,7 @@ export const TableRowSkeleton: React.FC<{ cols?: number; className?: string }> =
 }) => (
   <tr className={className} aria-hidden="true">
     {Array.from({ length: cols }).map((_, i) => (
-      <td key={i} className="px-4 py-3">
+      <td key={`col-${i}`} className="px-4 py-3">
         <GarfixSkeleton 
           shape="text" 
           width={i === 0 ? "80%" : i === cols - 1 ? "40%" : "60%"} 
@@ -150,7 +150,7 @@ export const FormSkeleton: React.FC<{ fields?: number; className?: string }> = (
       <GarfixSkeleton shape="rectangle" height="2.75rem" />
     </div>
     {Array.from({ length: fields - 1 }).map((_, i) => (
-      <div key={i} className="space-y-2">
+      <div key={`field-${i}`} className="space-y-2">
         <GarfixSkeleton shape="text" width={`${30 + (i % 3) * 15}%`} height="0.75rem" />
         <GarfixSkeleton shape="rectangle" height="2.75rem" />
       </div>
@@ -170,7 +170,7 @@ export const DashboardSkeleton: React.FC<{ cards?: number; className?: string }>
 }) => (
   <div className={cn("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4", className)} aria-hidden="true">
     {Array.from({ length: cards }).map((_, i) => (
-      <CardSkeleton key={i} />
+      <CardSkeleton key={`card-${i}`} />
     ))}
   </div>
 );

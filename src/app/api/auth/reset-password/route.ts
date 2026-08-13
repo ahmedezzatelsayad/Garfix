@@ -90,7 +90,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     await db.emailVerification.update({
       where: { id: otpRow.id },
       data: { usedAt: new Date() },
-    }).catch(() => {});
+    }).catch((error) => { logger.error("OTP lock update failed after max attempts", { email: normalizedEmail, error }); });
     logger.warn("[reset-password] OTP locked after too many attempts", { email: normalizedEmail });
     return apiError("تم تجاوز عدد المحاولات المسموح. اطلب رمزاً جديداً", 400);
   }

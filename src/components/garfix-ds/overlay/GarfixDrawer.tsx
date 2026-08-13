@@ -19,10 +19,15 @@
 
 "use client";
 
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GarfixButton } from "../core/GarfixButton";
+// FE-03 FIX (Audit v2 · Phase 1) — wire useFocusTrap so that Tab/Shift+Tab
+// stays inside the drawer and focus returns to the trigger element on close.
+// Before this fix, the drawer had NO focus trap and NO focus restoration —
+// keyboard users would Tab out into background page content.
+import { useFocusTrap } from "@/hooks/useAccessibility";
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -96,31 +101,28 @@ export const GarfixDrawer: React.FC<GarfixDrawerProps> = ({
   preventScroll = true,
   className,
 }) => {
-  // Handle escape key
-  const handleEscape = useCallback((e: KeyboardEvent) => {
-    if (e.key === "Escape" && closeOnEscape) {
-      onClose();
-    }
-  }, [closeOnEscape, onClose]);
+  // FE-03 FIX (Audit v2 · Phase 1) — useFocusTrap returns a ref to attach
+  // to the drawer container. It internally:
+  //   • captures `document.activeElement` (the trigger) on activation
+  //   • moves focus to the first focusable child (or `initialFocus`)
+  //   • traps Tab/Shift+Tab so focus can't leave the drawer
+  //   • calls `onEscape` when the user presses Escape
+  //   • restores focus to the trigger on deactivation
+  const drawerRef = useFocusTrap({
+    active: isOpen,
+    onEscape: closeOnEscape ? onClose : undefined,
+    returnFocus: true,
+  });
 
-  // Effects
+  // Body-scroll lock only — focus management is delegated to useFocusTrap.
   useEffect(() => {
-    if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
-      
-      if (preventScroll) {
-        document.body.style.overflow = "hidden";
-      }
-
+    if (isOpen && preventScroll) {
+      document.body.style.overflow = "hidden";
       return () => {
-        document.removeEventListener("keydown", handleEscape);
-        
-        if (preventScroll) {
-          document.body.style.overflow = "";
-        }
+        document.body.style.overflow = "";
       };
     }
-  }, [isOpen, handleEscape, preventScroll]);
+  }, [isOpen, preventScroll]);
 
   // Handle backdrop click
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -176,9 +178,11 @@ export const GarfixDrawer: React.FC<GarfixDrawerProps> = ({
 
       {/* Drawer */}
       <div
+        ref={drawerRef}
         role="dialog"
         aria-modal="true"
         aria-label={title || "قائمة"}
+        tabIndex={-1}
         className={cn(
           // Positioning
           "fixed z-50",

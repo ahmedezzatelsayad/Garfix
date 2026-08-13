@@ -161,9 +161,9 @@ export const GarfixAvatarGroup: React.FC<AvatarGroupProps> = ({
 
   return (
     <div className={cn("flex items-center -space-x-2 rtl:space-x-reverse", className)}>
-      {visibleAvatars.map((avatar, index) => (
+      {visibleAvatars.map((avatar) => (
         <GarfixAvatar
-          key={index}
+          key={avatar.fallback || avatar.alt || avatar.src}
           src={avatar.src}
           alt={avatar.alt}
           fallback={avatar.fallback}

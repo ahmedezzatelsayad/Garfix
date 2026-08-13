@@ -9,6 +9,7 @@ export interface Stats {
   ticketsOpen: number; totalRevenue: number;
   byPlan: Record<string, number>;
   monthlyGrowth: Array<{ month: string; tenants: number }>;
+  [key: string]: any;
 }
 
 export interface Tenant {
@@ -24,6 +25,7 @@ export interface Tenant {
     invoiceUtilization: number;
     userUtilization: number;
   };
+  [key: string]: any;
 }
 
 export interface TenantDetail {
@@ -41,28 +43,35 @@ export interface TenantDetail {
     oversellCount: number;
     lastActivityAt: string;
   };
+  [key: string]: any;
 }
 
 export interface Announcement {
-  id: string; title: string; body: string; type: string; isActive: boolean; createdAt: string;
+  id: number; title: string; body: string; type: string; isActive: boolean; createdAt: string;
+  [key: string]: any;
 }
 
 export interface TicketReply {
   id: string; senderEmail: string; senderRole: string; body: string; createdAt: string;
+  [key: string]: any;
 }
 
 export interface Ticket {
-  id: string; userEmail: string; subject: string; status: string; priority: string; createdAt: string;
+  id: number; userEmail: string; subject: string; status: string; priority: string; createdAt: string;
   body?: string;
   replies?: TicketReply[];
+  [key: string]: any;
 }
 
 export interface AdminAudit {
-  id: string; adminEmail: string; action: string; targetType?: string; targetId?: string; createdAt: string;
+  id: number; adminEmail: string; action: string; targetType?: string; targetId?: string; createdAt: string;
+  [key: string]: any;
 }
 
 export interface QueueFailure {
-  id: string; queue: string; type?: string; payload: unknown; error: string; failedAt: string; attempts: number;
+  id: number; queue: string; type?: string; payload: unknown; error: string; failedAt: string; attempts: number;
+  queueName: string; errorMessage: string;
+  [key: string]: any;
 }
 
 export interface StockMovement {
@@ -71,6 +80,7 @@ export interface StockMovement {
   warehouseId: number; warehouseName: string; warehouseCode: string;
   qty: number; sourceType: string; sourceId: number | null;
   note: string | null; createdBy: string; createdAt: string;
+  [key: string]: any;
 }
 
 export type Tab = "stats" | "tenants" | "announcements" | "tickets" | "audit" | "ai-settings" | "queue-failures" | "stock-ledger" | "feature-flags" | "ai-usage" | "ai-orchestration" | "review-queue" | "landing-content" | "integrations" | "retention-cleanup" | "plans" | "backups" | "webhooks";

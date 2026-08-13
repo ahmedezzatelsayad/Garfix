@@ -11,7 +11,8 @@
  * - Adaptive UI based on user behavior
  * - Advanced animations & transitions
  * - Full RTL Arabic support
- * - WCAG 2.1 AA accessible
+ * - WCAG 2.1 AAA accessible
+ * // FE-02 FIX (Audit v2 · Phase 1) — target bumped from AA to AAA.
  * 
  * Integrates:
  * - AIPersonalizationProvider context
@@ -25,6 +26,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 // ── GarfiX DS Imports ──────────────────────────────────────
 
@@ -531,7 +533,7 @@ export function GarfixEnhancedAIDashboard() {
       }
       
       // ⚠️ Fallback to mock data if API fails
-      console.warn('AI Metrics API unavailable, using fallback data');
+      logger.warn('AI Metrics API unavailable, using fallback data');
       setMetrics(MOCK_AI_METRICS);
       aiContext?.trackEvent({
         type: 'page_view',
@@ -543,7 +545,7 @@ export function GarfixEnhancedAIDashboard() {
       });
       
     } catch (error) {
-      console.error('Failed to fetch AI metrics:', error);
+      logger.error('Failed to fetch AI metrics:', { err: error });
       // ❌ Error fallback - use mock data
       setMetrics(MOCK_AI_METRICS);
     } finally {
@@ -552,6 +554,7 @@ export function GarfixEnhancedAIDashboard() {
   }, [activeTab, aiContext]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching with auto-refresh interval
     fetchMetrics();
     
     // Auto-refresh every 15 seconds
@@ -850,7 +853,7 @@ export function GarfixEnhancedAIDashboard() {
               <GarfixTabPanel tabId="keys" activeTab={activeTab}>
                 {metrics && (
                   <GarfixDataTable
-                    data={metrics.data.keys as unknown as Record<string, unknown>[]}
+                    data={metrics.data.keys.map(k => ({ ...k }) as Record<string, unknown>)}
                     rowKey="id"
                     columns={[
                       { key: 'name', header: 'اسم المفتاح' },

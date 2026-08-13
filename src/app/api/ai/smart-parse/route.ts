@@ -24,6 +24,11 @@ import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { logAiUsage } from "@/lib/ai/costTracker";
+// AI-08 FIX (Audit v2 · Phase 2): use the accurate cost table from
+// cost-rates.ts instead of the hard-coded $0.0003/1K constant. The old
+// constant understated DeepSeek cost by ~2x ($0.14/$0.28 per 1M). DeepSeek
+// input/output rates differ, so we must split tokens by role.
+import { computeCallCostUsd } from "@/lib/ai/cost-rates";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const RequestSchema = z.object({
@@ -238,7 +243,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
               data: normalized,
               provider: result.provider,
               tokensUsed: result.usage.total_tokens,
-              costUsd: (result.usage.total_tokens / 1000) * 0.0003,
+              // AI-08 FIX (Audit v2 · Phase 2): compute the cost using the
+              // real model + per-role token counts from cost-rates.ts.
+              // Previous hard-coded `(total_tokens/1000)*0.0003` billed
+              // every model at the DeepSeek-input rate and ignored the 2x
+              // output surcharge.
+              costUsd: computeCallCostUsd(
+                result.model,
+                result.usage.prompt_tokens,
+                result.usage.completion_tokens,
+              ),
             };
           },
         },

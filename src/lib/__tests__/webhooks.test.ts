@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * webhooks.test.ts — 50 tests for the webhook delivery system.
  *

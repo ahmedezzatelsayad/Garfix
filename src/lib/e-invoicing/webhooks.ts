@@ -123,35 +123,51 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
     }
   }
 
-  // ── 2. Resolve companySlug + invoiceNumber from invoiceId ───────────
-  let companySlug = input.companySlug;
+  // ── 2. Resolve companySlug from DB (never trust the payload) ──
+  // AUDIT FIX: companySlug from the request body is attacker-controlled.
+  // We ALWAYS derive it from the Invoice record when invoiceId is present.
+  // When no invoiceId is available, the payload companySlug is used but
+  // EInvoice status mutation is gated on signatureValid === true.
+  //
+  // T0-B FIX (Audit v2 · Phase 2): Webhooks are exempt from withErrorHandler,
+  // so they don't get automatic ALS tenant context. We set it manually here
+  // via runWithTenantContext so RLS allows the write.
+  let companySlug: string | null = null;
   let invoiceId = input.invoiceId ?? null;
   let invoiceNumber: string | null = null;
 
-  if (invoiceId) {
-    // FIX #3 (CRITICAL): scope by companySlug when provided, to prevent cross-tenant lookups
-    const invoice = await db.invoice.findFirst({
-      where: companySlug
-        ? { id: invoiceId, companySlug }
-        : { id: invoiceId },
-      select: { companySlug: true, invoiceNumber: true },
-    });
-    if (invoice) {
-      // FIX #3 (CRITICAL): if input provided a companySlug, verify it matches
-      if (companySlug && invoice.companySlug !== companySlug) {
-        logger.error("[e-invoicing:webhooks] cross-tenant invoice access blocked", {
-          inputCompanySlug: companySlug,
-          invoiceCompanySlug: invoice.companySlug,
-          invoiceId,
-        });
-        companySlug = "_unknown";
-        invoiceId = null; // prevent EInvoice update for wrong tenant
-      } else {
+  // T0-B: Use platform-admin context for the lookup (we don't know tenant yet)
+  const { runWithTenantContext } = await import("@/lib/tenant-context");
+  await runWithTenantContext("__ALL__", true, async () => {
+    if (invoiceId) {
+      const invoice = await db.invoice.findUnique({
+        where: { id: invoiceId },
+        select: { companySlug: true, invoiceNumber: true },
+      });
+      if (invoice) {
         companySlug = invoice.companySlug;
         invoiceNumber = invoice.invoiceNumber;
+        // Audit: log if the payload companySlug disagrees with DB
+        if (input.companySlug && input.companySlug !== invoice.companySlug) {
+          logger.warn("[e-invoicing:webhooks] companySlug mismatch (payload vs DB)", {
+            payloadCompanySlug: input.companySlug,
+            dbCompanySlug: invoice.companySlug,
+            invoiceId,
+            authority: input.authority,
+          });
+        }
+      } else {
+        // Invoice not found — keep companySlug null, will fall to _unknown below
+        logger.warn("[e-invoicing:webhooks] invoiceId not found in DB", { invoiceId, authority: input.authority });
       }
     }
+  });
+
+  // Fallback to payload companySlug only if no invoiceId was provided
+  if (!companySlug && input.companySlug) {
+    companySlug = input.companySlug;
   }
+
   if (!companySlug) {
     logger.warn("[e-invoicing:webhooks] cannot resolve companySlug for receipt", {
       authority: input.authority,
@@ -186,20 +202,29 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
   // Two concurrent duplicate webhooks both passed the findFirst, both called
   // create, the second hit the @@unique constraint and threw 500.
   // Now we catch P2002 and re-fetch the existing receipt.
+  //
+  // T0-B FIX: Wrap the write in the resolved tenant context so RLS allows it.
+  // If companySlug is "_unknown", use platform-admin context (for audit trail).
+  const writeContext = companySlug && companySlug !== "_unknown"
+    ? { slug: companySlug, isPlatformAdmin: false }
+    : { slug: "__ALL__", isPlatformAdmin: true };
+
   let receipt;
   try {
-    receipt = await db.eInvoiceReceipt.create({
-      data: {
-        companySlug,
-        invoiceId,
-        authority: input.authority,
-        eventType: input.eventType,
-        externalUuid: input.externalUuid || null,
-        status: input.status,
-        rawPayload: truncatedPayload,
-        signatureValid: input.signatureValid ?? null,
-        rejectionReason: input.rejectionReason || null,
-      },
+    receipt = await runWithTenantContext(writeContext.slug, writeContext.isPlatformAdmin, async () => {
+      return db.eInvoiceReceipt.create({
+        data: {
+          companySlug: companySlug || "_unknown",
+          invoiceId,
+          authority: input.authority,
+          eventType: input.eventType,
+          externalUuid: input.externalUuid || null,
+          status: input.status,
+          rawPayload: truncatedPayload,
+          signatureValid: input.signatureValid ?? null,
+          rejectionReason: input.rejectionReason || null,
+        },
+      });
     });
   } catch (err: any) {
     // P2002 = unique constraint violation = duplicate webhook already processed
@@ -209,12 +234,14 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
         externalUuid: input.externalUuid,
         eventType: input.eventType,
       });
-      const existing = await db.eInvoiceReceipt.findFirst({
-        where: {
-          externalUuid: input.externalUuid,
-          authority: input.authority,
-          eventType: input.eventType,
-        },
+      const existing = await runWithTenantContext(writeContext.slug, writeContext.isPlatformAdmin, async () => {
+        return db.eInvoiceReceipt.findFirst({
+          where: {
+            externalUuid: input.externalUuid,
+            authority: input.authority,
+            eventType: input.eventType,
+          },
+        });
       });
       if (existing) return existing;
       // If we can't find it (edge case), re-throw the original error
@@ -324,7 +351,7 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
     void import("./notifications")
       .then(({ dispatchRejectionNotification }) =>
         dispatchRejectionNotification({
-          companySlug,
+          companySlug: companySlug || "_unknown",
           invoiceId: invoiceId ?? null,
           externalUuid: input.externalUuid || null,
           authority: input.authority,
@@ -379,7 +406,8 @@ export class WebhookBodyTooLargeError extends Error {
 export function safeJsonParse<T = unknown>(raw: string): T | null {
   try {
     return JSON.parse(raw) as T;
-  } catch {
+  } catch (error) {
+    logger.warn("[e-invoicing:webhooks] safeJsonParse failed", { error });
     return null;
   }
 }

@@ -14,6 +14,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, Plus, Package, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -115,7 +116,7 @@ export function ProductPicker({
 
       setOptions(products);
     } catch (err) {
-      console.error("[ProductPicker] Search error:", err);
+      logger.error("[ProductPicker] Search error:", { err });
       setOptions([]);
     } finally {
       setLoading(false);
@@ -124,6 +125,7 @@ export function ProductPicker({
 
   // ─── Debounced Search ────────────────────────────────────────────────
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (debounceTimer) clearTimeout(debounceTimer);
     
@@ -145,6 +147,7 @@ export function ProductPicker({
       if (timer) clearTimeout(timer);
     };
   }, [query, searchProducts]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // ─── Click Outside Handler ───────────────────────────────────────────
 

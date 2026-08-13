@@ -27,7 +27,7 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     'no-debugger': 'warn',
     'no-unreachable': 'error',
     'react-hooks/exhaustive-deps': 'warn',
-    '@next/next/no-img-element': 'off', // many raw img tags exist, don't block build
+    '@next/next/no-img-element': 'warn',
   },
 }, {
   ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]

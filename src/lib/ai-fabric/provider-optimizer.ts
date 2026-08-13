@@ -62,6 +62,10 @@ const TASK_CAPABILITY_MAP: Record<AIRequestType, string> = {
   // This is a chat-style JSON extraction — maps to "chat" capability
   matching: "chat",
 
+  // AI-02 FIX (Audit v2 · Phase 1): added chat + extraction request types
+  chat: "chat",
+  extraction: "invoice-extraction",
+
   // Default fallback
   other: "chat",
 };
@@ -98,6 +102,15 @@ const DEFAULT_PROVIDERS: Record<AIRequestType, { primary: string; fallback: stri
   },
   other: {
     primary: "smart-router:chat",
+    fallback: "legacy:z-ai-glm",
+  },
+  // AI-02 FIX (Audit v2 · Phase 1): added chat + extraction
+  chat: {
+    primary: "smart-router:chat",
+    fallback: "legacy:z-ai-glm",
+  },
+  extraction: {
+    primary: "smart-router:invoice-extraction",
     fallback: "legacy:z-ai-glm",
   },
 };

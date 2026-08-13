@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * rbac.test.ts — 50 tests for the enhanced RBAC system.
  *

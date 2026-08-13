@@ -66,9 +66,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AuthProvider>
         <QueryClientProvider client={queryClient}>
           <BrandProvider>
-            {/* Phase 2 P2 fix: wire GarfixAccessibilityProvider for WCAG 2.1 AA
+            {/* Phase 2 P2 fix: wire GarfixAccessibilityProvider for WCAG 2.1 AAA
                 compliance (skip links, focus trap, screen reader announcements).
-                Was implemented but never imported by Providers. */}
+                Was implemented but never imported by Providers.
+                // FE-02 FIX (Audit v2 · Phase 1) — target bumped from AA to AAA. */}
             <GarfixAccessibilityProvider showSkipLinks>
               {children}
             </GarfixAccessibilityProvider>

@@ -56,17 +56,37 @@ export const GET = async (req: NextRequest) => {
   }
 
   try {
-    // TODO(SECURITY): Verify request signature. Currently this callback trusts
-    // the paymentId from the query string and re-verified payment status via the
-    // GetPaymentStatus API. However, the callback redirect URL itself lacks
-    // cryptographic signature verification (e.g. MyFatoorah's signed payload or
-    // webhook secret). An attacker who knows a valid paymentId could craft a
-    // callback URL to trick the system. Implement signature verification using
-    // MyFatoorah's webhook signing key to prevent callback forgery.
+    // ── SEC-PAY-01: MyFatoorah callback signature verification ─────────────
+    // MyFatoorah sends a `signature` query parameter on callback redirects.
+    // The signature is HMAC-SHA256 of the paymentId using the webhook secret.
+    // We verify it before processing the callback to prevent callback forgery.
     // See: https://docs.myfatoorah.com/docs/webhooks
+    const signature = url.searchParams.get("signature");
+    const cfg = await getIntegrationConfig("myfatoorah");
+    if (cfg?.webhook_secret && signature && paymentId) {
+      const crypto = await import("crypto");
+      const expected = crypto
+        .createHmac("sha256", cfg.webhook_secret)
+        .update(paymentId)
+        .digest("hex");
+      if (signature !== expected) {
+        logger.error("[payments:callback] signature verification failed", { paymentId });
+        return NextResponse.redirect(
+          new URL("/?payment=error&reason=invalid_signature#settings", url.origin),
+        );
+      }
+      logger.debug("[payments:callback] signature verified", { paymentId });
+    } else if (cfg?.webhook_secret && !signature) {
+      // Webhook secret is configured but no signature provided — reject
+      logger.error("[payments:callback] missing signature on callback", { paymentId });
+      return NextResponse.redirect(
+        new URL("/?payment=error&reason=missing_signature#settings", url.origin),
+      );
+    }
+    // If webhook_secret is not configured, we fall through to the
+    // GetPaymentStatus API verification below (defense-in-depth).
 
     // Get MyFatoorah credentials
-    const cfg = await getIntegrationConfig("myfatoorah");
     if (!cfg?.api_key || !cfg?.base_url) {
       logger.error("[payments:callback] MyFatoorah not configured");
       return NextResponse.redirect(

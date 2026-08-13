@@ -186,27 +186,59 @@ export function verifyRefreshToken(token: string): { uid: string; tv: number } |
 /**
  * Check if a token's JTI is blacklisted.
  * Returns true if blacklisted (token should be rejected).
+ *
+ * SEC-04 FIX (Audit v2 · Phase 2): Fail-CLOSED for security-critical reads.
+ * Previously, if Valkey was down, this returned `false` (accept the token) —
+ * meaning a revoked token (from logout/password change) would be accepted
+ * during a Valkey outage. Now it returns `true` (reject the token) when
+ * Valkey is unavailable, forcing re-authentication.
+ *
+ * The fail-closed behavior is gated by `VALKEY_FAIL_MODE` env var:
+ *   - "closed" (default for production): reject on Valkey failure
+ *   - "open" (legacy/dev): accept on Valkey failure
  */
 export async function isTokenBlacklisted(jti: string): Promise<boolean> {
   const client = await getValkeyClient();
-  if (!client) return false; // No Valkey = no blacklist = accept
+  if (!client) {
+    // SEC-04: Fail-CLOSED — if no Valkey, assume token is blacklisted
+    // This forces re-authentication during outages (safer than accepting)
+    const failMode = process.env.VALKEY_FAIL_MODE || "closed";
+    if (failMode === "open") return false; // Legacy/dev behavior
+    console.warn("[auth] Valkey unavailable — fail-closed (rejecting token)");
+    return true;
+  }
   try {
     return (await client.exists(`token:blacklist:${jti}`)) > 0;
-  } catch {
-    return false; // Fail-open
+  } catch (err) {
+    // SEC-04: Fail-CLOSED on Valkey errors too
+    const failMode = process.env.VALKEY_FAIL_MODE || "closed";
+    if (failMode === "open") return false;
+    console.warn("[auth] Valkey blacklist check failed — fail-closed", {
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return true;
   }
 }
 
 /**
  * Blacklist a token by its JTI for the remaining TTL.
+ *
+ * SEC-04 FIX (Audit v2 · Phase 2): Fail-CLOSED for writes.
+ * If blacklisting fails (Valkey down), throw an error so the caller
+ * knows the revocation didn't happen. Previously this silently swallowed
+ * the error, meaning logout/password-change didn't actually revoke the token.
  */
 export async function blacklistToken(jti: string, remainingTtlSeconds: number): Promise<void> {
   const client = await getValkeyClient();
-  if (!client || remainingTtlSeconds <= 0) return;
+  if (!client || remainingTtlSeconds <= 0) {
+    // SEC-04: If Valkey is down, we can't blacklist — throw so caller knows
+    throw new Error("Cannot blacklist token: Valkey unavailable");
+  }
   try {
     await client.set(`token:blacklist:${jti}`, "1", "EX", remainingTtlSeconds);
-  } catch {
-    // Fail silently — blacklist is best-effort
+  } catch (err) {
+    // SEC-04: Don't swallow — caller must know revocation failed
+    throw new Error(`Failed to blacklist token: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -295,7 +327,7 @@ export async function issueSession(
       const decoded = jwt.decode(accessToken) as jwt.JwtPayload | null;
       const jti = decoded?.jti as string | undefined;
       if (jti) {
-        const ip = getClientIpFromRequest(req);
+        const ip = await getClientIpFromRequest(req);
         const ua = req.headers.get("user-agent") || undefined;
         // Dynamic import avoids a circular dep at module load (passwordPolicy
         // imports db which imports logger which is fine, but keeping the
@@ -318,17 +350,24 @@ export async function issueSession(
   }
 }
 
-/** Extract client IP from a NextRequest, honoring X-Forwarded-For chains. */
-function getClientIpFromRequest(req: NextRequest): string | undefined {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) {
-    // First IP in the chain is the original client
-    return xff.split(",")[0]?.trim() || undefined;
-  }
-  // Next.js 15+ exposes req.ip in some runtimes; fall back to x-real-ip
-  return (req as unknown as { ip?: string }).ip
-    || req.headers.get("x-real-ip")
-    || undefined;
+/**
+ * Extract client IP from a NextRequest.
+ *
+ * SEC-09 FIX (Audit v2 · Phase 0 merged): Previously this function read
+ * `x-forwarded-for` directly WITHOUT checking TRUSTED_PROXIES — an attacker
+ * could spoof the header and inject arbitrary IPs into audit logs (masking
+ * their real origin or framing other users). Now we delegate to the trusted
+ * getClientIp() in rateLimit.ts, which only honors forwarded headers when
+ * the immediate peer is a configured trusted proxy.
+ *
+ * Async to allow dynamic import (avoids circular dependency at module load
+ * time — rateLimit.ts imports from auth.ts for LIMITS).
+ */
+async function getClientIpFromRequest(req: NextRequest): Promise<string | undefined> {
+  // Dynamic import to avoid potential circular dependency at module load time
+  const { getClientIp } = await import("./rateLimit");
+  const ip = getClientIp(req);
+  return ip !== "unknown" ? ip : undefined;
 }
 
 export async function clearSession(response: NextResponse): Promise<void> {

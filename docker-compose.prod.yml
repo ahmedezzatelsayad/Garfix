@@ -107,6 +107,15 @@ services:
       SENTRY_DSN: ${SENTRY_DSN:-}
     volumes:
       - app-storage:/app/storage
+    # TPD-11 FIX (Audit v2 · Phase 3): read-only root filesystem + tmpfs /tmp.
+    #   - read_only: the container's root FS is immutable; any attempt to write
+    #     outside the explicitly-writable paths fails. An attacker who achieves
+    #     RCE cannot persist a backdoor on disk.
+    #   - tmpfs /tmp with noexec/nosuid: writable scratch space for Node temp
+    #     files, but binaries dropped here CANNOT be executed (noexec) and
+    #     setuid bits are ignored (nosuid). 128MB cap prevents memory pressure.
+    #   - /app/storage is the only persistent writable path, backed by a named
+    #     volume — survives container restarts, can be snapshotted separately.
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=128m

@@ -405,6 +405,7 @@ export default function AIDashboardPage() {
 
   // Initial fetch + auto-refresh
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching with auto-refresh interval
     fetchMetrics();
     
     if (autoRefresh) {
@@ -645,8 +646,8 @@ export default function AIDashboardPage() {
                   🔔 التنبيهات ({data.data.alerts.length})
                 </h3>
                 <div className="grid gap-3 md:grid-cols-2">
-                  {data.data.alerts.map((alert, i) => (
-                    <AlertCard key={i} alert={alert} />
+                  {data.data.alerts.map((alert) => (
+                    <AlertCard key={alert.timestamp} alert={alert} />
                   ))}
                 </div>
               </div>
@@ -661,8 +662,8 @@ export default function AIDashboardPage() {
                     🤖 أداء العاملين
                   </h3>
                   <div className="space-y-3">
-                    {data.data.workers.map((worker, i) => (
-                      <WorkerCard key={i} worker={worker} />
+                    {data.data.workers.map((worker) => (
+                      <WorkerCard key={worker.type} worker={worker} />
                     ))}
                   </div>
                 </div>
@@ -675,8 +676,8 @@ export default function AIDashboardPage() {
                     🔑 حالة المفاتيح
                   </h3>
                   <div className="space-y-3">
-                    {data.data.keys.map((key, i) => (
-                      <KeyHealthCard key={i} k={key} />
+                    {data.data.keys.map((key) => (
+                      <KeyHealthCard key={key.id} k={key} />
                     ))}
                   </div>
                 </div>
@@ -698,8 +699,8 @@ export default function AIDashboardPage() {
             </div>
             
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.data.keys.map((key, i) => (
-                <KeyHealthCard key={i} k={key} />
+              {data.data.keys.map((key) => (
+                <KeyHealthCard key={key.id} k={key} />
               ))}
             </div>
           </div>
@@ -713,8 +714,8 @@ export default function AIDashboardPage() {
             </h3>
             
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.data.workers.map((worker, i) => (
-                <WorkerCard key={i} worker={worker} />
+              {data.data.workers.map((worker) => (
+                <WorkerCard key={worker.type} worker={worker} />
               ))}
             </div>
 
@@ -730,10 +731,10 @@ export default function AIDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {data.data.workers.map((worker, i) => {
+                  {data.data.workers.map((worker) => {
                     const info = WORKER_NAMES[worker.type] || { ar: worker.type, icon: '🤖' };
                     return (
-                      <tr key={i} className="hover:bg-gray-50">
+                      <tr key={worker.type} className="hover:bg-gray-50">
                         <td className="px-4 py-3 font-medium">
                           <span className="ml-2">{info.icon}</span>
                           {info.ar}

@@ -73,7 +73,8 @@ function PaginationPrevious({
     <PaginationLink
       aria-label="Go to previous page"
       size="default"
-      className={cn("gap-1 px-2.5 sm:pl-2.5", className)}
+      // FE-06 FIX (Audit v2 · Phase 2): sm:pl-2.5 → sm:ps-2.5 (logical, RTL-safe)
+      className={cn("gap-1 px-2.5 sm:ps-2.5", className)}
       {...props}
     >
       <ChevronLeftIcon />
@@ -90,7 +91,8 @@ function PaginationNext({
     <PaginationLink
       aria-label="Go to next page"
       size="default"
-      className={cn("gap-1 px-2.5 sm:pr-2.5", className)}
+      // FE-06 FIX (Audit v2 · Phase 2): sm:pr-2.5 → sm:pe-2.5 (logical, RTL-safe)
+      className={cn("gap-1 px-2.5 sm:pe-2.5", className)}
       {...props}
     >
       <span className="hidden sm:block">Next</span>

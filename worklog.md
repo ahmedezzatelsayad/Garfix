@@ -2386,3 +2386,21 @@ Stage Summary:
   1. Architecture documented in ADR-007 (3 alternatives considered, decision rationale, consequences, security considerations)
   2. Admin can click "Send Test Webhook" green button in any country's WebhookUrlHelper → triggers a real signed test payload through the full pipeline → shows receipt id + signature valid status + latency inline
   3. Founder dashboard now shows live webhook throughput: 24h aggregates + hourly chart + by-country breakdown + top 5 companies (auto-refreshing every 60s)
+
+## Task 4a — Fix WebhookManagementView type shadowing
+
+**Problem:** 3 TypeScript TS2352 errors in `WebhookManagementView.tsx` caused by local interfaces (`WebhookEndpoint`, `WebhookDelivery`, `EventType`) shadowing hook types with different field shapes, making `as` casts fail.
+
+**Root cause:**
+- Local `WebhookEndpoint` had `events: string` + `updatedAt` vs hook's `events: string[]` + index signature
+- Local `WebhookDelivery` had `eventType`, `statusCode`, `maxAttempts`, etc. vs hook's minimal `event` + `status`
+- Local `EventType` ({id, label, labelAr, group, description}) vs hook's `WebhookEvent` ({type, timestamp, payload}) — completely different shapes
+
+**Fix applied:**
+1. Renamed local interfaces to `WebhookEndpointLocal`, `WebhookDeliveryLocal`, `EventTypeLocal` to eliminate shadowing
+2. Changed `as X[]` casts to `as unknown as XLocal[]` since the API actually returns data matching the local types (the hook types are under-declared)
+3. Updated the `handleEditEndpoint` parameter type to `WebhookEndpointLocal`
+
+**Verification:** `npx tsc --noEmit` — zero errors for `WebhookManagementView.tsx`
+
+**Modified files:** `src/modules/admin/WebhookManagementView.tsx`

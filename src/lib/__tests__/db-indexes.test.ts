@@ -84,11 +84,11 @@ const EXPECTED_INDEXES: Array<{
   // BankTransaction
   { model: "BankTransaction", table: "bank_transactions", columns: ["bankAccountId"], indexName: "bank_transactions_bankAccountId_idx", rationale: "FK — bank reconciliation" },
   { model: "BankTransaction", table: "bank_transactions", columns: ["date"], indexName: "bank_transactions_date_idx", rationale: "date-range queries" },
-  // BudgetLine — note: Prisma preserves the model name as the table name
-  // ("BudgetLine", PascalCase). The migration has a comment about this.
-  { model: "BudgetLine", table: "BudgetLine", columns: ["budgetId"], indexName: "BudgetLine_budgetId_idx", rationale: "FK — budget detail view" },
-  { model: "BudgetLine", table: "BudgetLine", columns: ["accountId"], indexName: "BudgetLine_accountId_idx", rationale: "FK — chart-of-accounts filtering" },
-  { model: "BudgetLine", table: "BudgetLine", columns: ["costCenterId"], indexName: "BudgetLine_costCenterId_idx", rationale: "FK — cost-center filtering" },
+  // BudgetLine — note: Prisma maps this model to the "budget_lines" table
+  // via @@map("budget_lines"). The actual table name is budget_lines.
+  { model: "BudgetLine", table: "budget_lines", columns: ["budgetId"], indexName: "budget_lines_budgetId_idx", rationale: "FK — budget detail view" },
+  { model: "BudgetLine", table: "budget_lines", columns: ["accountId"], indexName: "budget_lines_accountId_idx", rationale: "FK — chart-of-accounts filtering" },
+  { model: "BudgetLine", table: "budget_lines", columns: ["costCenterId"], indexName: "budget_lines_costCenterId_idx", rationale: "FK — cost-center filtering" },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -65,4 +65,12 @@ prompt
 
 server.log
 # Skills directory
-/skills/
+/skills/.env
+.env
+skills/
+upload/
+
+# Vim swap files (never commit)
+.*.swp
+*.swp
+*.swo

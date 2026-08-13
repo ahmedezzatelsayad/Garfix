@@ -21,9 +21,51 @@
  * returns 429 (rate limit) or times out (> latencyCapMs), the router
  * immediately moves to the next model — the user never sees the failure.
  */
+// AI-03 FIX (Audit v2 · Phase 2): Smart Router activation.
+//
+// Background: the Smart Router was previously dead code because AIModelRegistry
+// lacked the `capabilities` column (added by AI-01 in Phase 1). With the column
+// now in place, `getModelsForCapability(cap)` returns real candidates and
+// `callAIWithFallback` consults the registry BEFORE the legacy chain.
+//
+// This block formalises the contract:
+//   (1) `routeRequest(cap)` queries `getModelsForCapability(cap)` as the
+//       PRIMARY selection path (registry-first).
+//   (2) The legacy `getAiProviders()` chain is only consulted as a fallback
+//       when the registry is empty OR every registry model fails.
+//   (3) Every routing decision is logged with the capability so the founder
+//       dashboard / audit trail can trace which model answered which kind
+//       of request.
 import { getModelsForCapability, resolveProviderConfigForModel, type RegistryEntry, type AICapability } from "./modelRegistry";
 import type { ChatMessage, ChatResult, AiProviderConfig, ProviderType } from "@/lib/aiProvider";
 import { logger } from "@/lib/logger";
+
+/**
+ * Log a routing decision so the audit trail records which capability was
+ * requested and which model was selected to answer it. AI-03 contract.
+ */
+function logRouteDecision(
+  capability: AICapability,
+  decision: RouteDecision,
+  usedModel: RegistryEntry | null,
+): void {
+  // AI-03 FIX (Audit v2 · Phase 2): routing decisions are now logged with
+  // the capability, the selected primary model (if any), the fallback chain
+  // length, and whether the legacy chain was used. This makes Smart Router
+  // behaviour observable end-to-end.
+  const primary = decision.primary;
+  logger.info("[smartRouter] routing decision", {
+    capability,
+    usedLegacyFallback: decision.usedLegacyFallback,
+    primaryProvider: primary?.provider ?? null,
+    primaryModel: primary?.model ?? null,
+    primaryHealthScore: primary?.healthScore ?? null,
+    fallbackCount: decision.fallbacks.length,
+    usedProvider: usedModel?.provider ?? null,
+    usedModel: usedModel?.model ?? null,
+    reason: decision.reason,
+  });
+}
 
 export interface RouteDecision {
   capability: AICapability;
@@ -106,20 +148,39 @@ export async function callAIWithFallback(
   if (!capability) {
     const { callAI } = await import("@/lib/aiProvider");
     const result = await callAI(options);
+    const decision: RouteDecision = {
+      capability: "chat",
+      primary: null,
+      fallbacks: [],
+      usedLegacyFallback: true,
+      reason: "No capability specified — legacy provider chain used.",
+    };
+    // AI-03 FIX (Audit v2 · Phase 2): log the routing decision (capability +
+    // legacy fallback reason) so the audit trail records WHY the registry
+    // was bypassed.
+    logRouteDecision("chat", decision, null);
     return {
       ...result,
-      routeDecision: {
-        capability: "chat",
-        primary: null,
-        fallbacks: [],
-        usedLegacyFallback: true,
-        reason: "No capability specified — legacy provider chain used.",
-      },
+      routeDecision: decision,
       usedModel: null,
     };
   }
 
   const decision = await routeRequest(capability);
+
+  // AI-03 FIX (Audit v2 · Phase 2): when the registry has no candidate,
+  // log the routing decision BEFORE delegating to the legacy chain so the
+  // audit trail captures the capability that triggered the fallback.
+  if (decision.usedLegacyFallback) {
+    logRouteDecision(capability, decision, null);
+    const { callAI } = await import("@/lib/aiProvider");
+    const legacy = await callAI(options);
+    return {
+      ...legacy,
+      routeDecision: decision,
+      usedModel: null,
+    };
+  }
 
   // Build the ordered chain to attempt: registry primary + fallbacks
   const chain: RegistryEntry[] = [];
@@ -172,6 +233,11 @@ export async function callAIWithFallback(
         });
       }
 
+      // AI-03 FIX (Audit v2 · Phase 2): log the routing decision with the
+      // capability AND the model that actually answered. This is the
+      // observability contract — every AI call must be traceable to the
+      // capability + model pair that produced it.
+      logRouteDecision(capability, decision, entry);
       return {
         ...result,
         routeDecision: decision,
@@ -193,7 +259,13 @@ export async function callAIWithFallback(
   logger.warn("[smartRouter] registry chain exhausted — legacy fallback", {
     capability,
     triedCount: chain.length,
+    lastErr: lastErr instanceof Error ? lastErr.message.slice(0, 200) : String(lastErr),
   });
+  // AI-03 FIX (Audit v2 · Phase 2): log the routing decision so the audit
+  // trail records that the registry WAS consulted (decision.usedLegacyFallback
+  // stays false because we DID try registry models) but the legacy chain had
+  // to take over at runtime.
+  logRouteDecision(capability, decision, null);
   const { callAI } = await import("@/lib/aiProvider");
   const legacy = await callAI(options);
   return {

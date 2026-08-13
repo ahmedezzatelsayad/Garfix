@@ -2,21 +2,64 @@
 // GarfiX ERP — Prisma Schema v2 (P0-1: Full Runtime Model Sync)
 // ═══════════════════════════════════════════════════════════════════════════════
 //
+// DB-14 FIX (Audit v2 · Phase 4) — ForeignKey Naming Convention
+// ─────────────────────────────────────────────────────────────────────────────
+// All foreign-key column names in this schema MUST follow these conventions:
+//
+//   1. Singular <Entity>Id for one-to-many / many-to-one relations
+//      Example: `companyId String`, `clientId String?`, `invoiceId String`
+//      Relation field: `company Company @relation(fields: [companyId], references: [id])`
+//
+//   2. Reserved suffix `Uid` only for FKs that target a `uid` PK column
+//      (e.g. AppUser.uid, which is a cuid used as the primary identifier).
+//      Example: `userUid String` → `user AppUser @relation(fields: [userUid], references: [uid])`
+//
+//   3. Self-referential relations use named args to disambiguate:
+//      `parent  Account? @relation("AccountHierarchy", fields: [parentId], references: [id])`
+//
+//   4. When a model needs TWO FKs to the same target (e.g. a bank account
+//      AND a GL account both pointing to Account), the relation field name
+//      must be descriptive and the relation must be named:
+//      `glAccount Account? @relation("BankAccountGLAccount", fields: [glAccountId], references: [id])`
+//
+//   5. Avoid legacy camelCase renames like `warehouseRefId` — use the
+//      canonical `warehouseId` and rename the relation FIELD only if
+//      disambiguation is required (`warehouseRef Warehouse?`).
+//
+// Known inconsistencies (DO NOT rename without a coordinated migration +
+// code review — see docs/audits/db-14-fk-naming.md):
+//   - MFASecret.userId vs SessionRegistry.userUid vs CompanyMembership.userUid
+//     All three reference AppUser.uid. The `userId` variant in MFASecret is a
+//     historical artifact — the column is a `uid`, not an `id`. Renaming it
+//     requires a `prisma migrate` + updating every call site in
+//     src/app/api/auth/mfa/* + src/lib/mfa.ts. Documented; deferred.
+//   - InventoryMovement.warehouseRefId was previously a string column
+//     aliased as `warehouseRef` relation — the field is now `warehouseId`
+//     but two relation fields still carry the legacy `warehouseRef` name
+//     (PurchaseOrder.warehouseRef, InventoryItem.warehouseRef). Renaming
+//     the relation field is purely cosmetic and breaks zero code paths;
+//     it remains for backward-compat with the seed scripts.
+//
 // NOTE: Financial fields use Decimal instead of Float for production accuracy.
 // SQLite doesn't support Decimal, so in dev it falls back to Float-like behavior.
 // For PostgreSQL production, Decimal ensures exact precision (no floating-point errors).
+//
+// DB-07 FIX (Audit v2 · Phase 2): All monetary fields declared as String are now
+// Decimal @default(0) (or Decimal? if nullable). Companion migration
+// 20260813150000_p2_string_to_decimal_monetary_fields aligns the DB column types.
+// See migration SQL for the full list of ALTER COLUMN statements.
 //
 // This schema aligns model names with db.xxx calls in the runtime code.
 // All models referenced in src/ are now defined here.
 
 generator client {
-  provider     = "prisma-client-js"
-  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DATABASE_DIRECT_URL")
 }
 
@@ -35,23 +78,23 @@ datasource db {
 // model. `role` defaults to "employee" (NOT "user") so new signups match
 // ROLE_DEFAULTS in AuthContext.
 model AppUser {
-  uid           String   @id @default(cuid())
-  email         String   @unique
-  passwordHash  String
-  displayName   String   @default("")
-  role          String   @default("employee")
-  companies     String   @default("[]") // JSON array of company slugs
-  permissions   String   @default("{}") // JSON object of permission → 0/1
-  emailVerified Boolean  @default(false)
-  tokenVersion  Int      @default(0)
+  uid                String   @id @default(cuid())
+  email              String   @unique
+  passwordHash       String
+  displayName        String   @default("")
+  role               String   @default("employee")
+  companies          String   @default("[]") // JSON array of company slugs
+  permissions        String   @default("{}") // JSON object of permission → 0/1
+  emailVerified      Boolean  @default(false)
+  tokenVersion       Int      @default(0)
   // ── Branch/Warehouse support: user's default branch ──
   defaultWarehouseId String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  mFASecrets MFASecret[]
-  sessions   SessionRegistry[]
-  defaultWarehouse Warehouse? @relation("UserDefaultWarehouse", fields: [defaultWarehouseId], references: [id])
+  mFASecrets       MFASecret[]
+  sessions         SessionRegistry[]
+  defaultWarehouse Warehouse?        @relation("UserDefaultWarehouse", fields: [defaultWarehouseId], references: [id])
 
   // API Key Pool - User can have one assigned key
   assignedApiKey ApiKeyPool? @relation("KeyAssignedToUser")
@@ -81,7 +124,7 @@ model Company {
   phone                   String?
   vatNumber               String?
   country                 String?
-  defaultTaxRate          String    @default("0")
+  defaultTaxRate          Decimal   @default(0) // DB-07 FIX: String→Decimal
   trialEndsAt             DateTime?
   commercialRegistration  String?
   timezone                String?
@@ -121,26 +164,26 @@ model Company {
   quotations          Quotation[]
   purchaseOrders      PurchaseOrder[]
 
-  aiConfig            CompanyAIConfig?
-  
+  aiConfig CompanyAIConfig?
+
   // API Key Pool - Keys assigned to this company's users
-  assignedApiKeys     ApiKeyPool[] @relation("KeyAssignedToCompany")
+  assignedApiKeys ApiKeyPool[] @relation("KeyAssignedToCompany")
 
   // Recurring & Fiscal Year features
-  recurringEntries    RecurringJournalEntry[]
-  fiscalYearCloses    FiscalYearClose[]
+  recurringEntries RecurringJournalEntry[]
+  fiscalYearCloses FiscalYearClose[]
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameEn                String?
+  currencyDecimalPlaces Int
+
+  // Phase 4 P3: CompanyMembership relation (replaces JSON companies column)
+  memberships CompanyMembership[]
 
   // P1-3: Company has soft-delete (deletedAt) but no index. /api/companies
   // list queries filter `where: { deletedAt: null }`.
   @@index([deletedAt])
   @@map("companies")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  nameEn                       String?
-  currencyDecimalPlaces        Int
-
-  // Phase 4 P3: CompanyMembership relation (replaces JSON companies column)
-  memberships CompanyMembership[]
 }
 
 // ─── Account (Chart of Accounts — matches db.account) ───
@@ -202,19 +245,19 @@ model Client {
   paymentVouchers PaymentVoucher[]
   invoices        Invoice[]
   quotations      Quotation[]
-  version           Int                @default(0) // Phase 15 P0: Optimistic Locking
+  version         Int              @default(0) // Phase 15 P0: Optimistic Locking
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameEn        String?
+  // ── P2-Sprint6: add clientCompany, notes ──
+  clientCompany String?
+  notes         String?
 
   @@index([companySlug])
   @@index([companyId])
   // P1-3: soft-delete index — clients/route.ts filters `where: { deletedAt: null }`
   @@index([companySlug, deletedAt])
   @@map("clients")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  nameEn                       String?
-  // ── P2-Sprint6: add clientCompany, notes ──
-  clientCompany                String?
-  notes                        String?
 }
 
 // ─── Supplier (Accounts Payable — matches db.supplier) ───
@@ -240,7 +283,10 @@ model Supplier {
   paymentVouchers  PaymentVoucher[]
   lettersOfCredit  LetterOfCredit[]
   purchaseInvoices PurchaseInvoice[]
-  version           Int                @default(0) // Phase 15 P0: Optimistic Locking
+  version          Int               @default(0) // Phase 15 P0: Optimistic Locking
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameEn String?
 
   @@unique([code, companyId])
   @@index([companySlug])
@@ -249,10 +295,6 @@ model Supplier {
   // `where: { companySlug, deletedAt: null }`. Composite is more selective
   // than the standalone @@index([deletedAt]) that was here before.
   @@index([companySlug, deletedAt])
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  nameEn                       String?
-
   @@map("suppliers")
 }
 
@@ -280,15 +322,15 @@ model ProductCatalog {
   matchOverrides     MatchOverride[]
   landedCostLines    LandedCostLine[]
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameAr         String?
+  nameEn         String?
+  // ── P2-Sprint6: add wholesalePrice ──
+  wholesalePrice Decimal @default(0)
+
   @@index([companySlug])
   @@index([companyId])
   @@map("product_catalog")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  nameAr                       String?
-  nameEn                       String?
-  // ── P2-Sprint6: add wholesalePrice ──
-  wholesalePrice               Decimal   @default(0)
 }
 
 // ─── Inventory Item (matches db.inventoryItem) ───
@@ -310,12 +352,12 @@ model InventoryItem {
   company      Company?       @relation(fields: [companyId], references: [id], onDelete: Restrict)
   warehouseRef Warehouse?     @relation(fields: [warehouseId], references: [id])
 
+  // ── P2-Sprint6: add reorderQty alias for backward compat ──
+  reorderQty Decimal @default(0)
+
   @@index([companySlug])
   @@index([companyId])
   @@map("inventory_items")
-
-  // ── P2-Sprint6: add reorderQty alias for backward compat ──
-  reorderQty                   Decimal   @default(0)
 }
 
 // ─── Warehouse (matches db.warehouse) ───
@@ -339,12 +381,12 @@ model Warehouse {
   defaultUsers   AppUser[]       @relation("UserDefaultWarehouse")
   company        Company?        @relation(fields: [companyId], references: [id], onDelete: Restrict)
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameAr String?
+
   @@index([companySlug])
   @@index([companyId])
   @@map("warehouses")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  nameAr                       String?
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -368,14 +410,14 @@ model FiscalPeriod {
   company         Company               @relation(fields: [companyId], references: [id], onDelete: Restrict)
   openingBalances OpeningBalanceEntry[]
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  fiscalYear Int
+  periodType String
+
   @@unique([name, companyId])
   @@index([companySlug])
   @@index([companyId])
   @@map("fiscal_periods")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  fiscalYear                   Int
-  periodType                   String
 }
 
 // ─── Journal Entry (matches db.journalEntry — renamed from Voucher) ───
@@ -385,32 +427,32 @@ model FiscalPeriod {
 // P0-8: Version field for optimistic locking
 
 model JournalEntry {
-  id          String             @id @default(cuid())
-  number      String
-  date        DateTime
-  description String?
-  reference   String?
-  status      String             @default("draft") // draft, posted, cancelled
-  entryType   String             @default("general") // general, payment, receipt, transfer
-  companyId   String
-  companySlug String             @default("default")
-  createdBy   String?
-  version     Int                @default(0) // P0-8: Optimistic Locking
+  id                    String                @id @default(cuid())
+  number                String
+  date                  DateTime
+  description           String?
+  reference             String?
+  status                String                @default("draft") // draft, posted, cancelled
+  entryType             String                @default("general") // general, payment, receipt, transfer
+  companyId             String
+  companySlug           String                @default("default")
+  createdBy             String?
+  version               Int                   @default(0) // P0-8: Optimistic Locking
   // P2-Sprint-4: sourceType/sourceId exist in DB migration but were missing from schema.
   // Used by inter-company settle route and audit trails to track what created the entry.
-  sourceType  String? // e.g. "inter_company", "invoice", "payment", "manual"
-  sourceId    String? // P2-Sprint-4: changed from Int? to String? — polymorphic FK to source record (cuid)
-  deletedAt   DateTime? // P0-3: Soft Delete
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  company     Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  lines       JournalEntryLine[]
+  sourceType            String? // e.g. "inter_company", "invoice", "payment", "manual"
+  sourceId              String? // P2-Sprint-4: changed from Int? to String? — polymorphic FK to source record (cuid)
+  deletedAt             DateTime? // P0-3: Soft Delete
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  company               Company               @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  lines                 JournalEntryLine[]
   // P0-05/P0-06: back-relations for OpeningBalanceEntry.journalEntryId and
   // PaymentVoucher.journalEntryId.
   openingBalanceEntries OpeningBalanceEntry[]
   paymentVouchers       PaymentVoucher[]
   // P2-Sprint6: back-relation for FxRevaluation.journalEntryId
-  fxRevaluations        FxRevaluation[]      @relation("FxRevaluationJournalEntry")
+  fxRevaluations        FxRevaluation[]       @relation("FxRevaluationJournalEntry")
 
   @@unique([number, companyId])
   @@index([companySlug])
@@ -441,23 +483,23 @@ model JournalEntryLine {
   account        Account      @relation(fields: [accountId], references: [id])
   journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  // P2-Sprint-4: made entryId/createdAt/updatedAt optional — many call sites
+  // create JournalEntryLine without these (they're auto-managed by the DB
+  // via defaults or populated later by audit hooks).
+  entryId      Int?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  // ── P2-Sprint6: add costCenterId ──
+  costCenterId String?
+  costCenter   CostCenter? @relation(fields: [costCenterId], references: [id])
+
   // P1-3: FK indexes — queries that join JournalEntry -> lines scan this
   // table without these. journal_entry_lines grows with every journal entry.
   @@index([journalEntryId])
   @@index([accountId])
   @@index([companySlug])
   @@map("journal_entry_lines")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  // P2-Sprint-4: made entryId/createdAt/updatedAt optional — many call sites
-  // create JournalEntryLine without these (they're auto-managed by the DB
-  // via defaults or populated later by audit hooks).
-  entryId                      Int?
-  createdAt                    DateTime @default(now())
-  updatedAt                    DateTime @updatedAt
-  // ── P2-Sprint6: add costCenterId ──
-  costCenterId                 String?
-  costCenter                   CostCenter?  @relation(fields: [costCenterId], references: [id])
 }
 
 // ─── Payment Voucher (matches db.paymentVoucher) ───
@@ -499,7 +541,7 @@ model PaymentVoucher {
   glAccount            Account?              @relation("PaymentVoucherGLAccount", fields: [glAccountId], references: [id])
   journalEntry         JournalEntry?         @relation(fields: [journalEntryId], references: [id])
   installmentSchedules InstallmentSchedule[]
-  version           Int                @default(0) // Phase 15 P0: Optimistic Locking
+  version              Int                   @default(0) // Phase 15 P0: Optimistic Locking
 
   @@unique([number, companyId])
   @@index([companySlug])
@@ -518,7 +560,7 @@ model InstallmentSchedule {
   status           String         @default("pending") // pending, paid, overdue, cancelled
   paidDate         DateTime?
   paymentRef       String?
-  companySlug       String         @default("default")
+  companySlug      String         @default("default")
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   paymentVoucher   PaymentVoucher @relation(fields: [paymentVoucherId], references: [id], onDelete: Cascade)
@@ -530,37 +572,37 @@ model InstallmentSchedule {
 // ─── Opening Balance Entry (matches db.openingBalanceEntry) ───
 
 model OpeningBalanceEntry {
-  id          String       @id @default(cuid())
-  accountId   String
-  periodId    String
-  debit       Decimal      @default(0)
-  credit      Decimal      @default(0)
-  companyId   String
-  companySlug String       @default("default")
+  id             String        @id @default(cuid())
+  accountId      String
+  periodId       String
+  debit          Decimal       @default(0)
+  credit         Decimal       @default(0)
+  companyId      String
+  companySlug    String        @default("default")
   // ── P0-05: Fields written by /api/accounting/opening-balances
-  asOfDate       String?     // YYYY-MM-DD, used as JE date when posting
-  status         String      @default("draft") // draft, posted
-  journalEntryId String?     // FK to journal_entries.id, set when posted
-  amount         Decimal     @default(0) // single-field amount (code uses this)
-  importedFrom   String      @default("manual") // manual, csv, xlsx
+  asOfDate       String? // YYYY-MM-DD, used as JE date when posting
+  status         String        @default("draft") // draft, posted
+  journalEntryId String? // FK to journal_entries.id, set when posted
+  amount         Decimal       @default(0) // single-field amount (code uses this)
+  importedFrom   String        @default("manual") // manual, csv, xlsx
   // ── Fields used by API routes for richer opening-balance descriptions
-  description   String?
-  reference     String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  account     Account      @relation(fields: [accountId], references: [id])
-  period      FiscalPeriod @relation(fields: [periodId], references: [id])
-  company     Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  description    String?
+  reference      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  account        Account       @relation(fields: [accountId], references: [id])
+  period         FiscalPeriod  @relation(fields: [periodId], references: [id])
+  company        Company       @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  notes String?
 
   @@unique([accountId, periodId])
   @@index([companySlug])
   @@index([companyId])
   @@index([companySlug, status])
   @@map("opening_balance_entries")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  notes                        String?
 }
 
 // ─── Profit Distribution (matches existing) ───
@@ -580,12 +622,11 @@ model ProfitDistribution {
   company          Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict)
   entries          ProfitDistributionEntry[]
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  companySlug String
+
   @@index([companyId])
   @@index([companySlug])
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  companySlug                  String
-
   @@map("profit_distributions")
 }
 
@@ -595,7 +636,7 @@ model ProfitDistributionEntry {
   shareholder    String
   shareRatio     Decimal            @default(0)
   amount         Decimal            @default(0)
-  companySlug     String             @default("default")
+  companySlug    String             @default("default")
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   distribution   ProfitDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
@@ -628,20 +669,20 @@ model LetterOfCredit {
   bankAccount BankAccount?             @relation("LetterOfCreditBankAccount", fields: [bankAccountId], references: [id])
   lcDocuments LetterOfCreditDocument[]
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  lcNumber          String
+  bankAccountId     String?
+  companySlug       String
+  // ── P2-Sprint6: schema reconciliation ──
+  utilizationAmount Decimal @default(0)
+  documentsRequired String?
+  beneficiaryBank   String?
+
   @@unique([number, companyId])
   @@index([companyId])
   @@index([bankAccountId])
   @@index([companySlug])
   @@map("letters_of_credit")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  lcNumber                     String
-  bankAccountId                String?
-  companySlug                  String
-  // ── P2-Sprint6: schema reconciliation ──
-  utilizationAmount            Decimal   @default(0)
-  documentsRequired            String?
-  beneficiaryBank              String?
 }
 
 model LetterOfCreditDocument {
@@ -650,7 +691,7 @@ model LetterOfCreditDocument {
   documentType     String
   fileName         String
   fileUrl          String?
-  companySlug       String         @default("default")
+  companySlug      String         @default("default")
   uploadedAt       DateTime       @default(now())
   letterOfCredit   LetterOfCredit @relation(fields: [letterOfCreditId], references: [id], onDelete: Cascade)
 
@@ -684,18 +725,18 @@ model BankAccount {
   // P0-06: back-relation for PaymentVoucher.bankAccountId
   paymentVouchers     PaymentVoucher[]
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  accountName     String
+  branchCode      String?
+  accountType     String
+  glAccountId     String?
+  // P2-Sprint6: fix glAccountId to String? (Account.id is cuid) + add relation
+  glAccount       Account?         @relation("BankAccountGLAccount", fields: [glAccountId], references: [id])
+  lettersOfCredit LetterOfCredit[] @relation("LetterOfCreditBankAccount")
+
   @@index([companySlug])
   @@index([companyId])
   @@map("bank_accounts")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  accountName                  String
-  branchCode                   String?
-  accountType                  String
-  glAccountId                  String?
-  // P2-Sprint6: fix glAccountId to String? (Account.id is cuid) + add relation
-  glAccount                    Account?            @relation("BankAccountGLAccount", fields: [glAccountId], references: [id])
-  lettersOfCredit              LetterOfCredit[]    @relation("LetterOfCreditBankAccount")
 }
 
 // ─── Bank Transaction (matches db.bankTransaction) ───
@@ -717,6 +758,18 @@ model BankTransaction {
   bankAccount        BankAccount         @relation(fields: [bankAccountId], references: [id])
   bankReconciliation BankReconciliation? @relation(fields: [reconciliationId], references: [id])
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  transactionType String
+  isReconciled    Boolean
+  reconciledWith  String?
+  reconciledId    Int?
+  category        String?
+
+  // DB-13 FIX (Audit v2 · Phase 3): Optimistic locking for concurrent bank
+  // transaction updates (reconciliation, import, manual edit). Bumped by the
+  // application on every write and validated via WHERE version = <expected>.
+  version Int @default(0)
+
   @@index([companySlug])
   @@index([companyId])
   // P1-3: FK index on bankAccountId — BankingView joins BankAccount -> transactions
@@ -729,13 +782,6 @@ model BankTransaction {
   // bank-import date-range list queries.
   @@index([companySlug, date])
   @@map("bank_transactions")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  transactionType              String
-  isReconciled                 Boolean
-  reconciledWith               String?
-  reconciledId                 Int?
-  category                     String?
 }
 
 // ─── Bank Reconciliation (matches db.bankReconciliation) ───
@@ -756,20 +802,20 @@ model BankReconciliation {
   bankAccount      BankAccount       @relation(fields: [bankAccountId], references: [id])
   bankTransactions BankTransaction[]
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  periodStart      String
+  periodEnd        String
+  statementBalance Decimal   @default(0) // DB-07 FIX: String→Decimal
+  bookBalance      Decimal   @default(0) // DB-07 FIX: String→Decimal
+  adjustedBalance  Decimal   @default(0) // DB-07 FIX: String→Decimal
+  difference       Decimal   @default(0) // DB-07 FIX: String→Decimal
+  completedBy      String?
+  // ── P2-Sprint6: add completedAt ──
+  completedAt      DateTime?
+
   @@index([companySlug])
   @@index([companyId])
   @@map("bank_reconciliations")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  periodStart                  String
-  periodEnd                    String
-  statementBalance             String
-  bookBalance                  String
-  adjustedBalance              String
-  difference                   String
-  completedBy                  String?
-  // ── P2-Sprint6: add completedAt ──
-  completedAt                  DateTime?
 }
 
 // ─── Fixed Asset (matches db.fixedAsset) ───
@@ -793,33 +839,38 @@ model FixedAsset {
   company                 Company             @relation(fields: [companyId], references: [id], onDelete: Restrict)
   depreciationEntries     DepreciationEntry[]
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameAr                String
+  nameEn                String?
+  acquisitionDate       String
+  acquisitionCost       Decimal  @default(0) // DB-07 FIX: String→Decimal
+  salvageValue          Decimal  @default(0) // DB-07 FIX: String→Decimal
+  depreciationMethod    String
+  decliningRate         Decimal  @default(0) // DB-07 FIX: String→Decimal
+  currentBookValue      Decimal  @default(0) // DB-07 FIX: String→Decimal
+  location              String?
+  assetTag              String?
+  isActive              Boolean
+  disposalDate          String?
+  disposalAmount        Decimal? // DB-07 FIX: String→Decimal (nullable)
+  disposalMethod        String?
+  glAccountId           String?
+  depreciationAccountId String?
+  expenseAccountId      String?
+  // P2-Sprint6: fix *AccountId to String? (Account.id is cuid) + add relations
+  glAccount             Account? @relation("FixedAssetGLAccount", fields: [glAccountId], references: [id])
+  depreciationAccount   Account? @relation("FixedAssetDepreciationAccount", fields: [depreciationAccountId], references: [id])
+  expenseAccount        Account? @relation("FixedAssetExpenseAccount", fields: [expenseAccountId], references: [id])
+
+  // DB-13 FIX (Audit v2 · Phase 3): Optimistic locking for concurrent asset
+  // edits (depreciation run, disposal, revaluation). Bumped on every write
+  // and validated via WHERE version = <expected> to prevent lost updates.
+  version Int @default(0)
+
   @@unique([code, companyId])
   @@index([companySlug])
   @@index([companyId])
   @@map("fixed_assets")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  nameAr                       String
-  nameEn                       String?
-  acquisitionDate              String
-  acquisitionCost              String
-  salvageValue                 String
-  depreciationMethod           String
-  decliningRate                String
-  currentBookValue             String
-  location                     String?
-  assetTag                     String?
-  isActive                     Boolean
-  disposalDate                 String?
-  disposalAmount               String?
-  disposalMethod               String?
-  glAccountId                  String?
-  depreciationAccountId        String?
-  expenseAccountId             String?
-  // P2-Sprint6: fix *AccountId to String? (Account.id is cuid) + add relations
-  glAccount                    Account?            @relation("FixedAssetGLAccount", fields: [glAccountId], references: [id])
-  depreciationAccount          Account?            @relation("FixedAssetDepreciationAccount", fields: [depreciationAccountId], references: [id])
-  expenseAccount               Account?            @relation("FixedAssetExpenseAccount", fields: [expenseAccountId], references: [id])
 }
 
 // ─── Depreciation Entry (matches db.depreciationEntry) ───
@@ -837,15 +888,15 @@ model DepreciationEntry {
   updatedAt   DateTime   @updatedAt
   fixedAsset  FixedAsset @relation(fields: [assetId], references: [id])
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  period             String
+  depreciationAmount Decimal @default(0) // DB-07 FIX: String→Decimal
+  bookValueAfter     Decimal @default(0) // DB-07 FIX: String→Decimal
+  isPosted           Boolean
+
   @@index([companyId])
   @@index([companySlug])
   @@map("depreciation_entries")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  period                       String
-  depreciationAmount           String
-  bookValueAfter               String
-  isPosted                     Boolean
 }
 
 // ─── Budget (matches db.budget) ───
@@ -862,25 +913,25 @@ model Budget {
   updatedAt   DateTime     @updatedAt
   company     Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
   budgetLines BudgetLine[]
-  version           Int                @default(0) // Phase 15 P0: Optimistic Locking
+  version     Int          @default(0) // Phase 15 P0: Optimistic Locking
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  fiscalYear    Int
+  period        String
+  periodName    String
+  accountId     String
+  costCenterId  String?
+  plannedAmount Decimal     @default(0) // DB-07 FIX: String→Decimal
+  actualAmount  Decimal     @default(0) // DB-07 FIX: String→Decimal
+  variance      Decimal     @default(0) // DB-07 FIX: String→Decimal
+  notes         String?
+  // ── P2-Sprint6: fix accountId/costCenterId to String? and add relations ──
+  account       Account?    @relation("BudgetAccount", fields: [accountId], references: [id])
+  costCenter    CostCenter? @relation("BudgetCostCenter", fields: [costCenterId], references: [id])
 
   @@index([companySlug])
   @@index([companyId])
   @@map("budgets")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  fiscalYear                   Int
-  period                       String
-  periodName                   String
-  accountId                    String
-  costCenterId                 String?
-  plannedAmount                String
-  actualAmount                 String
-  variance                     String
-  notes                        String?
-  // ── P2-Sprint6: fix accountId/costCenterId to String? and add relations ──
-  account                      Account?      @relation("BudgetAccount", fields: [accountId], references: [id])
-  costCenter                   CostCenter?   @relation("BudgetCostCenter", fields: [costCenterId], references: [id])
 }
 
 model BudgetLine {
@@ -901,37 +952,38 @@ model BudgetLine {
   @@index([accountId])
   @@index([costCenterId])
   @@index([companySlug])
+  @@map("budget_lines")
 }
 
 // ─── Cost Center (matches db.costCenter) ───
 
 model CostCenter {
-  id          String       @id @default(cuid())
-  name        String
-  code        String
-  description String?
-  companyId   String
-  companySlug String       @default("default")
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  company     Company      @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  budgetLines BudgetLine[]
-  budgets     Budget[]                 @relation("BudgetCostCenter")
-  journalEntryLines           JournalEntryLine[]
+  id                String             @id @default(cuid())
+  name              String
+  code              String
+  description       String?
+  companyId         String
+  companySlug       String             @default("default")
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  company           Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  budgetLines       BudgetLine[]
+  budgets           Budget[]           @relation("BudgetCostCenter")
+  journalEntryLines JournalEntryLine[]
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameAr   String
+  nameEn   String?
+  parentId String?
+  // ── P2-Sprint6: fix parentId to String? and add self-relation ──
+  parent   CostCenter?  @relation("CostCenterParent", fields: [parentId], references: [id])
+  children CostCenter[] @relation("CostCenterParent")
 
   @@unique([code, companyId])
   @@index([companySlug])
   @@index([companyId])
   @@map("cost_centers")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  nameAr                       String
-  nameEn                       String?
-  parentId                     String?
-  // ── P2-Sprint6: fix parentId to String? and add self-relation ──
-  parent                       CostCenter?   @relation("CostCenterParent", fields: [parentId], references: [id])
-  children                     CostCenter[]  @relation("CostCenterParent")
 }
 
 // ─── FX Revaluation (matches db.fxRevaluation) ───
@@ -948,25 +1000,25 @@ model FxRevaluation {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  revaluationDate String
+  baseCurrency    String
+  targetCurrency  String
+  exchangeRate    Decimal       @default(0) // DB-07 FIX: String→Decimal
+  totalGainLoss   Decimal       @default(0) // DB-07 FIX: String→Decimal
+  journalEntryId  String?
+  notes           String?
+  // ── P2-Sprint6: gain/loss breakdown + period + journalEntry relation ──
+  period          String?
+  realizedGain    Decimal       @default(0)
+  realizedLoss    Decimal       @default(0)
+  unrealizedGain  Decimal       @default(0)
+  unrealizedLoss  Decimal       @default(0)
+  journalEntry    JournalEntry? @relation("FxRevaluationJournalEntry", fields: [journalEntryId], references: [id])
+
   @@index([companySlug])
   @@index([companyId])
   @@map("fx_revaluations")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  revaluationDate              String
-  baseCurrency                 String
-  targetCurrency               String
-  exchangeRate                 String
-  totalGainLoss                String
-  journalEntryId               String?
-  notes                        String?
-  // ── P2-Sprint6: gain/loss breakdown + period + journalEntry relation ──
-  period                       String?
-  realizedGain                 Decimal   @default(0)
-  realizedLoss                 Decimal   @default(0)
-  unrealizedGain               Decimal   @default(0)
-  unrealizedLoss               Decimal   @default(0)
-  journalEntry                 JournalEntry? @relation("FxRevaluationJournalEntry", fields: [journalEntryId], references: [id])
 }
 
 // ─── Inter-Company Transaction (matches db.interCompanyTransaction) ───
@@ -978,19 +1030,19 @@ model FxRevaluation {
 // Also added journalEntryIdFrom/journalEntryIdTo which the DB has but
 // schema was missing.
 model InterCompanyTransaction {
-  id                  String   @id @default(cuid())
-  type                String // transfer, invoice, payment
-  amount              Decimal  @default(0)
-  currency            String   @default("USD")
-  companySlugFrom     String
-  companySlugTo       String
-  status              String   @default("pending") // pending, posted, settled
-  description         String?
-  journalEntryIdFrom  String? // P2-Sprint-4: changed from Int? to String? — references JournalEntry.id (cuid)
-  journalEntryIdTo    String? // P2-Sprint-4: changed from Int? to String? — references JournalEntry.id (cuid)
-  settledAt           DateTime?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  type               String // transfer, invoice, payment
+  amount             Decimal   @default(0)
+  currency           String    @default("USD")
+  companySlugFrom    String
+  companySlugTo      String
+  status             String    @default("pending") // pending, posted, settled
+  description        String?
+  journalEntryIdFrom String? // P2-Sprint-4: changed from Int? to String? — references JournalEntry.id (cuid)
+  journalEntryIdTo   String? // P2-Sprint-4: changed from Int? to String? — references JournalEntry.id (cuid)
+  settledAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@index([companySlugFrom])
   @@index([companySlugTo])
@@ -1013,16 +1065,16 @@ model LandedCostAllocation {
   lines             LandedCostLine[]
   purchaseInvoice   PurchaseInvoice? @relation(fields: [purchaseInvoiceId], references: [id])
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  allocationMethod String
+  costType         String
+  amount           Decimal @default(0) // DB-07 FIX: String→Decimal
+  currency         String
+  notes            String?
+
   @@index([companySlug])
   @@index([companyId])
   @@map("landed_cost_allocations")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  allocationMethod             String
-  costType                     String
-  amount                       String
-  currency                     String
-  notes                        String?
 }
 
 model LandedCostLine {
@@ -1072,28 +1124,28 @@ model Employee {
   leaveRequests HRLeaveRequest[]
   performances  HRPerformance[]
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  nameEn          String?
+  phone           String?
+  email           String?
+  baseSalary      Decimal   @default(0) // DB-07 FIX: String→Decimal
+  currency        String
+  joinDate        String?
+  notes           String?
+  deletedAt       DateTime?
+  // ── P2-Sprint6: schema reconciliation — columns referenced by HR routes ──
+  civilId         String?
+  allowances      Decimal   @default(0)
+  endDate         DateTime?
+  bankAccount     String?
+  nationality     String?
+  residenceExpiry DateTime?
+  passportNumber  String?
+
   @@unique([code, companyId])
   @@index([companySlug])
   @@index([companyId])
   @@map("hr_employees")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  nameEn                       String?
-  phone                        String?
-  email                        String?
-  baseSalary                   String
-  currency                     String
-  joinDate                     String?
-  notes                        String?
-  deletedAt                    DateTime?
-  // ── P2-Sprint6: schema reconciliation — columns referenced by HR routes ──
-  civilId                      String?
-  allowances                   Decimal   @default(0)
-  endDate                      DateTime?
-  bankAccount                  String?
-  nationality                  String?
-  residenceExpiry              DateTime?
-  passportNumber               String?
 }
 
 // ─── HR Salary (matches db.hRSalary) ───
@@ -1297,7 +1349,19 @@ model PurchaseInvoice {
   updatedAt        DateTime  @updatedAt
   supplierRel      Supplier? @relation(fields: [supplierId], references: [id])
   company          Company?  @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  version           Int                @default(0) // Phase 15 P0: Optimistic Locking
+  version          Int       @default(0) // Phase 15 P0: Optimistic Locking
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  supplierName          String?
+  lineItems             String
+  subtotal              Decimal                @default(0) // DB-07 FIX: String→Decimal
+  taxRate               Decimal                @default(0) // DB-07 FIX: String→Decimal
+  taxAmount             Decimal                @default(0) // DB-07 FIX: String→Decimal
+  paid                  Decimal                @default(0) // DB-07 FIX: String→Decimal
+  purchaseOrderId       Int?
+  createdBy             String?
+  // P2-Sprint6: back-relation for LandedCostAllocation
+  landedCostAllocations LandedCostAllocation[]
 
   @@index([companySlug])
   @@index([companyId])
@@ -1305,18 +1369,6 @@ model PurchaseInvoice {
   @@index([companySlug, deletedAt])
   @@index([supplierId])
   @@map("purchase_invoices")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  supplierName                 String?
-  lineItems                    String
-  subtotal                     String
-  taxRate                      String
-  taxAmount                    String
-  paid                         String
-  purchaseOrderId              Int?
-  createdBy                    String?
-  // P2-Sprint6: back-relation for LandedCostAllocation
-  landedCostAllocations        LandedCostAllocation[]
 }
 
 // ─── Quotation (matches db.quotation) ───
@@ -1336,22 +1388,27 @@ model Quotation {
   company     Company?  @relation(fields: [companyId], references: [id], onDelete: Restrict)
   client      Client?   @relation(fields: [clientId], references: [id], onDelete: Restrict)
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  quotationNumber    String
+  date               String
+  validUntil         String?
+  lineItems          String
+  subtotal           Decimal @default(0) // DB-07 FIX: String→Decimal
+  taxRate            Decimal @default(0) // DB-07 FIX: String→Decimal
+  taxAmount          Decimal @default(0) // DB-07 FIX: String→Decimal
+  notes              String?
+  convertedInvoiceId Int?
+  createdBy          String?
+
+  // DB-13 FIX (Audit v2 · Phase 3): Optimistic locking for concurrent quote
+  // edits (send, accept, reject, convert-to-invoice). Bumped on every write
+  // and validated via WHERE version = <expected> to prevent lost updates.
+  version Int @default(0)
+
   @@index([companySlug])
   @@index([companyId])
   @@index([clientId])
   @@map("quotations")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  quotationNumber              String
-  date                         String
-  validUntil                   String?
-  lineItems                    String
-  subtotal                     String
-  taxRate                      String
-  taxAmount                    String
-  notes                        String?
-  convertedInvoiceId           Int?
-  createdBy                    String?
 }
 
 // ─── Purchase Order (matches db.purchaseOrder) ───
@@ -1370,19 +1427,19 @@ model PurchaseOrder {
   updatedAt        DateTime  @updatedAt
   company          Company?  @relation(fields: [companyId], references: [id], onDelete: Restrict)
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  poNumber  String
+  date      String
+  lineItems String
+  subtotal  Decimal @default(0) // DB-07 FIX: String→Decimal
+  taxRate   Decimal @default(0) // DB-07 FIX: String→Decimal
+  taxAmount Decimal @default(0) // DB-07 FIX: String→Decimal
+  notes     String?
+  createdBy String?
+
   @@index([companySlug])
   @@index([companyId])
   @@map("purchase_orders")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  poNumber                     String
-  date                         String
-  lineItems                    String
-  subtotal                     String
-  taxRate                      String
-  taxAmount                    String
-  notes                        String?
-  createdBy                    String?
 }
 
 // ─── Stock Movement (matches db.stockMovement) ───
@@ -1400,17 +1457,17 @@ model StockMovement {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  movementType String
+  sourceType   String?
+  sourceId     String?
+  // ── P2-Sprint6: add warehouseId, productId fix ──
+  warehouseId  String?
+  warehouseRef Warehouse? @relation(fields: [warehouseId], references: [id])
+
   @@index([companySlug])
   @@index([warehouseId])
   @@map("stock_movements")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  movementType                 String
-  sourceType                   String?
-  sourceId                     String?
-  // ── P2-Sprint6: add warehouseId, productId fix ──
-  warehouseId                  String?
-  warehouseRef                 Warehouse?  @relation(fields: [warehouseId], references: [id])
 }
 
 // ─── Payment Transaction (matches db.paymentTransaction) ───
@@ -1421,19 +1478,19 @@ model StockMovement {
 // These are all used by the MyFatoorah/Paymob payment flow but were never declared,
 // meaning every PaymentTransaction.create with these fields would throw at runtime.
 model PaymentTransaction {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   invoiceId         Int?
   amount            Decimal
   method            String // cash, bank_transfer, card, online
   reference         String?
-  date              DateTime @default(now())
-  status            String   @default("completed") // completed, pending, failed, reversed
-  companySlug       String   @default("default")
+  date              DateTime  @default(now())
+  status            String    @default("completed") // completed, pending, failed, reversed
+  companySlug       String    @default("default")
   companyId         String?
   // P2-Sprint-4: subscription billing + provider tracking fields
   plan              String?
   provider          String?
-  currency          String   @default("USD")
+  currency          String    @default("USD")
   providerPaymentId String?
   providerOrderId   String?
   providerEventId   String?
@@ -1443,10 +1500,10 @@ model PaymentTransaction {
   createdBy         String?
   deletedAt         DateTime? // P0-3: Soft Delete
   deletedBy         String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  invoice           Invoice? @relation(fields: [invoiceId], references: [id])
-  version           Int                @default(0) // Phase 15 P0: Optimistic Locking
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  invoice           Invoice?  @relation(fields: [invoiceId], references: [id])
+  version           Int       @default(0) // Phase 15 P0: Optimistic Locking
 
   @@index([companySlug])
   @@index([companyId])
@@ -1465,18 +1522,18 @@ model PaymentTransaction {
 // Previous schema was missing: paymentTransactionId, providerRefundId,
 // processedAt — all used by the refund flow but never declared.
 model RefundTransaction {
-  id                     String   @id @default(cuid())
-  originalTransactionId  String?
-  paymentTransactionId   String? // P2-Sprint-4: link to PaymentTransaction
-  amount                 Decimal  @default(0)
-  reason                 String?
-  status                 String   @default("pending") // pending, approved, processed, failed
-  providerRefundId       String? // P2-Sprint-4: provider-side refund ID
-  processedAt            DateTime?
-  companySlug            String   @default("default")
-  companyId              String?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id                    String    @id @default(cuid())
+  originalTransactionId String?
+  paymentTransactionId  String? // P2-Sprint-4: link to PaymentTransaction
+  amount                Decimal   @default(0)
+  reason                String?
+  status                String    @default("pending") // pending, approved, processed, failed
+  providerRefundId      String? // P2-Sprint-4: provider-side refund ID
+  processedAt           DateTime?
+  companySlug           String    @default("default")
+  companyId             String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   @@index([companySlug])
   @@index([companyId])
@@ -1498,23 +1555,23 @@ model PostDatedCheck {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  date          String
+  payee         String?
+  payer         String?
+  direction     String
+  clientId      Int?
+  supplierId    Int?
+  bankAccountId Int?
+  glAccountId   Int?
+  depositedAt   DateTime?
+  cancelledAt   DateTime?
+  clearedAt     DateTime?
+  notes         String?
+
   @@index([companySlug])
   @@index([companyId])
   @@map("post_dated_checks")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  date                         String
-  payee                        String?
-  payer                        String?
-  direction                    String
-  clientId                     Int?
-  supplierId                   Int?
-  bankAccountId                Int?
-  glAccountId                  Int?
-  depositedAt                  DateTime?
-  cancelledAt                  DateTime?
-  clearedAt                    DateTime?
-  notes                        String?
 }
 
 // ─── Tax Filing (matches db.taxFiling) ───
@@ -1531,24 +1588,29 @@ model TaxFiling {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  country        String
+  taxType        String
+  periodFrom     String
+  periodTo       String
+  totalSales     Decimal   @default(0) // DB-07 FIX: String→Decimal
+  totalPurchases Decimal   @default(0) // DB-07 FIX: String→Decimal
+  outputVat      Decimal   @default(0) // DB-07 FIX: String→Decimal
+  inputVat       Decimal   @default(0) // DB-07 FIX: String→Decimal
+  vatDue         Decimal   @default(0) // DB-07 FIX: String→Decimal
+  filingNumber   String?
+  submittedBy    String?
+  submittedAt    DateTime?
+  notes          String?
+
+  // DB-13 FIX (Audit v2 · Phase 3): Optimistic locking for concurrent tax
+  // filing updates (draft → filed → approved/rejected). Bumped on every write
+  // and validated via WHERE version = <expected> to prevent lost updates.
+  version Int @default(0)
+
   @@index([companySlug])
   @@index([companyId])
   @@map("tax_filings")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  country                      String
-  taxType                      String
-  periodFrom                   String
-  periodTo                     String
-  totalSales                   String
-  totalPurchases               String
-  outputVat                    String
-  inputVat                     String
-  vatDue                       String
-  filingNumber                 String?
-  submittedBy                  String?
-  submittedAt                  DateTime?
-  notes                        String?
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1574,21 +1636,21 @@ model EInvoice {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   invoice          Invoice   @relation(fields: [invoiceId], references: [id])
-  version           Int                @default(0) // Phase 15 P0: Optimistic Locking
+  version          Int       @default(0) // Phase 15 P0: Optimistic Locking
+
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  invoiceNumber    String
+  authority        String
+  status           String
+  submissionId     String?
+  qrCode           String?
+  digitalSignature String?
+  xmlContent       String?
+  clearanceStatus  String?
+  deletedAt        DateTime?
 
   @@index([companySlug])
   @@map("e_invoices")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  invoiceNumber                String
-  authority                    String
-  status                       String
-  submissionId                 String?
-  qrCode                       String?
-  digitalSignature             String?
-  xmlContent                   String?
-  clearanceStatus              String?
-  deletedAt                    DateTime?
 }
 
 // ─── E-Invoice Clearance Receipt (inbound webhook payloads from tax authorities) ───
@@ -1598,23 +1660,23 @@ model EInvoice {
 model EInvoiceReceipt {
   id              String   @id @default(cuid())
   companySlug     String
-  invoiceId       Int?     // nullable: some webhooks arrive before invoice row exists
-  authority       String   // zatca, eta_egypt, uae_fta, kuwait_decree_10_2026, bahrain_nbr, oman_tax, qatar_gta
-  eventType       String   // clearance_requested, cleared, rejected, cancelled, delivery_report
-  externalUuid    String?  // UUID issued by the authority (e.g. ZATCA invoice UUID, ETA document UUID)
-  status          String   // accepted, rejected, pending, cancelled
-  rawPayload      String   // full JSON body as received (for audit / debugging)
+  invoiceId       Int? // nullable: some webhooks arrive before invoice row exists
+  authority       String // zatca, eta_egypt, uae_fta, kuwait_decree_10_2026, bahrain_nbr, oman_tax, qatar_gta
+  eventType       String // clearance_requested, cleared, rejected, cancelled, delivery_report
+  externalUuid    String? // UUID issued by the authority (e.g. ZATCA invoice UUID, ETA document UUID)
+  status          String // accepted, rejected, pending, cancelled
+  rawPayload      String // full JSON body as received (for audit / debugging)
   signatureValid  Boolean? // whether HMAC/X-Hub-Signature verified (null if no signature header)
   rejectionReason String?
   receivedAt      DateTime @default(now())
 
-  invoice         Invoice? @relation(fields: [invoiceId], references: [id])
+  invoice Invoice? @relation(fields: [invoiceId], references: [id])
 
+  @@unique([externalUuid, authority, eventType])
   @@index([companySlug])
   @@index([companySlug, authority])
   @@index([companySlug, receivedAt])
   @@index([externalUuid])
-  @@unique([externalUuid, authority, eventType])
   @@map("e_invoice_receipts")
 }
 
@@ -1649,16 +1711,16 @@ model ProductAlias {
   updatedAt   DateTime       @updatedAt
   product     ProductCatalog @relation(fields: [productId], references: [id])
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  productCatalogId Int
+  source           String
+  confidence       Float
+  isVerified       Boolean
+  createdBy        String?
+
   @@unique([alias, companySlug, language])
   @@index([companySlug])
   @@map("product_aliases")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  productCatalogId             Int
-  source                       String
-  confidence                   Float
-  isVerified                   Boolean
-  createdBy                    String?
 }
 
 model ProductMatchAudit {
@@ -1672,18 +1734,18 @@ model ProductMatchAudit {
   updatedAt        DateTime        @updatedAt
   product          ProductCatalog? @relation(fields: [matchedProductId], references: [id])
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  invoiceId    Int?
+  matchedAlias String?
+  tier         String
+  action       String
+  resolvedBy   String?
+  isUndone     Boolean
+  undoneBy     String?
+  undoneAt     DateTime?
+
   @@index([companySlug])
   @@map("product_match_audit")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  invoiceId                    Int?
-  matchedAlias                 String?
-  tier                         String
-  action                       String
-  resolvedBy                   String?
-  isUndone                     Boolean
-  undoneBy                     String?
-  undoneAt                     DateTime?
 }
 
 model MatchOverride {
@@ -1696,17 +1758,17 @@ model MatchOverride {
   updatedAt    DateTime       @updatedAt
   product      ProductCatalog @relation(fields: [productId], references: [id])
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  inputNormalized String?
+  fromProductId   Int?
+  toProductId     Int?
+  chosenAlias     String?
+  auditId         Int?
+  reason          String?
+
   @@unique([inputText, companySlug])
   @@index([companySlug])
   @@map("match_overrides")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  inputNormalized              String?
-  fromProductId                Int?
-  toProductId                  Int?
-  chosenAlias                  String?
-  auditId                      Int?
-  reason                       String?
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1716,17 +1778,17 @@ model MatchOverride {
 // ─── MFA Secret (matches db.mFASecret) ───
 
 model MFASecret {
-  id             String   @id @default(cuid())
-  userId         String
-  secret         String
-  recoveryCodes  String?  // P1 FIX: encrypted blob of hashed recovery codes
-  enabled        Boolean  @default(false) // alias for verified (test-facing name)
-  verified       Boolean  @default(false) // backward compat
-  verifiedAt     DateTime? // cleared on re-setup
-  lastUsedAt     DateTime? // updated on successful validation
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  user           AppUser  @relation(fields: [userId], references: [uid], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  userId        String
+  secret        String
+  recoveryCodes String? // P1 FIX: encrypted blob of hashed recovery codes
+  enabled       Boolean   @default(false) // alias for verified (test-facing name)
+  verified      Boolean   @default(false) // backward compat
+  verifiedAt    DateTime? // cleared on re-setup
+  lastUsedAt    DateTime? // updated on successful validation
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          AppUser   @relation(fields: [userId], references: [uid], onDelete: Cascade)
 
   @@unique([userId])
 }
@@ -1753,20 +1815,20 @@ model MFASecret {
 // any historical data needs to be queried.
 
 model SessionRegistry {
-  id         String   @id @default(cuid())
+  id        String   @id @default(cuid())
   // P1-2: code writes `userUid` (not `userId`). Migration already added
   // this column at the DB level. Schema now matches.
-  userUid    String
+  userUid   String
   // P1-2: code writes `jti` (JWT Token ID) — unique per session. Used
   // by isSessionValid(jti) for revocation lookups.
-  jti        String   @unique
+  jti       String   @unique
   // P1-2: code writes `userAgent` (not `deviceInfo`). Migration added it.
-  userAgent  String?
-  ipAddress  String?
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  user       AppUser  @relation(fields: [userUid], references: [uid], onDelete: Cascade)
+  userAgent String?
+  ipAddress String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      AppUser  @relation(fields: [userUid], references: [uid], onDelete: Cascade)
 
   // P1-2: index on userUid — enforceSessionLimit() queries
   // `findMany({ where: { userUid } })` on every login. Without this index
@@ -1785,17 +1847,17 @@ model RolePermission {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  companySlug String
+  permissions String
+  assignedTo  String?
+  isActive    Boolean
+  expiresAt   DateTime?
+
   // Note: RolePermission.role is not a FK to AppUser.role — it's a standalone mapping
   @@unique([role, permissionKey])
   @@index([companySlug])
   @@map("role_permissions")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  companySlug                  String
-  permissions                  String
-  assignedTo                   String?
-  isActive                     Boolean
-  expiresAt                    DateTime?
 }
 
 // ─── Email Verification (matches db.emailVerification) ───
@@ -1835,12 +1897,12 @@ model PlatformSettings {
   updatedAt   DateTime                  @updatedAt
   history     PlatformSettingsHistory[]
 
-  @@map("platform_settings")
-
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  valueType                    String
+  valueType String
   // ── P2-Sprint6: add updatedBy ──
-  updatedBy                    String?
+  updatedBy String?
+
+  @@map("platform_settings")
 }
 
 // ─── Platform Settings History (matches db.platformSettingsHistory) ───
@@ -1854,17 +1916,17 @@ model PlatformSettingsHistory {
   createdAt DateTime         @default(now())
   setting   PlatformSettings @relation(fields: [settingId], references: [id])
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  settingKey     String
+  // ── P2-Sprint6: add changedByEmail ──
+  changedByEmail String?
+
   // P1-3: FK + time indexes — the founder panel shows settings change history
   // filtered by settingId and paginated by createdAt.
   @@index([settingId])
   @@index([createdAt])
   @@index([changedBy])
   @@map("platform_settings_history")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  settingKey                   String
-  // ── P2-Sprint6: add changedByEmail ──
-  changedByEmail               String?
 }
 
 // ─── Feature Flag (matches db.featureFlag) ───
@@ -1880,12 +1942,12 @@ model FeatureFlag {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@map("feature_flags")
-
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  label                        String
-  plans                        String
-  isActive                     Boolean
+  label    String
+  plans    String
+  isActive Boolean
+
+  @@map("feature_flags")
 }
 
 // ─── Support Ticket (matches db.supportTicket) ───
@@ -1902,13 +1964,13 @@ model SupportTicket {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  userEmail String
+  body      String?
+  category  String?
+
   @@index([companySlug])
   @@map("support_tickets")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  userEmail                    String
-  body                         String?
-  category                     String?
 }
 
 // ─── Landing Content (matches db.landingContent) ───
@@ -2058,6 +2120,12 @@ model AIUsageLog {
   tokensIn    Int      @default(0)
   tokensOut   Int      @default(0)
   costUsd     Decimal  @default(0)
+  // AI-11 FIX (Audit v2 · Phase 3): version of COST_PER_1K_TOKENS in
+  // src/lib/ai/cost-rates.ts that was active when this row was written.
+  // Used to re-value historical rows at their original rate when the
+  // rate table changes (instead of silently re-applying today's rate).
+  // Default 1 so pre-migration rows are treated as "v1 — initial table".
+  costRatesVersion Int @default(1)
   requestType String?
   createdAt   DateTime @default(now())
 
@@ -2097,15 +2165,21 @@ model AIMemoryNote {
 // ─── AI Model Registry (matches db.aIModelRegistry) ───
 
 model AIModelRegistry {
-  id              Int      @id @default(autoincrement())
+  id              Int       @id @default(autoincrement())
   provider        String
   model           String
-  costPerTokenIn  Float    @default(0)
-  costPerTokenOut Float    @default(0)
+  costPerTokenIn  Float     @default(0)
+  costPerTokenOut Float     @default(0)
   maxTokens       Int?
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  isActive        Boolean   @default(true)
+  // AI-01 FIX (Audit v2 · Phase 1): Added capabilities/healthScore/isHealthy
+  // columns to enable capability-based model routing.
+  capabilities    String[]  @default([])
+  healthScore     Float     @default(1.0)
+  isHealthy       Boolean   @default(true)
+  lastHealthCheck DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@map("ai_model_registry")
 }
@@ -2348,14 +2422,14 @@ model AutomationRule {
   updatedAt     DateTime                 @updatedAt
   executionLogs AutomationExecutionLog[]
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  trigger   String
+  actions   String
+  lastRunAt DateTime?
+  runCount  Int
+
   @@index([companySlug])
   @@map("automation_rules")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  trigger                      String
-  actions                      String
-  lastRunAt                    DateTime?
-  runCount                     Int
 }
 
 model AutomationExecutionLog {
@@ -2393,37 +2467,37 @@ model WebhookEndpoint {
   updatedAt   DateTime          @updatedAt
   deliveries  WebhookDelivery[]
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  description String?
+
   @@index([companySlug])
   @@index([companyId])
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  description                  String?
 }
 
 model WebhookDelivery {
-  id         String          @id @default(cuid())
-  endpointId String
-  event      String
-  payload    String // JSON
-  statusCode Int?
-  response   String?
-  attempts   Int             @default(0)
-  status     String          @default("pending") // pending, delivered, failed
+  id          String          @id @default(cuid())
+  endpointId  String
+  event       String
+  payload     String // JSON
+  statusCode  Int?
+  response    String?
+  attempts    Int             @default(0)
+  status      String          @default("pending") // pending, delivered, failed
   // ── P0-07: Fields read/written by src/lib/webhooks.ts
   // The library writes eventType at enqueue time, reads it for the
   // X-Garfix-Event header, and filters pending deliveries by nextRetryAt.
-  eventType  String?
+  eventType   String?
   nextRetryAt DateTime?
   maxAttempts Int             @default(3)
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
-  endpoint   WebhookEndpoint @relation(fields: [endpointId], references: [id])
-
-  @@index([status, nextRetryAt])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id])
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  eventId                      Int?
-  responseBody                 String?
+  eventId      Int?
+  responseBody String?
+
+  @@index([status, nextRetryAt])
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2464,21 +2538,21 @@ model InvoiceTemplate {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  isDefault          Boolean
+  layoutType         String
+  primaryColor       String
+  fontFamily         String
+  logoPosition       String
+  showTaxNumber      Boolean
+  showQrCode         Boolean
+  showBankDetails    Boolean
+  footerText         String?
+  termsAndConditions String?
+  paperSize          String
+
   @@index([companySlug])
   @@map("invoice_templates")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  isDefault                    Boolean
-  layoutType                   String
-  primaryColor                 String
-  fontFamily                   String
-  logoPosition                 String
-  showTaxNumber                Boolean
-  showQrCode                   Boolean
-  showBankDetails              Boolean
-  footerText                   String?
-  termsAndConditions           String?
-  paperSize                    String
 }
 
 model InvoiceTemplateSettings {
@@ -2491,18 +2565,18 @@ model InvoiceTemplateSettings {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  @@map("invoice_template_settings")
-
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  templateId                   Int?
-  primaryColor                 String
-  fontFamily                   String
-  fontSize                     Int
-  logoPosition                 String
-  showPaymentInfo              Boolean
-  showStamp                    Boolean
+  templateId      Int?
+  primaryColor    String
+  fontFamily      String
+  fontSize        Int
+  logoPosition    String
+  showPaymentInfo Boolean
+  showStamp       Boolean
   // ── P2-Sprint6: add name ──
-  name                         String?
+  name            String?
+
+  @@map("invoice_template_settings")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2521,11 +2595,11 @@ model Announcement {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@map("announcements")
-
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  startsAt                     DateTime?
-  endsAt                       DateTime?
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  @@map("announcements")
 }
 
 // ─── Chat History (matches db.chatHistory) ───
@@ -2585,25 +2659,25 @@ model SetupWizardProgress {
 // Previous schema had `id Int @default(autoincrement())`, `startDate`, `endDate`,
 // `autoRenew` — none of which exist in the actual `subscription_schedules` table.
 model SubscriptionSchedule {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   companySlug     String
   plan            String
-  amount          String   @default("0")
-  currency        String   @default("USD")
-  billingCycle    String   @default("monthly") // monthly | yearly
+  amount          Decimal   @default(0) // DB-07 FIX: String→Decimal (was String @default("0"))
+  currency        String    @default("USD")
+  billingCycle    String    @default("monthly") // monthly | yearly
   nextBillingDate DateTime
-  status          String   @default("active") // active | past_due | cancelled | downgraded
+  status          String    @default("active") // active | past_due | cancelled | downgraded
   // P2-Sprint-4: dunning + provider tracking (added via migration)
-  provider        String?  // myfatoorah | paymob
+  provider        String? // myfatoorah | paymob
   paymentMethod   String?
-  retryCount      Int      @default(0)
-  maxRetries      Int      @default(3)
-  downgradePlan   String   @default("trial")
+  retryCount      Int       @default(0)
+  maxRetries      Int       @default(3)
+  downgradePlan   String    @default("trial")
   cycleStart      DateTime?
   cycleEnd        DateTime?
   createdBy       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([companySlug])
   @@index([status, nextBillingDate])
@@ -2620,19 +2694,19 @@ model WPSFile {
   processed   Boolean  @default(false)
   createdAt   DateTime @default(now())
 
+  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
+  country        String
+  month          String
+  fileContent    String?
+  totalEmployees Int
+  totalAmount    Decimal   @default(0) // DB-07 FIX: String→Decimal
+  status         String
+  submittedBy    String?
+  submittedAt    DateTime?
+  updatedAt      DateTime
+
   @@index([companySlug])
   @@map("wps_files")
-
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  country                      String
-  month                        String
-  fileContent                  String?
-  totalEmployees               Int
-  totalAmount                  String
-  status                       String
-  submittedBy                  String?
-  submittedAt                  DateTime?
-  updatedAt                    DateTime
 }
 
 // ─── Module (matches db.module) ───
@@ -2708,80 +2782,80 @@ model OutboxEvent {
 // ✅ Different models per feature if needed
 
 model CompanyAIConfig {
-  id                        String    @id @default(cuid())
-  companyId                 String    @unique
-  
+  id        String @id @default(cuid())
+  companyId String @unique
+
   // ═══════════════════════════════════════════════════════════
   // PER-FEATURE API KEYS (Isolated Connections)
   // Each feature gets its own API key → no shared bottleneck!
   // ═══════════════════════════════════════════════════════════
-  
+
   // 💬 Chat Feature - AI Conversations & Copilot
   // Used for: Chat messages, Q&A, suggestions
-  chatApiKey                String    @default("")    // Encrypted key
-  chatModel                 String    @default("gemini-2.0-flash")
-  chatEnabled               Boolean   @default(false) // Founder must enable
-  chatRateLimitRpm          Int       @default(60)
-  chatTokensUsed            BigInt    @default(0)
-  chatRequestsCount         BigInt    @default(0)
-  
+  chatApiKey        String  @default("") // Encrypted key
+  chatModel         String  @default("gemini-2.0-flash")
+  chatEnabled       Boolean @default(false) // Founder must enable
+  chatRateLimitRpm  Int     @default(60)
+  chatTokensUsed    BigInt  @default(0)
+  chatRequestsCount BigInt  @default(0)
+
   // 📄 Invoice Feature - Extraction & Processing
   // Used for: Invoice OCR, data extraction, line items
-  invoiceApiKey             String    @default("")    // Encrypted key
-  invoiceModel              String    @default("gemini-2.0-flash")
-  invoiceEnabled            Boolean   @default(false)
-  invoiceRateLimitRpm       Int       @default(100)   // Higher limit for batch processing
-  invoiceTokensUsed         BigInt    @default(0)
-  invoiceRequestsCount      BigInt    @default(0)
-  
+  invoiceApiKey        String  @default("") // Encrypted key
+  invoiceModel         String  @default("gemini-2.0-flash")
+  invoiceEnabled       Boolean @default(false)
+  invoiceRateLimitRpm  Int     @default(100) // Higher limit for batch processing
+  invoiceTokensUsed    BigInt  @default(0)
+  invoiceRequestsCount BigInt  @default(0)
+
   // 🔍 Smart Parse - Document Analysis
   // Used for: Document parsing, categorization, matching
-  parseApiKey               String    @default("")    // Encrypted key
-  parseModel                String    @default("gemini-2.0-flash")
-  parseEnabled              Boolean   @default(false)
-  parseRateLimitRpm         Int       @default(80)
-  parseTokensUsed           BigInt    @default(0)
-  parseRequestsCount        BigInt    @default(0)
-  
+  parseApiKey        String  @default("") // Encrypted key
+  parseModel         String  @default("gemini-2.0-flash")
+  parseEnabled       Boolean @default(false)
+  parseRateLimitRpm  Int     @default(80)
+  parseTokensUsed    BigInt  @default(0)
+  parseRequestsCount BigInt  @default(0)
+
   // 🧠 Memory & Context - Conversation History
   // Used for: Context storage, user preferences, learning
-  memoryApiKey              String    @default("")    // Encrypted key
-  memoryModel               String    @default("gemini-2.0-flash")
-  memoryEnabled             Boolean   @default(false)
-  memoryRateLimitRpm        Int       @default(30)   // Lower - less frequent
-  memoryTokensUsed          BigInt    @default(0)
-  memoryRequestsCount       BigInt    @default(0)
-  
+  memoryApiKey        String  @default("") // Encrypted key
+  memoryModel         String  @default("gemini-2.0-flash")
+  memoryEnabled       Boolean @default(false)
+  memoryRateLimitRpm  Int     @default(30) // Lower - less frequent
+  memoryTokensUsed    BigInt  @default(0)
+  memoryRequestsCount BigInt  @default(0)
+
   // ═══════════════════════════════════════════════════════════
   // SHARED CONFIGURATION
   // ═══════════════════════════════════════════════════════════
-  
-  // Default provider info (for backward compatibility)
-  primaryProvider           String    @default("{}")
-  fallbackProvider          String?
-  
-  // Company-specific system prompt for AI context
-  systemPrompt              String    @default("")
-  
-  // Memory configuration
-  memoryRetentionDays       Int       @default(30)
-  
-  // Cost optimization: aggressive | balanced | quality
-  costOptimization          String    @default("balanced")
-  
-  // Usage notifications
-  notifyHighUsage           Boolean   @default(true)
-  usageNotificationThreshold Int      @default(80) // %
-  
-  // Global usage tracking (reset monthly)
-  tokensUsedThisMonth       BigInt    @default(0)
-  requestsThisMonth         BigInt    @default(0)
-  lastResetAt               DateTime  @default(now())
-  
-  createdAt                 DateTime  @default(now())
-  updatedAt                 DateTime  @updatedAt
 
-  company                   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  // Default provider info (for backward compatibility)
+  primaryProvider  String  @default("{}")
+  fallbackProvider String?
+
+  // Company-specific system prompt for AI context
+  systemPrompt String @default("")
+
+  // Memory configuration
+  memoryRetentionDays Int @default(30)
+
+  // Cost optimization: aggressive | balanced | quality
+  costOptimization String @default("balanced")
+
+  // Usage notifications
+  notifyHighUsage            Boolean @default(true)
+  usageNotificationThreshold Int     @default(80) // %
+
+  // Global usage tracking (reset monthly)
+  tokensUsedThisMonth BigInt   @default(0)
+  requestsThisMonth   BigInt   @default(0)
+  lastResetAt         DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("company_ai_configs")
 }
@@ -2794,51 +2868,51 @@ model CompanyAIConfig {
 // ═══════════════════════════════════════════════════════════════════
 
 model ApiKeyPool {
-  id                  String    @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // The actual API key (encrypted at rest)
-  keyValue            String    @unique
-  
+  keyValue String @unique
+
   // Provider detection (auto-detected from key format)
-  provider            String    @default("openrouter") // openrouter | gemini | openai
-  
+  provider String @default("openrouter") // openrouter | gemini | openai
+
   // Which model(s) this key is for
-  model               String    @default("deepseek/deepseek-chat-v3-0324")
-  
+  model String @default("deepseek/deepseek-chat-v3-0324")
+
   // Status tracking
-  status              String    @default("available") // available | assigned | exhausted | revoked
-  
+  status String @default("available") // available | assigned | exhausted | revoked
+
   // Who's using this key (if assigned)
-  assignedToUserId    String?   @unique                // One key per user
-  assignedToCompanyId String?                          // User's company
+  assignedToUserId    String?   @unique // One key per user
+  assignedToCompanyId String? // User's company
   assignedAt          DateTime?
-  
+
   // Usage tracking
-  timesUsed           BigInt    @default(0)
-  lastUsedAt          DateTime?
-  
+  timesUsed  BigInt    @default(0)
+  lastUsedAt DateTime?
+
   // Rate limit info for this specific key
-  rpmLimit            Int       @default(60)           // Requests per minute
-  dailyLimit          Int       @default(1000)         // Requests per day
-  usedToday           BigInt    @default(0)
-  resetAt             DateTime?                       // When daily counter resets
-  
+  rpmLimit   Int       @default(60) // Requests per minute
+  dailyLimit Int       @default(1000) // Requests per day
+  usedToday  BigInt    @default(0)
+  resetAt    DateTime? // When daily counter resets
+
   // Metadata
-  addedBy             String?                          // Founder user ID
-  notes               String?                          // Internal notes
-  priority            Int       @default(0)            // Higher = use first
-  
+  addedBy  String? // Founder user ID
+  notes    String? // Internal notes
+  priority Int     @default(0) // Higher = use first
+
   // Alerts
-  lowUsageAlert       Boolean   @default(true)         // Alert when running low
-  alertThreshold      Int       @default(10)            // Alert when X% used
-  
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  
+  lowUsageAlert  Boolean @default(true) // Alert when running low
+  alertThreshold Int     @default(10) // Alert when X% used
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  assignedUser        AppUser?  @relation("KeyAssignedToUser", fields: [assignedToUserId], references: [uid])
-  assignedCompany     Company?  @relation("KeyAssignedToCompany", fields: [assignedToCompanyId], references: [id])
-  
+  assignedUser    AppUser? @relation("KeyAssignedToUser", fields: [assignedToUserId], references: [uid])
+  assignedCompany Company? @relation("KeyAssignedToCompany", fields: [assignedToCompanyId], references: [id])
+
   @@index([status])
   @@index([provider])
   @@index([assignedToUserId])
@@ -2853,37 +2927,37 @@ model ApiKeyPool {
 // Automated recurring journal entries that generate JEs on a schedule.
 
 model RecurringJournalEntry {
-  id              String   @id @default(cuid())
-  companyId       String
-  companySlug     String   @default("default")
-  
-  title           String
-  description     String?
-  
+  id          String @id @default(cuid())
+  companyId   String
+  companySlug String @default("default")
+
+  title       String
+  description String?
+
   // Schedule
-  frequency       String   // 'daily', 'weekly', 'monthly', 'quarterly', 'yearly'
-  intervalValue   Int      @default(1) // e.g., every 2 months
-  startDate       DateTime
-  endDate         DateTime? // null = forever
-  nextRunDate     DateTime
-  lastRunDate     DateTime?
-  
+  frequency     String // 'daily', 'weekly', 'monthly', 'quarterly', 'yearly'
+  intervalValue Int       @default(1) // e.g., every 2 months
+  startDate     DateTime
+  endDate       DateTime? // null = forever
+  nextRunDate   DateTime
+  lastRunDate   DateTime?
+
   // Entry template (copied on each run)
-  templateLines   Json     // Array of {accountId, debit, credit, description}
-  
+  templateLines Json // Array of {accountId, debit, credit, description}
+
   // Auto-post settings
-  autoPost        Boolean  @default(true)
-  requireApproval Boolean  @default(false)
-  
+  autoPost        Boolean @default(true)
+  requireApproval Boolean @default(false)
+
   // Status
-  isActive        Boolean  @default(true)
-  totalPosted     Int      @default(0)
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  company         Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  
+  isActive    Boolean @default(true)
+  totalPosted Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+
   @@index([companySlug])
   @@index([companyId, isActive])
   @@index([nextRunDate])
@@ -2894,26 +2968,26 @@ model RecurringJournalEntry {
 // Records when a fiscal year is closed and its state.
 
 model FiscalYearClose {
-  id              String   @id @default(cuid())
-  companyId       String
-  companySlug     String   @default("default")
-  year            Int
-  closedAt        DateTime
-  closedBy        String   // userId (email or uid)
-  openingRetainedEarnings Decimal @default(0) // Calculated P&L carried forward
-  notes           String?
-  
+  id                      String   @id @default(cuid())
+  companyId               String
+  companySlug             String   @default("default")
+  year                    Int
+  closedAt                DateTime
+  closedBy                String // userId (email or uid)
+  openingRetainedEarnings Decimal  @default(0) // Calculated P&L carried forward
+  notes                   String?
+
   // Snapshots
   trialBalanceSnapshot Json? // TB at time of close
-  
-  isReopened      Boolean  @default(false)
-  reopenedAt      DateTime?
-  reopenedBy      String?
-  
-  createdAt       DateTime @default(now())
-  
-  company         Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  
+
+  isReopened Boolean   @default(false)
+  reopenedAt DateTime?
+  reopenedBy String?
+
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+
   @@unique([companyId, year])
   @@index([companySlug])
   @@index([year])
@@ -2923,15 +2997,15 @@ model FiscalYearClose {
 // ─── Outbox Event ───
 
 model PromptTemplate {
-  id          String   @id @default(cuid())
-  name        String
-  version     Int      @default(1)
-  content     String   @db.Text
-  changeLog   String?
-  active      Boolean  @default(true)
-  createdBy   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  version   Int      @default(1)
+  content   String   @db.Text
+  changeLog String?
+  active    Boolean  @default(true)
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([name, version])
   @@index([name, active])
@@ -2953,8 +3027,8 @@ model CompanyMembership {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user        AppUser  @relation(fields: [userUid], references: [uid], onDelete: Cascade)
-  company     Company  @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
+  user    AppUser @relation(fields: [userUid], references: [uid], onDelete: Cascade)
+  company Company @relation(fields: [companySlug], references: [slug], onDelete: Restrict)
 
   @@unique([userUid, companySlug])
   @@index([companySlug])
@@ -2969,9 +3043,9 @@ model CompanyMembership {
 // existing files and inferring companySlug from the upload context (manual step).
 model StorageObject {
   id          String   @id @default(cuid())
-  key         String   @unique  // the UUID-style filename (e.g., "a1b2c3d4.png")
+  key         String   @unique // the UUID-style filename (e.g., "a1b2c3d4.png")
   companySlug String
-  uploadedBy  String?  // userUid of the uploader
+  uploadedBy  String? // userUid of the uploader
   fileSize    Int      @default(0)
   mimeType    String   @default("application/octet-stream")
   createdAt   DateTime @default(now())

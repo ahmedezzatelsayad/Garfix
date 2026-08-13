@@ -22,6 +22,11 @@ import { registerWorker, QUEUE_NAMES, enqueue, enqueueAsync } from "@/lib/queues
 import { callAI as callAIProvider } from "@/lib/aiProvider";
 import { getGeminiLoadBalancer } from "@/lib/ai/gemini-loadbalancer";
 import { getGarfixBrain } from "@/lib/ai/garfix-brain";
+interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -289,6 +294,18 @@ class AIMetricsCollector {
     };
   }
 
+  /** Expose worker and pool metrics for the metrics dashboard.
+   * Returns typed copies so consumers never need private-field casts. */
+  getWorkerAndPoolStats(): {
+    workers: Map<string, PerWorkerMetrics>;
+    pool: { totalRequests: number; totalTokens: number; totalFailures: number; rejectedJobs: number };
+  } {
+    return {
+      workers: new Map<string, PerWorkerMetrics>(this.metrics.workers),
+      pool: this.metrics.pool,
+    };
+  }
+
   /** Reset daily counters (call at midnight) */
   resetDailyCounters(): void {
     for (const [, keyMetrics] of this.metrics.keys) {
@@ -410,7 +427,7 @@ async function handleChatJob(data: Record<string, unknown>): Promise<void> {
   const d = data as Record<string, unknown>;
   const companySlug = String(d.companySlug || "");
   const userId = String(d.userId || "");
-  const messages = (d.messages as unknown as { role: "user" | "assistant" | "system"; content: string }[]) || [];
+  const messages = (d.messages as ChatMessage[]) || [];
   const conversationId = String(d.conversationId || "");
   
   aiMetrics.recordJobStart('ai-chat');
@@ -574,7 +591,7 @@ async function handleSpecialistAgentJob(data: Record<string, unknown>): Promise<
   const agentType = String(d.agentType || "accounting");
   const companySlug = String(d.companySlug || "");
   const message = String(d.message || "");
-  const context = (d.context as unknown as { role: "user" | "assistant" | "system"; content: string }[]) || [];
+  const context = (d.context as ChatMessage[]) || [];
   const workerType = `ai-agent-${agentType}` as AIWorkerType;
 
   aiMetrics.recordJobStart(workerType);
@@ -583,7 +600,7 @@ async function handleSpecialistAgentJob(data: Record<string, unknown>): Promise<
   try {
     // Load agent config
     const { AGENTS } = await import('@/lib/aiAgents');
-    const agent = (AGENTS as unknown as Record<string, { systemPrompt: string; name: string; tools?: string[] }>)[agentType];
+    const agent = (AGENTS as Record<string, { systemPrompt: string; name: string; tools?: string[] }>)[agentType];
     
     if (!agent) throw new Error(`Unknown agent type: ${agentType}`);
 

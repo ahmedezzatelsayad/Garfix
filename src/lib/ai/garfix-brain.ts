@@ -1,9 +1,23 @@
 /**
  * ═════════════════════════════════════════════════════════════
-*
- * Phase 8 P3: DEAD CODE — imported only by ai/index.ts re-export and aiWorkers.ts
- * (which is itself dead — see Sprint 7 P0 fix). 798 LOC of unused GarfiX persona,
- * memory system, event emitter. Kept for future wiring. Do NOT add new callers.
+ *
+ * AI-09 FIX (Audit v2 · Phase 3): DEAD CODE DECISION — ACTIVATED (consumer-side).
+ *
+ * Previous status: "DEAD CODE — imported only by ai/index.ts re-export and
+ * aiWorkers.ts (which is itself dead — see Sprint 7 P0 fix)".
+ *
+ * Current status (Phase 3): aiWorkers.ts is NO LONGER dead — `registerAIWorkers()`
+ * is invoked from src/runtime/bootstrap.ts at boot time, registering the AI
+ * queue worker. `handleChatJob` (inside aiWorkers.ts) calls `getGarfixBrain()`
+ * and invokes `brain.chat(...)` to produce responses for jobs enqueued via
+ * `enqueueChatJob` (currently exercised by the founder-validation suite).
+ *
+ * The remaining gap is the ENQUEUER side (AI-10): no production route currently
+ * calls `enqueueChatJob` / `enqueueInvoiceExtractJob` from the HTTP path —
+ * the /api/ai/chat route calls callAI synchronously instead of going through
+ * the queue. That gap is tracked separately under AI-10; the Brain itself is
+ * no longer dead code, it's an active worker handler.
+ *
  * GarfiX AI - The Brain (العقل الذكي)
  * 
  * This is the CORE of GarfiX AI - an independent intelligent agent

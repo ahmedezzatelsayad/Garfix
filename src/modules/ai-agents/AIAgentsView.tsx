@@ -113,6 +113,7 @@ export function AIAgentsView() {
 
   useEffect(() => {
     if (apiAgents && apiAgents.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing TanStack Query data to local state
       setAgents(apiAgents.map((a) => ({
         type: a.type,
         name: a.name,
@@ -128,6 +129,7 @@ export function AIAgentsView() {
   // Reset chat when switching agent
    
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset state when selected agent changes
     setTurns([]);
     setInput("");
     setShowReasoning(null);

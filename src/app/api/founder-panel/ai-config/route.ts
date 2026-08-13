@@ -161,6 +161,7 @@ async function testGeminiConnection(
   model: string = 'gemini-2.0-flash',
   feature: string = 'chat'
 ): Promise<{ success: boolean; latencyMs: number; model: string; error?: string }> {
+  type PromptFeature = 'chat' | 'invoice' | 'parse' | 'memory';
   const startTime = Date.now();
   
   try {
@@ -179,7 +180,7 @@ async function testGeminiConnection(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{
-          parts: [{ text: (testPrompts as any)[feature] || testPrompts.chat }]
+          parts: [{ text: testPrompts[feature as PromptFeature] || testPrompts.chat }]
         }],
         generationConfig: {
           maxOutputTokens: 50,
@@ -262,16 +263,13 @@ export async function GET(request: NextRequest) {
       // pass any companySlug and read that company's AI config (masked keys,
       // model names, RPMs, usage stats). Now we verify the caller has a
       // founder role in the requested company before returning the config.
-      const membership = await (db as unknown as {
-        companyMember: {
-          findFirst: (args: {
-            where: { userId?: string; companyId?: string; role?: string };
-          }) => Promise<{ role: string } | null>;
-        };
-      }).companyMember.findFirst({
+      // DB-04 FIX (Audit v2): Use correct Prisma model `companyMembership`.
+      // The old code cast through `unknown` to call `db.companyMember` which
+      // doesn't exist in the Prisma client → TypeError at runtime.
+      const membership = await db.companyMembership.findFirst({
         where: {
-          userId: auth.user.uid,
-          companyId: company.id,
+          userUid: auth.user.uid,
+          companySlug: company.slug,
           role: 'founder',
         },
       });
@@ -291,28 +289,19 @@ export async function GET(request: NextRequest) {
       companyId = company.id;
     } else {
       // Use user's primary company
-      // NOTE: `companyMember` is not in prisma schema.prisma — the table is
-      // created by an unrelated migration and was previously accessed via
-      // `db: any`. We cast through `unknown` to keep the runtime call intact
-      // without re-introducing `any`.
-      const membership = await (db as unknown as {
-        companyMember: {
-          findFirst: (args: {
-            where: { userId?: string; role?: string };
-          }) => Promise<{ companyId: string } | null>;
-        };
-      }).companyMember.findFirst({
-        where: { 
-          userId: auth.user.uid,
+      // DB-04 FIX (Audit v2): Use correct Prisma model `companyMembership`.
+      const membership = await db.companyMembership.findFirst({
+        where: {
+          userUid: auth.user.uid,
           role: 'founder',
         },
       });
-      
+
       if (!membership) {
         return apiError('No founder role found. Access denied.', 403);
       }
-      
-      companyId = membership.companyId;
+
+      companyId = membership.companySlug;
     }
     
     // Get or create config
@@ -418,27 +407,19 @@ export async function PUT(request: NextRequest) {
     const configData = validated.data;
     
     // Verify founder access
-    // NOTE: `companyMember` is not in prisma schema.prisma — see GET handler
-    // above for the cast rationale.
-    const membership = await (db as unknown as {
-      companyMember: {
-        findFirst: (args: {
-          where: { userId?: string; role?: string };
-        }) => Promise<{ companyId: string } | null>;
-      };
-    }).companyMember.findFirst({
-      where: { 
-        userId: auth.user.uid,
+    const membership = await db.companyMembership.findFirst({
+      where: {
+        userUid: auth.user.uid,
         role: 'founder',
       },
     });
-    
+
     if (!membership) {
       return apiError('Only founders can modify AI configuration', 403);
     }
-    
+
     // Get existing config
-    const existingConfig = await getOrCreateCompanyAIConfig(membership.companyId);
+    const existingConfig = await getOrCreateCompanyAIConfig(membership.companySlug);
     
     // Helper to handle masked keys (don't overwrite with ••••••••)
     // P2-SPRINT6 FIX: routes through `resolveKeyForUpdate()` from keyVault.ts
@@ -492,7 +473,7 @@ export async function PUT(request: NextRequest) {
       action: 'update_ai_config_per_feature',
       entity: 'company_ai_config',
       details: {
-        companyId: membership.companyId,
+        companyId: membership.companySlug,
         featuresUpdated: {
           chat: !!configData.chat.apiKey && configData.chat.apiKey !== '••••••••',
           invoice: !!configData.invoice.apiKey && configData.invoice.apiKey !== '••••••••',
@@ -502,7 +483,7 @@ export async function PUT(request: NextRequest) {
       },
     });
     
-    logger.info(`Per-feature AI config updated by founder ${auth.user.email} for company ${membership.companyId}`);
+    logger.info(`Per-feature AI config updated by founder ${auth.user.email} for company ${membership.companySlug}`);
     
     return NextResponse.json({
       success: true,

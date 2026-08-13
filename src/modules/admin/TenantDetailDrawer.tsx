@@ -31,7 +31,7 @@ export function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug:
   const [prevDetail, setPrevDetail] = prevDetailRef;
   if (detail && prevDetail !== detail) {
     setPrevDetail(detail);
-    const tenant = (detail as unknown as Record<string, unknown>).tenant as Record<string, unknown> || (detail as unknown as Record<string, unknown>);
+    const tenant = (detail as  Record<string, unknown>).tenant as Record<string, unknown> || (detail as  Record<string, unknown>);
     setPlanDraft((tenant.plan as string) || "");
     setSubStatusDraft((tenant.subscriptionStatus as string) || "");
   }
@@ -40,7 +40,7 @@ export function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug:
     if (!detail) return;
     setPlanSaving(true);
     try {
-      const tenant = (detail as unknown as Record<string, unknown>).tenant as Record<string, unknown>;
+      const tenant = (detail as  Record<string, unknown>).tenant as Record<string, unknown>;
       const body: Record<string, string> = {};
       if (planDraft !== (tenant.plan as string)) body.plan = planDraft;
       if (subStatusDraft !== (tenant.subscriptionStatus as string)) body.subscriptionStatus = subStatusDraft;
@@ -62,8 +62,8 @@ export function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug:
   };
 
   // Extract tenant data from detail
-  const tenant = detail ? (detail as unknown as Record<string, unknown>).tenant as Record<string, unknown> : null;
-  const overview = detail ? (detail as unknown as Record<string, unknown>).overview as Record<string, unknown> : null;
+  const tenant = detail ? (detail as  Record<string, unknown>).tenant as Record<string, unknown> : null;
+  const overview = detail ? (detail as  Record<string, unknown>).overview as Record<string, unknown> : null;
 
   return (
     <Sheet open={true} onOpenChange={(open) => { if (!open) onClose(); }}>

@@ -122,7 +122,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   const versionFilter = expectedVersion !== undefined ? { version: expectedVersion } : {};
 
   // Recalc totals if relevant fields changed
-  let updateData: Record<string, unknown> = { ...data, expectedVersion: undefined };
+  const updateData: Record<string, unknown> = { ...data, expectedVersion: undefined };
   if (data.lineItems || data.taxRate !== undefined || data.shipping !== undefined || data.discount !== undefined) {
     const items = data.lineItems ?? parseJsonField(existing.lineItems, []);
     const taxRate = data.taxRate !== undefined ? num(data.taxRate) : num(existing.taxRate);

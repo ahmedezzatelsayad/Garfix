@@ -12,6 +12,10 @@ import { AICopilotBubble } from "@/modules/ai/AICopilotBubble";
 import { CommandPaletteProvider } from "@/components/garfix/CommandPaletteProvider";
 import { ErrorBoundary } from "@/components/garfix/ErrorBoundary";
 import { AppFooter } from "@/components/garfix/AppFooter";
+// FE-01 FIX (Audit v2): import GarfixSkipLinks so skip-link targets work.
+// The skip links were defined in garfix-ds but never rendered in the shell,
+// making them dead code (WCAG 2.4.1 violation).
+import { GarfixSkipLinks } from "@/components/garfix-ds";
 // Lazy Loading: Specific loading states for each view type
 import {
   DashboardLoading,
@@ -294,10 +298,15 @@ function AppShellContent(_props: Record<string, unknown>) {
 
   return (
     <CommandPaletteProvider>
+      {/* FE-01 FIX (Audit v2): Render skip links at the top of the shell so
+          keyboard users can jump directly to main content / nav / footer.
+          Targets (#main-content, #main-navigation, #main-footer) are set below. */}
+      <GarfixSkipLinks />
       <div
         className="flex flex-col sm:flex-row min-h-dvh bg-[#0b1220] text-foreground dark:bg-[#0b1220]"
         dir="rtl"
       >
+        <div id="main-navigation" role="navigation" aria-label="القائمة الرئيسية">
         <Sidebar
           user={user}
           view={view}
@@ -315,9 +324,10 @@ function AppShellContent(_props: Record<string, unknown>) {
           mobileOpen={mobileSidebar}
           onCloseMobile={() => setMobileSidebar(false)}
         />
+        </div>
 
         {/*
-          Part 1.1 fix: the previous code had `marginRight: { md: "260px" } as unknown as string`
+          Part 1.1 fix: the previous code had `marginRight: { md: "260px" } as  string`
           which is a broken object-as-string cast (produces invalid CSS). Replaced with
           Tailwind logical-property class `md:me-[260px]` (margin-end = right in RTL,
           left in LTR). On mobile (<md) the sidebar is an off-canvas drawer so no margin.
@@ -332,7 +342,7 @@ function AppShellContent(_props: Record<string, unknown>) {
             theme={theme}
             toggleTheme={toggleTheme}
           />
-          <main className="flex-1 p-2 sm:p-3 md:p-6 overflow-y-auto max-md:pb-[var(--ai-bubble-safe-area)] glass">
+          <main id="main-content" className="flex-1 p-2 sm:p-3 md:p-6 overflow-y-auto max-md:pb-[var(--ai-bubble-safe-area)] glass">
             <ErrorBoundary>
             {/* ════════════════════════════════════════════════════════════
                 MULTI-SUSPENSE BOUNDARIES — Optimized Loading States
@@ -412,10 +422,12 @@ function AppShellContent(_props: Record<string, unknown>) {
             )}
             </ErrorBoundary>
           </main>
+          <div id="main-footer">
           <AppFooter
             version={process.env.NEXT_PUBLIC_APP_VERSION || "12"}
             commitSha={process.env.COMMIT_SHA}
           />
+          </div>
         </div>
 
         <AICopilotBubble />
