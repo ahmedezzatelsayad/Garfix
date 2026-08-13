@@ -1,0 +1,23 @@
+{
+  "dashboard": {
+    "title": "Garfix AI Spend per Tenant",
+    "schemaVersion": 38,
+    "panels": [
+      {
+        "title": "AI Tokens by Provider",
+        "type": "graph",
+        "targets": [{ "expr": "rate(garfix_ai_tokens_total[1h])" }]
+      },
+      {
+        "title": "AI Cost (USD/hour)",
+        "type": "graph",
+        "targets": [{ "expr": "rate(garfix_ai_cost_usd_total[1h])" }]
+      },
+      {
+        "title": "Cache Hit Rate (%)",
+        "type": "stat",
+        "targets": [{ "expr": "garfix_valkey_hit_rate * 100" }]
+      }
+    ]
+  }
+}
