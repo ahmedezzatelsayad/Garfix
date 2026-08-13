@@ -27,7 +27,7 @@ interface EmployeeForPayroll {
   email: string | null;
   position: string | null;
   department: string | null;
-  baseSalary: string;
+  baseSalary: any;
   currency: string;
   joinDate: string | null;
   isActive: boolean;
@@ -42,7 +42,7 @@ interface SalaryForPayroll {
   companySlug: string;
   employeeId: number;
   month: string;
-  baseSalary: string;
+  baseSalary: any;
   allowances: string;
   deductions: string;
   bonus: string;
@@ -142,7 +142,7 @@ const SOCIAL_INSURANCE_RATES: Record<string, SocialInsuranceRate> = {
  * Calculate social insurance contributions for an employee in a given country.
  */
 export function calculateSocialInsurance(
-  employee: { baseSalary: string; allowances: string },
+  employee: { baseSalary: any; allowances: string },
   country: string,
 ): SocialInsuranceResult {
   const rate = SOCIAL_INSURANCE_RATES[country] || SOCIAL_INSURANCE_RATES.KW;

@@ -8,6 +8,14 @@
  * SQLite's Online Backup API via Prisma's underlying better-sqlite3 driver
  * to take a consistent snapshot without locking writers for long.
  *
+ * TPD-10 FIX (Audit v2 · Phase 2): pg_dump timeout increased from 30s → 600s
+ * (10 minutes). The previous 30s ceiling caused silent truncation on any
+ * production DB >~500MB: pg_dump was SIGTERM'd mid-stream, producing a
+ * partial .sql file that restored with missing rows. The new 600s ceiling
+ * comfortably handles DBs up to ~10GB on standard RDS instances. Backups
+ * exceeding 10 minutes should be flagged to ops — likely indicating a
+ * long-running transaction blocking pg_dump's snapshot.
+ *
  * RUNTIME: Node.js only — uses node:fs/promises, node:path, process.cwd()
  */
 'use node';
@@ -141,7 +149,10 @@ export async function runBackup(label = "scheduled"): Promise<BackupResult> {
             "--exclude-table=_prisma_migrations",
           ],
           {
-            timeout: 30000,
+            // TPD-10 FIX (Audit v2 · Phase 2): 30s → 600s (10 minutes).
+            // The previous 30s ceiling silently truncated backups of any
+            // production DB >~500MB. 600s handles DBs up to ~10GB on RDS.
+            timeout: 600000,
             env: {
               ...process.env,
               PGPASSWORD: dbPassword,
