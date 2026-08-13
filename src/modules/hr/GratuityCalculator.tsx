@@ -9,19 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useGratuity } from "@/hooks/queries";
 
-interface Employee {
-  id: number;
-  name: string;
-  nameEn?: string;
-  phone?: string;
-  email?: string;
-  position?: string;
-  department?: string;
-  baseSalary: number;
-  currency: string;
-  joinDate?: string;
-  isActive: boolean;
-}
+import type { Employee } from "./types";
 
 interface GratuityBreakdownRow {
   period: string;
@@ -131,7 +119,7 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
         employeeId,
         endDate,
         companySlug: "", // companySlug handled by mutation context
-      })) as unknown as GratuityResponse & { error?: string };
+      })) as  any;
       setResult(data);
       if (!data.eligible) {
         toast.warning(data.message || "الموظف غير مؤهل");
@@ -264,9 +252,9 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
             {/* Mini sparkline for visual appeal */}
             <div className="sparkline-container mt-3">
               <div className="flex items-end gap-0.5 h-6">
-                {[30, 50, 40, 70, 55, 85, 65, 90].map((h, i) => (
+                {[30, 50, 40, 70, 55, 85, 65, 90].map((h) => (
                   <div 
-                    key={i} 
+                    key={h} 
                     className="flex-1 bg-[#d4a574]/30 rounded-sm min-w-[3px]" 
                     style={{ height: `${h}%` }}
                   />
@@ -318,8 +306,8 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {result.gratuity.breakdown.map((b, i) => (
-                    <tr key={i} className="border-b border-border hover:bg-accent/50 transition-colors duration-120">
+                  {result.gratuity.breakdown.map((b) => (
+                    <tr key={b.period} className="border-b border-border hover:bg-accent/50 transition-colors duration-120">
                       <td className="px-3 py-2.5 font-bold">{b.period}</td>
                       <td className="px-3 py-2.5">{b.rate}</td>
                       <td className="px-3 py-2.5 [direction:ltr] text-end">{fmt(b.days, 1)}</td>

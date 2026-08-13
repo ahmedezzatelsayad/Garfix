@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * rateLimit-advanced.test.ts — 50 tests for the rate limiter.
  *
@@ -75,8 +74,8 @@ mock.module("next/server", () => {
   }
 
   return {
-    NextRequest: MockNextRequest as unknown as typeof import("next/server").NextRequest,
-    NextResponse: MockNextResponse as unknown as typeof import("next/server").NextResponse,
+    NextRequest: MockNextRequest as  typeof import("next/server").NextRequest,
+    NextResponse: MockNextResponse as  typeof import("next/server").NextResponse,
   };
 });
 

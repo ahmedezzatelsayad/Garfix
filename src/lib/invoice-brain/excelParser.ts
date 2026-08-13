@@ -50,7 +50,7 @@ export interface ParsedSheet {
 /** FIX #1: read ALL sheets (not just the first). Returns one entry per sheet. */
 export async function parseTabularAllSheets(buffer: Buffer): Promise<ParsedSheet[]> {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
+  await workbook.xlsx.load(new Uint8Array(buffer).buffer);
   const results: ParsedSheet[] = [];
   workbook.eachSheet((worksheet) => {
     const sheetHeaders: string[] = [];

@@ -1,0 +1,10 @@
+{
+  "dashboard": {
+    "title": "Garfix Cache & Queue Health",
+    "panels": [
+      { "title": "Valkey Hit Rate (%)", "type": "stat", "targets": [{ "expr": "garfix_valkey_hit_rate * 100" }] },
+      { "title": "BullMQ Queue Depth", "type": "graph", "targets": [{ "expr": "bullmq_queue_waiting_jobs" }] },
+      { "title": "Failed Jobs", "type": "graph", "targets": [{ "expr": "bullmq_queue_failed_jobs" }] }
+    ]
+  }
+}

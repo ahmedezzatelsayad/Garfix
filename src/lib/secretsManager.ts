@@ -41,8 +41,43 @@ export function getSecret(envKey: string): string {
     if (definition?.required && process.env.NODE_ENV === "production") {
       throw new Error(`FATAL: Required secret ${envKey} is not set. Set it via environment variable or secrets manager.`);
     }
-    logger.warn(`[secrets] ${envKey} not set — using dev default`);
-    return `dev-placeholder-${envKey.toLowerCase()}`;
+    // SEC-15 FIX (Audit v2 · Phase 4): The dev-placeholder fallback is now
+    // STRICTLY gated behind NODE_ENV === 'development'. Previously it fired
+    // for any non-production environment (including 'test', 'staging', and
+    // misconfigured prod boxes where NODE_ENV was unset). That meant a
+    // misconfigured production deploy could silently fall back to the
+    // hardcoded `dev-placeholder-${envKey}` value — a secret known to
+    // anyone who reads this open-source repo. This is "dead code that
+    // could accidentally activate in production" per the SEC-15 finding.
+    //
+    // New behavior:
+    //   - NODE_ENV === 'development' → return dev-placeholder + loud warning
+    //     (local dev convenience, never runs in production).
+    //   - NODE_ENV === 'production' → already threw above for required
+    //     secrets; for optional secrets, we now ALSO throw (was: silently
+    //     returned dev-placeholder). The caller must explicitly handle the
+    //     absence via `validateSecrets()` or `getSecretInventory()` first.
+    //   - Any other NODE_ENV (test, staging, undefined) → throw with a
+    //     clear message that the secret is missing. This forces the
+    //     caller to set the env var explicitly rather than silently
+    //     getting a placeholder.
+    if (process.env.NODE_ENV === "development") {
+      // Loud warning — printed EVERY call so it's impossible to miss in logs.
+      console.warn(
+        `⚠️  [SEC-15] secretsManager: ${envKey} is not set — returning dev-placeholder. ` +
+        `This is only allowed in NODE_ENV=development. ` +
+        `Set the env var (or run \`bun run verify:env\`) before deploying.`,
+      );
+      return `dev-placeholder-${envKey.toLowerCase()}`;
+    }
+    // Production, test, staging, or undefined NODE_ENV: do NOT return a
+    // placeholder. Throw so the caller sees a clear failure instead of
+    // silently using a publicly-known "secret".
+    throw new Error(
+      `SEC-15: secret ${envKey} is not set and NODE_ENV=${process.env.NODE_ENV || "(undefined)"} ` +
+      `is not 'development'. Set the env var or run in development mode. ` +
+      `Refusing to return the dev-placeholder fallback (was a pre-SEC-15 vulnerability).`,
+    );
   }
 
   if (definition && val.length < definition.minLength) {

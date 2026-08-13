@@ -31,7 +31,7 @@ export function registerEventsWorker(): void {
   if (registered) return;
 
   registerWorker(QUEUE_NAMES.EVENTS, async (data: Record<string, unknown>) => {
-    const job = data as unknown as EventJobData["data"];
+    const job = data as  EventJobData["data"];
     logger.debug("[events-worker] processing event", {
       companySlug: job.companySlug,
       eventType: job.eventType,

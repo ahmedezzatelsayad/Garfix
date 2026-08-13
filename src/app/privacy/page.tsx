@@ -1,6 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Shield } from "lucide-react";
 import { FooterPageLayout } from "@/components/garfix/FooterPageLayout";
+
+export const metadata: Metadata = {
+  title: "سياسة الخصوصية · GarfiX",
+  description: "سياسة الخصوصية لمنصة GarfiX EOS — نلتزم بحماية بياناتك وخصوصيتك وفق أعلى المعايير الأمنية مع تشفير AES-256 وعزل بيانات الشركات.",
+};
 
 export default function PrivacyPage() {
   return (

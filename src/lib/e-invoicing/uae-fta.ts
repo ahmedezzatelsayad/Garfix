@@ -475,7 +475,7 @@ export function validateUaeFtaInvoice(
   const lineItems = invoice.lineItems as LineItem[] | string | undefined;
   let parsedItems: LineItem[] = [];
   if (typeof lineItems === "string") {
-    try { parsedItems = JSON.parse(lineItems); } catch { parsedItems = []; }
+    try { parsedItems = JSON.parse(lineItems); } catch (error) { logger.error("UAE FTA line items JSON parse failed", { error }); parsedItems = []; }
   } else if (Array.isArray(lineItems)) {
     parsedItems = lineItems;
   }
@@ -573,7 +573,7 @@ export function generateUaeFtaUblXml(
   const rawLineItems = invoice.lineItems as LineItem[] | string;
   let parsedItems: LineItem[] = [];
   if (typeof rawLineItems === "string") {
-    try { parsedItems = JSON.parse(rawLineItems); } catch { parsedItems = []; }
+    try { parsedItems = JSON.parse(rawLineItems); } catch (error) { logger.error("UAE FTA line items JSON parse failed", { error }); parsedItems = []; }
   } else if (Array.isArray(rawLineItems)) {
     parsedItems = rawLineItems;
   }

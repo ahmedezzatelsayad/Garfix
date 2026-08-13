@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'bun:test';
 import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
 describe('Validation: tax-calculation 5', () => {

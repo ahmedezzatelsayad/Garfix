@@ -282,7 +282,7 @@ export const GarfixStepProgress: React.FC<GarfixStepProgressProps> = ({
         const isError = step.error;
 
         return (
-          <React.Fragment key={index}>
+          <React.Fragment key={step.label}>
             {/* Step Item */}
             <div className={cn("flex items-center", vertical ? "gap-3 py-2" : "flex-col gap-2")}>
               {/* Circle */}

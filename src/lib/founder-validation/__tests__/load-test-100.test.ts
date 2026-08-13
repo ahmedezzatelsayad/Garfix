@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect, beforeAll } from 'bun:test';
 import {
   seedEnterpriseData,

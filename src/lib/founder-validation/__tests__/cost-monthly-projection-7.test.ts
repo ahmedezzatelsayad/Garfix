@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { describe, it, expect } from 'bun:test';
 import { seedEnterpriseData, TelemetryCollector, calculateMetrics, calculateModelCost } from '../index';
 describe('Cost: monthly-projection 7', () => {

@@ -52,6 +52,7 @@
     "examples/**",
     "node_modules",
     "scripts/**",
-    "seed/**"
+    "seed/**",
+    "skills/**"
   ]
 }

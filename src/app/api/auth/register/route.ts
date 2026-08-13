@@ -18,7 +18,7 @@ import { dbTyped as db } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { logAudit } from "@/lib/audit";
-import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
+import { rateLimitResponse, LIMITS, getClientIp } from "@/lib/rateLimit";
 import { validatePassword } from "@/lib/passwordPolicy";
 import { z } from "zod";
 import { withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -89,7 +89,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       entity: "auth",
       entityId: null,
       companySlug: null,
-      details: { ip: req.headers.get("x-real-ip") || "unknown" },
+      details: { ip: getClientIp(req) },
     });
     return NextResponse.json(GENERIC_REGISTER_RESPONSE, { status: 200 });
   }

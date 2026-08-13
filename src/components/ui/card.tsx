@@ -87,14 +87,23 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+// FE-08 FIX (Audit v2): CardTitle should render as an <h2> (or <h3> with
+// as="h3") for proper heading hierarchy. The previous <div> implementation
+// broke the document outline — screen readers couldn't navigate card
+// titles, and login/signup pages had NO h1/h2 outline at all.
+// We accept an `as` prop so callers can pick the right heading level for
+// their context (h2 inside a page section, h3 inside a nested card, etc.).
+function CardTitle({ className, as = "h2", ...props }: React.ComponentProps<"h2"> & {
+  as?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
+}) {
+  const Comp = as as "h2";
   return (
-    <div
+    <Comp
       data-slot="card-title"
-      className={cn("leading-none font-semibold text-base", className)}
+      className={cn("leading-none font-semibold text-base tracking-tight", className)}
       {...props}
     />
-  )
+  );
 }
 
 function CardDescription({ className, ...props }: React.ComponentProps<"div">) {

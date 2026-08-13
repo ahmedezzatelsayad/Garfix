@@ -16,6 +16,7 @@ import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { preventPostingToClosedPeriod } from "@/lib/accounting/period-close";
+import { accountingTx } from "@/lib/accounting/tx";
 import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
 import { resolveCompanyId } from "@/lib/company-resolver";
 
@@ -130,8 +131,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError("Invalid company", 400);
   }
 
-  // DB-03 FIX: Wrap entry creation + balance updates in a single transaction
-  const entry = await db.$transaction(async (tx) => {
+  // DB-03 FIX: Wrap entry creation + balance updates in a single transaction.
+  // AUDIT FIX: Use Serializable isolation for financial data integrity —
+  // prevents lost updates on account balances under concurrent JEs.
+  const entry = await accountingTx(async (tx) => {
     const created = await tx.journalEntry.create({
       data: {
         companySlug: data.companySlug,

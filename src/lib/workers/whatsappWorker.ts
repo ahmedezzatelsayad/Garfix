@@ -52,15 +52,15 @@ export async function handleWhatsAppJob(data: Record<string, unknown>): Promise<
 
   switch (jobType) {
     case WHATSAPP_JOB_TYPES.SEND_TEXT:
-      return handleSendText(payload as unknown as WhatsAppTextJobData);
+      return handleSendText(payload);
     case WHATSAPP_JOB_TYPES.SEND_TEMPLATE:
-      return handleSendTemplate(payload as unknown as WhatsAppTemplateJobData);
+      return handleSendTemplate(payload);
     default:
       throw new Error(`whatsappWorker: unknown job type "${jobType}"`);
   }
 }
 
-async function handleSendText(data: WhatsAppTextJobData): Promise<void> {
+async function handleSendText(data: Record<string, unknown>): Promise<void> {
   if (!data.to || typeof data.to !== "string") {
     throw new Error(`whatsappWorker.send-text: missing or invalid 'to' — ${JSON.stringify(data).slice(0, 200)}`);
   }
@@ -81,7 +81,7 @@ async function handleSendText(data: WhatsAppTextJobData): Promise<void> {
   logger.info("[whatsapp-worker] text message sent", { to: normalizedTo, bodyLen: data.body.length });
 }
 
-async function handleSendTemplate(data: WhatsAppTemplateJobData): Promise<void> {
+async function handleSendTemplate(data: Record<string, unknown>): Promise<void> {
   if (!data.to || typeof data.to !== "string") {
     throw new Error(`whatsappWorker.send-template: missing 'to' — ${JSON.stringify(data).slice(0, 200)}`);
   }

@@ -609,11 +609,11 @@ export class DriftDetector {
           max: value,
           lastUpdated: new Date().toISOString(),
           sampleCount: 1,
-        } as unknown as { mean: number; stdDev: number; min: number; max: number; sampleCount: number; lastUpdated: string };
+        } as  { mean: number; stdDev: number; min: number; max: number; sampleCount: number; lastUpdated: string };
         continue;
       }
       
-      const fieldBaseline = baseline.valueBaselines[field] as unknown as { mean: number; stdDev: number; min: number; max: number; sampleCount: number; lastUpdated: string };
+      const fieldBaseline = baseline.valueBaselines[field] as  { mean: number; stdDev: number; min: number; max: number; sampleCount: number; lastUpdated: string };
       const n = fieldBaseline.sampleCount;
       
       // Online mean/stddev update

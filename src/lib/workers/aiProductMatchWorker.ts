@@ -56,21 +56,22 @@ export const AI_PRODUCT_MATCH_JOB_TYPE = "ai-product-match-resolve";
 /**
  * The actual handler — exported for direct invocation from tests.
  */
-export async function handleAIProductMatchJob(data: Record<string, unknown>): Promise<void> {
-  const payload = data as unknown as AIProductMatchJobData;
+function isAIProductMatchJobData(data: Record<string, unknown>): data is Record<string, unknown> & AIProductMatchJobData {
+  return (
+    typeof data.auditId === "number" &&
+    typeof data.companySlug === "string" &&
+    typeof data.newProductName === "string" &&
+    typeof data.candidateProductId === "number" &&
+    typeof data.candidateAlias === "string" &&
+    typeof data.fuzzyScore === "number"
+  );
+}
 
-  // Basic shape validation — refuse to process malformed payloads (the
-  // queue runner will then dead-letter the job).
-  if (
-    typeof payload.auditId !== "number" ||
-    typeof payload.companySlug !== "string" ||
-    typeof payload.newProductName !== "string" ||
-    typeof payload.candidateProductId !== "number" ||
-    typeof payload.candidateAlias !== "string" ||
-    typeof payload.fuzzyScore !== "number"
-  ) {
-    throw new Error(`ai-product-match-resolve: malformed payload — ${JSON.stringify(payload).slice(0, 300)}`);
+export async function handleAIProductMatchJob(data: Record<string, unknown>): Promise<void> {
+  if (!isAIProductMatchJobData(data)) {
+    throw new Error(`ai-product-match-resolve: malformed payload — ${JSON.stringify(data).slice(0, 300)}`);
   }
+  const payload = data;
 
   const { auditId, companySlug, newProductName, candidateProductId, candidateAlias, fuzzyScore } = payload;
 

@@ -47,6 +47,9 @@ Object.defineProperty(window, 'matchMedia', {
 
 // Mock IntersectionObserver for scroll animations
 class MockIntersectionObserver {
+  readonly root: Element | null = null;
+  readonly rootMargin: string = '';
+  readonly thresholds: ReadonlyArray<number> = [];
   callback: IntersectionObserverCallback;
   
   constructor(callback: IntersectionObserverCallback) {
@@ -56,9 +59,10 @@ class MockIntersectionObserver {
   observe() { return; }
   unobserve() { return; }
   disconnect() { return; }
+  takeRecords(): IntersectionObserverEntry[] { return []; }
 }
 
-window.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
+window.IntersectionObserver = MockIntersectionObserver as typeof IntersectionObserver;
 
 // Mock requestAnimationFrame
 let rafCallbacks: Array<(timestamp: number) => void> = [];

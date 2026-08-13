@@ -1,5 +1,8 @@
 "use client";
 
+// FE-04 FIX (Audit v2 · Phase 1) — text-white/40 → text-white/60 (WCAG AAA
+// large-text contrast ≥4.5:1 on #0b1220 navy background).
+
 import { useState } from "react";
 import {
   Globe, Mail, Phone, MapPin, ChevronUp,
@@ -80,7 +83,7 @@ export function ProfessionalFooter({ variant = "landing", version = "12" }: Prof
         text: "text-white/60",
         textHover: "hover:text-emerald-400",
         heading: "text-emerald-400",
-        muted: "text-white/40",
+        muted: "text-white/60",
         brand: "text-white",
         inputBg: "bg-white/[0.05]",
         inputBorder: "border-white/[0.1]",

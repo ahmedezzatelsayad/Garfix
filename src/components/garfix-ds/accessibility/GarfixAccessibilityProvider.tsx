@@ -89,7 +89,7 @@ export const GarfixAccessibilityProvider: React.FC<GarfixAccessibilityProviderPr
     // Initialize announcement region
     initAnnouncementRegion();
 
-    // Check reduced motion preference
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- subscribing to browser media-queries; setState is the subscription callback
     setPrefersReduced(prefersReducedMotion());
 
     // Subscribe to changes
@@ -97,6 +97,7 @@ export const GarfixAccessibilityProvider: React.FC<GarfixAccessibilityProviderPr
 
     // Check high contrast mode
     const highContrastMq = window.matchMedia("(forced-colors: active)");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- subscribing to forced-colors media-query; setState is the subscription callback
     setHighContrast(highContrastMq.matches);
     
     const handleHighContrastChange = (e: MediaQueryListEvent) => {
@@ -104,7 +105,7 @@ export const GarfixAccessibilityProvider: React.FC<GarfixAccessibilityProviderPr
     };
     highContrastMq.addEventListener("change", handleHighContrastChange);
 
-    // Detect screen reader (heuristic)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time browser capability check on mount
     setScreenReaderActive(
       window.navigator.userAgent.includes("JAWS") ||
       window.navigator.userAgent.includes("NVDA") ||

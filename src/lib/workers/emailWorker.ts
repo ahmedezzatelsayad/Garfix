@@ -63,7 +63,7 @@ export async function handleEmailJob(data: Record<string, unknown>): Promise<voi
 }
 
 async function handleSendEmail(data: Record<string, unknown>): Promise<void> {
-  const input = data as unknown as Partial<SendEmailInput>;
+  const input = data as  Partial<SendEmailInput>;
   if (!input.to || !input.subject || !input.body) {
     throw new Error(`emailWorker.send-email: missing required fields (to/subject/body) — ${JSON.stringify(data).slice(0, 200)}`);
   }
@@ -75,7 +75,7 @@ async function handleSendEmail(data: Record<string, unknown>): Promise<void> {
     if (sgConfig?.api_key) {
       // SendGrid is configured — use it instead of SMTP
       const { sendgridProvider } = await import("@/lib/integrations/sendgrid");
-      const sgResult = await (sendgridProvider as unknown as {
+      const sgResult = await (sendgridProvider as  {
         sendEmail: (params: {
           to: string;
           subject: string;

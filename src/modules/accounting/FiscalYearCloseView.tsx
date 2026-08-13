@@ -10,6 +10,7 @@ import {
   Shield, History, ArrowLeftRight, Download, Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
 
@@ -71,7 +72,7 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
       );
       setYearStatus(response);
     } catch (err) {
-      console.error("Error fetching fiscal status:", err);
+      logger.error("Error fetching fiscal status:", { err });
       toast.error("خطأ في تحميل حالة السنة المالية");
     }
   }, [companySlug]);
@@ -88,7 +89,7 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
         totalPages: response.pagination.totalPages,
       });
     } catch (err) {
-      console.error("Error fetching audit log:", err);
+      logger.error("Error fetching audit log:", { err });
     }
   }, [companySlug]);
 

@@ -10,6 +10,22 @@
 #
 # Runs on every push & PR to main/develop
 # Jobs: lint → typecheck → build → unit-tests → integration-tests → summary → deploy
+#
+# TPD-13 FIX (Audit v2 · Phase 3): Security scanning (Trivy container scan,
+# TruffleHog + Gitleaks secret scan, CodeQL SAST, Bun dependency audit, license
+# compliance) lives in the dedicated `.github/workflows/security.yml` workflow.
+# That workflow triggers on push/PR to main + a weekly Monday 06:00 UTC schedule
+# + manual dispatch. It runs in parallel with this CI pipeline; both must pass
+# before a PR can merge (status checks are required in branch protection).
+#
+# Why split: security scans are CPU-heavy (CodeQL builds the full app, Trivy
+# builds + scans the Docker image) and would push CI past the 30-min GHA limit
+# if they ran inline. Splitting also lets us run them on a weekly schedule even
+# when no PR is open — catching newly-disclosed CVEs in dependency graphs.
+#
+# The Trivy / TruffleHog action versions are pinned, and Trivy SARIF results
+# are uploaded to the GitHub Security tab (where GHAS is available) and always
+# uploaded as a workflow artifact for offline review.
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: GarfiX CI v12

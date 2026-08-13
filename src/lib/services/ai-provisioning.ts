@@ -18,7 +18,7 @@
  * ═════════════════════════════════════════════════════════════
  */
 
-import { dbTyped as db } from '@/lib/db';
+import { dbTyped as db, withTenantTx } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { encryptSecret } from '@/lib/cryptoVault';
 
@@ -168,34 +168,57 @@ export async function provisionAIForNewCompany(
       : DEFAULT_SYSTEM_PROMPTS.en;
     
     // Create the AI configuration
-    const config = await db.companyAIConfig.create({
-      data: {
+    // DB-16 FIX (Audit v2 · Phase 3): Wrap the config create + the audit-log
+    // write in a single $transaction (via withTenantTx) so the audit trail
+    // cannot diverge from the persisted config. If logProvisioningEvent
+    // throws, the create rolls back; if the create throws, no audit row is
+    // written. The RLS extension's inTransaction flag is set by
+    // markInTransaction (inside withTenantTx), so the audit-log write —
+    // which uses the global `db` client internally — joins the same
+    // transaction instead of opening a nested one.
+    const config = await withTenantTx(async (tx) => {
+      const created = await tx.companyAIConfig.create({
+        data: {
+          companyId,
+          primaryProvider: JSON.stringify({
+            ...DEFAULT_AI_CONFIG,
+            apiKey: encryptedKey,
+            monthlyTokenQuota: monthlyTokenQuota || DEFAULT_AI_CONFIG.monthlyTokenQuota,
+          }),
+          fallbackProvider: null,
+          systemPrompt: systemPrompt || defaultPrompt,
+          // P2-TypedPrisma: schema uses `<feature>Enabled` not `enable<Feature>`.
+          // The previous `enableChat/enableSmartParse/enableInvoiceExtraction/enableMemory`
+          // keys were silently ignored by Prisma's any-typed db, leaving features
+          // disabled even after provisioning claimed to enable them.
+          chatEnabled: true,
+          parseEnabled: true,
+          invoiceEnabled: true,
+          memoryEnabled: true,
+          memoryRetentionDays: 30,
+          costOptimization: 'balanced',
+          notifyHighUsage: true,
+          usageNotificationThreshold: 80,
+          tokensUsedThisMonth: 0,
+          requestsThisMonth: 0,
+          lastResetAt: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      // Log the provisioning event inside the same transaction so the audit
+      // row commits atomically with the config row.
+      await logProvisioningEvent({
         companyId,
-        primaryProvider: JSON.stringify({
-          ...DEFAULT_AI_CONFIG,
-          apiKey: encryptedKey,
-          monthlyTokenQuota: monthlyTokenQuota || DEFAULT_AI_CONFIG.monthlyTokenQuota,
-        }),
-        fallbackProvider: null,
-        systemPrompt: systemPrompt || defaultPrompt,
-        // P2-TypedPrisma: schema uses `<feature>Enabled` not `enable<Feature>`.
-        // The previous `enableChat/enableSmartParse/enableInvoiceExtraction/enableMemory`
-        // keys were silently ignored by Prisma's any-typed db, leaving features
-        // disabled even after provisioning claimed to enable them.
-        chatEnabled: true,
-        parseEnabled: true,
-        invoiceEnabled: true,
-        memoryEnabled: true,
-        memoryRetentionDays: 30,
-        costOptimization: 'balanced',
-        notifyHighUsage: true,
-        usageNotificationThreshold: 80,
-        tokensUsedThisMonth: 0,
-        requestsThisMonth: 0,
-        lastResetAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
+        companyName,
+        founderId,
+        founderEmail,
+        configId: created.id,
+        hasApiKey: !!apiKey,
+      });
+
+      return created;
     });
     
     logger.info(`✅ AI config created for company ${companyId}: ${config.id}`);
@@ -203,15 +226,8 @@ export async function provisionAIForNewCompany(
     // Generate personalized welcome message
     const welcomeMessage = generateWelcomeMessage(companyName, isArabicContext);
     
-    // Log the provisioning event
-    await logProvisioningEvent({
-      companyId,
-      companyName,
-      founderId,
-      founderEmail,
-      configId: config.id,
-      hasApiKey: !!apiKey,
-    });
+    // (DB-16: logProvisioningEvent now runs inside the withTenantTx callback
+    // above so the audit row commits atomically with the config row.)
     
     return {
       success: true,

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * budget-engine-advanced.test.ts — 40 tests for the budget engine.
  * Tests recordSpend, getBudgetStatus, checkBudgetGate, forecastMonthlySpend.

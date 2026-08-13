@@ -50,7 +50,7 @@ async function handleSendSms(data: Record<string, unknown>): Promise<void> {
     }
 
     const { twilioProvider } = await import("@/lib/integrations/twilio");
-    const result = await (twilioProvider as unknown as {
+    const result = await (twilioProvider as  {
       sendSms: (to: string, body: string) => Promise<{ ok: boolean; error?: string; sid?: string }>;
     }).sendSms(to, body);
 

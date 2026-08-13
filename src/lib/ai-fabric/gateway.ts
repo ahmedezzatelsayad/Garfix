@@ -209,6 +209,8 @@ async function memoryStage(
     whatsapp: "customer",
     financial_analysis: "decision",
     matching: "product",
+    chat: "decision",        // AI-02 FIX (Audit v2 · Phase 1)
+    extraction: "invoice",   // AI-02 FIX
     other: "decision",
   };
 

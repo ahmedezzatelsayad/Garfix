@@ -899,7 +899,7 @@ ${overdueInvoices.slice(0, 15).map((i) => {
             const twilioConfig = await getIntegrationConfig("twilio");
             if (twilioConfig?.account_sid && twilioConfig?.auth_token) {
               const { twilioProvider } = await import("@/lib/integrations/twilio");
-              const result = await (twilioProvider as unknown as {
+              const result = await (twilioProvider as  {
                 sendSms: (to: string, body: string) => Promise<{ ok: boolean; error?: string }>;
               }).sendSms(inv.clientPhone, `تذكير: فاتورة ${inv.invoiceNumber} بقيمة ${remaining.toFixed(3)} مستحقة. نرجو السداد.`);
               if (result.ok) { channel = "SMS"; sent = true; }

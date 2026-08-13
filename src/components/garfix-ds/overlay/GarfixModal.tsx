@@ -21,10 +21,16 @@
 
 "use client";
 
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GarfixButton } from "../core/GarfixButton";
+// FE-03 FIX (Audit v2 · Phase 1) — wire useFocusTrap so that Tab/Shift+Tab
+// stays inside the dialog and focus returns to the trigger element on close.
+// The hook was defined in src/hooks/useAccessibility.ts but had ZERO call
+// sites (dead code per audit FE-03). It already handles Escape, initial
+// focus, and focus restoration — so we delete the duplicate manual logic.
+import { useFocusTrap } from "@/hooks/useAccessibility";
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -87,46 +93,28 @@ export const GarfixModal: React.FC<GarfixModalProps> = ({
   className,
   preventScroll = true,
 }) => {
-  const modalRef = useRef<HTMLDivElement>(null);
-  const previousActiveElement = useRef<HTMLElement | null>(null);
+  // FE-03 FIX (Audit v2 · Phase 1) — useFocusTrap returns a ref to attach
+  // to the dialog container. It internally:
+  //   • captures `document.activeElement` (the trigger) on activation
+  //   • moves focus to the first focusable child (or `initialFocus`)
+  //   • traps Tab/Shift+Tab so focus can't leave the dialog
+  //   • calls `onEscape` when the user presses Escape
+  //   • restores focus to the trigger on deactivation
+  const modalRef = useFocusTrap({
+    active: isOpen,
+    onEscape: closeOnEscape ? onClose : undefined,
+    returnFocus: true,
+  });
 
-  // Handle escape key
-  const handleEscape = useCallback((e: KeyboardEvent) => {
-    if (e.key === "Escape" && closeOnEscape) {
-      onClose();
-    }
-  }, [closeOnEscape, onClose]);
-
-  // Focus management
+  // Body-scroll lock only — focus management is delegated to useFocusTrap.
   useEffect(() => {
-    if (isOpen) {
-      previousActiveElement.current = document.activeElement as HTMLElement;
-      
-      // Focus modal
-      setTimeout(() => {
-        modalRef.current?.focus();
-      }, 50);
-
-      document.addEventListener("keydown", handleEscape);
-      
-      // Prevent scroll
-      if (preventScroll) {
-        document.body.style.overflow = "hidden";
-      }
-
+    if (isOpen && preventScroll) {
+      document.body.style.overflow = "hidden";
       return () => {
-        document.removeEventListener("keydown", handleEscape);
-        
-        // Restore scroll
-        if (preventScroll) {
-          document.body.style.overflow = "";
-        }
-        
-        // Restore focus
-        previousActiveElement.current?.focus();
+        document.body.style.overflow = "";
       };
     }
-  }, [isOpen, handleEscape, preventScroll]);
+  }, [isOpen, preventScroll]);
 
   // Handle backdrop click
   const handleBackdropClick = (e: React.MouseEvent) => {

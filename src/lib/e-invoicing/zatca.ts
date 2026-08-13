@@ -477,7 +477,7 @@ export function validateZatcaInvoice(
   const lineItems = invoice.lineItems as LineItem[] | string | undefined;
   let parsedItems: LineItem[] = [];
   if (typeof lineItems === "string") {
-    try { parsedItems = JSON.parse(lineItems); } catch { parsedItems = []; }
+    try { parsedItems = JSON.parse(lineItems); } catch (error) { logger.error("ZATCA line items JSON parse failed", { error }); parsedItems = []; }
   } else if (Array.isArray(lineItems)) {
     parsedItems = lineItems;
   }
@@ -485,7 +485,7 @@ export function validateZatcaInvoice(
   const lineItemsAr = invoice.lineItemsAr as string | undefined;
   let parsedItemsAr: unknown[] = [];
   if (lineItemsAr) {
-    try { parsedItemsAr = JSON.parse(lineItemsAr); } catch { parsedItemsAr = []; }
+    try { parsedItemsAr = JSON.parse(lineItemsAr); } catch (error) { logger.error("ZATCA Arabic line items JSON parse failed", { error }); parsedItemsAr = []; }
   }
   if (parsedItems.length > 0 && parsedItemsAr.length !== parsedItems.length) {
     errors.push(ERROR_MESSAGES.LINE_ITEMS_ARABIC_MISSING);
@@ -559,7 +559,7 @@ export function generateZatcaUblXml(
   const rawLineItems = invoice.lineItems as LineItem[] | string;
   let parsedItems: LineItem[] = [];
   if (typeof rawLineItems === "string") {
-    try { parsedItems = JSON.parse(rawLineItems); } catch { parsedItems = []; }
+    try { parsedItems = JSON.parse(rawLineItems); } catch (error) { logger.error("ZATCA line items JSON parse failed", { error }); parsedItems = []; }
   } else if (Array.isArray(rawLineItems)) {
     parsedItems = rawLineItems;
   }
@@ -1022,7 +1022,7 @@ export async function submitZatcaInvoice(
             rejectionReason: errorBody.slice(0, 500),
             submittedAt: new Date(),
           },
-        }).catch(() => {});
+        }).catch((error) => { logger.error("ZATCA rejected EInvoice stub create failed", { error }); });
       }
 
       return {

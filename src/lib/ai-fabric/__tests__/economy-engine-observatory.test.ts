@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * economy-engine-observatory.test.ts — 30 tests for AI Economy Engine and Observatory.
  * Tests getEconomyStatus, shouldUseEconomyMode, recordDecisionTrace, getExplainabilitySummary.

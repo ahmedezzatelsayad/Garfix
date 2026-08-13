@@ -26,11 +26,11 @@ export interface AIFabricData {
   periodEnd: string;
 }
 
-export async function GET(req: NextRequest): Promise<NextResponse<AIFabricData>> {
+export async function GET(req: NextRequest): Promise<NextResponse<AIFabricData | { error: string }>> {
   // SEC-C9 (Cycle 4): close missing-auth — exposed companies count, active workers,
   // AI latency, platform savings, total revenue, total AI cost to anyone.
   const authResult = await requireFounder(req);
-  if (authResult instanceof NextResponse) return authResult as NextResponse<AIFabricData>;
+  if (authResult instanceof NextResponse) return authResult as NextResponse<AIFabricData | { error: string }>;
 
   const now = new Date();
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -108,8 +108,8 @@ export async function GET(req: NextRequest): Promise<NextResponse<AIFabricData>>
   } catch (error) {
     logger.error("[ai-fabric] fetch failed", { err: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
-      { error: "Failed to fetch AI Fabric data" } as unknown as AIFabricData,
-      { status: 500 }
+      { error: "Failed to fetch AI Fabric data" },
+      { status: 500 },
     );
   }
 }

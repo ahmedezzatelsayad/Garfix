@@ -78,11 +78,11 @@ export interface FinOpsData {
   daysInMonth: number;
 }
 
-export async function GET(req: NextRequest): Promise<NextResponse<FinOpsData>> {
+export async function GET(req: NextRequest): Promise<NextResponse<FinOpsData | { error: string }>> {
   // SEC-C10 (Cycle 4): close missing-auth — exposed platform P&L (revenue, AI cost,
   // infra cost, profit %, cost per company, cost per invoice, cost per AI call).
   const authResult = await requireFounder(req);
-  if (authResult instanceof NextResponse) return authResult as NextResponse<FinOpsData>;
+  if (authResult instanceof NextResponse) return authResult as NextResponse<FinOpsData | { error: string }>;
   const now = new Date();
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -262,8 +262,8 @@ export async function GET(req: NextRequest): Promise<NextResponse<FinOpsData>> {
   } catch (error) {
     logger.error("[finops] fetch failed", { err: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
-      { error: "Failed to fetch FinOps data" } as unknown as FinOpsData,
-      { status: 500 }
+      { error: "Failed to fetch FinOps data" },
+      { status: 500 },
     );
   }
 }
