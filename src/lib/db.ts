@@ -31,6 +31,7 @@
  */
 
 import { PrismaClient } from '@prisma/client'
+import { getTenantContext } from './tenant-context'
 
 const globalForPrisma = globalThis as typeof globalThis & {
   prisma: ReturnType<typeof createExtendedPrisma> | undefined
@@ -72,8 +73,10 @@ export async function reconnectDb(): Promise<void> {
 }
 export function getLastDbConnectionError() { return lastConnectionError; }
 
-// P0-3: Extend with soft-delete filtering
-// Uses $extends with query-level hooks that inject deletedAt: null
+// P0-3: Extend with soft-delete filtering + TASK-0 RLS tenant context
+// Uses $extends with query-level hooks that:
+//   1. Inject deletedAt: null for soft-delete models
+//   2. Wrap each query in a $transaction with set_config for RLS (TASK-0)
 function createExtendedPrisma() {
   return basePrisma.$extends({
     name: 'softDelete',
@@ -97,6 +100,46 @@ function createExtendedPrisma() {
           }
           return query(args);
         },
+      },
+    },
+  }).$extends({
+    // TASK-0 FIX (Audit v2 · Phase 2): RLS tenant context interceptor.
+    // Every query through this client is automatically wrapped in a
+    // $transaction that sets app.current_company_slug via set_config(..., true).
+    // This fixes the P0 regression where strict RLS policies return 0 rows
+    // for the 211 routes that don't use withTenantScope explicitly.
+    name: 'tenantRls',
+    query: {
+      $allOperations: async ({ model, operation, args, query }) => {
+        const ctx = getTenantContext();
+        // TASK-0 DEBUG: log to prove the extension is intercepting
+        if (process.env.TASK0_DEBUG === '1') {
+          console.log(`[TASK-0] ${model}.${operation} ctx=${ctx?.slug || 'none'} admin=${ctx?.isPlatformAdmin || false}`);
+        }
+        if (!ctx) {
+          // No tenant context (public route, background job, or test) →
+          // run the query without RLS context. The RLS policy will return
+          // 0 rows for tenant-scoped tables, which is the correct fail-closed
+          // behavior for unauthenticated/uncontextualized access.
+          return query(args);
+        }
+
+        // Founder/admin bypass → set app.is_platform = 'on'
+        if (ctx.isPlatformAdmin) {
+          return basePrisma.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('app.is_platform', 'on', true)`;
+            await tx.$executeRaw`SELECT set_config('app.current_company_slug', ${ctx.slug}, true)`;
+            // @ts-expect-error — tx has the same model/operation as the outer client
+            return tx[model]?.[operation]?.(args) ?? query(args);
+          });
+        }
+
+        // Regular tenant → set app.current_company_slug
+        return basePrisma.$transaction(async (tx) => {
+          await tx.$executeRaw`SELECT set_config('app.current_company_slug', ${ctx.slug}, true)`;
+          // @ts-expect-error — tx has the same model/operation as the outer client
+          return tx[model]?.[operation]?.(args) ?? query(args);
+        });
       },
     },
   });

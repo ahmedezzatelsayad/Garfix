@@ -2,10 +2,11 @@
  * api.ts — Shared Route Handler helpers.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { resolveAuth, persistRotatedRefreshToken, type AuthPayload } from "@/lib/auth";
+import { resolveAuth, persistRotatedRefreshToken, hasUnrestrictedScope, type AuthPayload } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { logger } from "@/lib/logger";
 import { z, ZodError } from "zod";
+import { runWithTenantContext } from "@/lib/tenant-context";
 
 export interface ApiContext {
   user: AuthPayload;
@@ -189,23 +190,59 @@ export function withErrorHandler<T extends unknown[]>(
   fn: (...args: T) => Promise<NextResponse>,
 ): (...args: T) => Promise<NextResponse> {
   return async (...args: T) => {
+    const req = args[0] as NextRequest | undefined;
+
+    // TASK-0 FIX (Audit v2 · Phase 2): Resolve auth + set tenant context
+    // via AsyncLocalStorage BEFORE running the handler. This ensures every
+    // Prisma query inside the handler is automatically wrapped in a
+    // $transaction with set_config('app.current_company_slug', slug, true),
+    // fixing the P0 regression where strict RLS returns 0 rows for routes
+    // that don't use withTenantScope explicitly.
+    let authResult: Awaited<ReturnType<typeof resolveAuth>> | null = null;
     try {
-      const response = await fn(...args);
-      // SEC-01 FIX (Audit v2): persist any silently-rotated tokens onto
-      // the response so the rotation actually takes effect. Previously
-      // resolveAuth issued new tokens but no caller persisted them.
-      const req = args[0] as NextRequest | undefined;
       if (req) {
-        return applyRotatedTokens(req, response);
+        authResult = await resolveAuth(req);
       }
-      return response;
-    } catch (err) {
-      // Log the real error server-side for debugging
-      const internalMessage = err instanceof Error ? err.message : String(err);
-      logger.error("[api] unhandled error", { err: internalMessage });
-      // Return a generic message to the client — never leak internal details
-      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    } catch {
+      // Auth resolution failed — proceed without tenant context (will 401)
     }
+
+    // Determine tenant slug + platform admin status
+    const user = authResult?.ok ? authResult.user : null;
+    const isPlatformAdmin = user ? hasUnrestrictedScope(user) : false;
+    const sp = req?.nextUrl.searchParams;
+    const companySlug = user
+      ? (isPlatformAdmin && !sp?.get("companySlug")
+          ? "__ALL__"
+          : sp?.get("companySlug") || user.companies[0] || "__ALL__")
+      : "__ALL__";
+
+    // Run the handler inside the tenant context
+    const runHandler = async (): Promise<NextResponse> => {
+      try {
+        const response = await fn(...args);
+        // SEC-01 FIX: persist any silently-rotated tokens
+        if (req && authResult?.ok) {
+          const rotated = rotationStore.get(req);
+          if (rotated?.refresh || rotated?.access) {
+            return applyRotatedTokens(req, response);
+          }
+        }
+        return response;
+      } catch (err) {
+        const internalMessage = err instanceof Error ? err.message : String(err);
+        logger.error("[api] unhandled error", { err: internalMessage });
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+      }
+    };
+
+    // If we have a tenant context, wrap the handler in ALS
+    if (user && companySlug) {
+      return runWithTenantContext(companySlug, isPlatformAdmin, runHandler);
+    }
+
+    // No auth/tenant context — run without ALS (public routes)
+    return runHandler();
   };
 }
 
