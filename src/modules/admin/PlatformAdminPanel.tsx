@@ -652,7 +652,7 @@ export function PlatformAdminPanel() {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-right flex items-center gap-2 justify-end">
               <Trash2 size={16} className="text-amber-500" />
-              حذف مبدئي للشركة "{deleteTarget?.nameAr || deleteTarget?.name || deleteTarget?.slug}"
+              حذف مبدئي للشركة &quot;{deleteTarget?.nameAr || deleteTarget?.name || deleteTarget?.slug}&quot;
             </AlertDialogTitle>
             <AlertDialogDescription className="text-right">
               سيتم إيقاف الشركة فوراً (تعيين <code dir="ltr">deletedAt</code> +

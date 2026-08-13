@@ -308,7 +308,7 @@ export function WebhookManagementView() {
                 <div>
                   <label className="text-xs text-[var(--muted-foreground)] mb-1">الأحداث المشترك بها</label>
                   <div className="flex gap-2 flex-wrap mt-1">
-                    {events.length === 0 && <span className="text-xs text-[var(--muted-foreground)]">اضغط تبويب "الأحداث" لعرض الأحداث المتاحة</span>}
+                    {events.length === 0 && <span className="text-xs text-[var(--muted-foreground)]">اضغط تبويب &quot;الأحداث&quot; لعرض الأحداث المتاحة</span>}
                     {events.filter((e) => e.id !== "*").map((evt) => (
                       <button
                         key={evt.id}
@@ -359,7 +359,7 @@ export function WebhookManagementView() {
               <div className="p-12 text-center text-[var(--muted-foreground)]">جارٍ التحميل…</div>
             ) : endpoints.length === 0 ? (
               <div className="p-12 text-center text-[var(--muted-foreground)]">
-                لا توجد نقاط ربط. اضغط "إضافة نقطة ربط" لإنشاء واحدة.
+                لا توجد نقاط ربط. اضغط &quot;إضافة نقطة ربط&quot; لإنشاء واحدة.
               </div>
             ) : (
               <div className="overflow-x-auto garfix-scroll">

@@ -323,7 +323,7 @@ function WPSView({ wpsFiles, company, selectedMonth, onRefresh }: { wpsFiles: WP
             </div>
             {files.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground text-[13px]">
-                لا توجد ملفات WPS ل{countryLabels[country]} — اضغط "إنشاء ملف" لبدء
+                لا توجد ملفات WPS ل{countryLabels[country]} — اضغط &quot;إنشاء ملف&quot; لبدء
               </div>
             ) : (
               <div className="overflow-x-auto garfix-scroll">

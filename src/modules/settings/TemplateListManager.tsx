@@ -615,7 +615,7 @@ export function TemplateListManager({ companySlug }: TemplateListManagerProps) {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-center text-sm leading-relaxed">
               هل أنت متأكد من حذف القالب 
-              <span className="font-bold text-foreground mx-1">"{deletingTemplate?.name}"</span>؟
+              <span className="font-bold text-foreground mx-1">&quot;{deletingTemplate?.name}&quot;</span>؟
               <br />
               <span className="text-destructive font-semibold">لا يمكن التراجع عن هذا الإجراء.</span>
               

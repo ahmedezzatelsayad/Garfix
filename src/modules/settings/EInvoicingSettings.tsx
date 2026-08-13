@@ -213,8 +213,8 @@ function ZatcaSettings({
                   بوابة فاتورة
                 </a>
               </>,
-              <>من قسم "إنشاء شهادة الامتثال" احصل على OTP</>,
-              <>أدخل OTP + الرقم الضريبي هنا واضغط "تفعيل"</>,
+              <>من قسم &quot;إنشاء شهادة الامتثال&quot; احصل على OTP</>,
+              <>أدخل OTP + الرقم الضريبي هنا واضغط &quot;تفعيل&quot;</>,
             ]}
           />
 
@@ -308,7 +308,7 @@ function CountryEInvoiceSettings({
     loadStatus();
     // Prefill VAT number from active company
     if (vatNumberDefault && fields.some((f) => f.key === "vat_number")) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- prefill form from prop
+       
       setForm((prev) => ({ ...prev, vat_number: vatNumberDefault }));
     }
   }, [loadStatus]);

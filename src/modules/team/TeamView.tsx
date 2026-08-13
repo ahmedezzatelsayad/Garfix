@@ -394,7 +394,7 @@ function InviteDialog({
                   {result.temporaryPassword}
                 </div>
                 <div className="text-[11px] text-muted-foreground">
-                  شاركها مع المستخدم. يمكنه تغييرها لاحقاً عبر "نسيت كلمة المرور".
+                  شاركها مع المستخدم. يمكنه تغييرها لاحقاً عبر &quot;نسيت كلمة المرور&quot;.
                 </div>
               </div>
             ) : (

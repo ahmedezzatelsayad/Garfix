@@ -221,7 +221,7 @@ export function ReportsView() {
         <div className="state-empty min-h-[300px]">
           <BarChart3 size={64} />
           <h3>اختر نوع التقرير</h3>
-          <p>حدد نوع التقرير ونطاق التاريخ ثم اضغط "إنشاء التقرير"</p>
+          <p>حدد نوع التقرير ونطاق التاريخ ثم اضغط &quot;إنشاء التقرير&quot;</p>
         </div>
       )}
 

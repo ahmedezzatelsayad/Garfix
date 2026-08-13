@@ -133,7 +133,7 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
   // so they don't get automatic ALS tenant context. We set it manually here
   // via runWithTenantContext so RLS allows the write.
   let companySlug: string | null = null;
-  let invoiceId = input.invoiceId ?? null;
+  const invoiceId = input.invoiceId ?? null;
   let invoiceNumber: string | null = null;
 
   // T0-B: Use platform-admin context for the lookup (we don't know tenant yet)
