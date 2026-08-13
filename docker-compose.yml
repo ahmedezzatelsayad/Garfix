@@ -57,10 +57,8 @@ services:
     image: postgres:17-alpine
     container_name: garfix-postgres
     restart: unless-stopped
-    # P1 FIX: Remove host port exposure — only app needs to reach Postgres
-    # If you need debug access, use: docker exec -it garfix-postgres psql -U garfix -d garfix
-    # ports:
-    #   - "${DB_PORT:-5432}:5432"
+    ports:
+      - "5432:5432"
     networks:
       - garfix-net
     environment:
