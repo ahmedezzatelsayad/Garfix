@@ -68,3 +68,4 @@ server.log
 /skills/.env
 .env
 skills/
+upload/
