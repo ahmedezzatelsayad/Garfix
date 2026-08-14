@@ -225,6 +225,18 @@
 |-------|---------|
 | `engine.ts` | محرك الأتمتة — trigger-based workflow execution |
 
+### `accessibility/` — إمكانية الوصول (WCAG 2.1 AAA)
+
+| الملف | الوظيفة |
+|-------|---------|
+| `index.ts` | `createFocusTrap`, `getFocusableElements`, `announceToScreenReader`, `prefersReducedMotion` — أدوات إمكانية الواقع الأساسية. يحتوي على إصلاح إنتاجي للـ focus trap (rAF + re-query fallback) |
+
+### `setup/` — معالج الإعداد (Setup Wizard)
+
+| الملف | الوظيفة |
+|-------|---------|
+| `setup-config.ts` | `isSetupComplete()`, `markSetupComplete()`, `parseDatabaseUrl()`, `buildDatabaseUrl()` — أدوات معالج الإعداد (يعمل بدون `.env` مثل OpenCart) |
+
 ### `founder-validation/` — مجموعة اختبار الضغط
 
 مجموعة اختبارات شاملة (>120 اختبار) لتحقق من جودة البيانات، تكلفة AI، المقاييس، والتقارير في بيئة الإنتاج. تشمل:

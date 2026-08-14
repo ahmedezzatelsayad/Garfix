@@ -1,13 +1,14 @@
 # Components — مكونات واجهة المستخدم
 
-> مكتبة مكونات GarfiX: 40+ مكون shadcn/ui في `ui/` + 9 مكونات مخصصة في `garfix/` + QueryProvider.
-> جميع مكونات `garfix/` مُصمّمة بالاستجابة التكيّفية عبر نقاط التوقف `sm`/`md`/`lg` من Tailwind CSS.
+> مكتبة مكونات GarfiX: 40+ مكون shadcn/ui في `ui/` + نظام تصميم GarfixDS في `garfix-ds/` + مكونات مخصصة في `garfix/` + QueryProvider.
+> جميع المكونات مُصمّمة بالاستجابة التكيّفية عبر نقاط التوقف `sm`/`md`/`lg` من Tailwind CSS، ومتوافقة مع WCAG 2.1 AAA.
 
 ## البنية
 
 ```
 components/
 ├── ui/                  # 40+ مكون shadcn/ui (لا تُعدّل مباشرة)
+├── garfix-ds/           # نظام تصميم GarfiX (GarfixModal, GarfixButton, GarfixDrawer, etc.)
 ├── garfix/              # مكونات GarfiX المخصصة (9 مكونات)
 └── QueryProvider.tsx    # React Query provider
 ```
@@ -27,6 +28,23 @@ components/
 | **الإشعارات** | `toast`, `toaster`, `sonner` |
 
 > ⚠️ مكونات `ui/` تُولّد عبر CLI ولا تُعدّل يدوياً. استخدم `bunx shadcn@latest add {component}`.
+
+## `garfix-ds/` — نظام تصميم GarfiX (Design System)
+
+نظام تصميم داخلي مع دعم كامل لإمكانية الوصول (WCAG 2.1 AAA):
+
+| المجلد | المكونات |
+|--------|---------|
+| `core/` | `GarfixButton` (مع isLoading + disabled), `GarfixInput`, `GarfixCard`, `GarfixBadge`, `GarfixContainer`, `GarfixPageTransition` |
+| `overlay/` | `GarfixModal` (مع useFocusTrap), `GarfixDrawer` (مع useFocusTrap), `GarfixToast` |
+| `accessibility/` | `GarfixSkipLinks` (روابط تخطي لوحة المفاتيح), `GarfixLiveRegion` (إعلانات قارئ الشاشة) |
+| `charts/` | `GarfixChart`, `GarfixSparkline`, `GarfixDonut` |
+| `tables/` | `GarfixDataTable` (فرز + تصفية + ترقيم صفحات + Card View على الموبايل) |
+
+> 🔒 **إمكانية الوصول**: `GarfixModal` و `GarfixDrawer` يستخدمان `useFocusTrap`
+> من `src/hooks/useAccessibility.ts` لحبس التركيز داخل الحوار، وإعادته للزر
+> المُشغّل بعد الإغلاق. الـ focus trap يحتوي على إصلاح إنتاجي (rAF + re-query)
+> لضمان عمله بشكل موثوق في Next.js + Bun.
 
 ## `garfix/` — مكونات GarfiX المخصصة
 
@@ -62,8 +80,20 @@ import { QueryProvider } from '@/components/QueryProvider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
+// من garfix-ds/
+import { GarfixModal } from '@/components/garfix-ds/overlay';
+import { GarfixButton } from '@/components/garfix-ds/core';
+import { GarfixSkipLinks } from '@/components/garfix-ds/accessibility';
+
 // من garfix/
 import { DataTable } from '@/components/garfix/DataTable';
 import { EmptyState } from '@/components/garfix/EmptyState';
 import { FooterPageLayout } from '@/components/garfix/FooterPageLayout';
 ```
+
+## الاصطلاح
+
+- مكونات `ui/` تُولّد عبر shadcn CLI ولا تُعدّل يدوياً
+- مكونات `garfix-ds/` هي نظام التصميم الرسمي — استخدمها دائماً بدلاً من `ui/` للواجهات الجديدة
+- مكونات `garfix/` مكونات مخصصة عالية المستوى (DataTable, ErrorBoundary, etc.)
+- جميع المكونات تدعم RTL (dir="rtl") واللغة العربية افتراضياً

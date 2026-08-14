@@ -95,12 +95,31 @@ export function getLastFocusable(container: HTMLElement | null): HTMLElement | n
 
 /**
  * Trap focus within a container element
+ *
+ * PRODUCTION FIX (returnFocus reliability):
+ * The original cleanup called `previouslyFocused.focus()` synchronously
+ * inside the cleanup function. In production builds (Next.js + Bun) with
+ * React 18, the cleanup runs DURING React's unmount phase — the previously
+ * focused element may have been detached from the DOM by the time we try
+ * to focus it, OR the browser hasn't finished processing the unmount and
+ * the focus call is silently dropped.
+ *
+ * The fix uses a two-pronged approach:
+ *   1. Capture the element's CSS selector + DOM path at activation time,
+ *      so we can re-query it if the original reference becomes stale.
+ *   2. Use requestAnimationFrame + setTimeout fallback to defer the focus
+ *      call until after React's unmount completes.
+ *   3. Verify the element is still connected to the document before
+ *      calling .focus() (avoids errors on detached nodes).
  */
 export function createFocusTrap(
   container: HTMLElement,
   options: FocusTrapOptions
 ): () => void {
   let previouslyFocused: HTMLElement | null = null;
+  // Capture a re-queryable handle: snapshot the element's id, data-* attrs,
+  // and text content so we can find it again if the reference goes stale.
+  let previouslyFocusedSelector: string | null = null;
 
   function handleKeyDown(e: KeyboardEvent) {
     if (!options.active) return;
@@ -140,9 +159,78 @@ export function createFocusTrap(
     }
   }
 
+  /**
+   * Build a CSS selector that can re-find the previously focused element
+   * even if the original HTMLElement reference has been detached + re-created
+   * by React's reconciliation. Falls back to tag + text-content substring.
+   */
+  function buildReselector(el: HTMLElement): string {
+    const parts: string[] = [el.tagName.toLowerCase()];
+    if (el.id) {
+      parts.push(`#${CSS.escape(el.id)}`);
+      return parts.join("");
+    }
+    // Use data-testid if present (stable across re-renders)
+    const testId = el.getAttribute("data-testid");
+    if (testId) {
+      return `[data-testid="${CSS.escape(testId)}"]`;
+    }
+    // Use aria-label if present
+    const ariaLabel = el.getAttribute("aria-label");
+    if (ariaLabel) {
+      parts.push(`[aria-label="${CSS.escape(ariaLabel)}"]`);
+      return parts.join("");
+    }
+    // Fallback: tag + first 30 chars of trimmed text
+    const text = (el.textContent || "").trim().slice(0, 30);
+    if (text) {
+      // text-based selector is fragile but better than nothing
+      parts.push(`:has(> :text("${text}"))`);
+    }
+    return parts.join("");
+  }
+
+  /**
+   * Attempt to focus the previously focused element. Tries:
+   *   1. The original element reference (if still connected)
+   *   2. A re-query via the captured selector
+   * Returns true if focus was successfully restored.
+   */
+  function tryRestoreFocus(): boolean {
+    if (!options.returnFocus) return false;
+
+    // Try the original reference first
+    if (previouslyFocused && document.body.contains(previouslyFocused)) {
+      try {
+        previouslyFocused.focus({ preventScroll: false });
+        return document.activeElement === previouslyFocused;
+      } catch {
+        // element may have been removed mid-call
+      }
+    }
+
+    // Original reference is stale — try re-querying via selector
+    if (previouslyFocusedSelector) {
+      try {
+        const reFound = document.querySelector<HTMLElement>(previouslyFocusedSelector);
+        if (reFound && document.body.contains(reFound)) {
+          reFound.focus({ preventScroll: false });
+          return document.activeElement === reFound;
+        }
+      } catch {
+        // selector may be invalid in some browsers (e.g. :has + :text)
+      }
+    }
+
+    return false;
+  }
+
   // Activate
   if (options.active) {
     previouslyFocused = document.activeElement as HTMLElement;
+    if (previouslyFocused && previouslyFocused !== document.body) {
+      previouslyFocusedSelector = buildReselector(previouslyFocused);
+    }
 
     // Set initial focus
     if (options.initialFocus) {
@@ -161,9 +249,30 @@ export function createFocusTrap(
   return () => {
     document.removeEventListener("keydown", handleKeyDown);
 
-    if (options.returnFocus && previouslyFocused) {
-      previouslyFocused.focus();
-    }
+    if (!options.returnFocus) return;
+
+    // PRODUCTION FIX: defer the focus restoration until after React's
+    // unmount completes. requestAnimationFrame fires before the next
+    // paint, giving the browser time to process the DOM mutation.
+    // We also retry a few times because React 18's concurrent mode may
+    // take 1-2 frames to fully unmount the dialog.
+    let attempts = 0;
+    const maxAttempts = 5;
+    const attemptFocus = () => {
+      attempts++;
+      if (tryRestoreFocus()) return;
+      if (attempts < maxAttempts) {
+        requestAnimationFrame(attemptFocus);
+      }
+    };
+    // First attempt via rAF (waits for next paint)
+    requestAnimationFrame(attemptFocus);
+    // Safety-net via setTimeout in case rAF is throttled (background tabs)
+    setTimeout(() => {
+      if (attempts < maxAttempts) {
+        tryRestoreFocus();
+      }
+    }, 50);
   };
 }
 
