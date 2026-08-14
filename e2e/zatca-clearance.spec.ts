@@ -36,6 +36,7 @@ import {
   ADMIN_EMAIL,
   ADMIN_PASSWORD,
   TEST_COMPANY_SLUG,
+  BASE_URL,
   prisma,
   ensureTestCompany,
   ensureTestUser,
@@ -155,7 +156,11 @@ test.describe("ZATCA clearance — TPD-01 real E2E", () => {
     const cookies = await page.context().cookies();
     const csrfCookie = cookies.find((c) => c.name === "inv_csrf");
     const csrfToken = csrfCookie ? decodeURIComponent(csrfCookie.value) : "";
-    const baseUrl = await page.evaluate(() => window.location.origin);
+    // URL FIX: page.goto('/login') earlier navigated away from the app
+    // origin, so window.location.origin may return 'null' or empty. Use
+    // BASE_URL from _helpers (which defaults to http://localhost:3000)
+    // to construct the absolute URL on the Node side.
+    const submitUrl = `${BASE_URL}/api/e-invoicing/zatca/submit`;
 
     const result = await page.evaluate(async ({ url, csrf, payload }) => {
       const res = await fetch(url, {
@@ -170,7 +175,7 @@ test.describe("ZATCA clearance — TPD-01 real E2E", () => {
       const json = await res.json();
       return { status: res.status, body: json };
     }, {
-      url: `${baseUrl}/api/e-invoicing/zatca/submit`,
+      url: submitUrl,
       csrf: csrfToken,
       payload: { invoiceId, companySlug: TEST_COMPANY_SLUG },
     });
