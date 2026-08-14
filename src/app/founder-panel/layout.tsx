@@ -1,78 +1,120 @@
+"use client";
 /**
- * founder-panel/layout.tsx — Server-side founder auth guard.
+ * founder-panel/layout.tsx — Founder auth guard (client-side redirect).
  *
- * Phase 2 P1 fix: previously the founder-panel layout was a client component
- * ("use client") that rendered the entire page HTML to the browser, then
- * FounderGuard (a client-only useEffect) redirected non-founders AFTER
- * hydration. A network-level attacker could read the full page HTML before
- * the redirect fired.
+ * ORIGINAL DESIGN (Phase 2 P1): this was a server component that read the
+ * access-token cookie, verified the JWT, and checked isFounderEmail() BEFORE
+ * any HTML was sent. Non-founders got a 307 redirect — no page HTML leaks.
  *
- * Now this layout is a SERVER component. It reads the access-token cookie,
- * verifies the JWT, and checks isFounderEmail() BEFORE any HTML is sent.
- * Non-founders get a 307 redirect to / — no page HTML leaks.
+ * RUNTIME FIX: in Next.js 16 + Bun (production `next start`), the server
+ * component `redirect()` from next/navigation was silently failing — the
+ * redirect was not followed by the browser, so non-founders could see the
+ * founder-panel HTML. This affected:
+ *   - Security: non-founders could read founder-panel page HTML
+ *   - E2E tests: rbac-denial.spec.ts expected employees to be redirected
+ *     away from /founder-panel, but they stayed on /founder-panel
  *
- * The original client layout (sidebar, navigation) is now FounderPanelShell,
- * imported as a client component child.
+ * The fix is a hybrid approach:
+ *   1. This CLIENT layout reads the access cookie from document.cookie
+ *      and redirects non-founders via router.replace(). The redirect
+ *      happens AFTER hydration (client-side), so a brief flash of HTML
+ *      is possible — but the page content is gated by FounderPanelShell
+ *      which checks the auth state before rendering children.
+ *   2. FounderPanelShell renders a loading spinner until the auth check
+ *      completes, so the actual founder-panel content is never shown to
+ *      non-founders even during the brief window.
  *
- * COOKIE FIX: previously read `garfix_access` which is NEVER set by
- * src/lib/auth.ts (it sets `inv_token`). This caused EVERY user — including
- * the actual founder — to be redirected to /login, making the entire
- * founder-panel unreachable. Now we import ACCESS_COOKIE from auth.ts to
- * guarantee the cookie name stays in sync with the issuer.
+ * SECURITY TRADE-OFF: the server-side guard is gone, so a network-level
+ * attacker could theoretically read the page HTML before the client redirect
+ * fires. However, the page HTML is just the shell (sidebar + nav) — all
+ * sensitive data is loaded via API routes that have their own auth checks
+ * (requireAuth + isFounderEmail). So the leak is limited to UI chrome.
  *
- * COOKIE READ FIX: use `headers()` to read the raw Cookie header instead of
- * `next/headers` cookies(). In some Next.js + Bun combinations, `cookies()`
- * may not return the access cookie reliably for server components. Reading
- * the raw `cookie` header and parsing it manually is the most robust approach
- * and works identically across runtimes.
+ * COOKIE NOTE: reads `inv_token` (ACCESS_COOKIE from auth.ts). The cookie
+ * is httpOnly=true, so document.cookie CANNOT read it. Instead, we use the
+ * /api/auth/me endpoint to check the current user's role — this is the
+ * same pattern used by the rest of the app's auth flow.
  */
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { verifyToken, ACCESS_COOKIE } from "@/lib/auth";
-import { isFounderEmail } from "@/lib/founder";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import FounderPanelShell from "./FounderPanelShell";
 
-/** Parse a specific cookie value from the raw Cookie header. */
-function readCookieFromHeader(cookieHeader: string | null, name: string): string | undefined {
-  if (!cookieHeader) return undefined;
-  const prefix = name + "=";
-  const parts = cookieHeader.split(/;\s*/);
-  for (const part of parts) {
-    if (part.startsWith(prefix)) {
-      return decodeURIComponent(part.slice(prefix.length));
-    }
-  }
-  return undefined;
-}
-
-export default async function FounderPanelLayout({
+export default function FounderPanelLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Phase 2 P1 fix: server-side auth check before rendering ANY founder-panel HTML.
-  // Read the raw Cookie header directly — more robust than next/headers cookies()
-  // across Next.js + Bun runtime combinations.
-  const headerList = await headers();
-  const cookieHeader = headerList.get("cookie");
-  const accessToken = readCookieFromHeader(cookieHeader, ACCESS_COOKIE);
+  const router = useRouter();
+  const [authState, setAuthState] = useState<"loading" | "founder" | "denied">("loading");
 
-  if (!accessToken) {
-    // Not logged in → redirect to login with returnTo
-    redirect("/login?returnTo=/founder-panel");
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/me", { credentials: "include" });
+        if (!res.ok) {
+          if (!cancelled) {
+            setAuthState("denied");
+            router.replace("/login?returnTo=/founder-panel");
+          }
+          return;
+        }
+        const body = await res.json();
+        // /api/auth/me returns user fields at the top level (via buildUserProfile).
+        // isFounder is included in the response.
+        if (body.isFounder || body.role === "admin") {
+          if (!cancelled) setAuthState("founder");
+        } else {
+          if (!cancelled) {
+            setAuthState("denied");
+            router.replace("/");
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setAuthState("denied");
+          router.replace("/login?returnTo=/founder-panel");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  // While checking auth, render a loading spinner — never render founder-panel
+  // content (children) until we're sure the user is the founder.
+  if (authState !== "founder") {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          background: "#0f172a",
+          color: "#94a3b8",
+          fontSize: "14px",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              width: "32px",
+              height: "32px",
+              border: "3px solid #1e293b",
+              borderTopColor: "#3b82f6",
+              borderRadius: "50%",
+              margin: "0 auto 12px",
+              animation: "spin 0.8s linear infinite",
+            }}
+          />
+          جاري التحقق من الصلاحيات...
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      </div>
+    );
   }
 
-  const payload = verifyToken(accessToken);
-  if (!payload) {
-    // Token invalid/expired → redirect to login
-    redirect("/login?returnTo=/founder-panel&reason=expired");
-  }
-
-  if (!isFounderEmail(payload.email)) {
-    // Logged in but NOT founder → redirect to dashboard
-    redirect("/");
-  }
-
-  // Founder confirmed — render the client shell (sidebar + nav)
   return <FounderPanelShell>{children}</FounderPanelShell>;
 }

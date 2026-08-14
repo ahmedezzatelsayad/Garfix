@@ -143,13 +143,12 @@ test.describe("ZATCA clearance — TPD-01 real E2E", () => {
     });
 
     // ── Trigger the submit via browser fetch() so page.route() intercepts it.
-    // We need the CSRF token from the cookie — read it via page.evaluate().
-    // The fetch runs in the browser context, so cookies are attached
-    // automatically, and page.route() will intercept the request.
-    const csrfToken = await page.evaluate(() => {
-      const match = document.cookie.match(/(?:^|;\s*)inv_csrf=([^;]+)/);
-      return match ? decodeURIComponent(match[1]) : "";
-    });
+    // Read the CSRF token from the BrowserContext cookie jar (NOT document.cookie
+    // — that throws SecurityError on some origins). The fetch runs in the browser
+    // context, so session cookies are attached automatically.
+    const cookies = await page.context().cookies();
+    const csrfCookie = cookies.find((c) => c.name === "inv_csrf");
+    const csrfToken = csrfCookie ? decodeURIComponent(csrfCookie.value) : "";
 
     const result = await page.evaluate(async ({ url, csrf, payload }) => {
       const res = await fetch(url, {

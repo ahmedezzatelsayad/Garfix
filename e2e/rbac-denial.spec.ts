@@ -108,27 +108,24 @@ test.describe("RBAC denial — TPD-01 real E2E", () => {
     const meBody = (await meRes.json()) as { email: string; role: string };
     expect(meBody.email).toBe(EMPLOYEE_EMAIL);
 
-    // Navigate to /founder-panel. The layout's server-side guard must
-    // redirect non-founders away. We assert the URL is NOT /founder-panel
-    // (denied) — the specific redirect target depends on cookie state.
+    // Navigate to /founder-panel. The layout's client-side guard calls
+    // /api/auth/me on mount; if the user is not the founder, it calls
+    // router.replace("/") to redirect them away.
     //
-    // COOKIE FIX: founder-panel/layout.tsx now reads `inv_token` (was
-    // `garfix_access`), so the guard actually fires. The redirect target
-    // for a logged-in non-founder is "/" (dashboard); for an unauthenticated
-    // user it's "/login".
+    // LAYOUT FIX: founder-panel/layout.tsx was converted from a server
+    // component (using next/navigation redirect()) to a client component
+    // because the server-side redirect() was silently failing in
+    // Next.js 16 + Bun production builds. The client layout fetches
+    // /api/auth/me and redirects via router.replace().
     //
-    // REDIRECT TIMING FIX: page.goto() may return before the server-side
-    // redirect (via next/navigation's redirect() in the RSC payload) is
-    // followed by the browser. We use waitForURL with a short timeout to
-    // give the redirect time to settle, then assert the final URL.
+    // Because the redirect is client-side, we need to wait for the page to
+    // hydrate, fetch /api/auth/me, and then navigate away. This takes ~1-2s
+    // in CI. We wait up to 10s for the URL to change.
     await page.goto("/founder-panel");
-    // Wait up to 5s for the URL to change away from /founder-panel.
-    // If no redirect happens (layout guard bug), the URL stays /founder-panel
-    // and the assertion below will fail with a clear message.
     try {
       await page.waitForURL(
         (url) => !url.toString().includes("/founder-panel"),
-        { timeout: 5_000 },
+        { timeout: 10_000 },
       );
     } catch {
       // No redirect happened — fall through to the assertion which will
