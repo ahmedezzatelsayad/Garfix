@@ -72,21 +72,6 @@ BEGIN
   END IF;
 END $$;
 
--- Add the @@unique([userId]) constraint declared in schema.prisma
--- (the original migration only had a non-unique index on userUid)
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conname = 'MFASecret_userId_key' AND conrelid = '"MFASecret"'::regclass
-  ) AND EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'MFASecret' AND column_name = 'userId'
-  ) THEN
-    ALTER TABLE "MFASecret" ADD CONSTRAINT "MFASecret_userId_key" UNIQUE ("userId");
-  END IF;
-END $$;
-
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Part 1: ADD COLUMN IF NOT EXISTS for every schema-declared column that no
 -- migration ever created. Grouped by table for readability.
@@ -287,7 +272,6 @@ ALTER TABLE "letters_of_credit" ADD COLUMN IF NOT EXISTS "issuingBank" TEXT;
 ALTER TABLE "letters_of_credit" ADD COLUMN IF NOT EXISTS "description" TEXT;
 ALTER TABLE "letters_of_credit" ADD COLUMN IF NOT EXISTS "reference" TEXT;
 ALTER TABLE "letters_of_credit" ADD COLUMN IF NOT EXISTS "companyId" TEXT NOT NULL DEFAULT '';
-ALTER TABLE "MFASecret" RENAME COLUMN "userUid" TO "userId";
 ALTER TABLE "MFASecret" ADD COLUMN IF NOT EXISTS "verified" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "match_overrides" ADD COLUMN IF NOT EXISTS "productId" TEXT NOT NULL DEFAULT '';
 ALTER TABLE "match_overrides" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT '1970-01-01 00:00:00'::timestamp;
