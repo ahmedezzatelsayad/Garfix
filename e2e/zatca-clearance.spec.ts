@@ -107,15 +107,23 @@ test.describe("ZATCA clearance — TPD-01 real E2E", () => {
     // sent the correct payload, and (b) control the response shape to verify
     // the UI displays the cleared status correctly.
     //
-    // PLAYWRIGHT FIX: use page.context().route() instead of page.route().
-    // page.route() only intercepts requests originating from the page itself
-    // (fetch/XHR via JS in the browser). page.request.* calls go through the
-    // BrowserContext's APIRequestContext which is NOT covered by page.route().
-    // page.context().route() registers the handler at the context level and
-    // intercepts both page-originated AND page.request.* calls.
-    let interceptedRequest: import("@playwright/test").Request | null = null;
-    await page.context().route("**/api/e-invoicing/zatca/submit", async (route: Route) => {
-      interceptedRequest = route.request();
+    // PLAYWRIGHT FIX: use page.route() + trigger the request via page.evaluate(fetch()).
+    // page.route() ONLY intercepts browser-initiated requests (fetch/XHR from
+    // JS running in the page). page.request.* calls go through Node's
+    // APIRequestContext which is NOT intercepted by page.route() OR
+    // page.context().route() in newer Playwright versions.
+    //
+    // The fix: register page.route() (browser-level), then trigger the POST
+    // via page.evaluate(() => fetch(...)) so the request originates from the
+    // browser context and gets intercepted.
+    let interceptedRequestBody: { invoiceId: number; companySlug: string } | null = null;
+    await page.route("**/api/e-invoicing/zatca/submit", async (route: Route) => {
+      const req = route.request();
+      try {
+        interceptedRequestBody = req.postDataJSON();
+      } catch {
+        interceptedRequestBody = null;
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -134,14 +142,35 @@ test.describe("ZATCA clearance — TPD-01 real E2E", () => {
       });
     });
 
-    // ── Trigger the submit via page.request — page.context().route() will
-    //    intercept it because it covers the context-wide APIRequestContext.
-    const response = await page.request.post("/api/e-invoicing/zatca/submit", {
-      headers: { "x-csrf-token": await getCsrf(page) },
-      data: { invoiceId, companySlug: TEST_COMPANY_SLUG },
+    // ── Trigger the submit via browser fetch() so page.route() intercepts it.
+    // We need the CSRF token from the cookie — read it via page.evaluate().
+    // The fetch runs in the browser context, so cookies are attached
+    // automatically, and page.route() will intercept the request.
+    const csrfToken = await page.evaluate(() => {
+      const match = document.cookie.match(/(?:^|;\s*)inv_csrf=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : "";
     });
-    expect(response.status()).toBe(200);
-    const body = (await response.json()) as {
+
+    const result = await page.evaluate(async ({ url, csrf, payload }) => {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrf,
+        },
+        body: JSON.stringify(payload),
+        credentials: "include",
+      });
+      const json = await res.json();
+      return { status: res.status, body: json };
+    }, {
+      url: "/api/e-invoicing/zatca/submit",
+      csrf: csrfToken,
+      payload: { invoiceId, companySlug: TEST_COMPANY_SLUG },
+    });
+
+    expect(result.status).toBe(200);
+    const body = result.body as {
       ok: boolean;
       submissionStatus: string;
       clearanceStatus: string;
@@ -157,13 +186,12 @@ test.describe("ZATCA clearance — TPD-01 real E2E", () => {
     expect(body.zatcaClearedNumber).toBe(MOCK_CLEARANCE_NUMBER);
 
     // ── Assert the request payload the UI sent ───────────────────────────
-    expect(interceptedRequest, "page.context().route should have intercepted the request").not.toBeNull();
-    const postData = interceptedRequest!.postDataJSON() as { invoiceId: number; companySlug: string };
-    expect(postData.invoiceId).toBe(invoiceId);
-    expect(postData.companySlug).toBe(TEST_COMPANY_SLUG);
+    expect(interceptedRequestBody, "page.route should have intercepted the fetch request").not.toBeNull();
+    expect(interceptedRequestBody!.invoiceId).toBe(invoiceId);
+    expect(interceptedRequestBody!.companySlug).toBe(TEST_COMPANY_SLUG);
 
     // Cleanup the route handler so it doesn't leak into subsequent tests.
-    await page.context().unroute("**/api/e-invoicing/zatca/submit");
+    await page.unroute("**/api/e-invoicing/zatca/submit");
   });
 
   test("real negative path: no CCD cert → 400 + no EInvoice row in DB", async ({

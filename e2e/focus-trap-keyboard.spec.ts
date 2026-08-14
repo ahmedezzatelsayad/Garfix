@@ -93,16 +93,30 @@ test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
 
     // ── 2. Stub the AI test endpoint so the modal opens deterministically ─
     //
-    // The /founder-panel/ai-settings page calls /api/founder-panel/ai-test
-    // when the "Test Connection" button is clicked. The handler may fail
-    // (no real API key configured) — but the modal opens regardless of
-    // success/failure. We intercept the call to keep the test deterministic
-    // and avoid burning real provider quota.
-    await page.route("**/api/founder-panel/ai-test", async (route) => {
+    // ENDPOINT FIX: the /founder-panel/ai-settings page actually calls
+    // /api/founder-panel/ai-config/test (NOT /api/founder-panel/ai-test as
+    // the old comment said). The old route interception was a no-op — the
+    // real API was hit, which failed (no real API key) and produced an
+    // error modal with no focusable content, causing the focus-trap check
+    // to fail because the focus never moved into the dialog.
+    //
+    // RESPONSE SHAPE FIX: the page expects `{ success: true, data: {...} }`
+    // (it reads data.data). The old mock returned `{ ok: true, latencyMs }`
+    // which doesn't match — data.success was undefined, so testResult was
+    // set to `{ success: false, error: 'فشل الاختبار' }`. Now we return the
+    // correct shape so testResult is the success object.
+    await page.route("**/api/founder-panel/ai-config/test", async (route) => {
       return route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ ok: true, latencyMs: 42 }),
+        body: JSON.stringify({
+          success: true,
+          data: {
+            success: true,
+            latencyMs: 42,
+            model: "gemini-1.5-flash",
+          },
+        }),
       });
     });
 
@@ -114,18 +128,24 @@ test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
     expect(page.url(), "must not be redirected to /login").not.toContain("/login");
 
     // ── 4. Find the trigger button and capture it as a reference ────────
-    //
-    // We capture the element handle BEFORE opening the modal so we can
-    // later verify focus returned to the SAME element.
     const triggerButton = page.getByRole("button", { name: MODAL_TRIGGER_LABEL }).first();
     await expect(triggerButton).toBeVisible({ timeout: 10_000 });
 
     // ── 5. Click the trigger to open the modal ──────────────────────────
     await triggerButton.click();
 
-    // Wait for the modal's role="dialog" to mount.
+    // Wait for the modal's role="dialog" to mount AND for the modal content
+    // (the OK button) to render. The focus trap needs focusable elements
+    // inside the modal to work — if we Tab before content renders, the focus
+    // stays on the trigger button (outside the dialog) and the test fails.
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible({ timeout: 5_000 });
+    // Wait for the "حسناً" (OK) button inside the modal — proves testResult
+    // was set and the modal body rendered.
+    const okButton = dialog.getByRole("button", { name: "حسناً" });
+    await expect(okButton).toBeVisible({ timeout: 5_000 });
+    // Give the focus trap a tick to move focus into the dialog.
+    await page.waitForTimeout(100);
 
     // ── 6. Press Tab 15 times — focus must stay INSIDE the dialog ───────
     //
@@ -203,11 +223,17 @@ test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
     const loginRes = await login(page, FOUNDER_EMAIL, FOUNDER_PASSWORD);
     expect(loginRes.status).toBe(200);
 
-    await page.route("**/api/founder-panel/ai-test", async (route) => {
+    // ENDPOINT + RESPONSE SHAPE FIX: see comment in the test above.
+    // The page calls /api/founder-panel/ai-config/test (not /ai-test) and
+    // expects { success: true, data: {...} }.
+    await page.route("**/api/founder-panel/ai-config/test", async (route) => {
       return route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ ok: true, latencyMs: 42 }),
+        body: JSON.stringify({
+          success: true,
+          data: { success: true, latencyMs: 42, model: "gemini-1.5-flash" },
+        }),
       });
     });
 
@@ -220,6 +246,10 @@ test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
 
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible({ timeout: 5_000 });
+    // Wait for the OK button — proves modal content rendered (focus trap
+    // needs focusable elements to work).
+    await expect(dialog.getByRole("button", { name: "حسناً" })).toBeVisible({ timeout: 5_000 });
+    await page.waitForTimeout(100);
 
     // Click the X close button (Arabic aria-label = "إغلاق").
     const closeButton = dialog.getByRole("button", { name: "إغلاق" }).first();

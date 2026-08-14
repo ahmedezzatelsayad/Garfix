@@ -112,14 +112,28 @@ test.describe("RBAC denial — TPD-01 real E2E", () => {
     // redirect non-founders away. We assert the URL is NOT /founder-panel
     // (denied) — the specific redirect target depends on cookie state.
     //
-    // NOTE: founder-panel/layout.tsx checks `garfix_access` cookie, but
-    // auth.ts sets `inv_token`. This is a pre-existing bug (the cookie
-    // names don't match) — so the redirect goes to /login rather than /.
-    // The denial is still real: the employee never sees /founder-panel
-    // content. The bug is tracked separately; this test asserts the denial.
+    // COOKIE FIX: founder-panel/layout.tsx now reads `inv_token` (was
+    // `garfix_access`), so the guard actually fires. The redirect target
+    // for a logged-in non-founder is "/" (dashboard); for an unauthenticated
+    // user it's "/login".
+    //
+    // REDIRECT TIMING FIX: page.goto() may return before the server-side
+    // redirect (via next/navigation's redirect() in the RSC payload) is
+    // followed by the browser. We use waitForURL with a short timeout to
+    // give the redirect time to settle, then assert the final URL.
     await page.goto("/founder-panel");
-    // Wait for the redirect to settle (Playwright auto-waits for navigation).
-    await page.waitForLoadState("networkidle");
+    // Wait up to 5s for the URL to change away from /founder-panel.
+    // If no redirect happens (layout guard bug), the URL stays /founder-panel
+    // and the assertion below will fail with a clear message.
+    try {
+      await page.waitForURL(
+        (url) => !url.toString().includes("/founder-panel"),
+        { timeout: 5_000 },
+      );
+    } catch {
+      // No redirect happened — fall through to the assertion which will
+      // produce a clear failure message.
+    }
     expect(page.url(), "employee must NOT land on /founder-panel").not.toContain("/founder-panel");
     // The redirect target must be one of the allowed denial destinations.
     const url = page.url();
