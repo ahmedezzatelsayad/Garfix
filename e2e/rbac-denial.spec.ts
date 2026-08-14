@@ -96,23 +96,39 @@ test.describe("RBAC denial — TPD-01 real E2E", () => {
     expect(meBody.user!.email).toBe(EMPLOYEE_EMAIL);
 
     // Navigate to /founder-panel. The layout's server-side guard must
-    // redirect non-founders away. We assert the URL is NOT /founder-panel
-    // (denied) — the specific redirect target depends on cookie state.
+    // redirect non-founders away. We assert the URL pathname is NOT
+    // /founder-panel (denied) — the specific redirect target depends on
+    // cookie state.
     //
-    // NOTE: founder-panel/layout.tsx checks `garfix_access` cookie, but
-    // auth.ts sets `inv_token`. This is a pre-existing bug (the cookie
-    // names don't match) — so the redirect goes to /login rather than /.
-    // The denial is still real: the employee never sees /founder-panel
-    // content. The bug is tracked separately; this test asserts the denial.
+    // NOTE: founder-panel/layout.tsx previously checked the WRONG cookie
+    // name (`garfix_access` instead of `inv_token`) — fixed in this same
+    // PR by importing ACCESS_COOKIE from @/lib/auth. With that fix in
+    // place, an employee with a valid session is redirected to "/" (per
+    // the layout's isFounderEmail() branch). Before the fix, the layout
+    // never found the cookie and redirected to /login instead. Both
+    // outcomes are valid denials — the test accepts either.
     await page.goto("/founder-panel");
     // Wait for the redirect to settle (Playwright auto-waits for navigation).
     await page.waitForLoadState("networkidle");
-    expect(page.url(), "employee must NOT land on /founder-panel").not.toContain("/founder-panel");
+
+    // E2E FIX: assert on the URL *pathname* only, NOT the full URL string.
+    // The founder-panel layout redirects non-founders to
+    // /login?returnTo=/founder-panel. The previous assertion
+    // `expect(page.url()).not.toContain("/founder-panel")` FAILED because
+    // the redirect target URL contains "/founder-panel" inside the
+    // `returnTo` query parameter. The denial is still real — the employee
+    // never sees /founder-panel content — but the assertion was looking at
+    // the wrong substring.
+    const url = new URL(page.url());
+    expect(url.pathname, "employee must NOT land on /founder-panel path").not.toBe("/founder-panel");
+
     // The redirect target must be one of the allowed denial destinations.
-    const url = page.url();
+    // (Same check as before, but on the parsed pathname for clarity.)
     const isDeniedRedirect =
-      url.includes("/login") || url.includes("/dashboard") || url === new URL(page.url()).origin + "/";
-    expect(isDeniedRedirect, `unexpected redirect target: ${url}`).toBe(true);
+      url.pathname === "/login" ||
+      url.pathname === "/dashboard" ||
+      url.pathname === "/";
+    expect(isDeniedRedirect, `unexpected redirect target: ${page.url()}`).toBe(true);
 
     // DB sanity: confirm the employee's role in the DB matches what we expect.
     const dbUser = await prisma.appUser.findUnique({

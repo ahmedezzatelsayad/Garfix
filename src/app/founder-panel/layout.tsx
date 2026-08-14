@@ -16,11 +16,19 @@
  */
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken, ACCESS_COOKIE } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import FounderPanelShell from "./FounderPanelShell";
 
-const ACCESS_COOKIE = "garfix_access";
+// E2E FIX (founder-panel auth guard): the previous code declared a LOCAL
+// `const ACCESS_COOKIE = "garfix_access"` which did NOT match the cookie
+// name actually set by `issueSession` in src/lib/auth.ts (which uses
+// `ACCESS_COOKIE = "inv_token"`). Because the names mismatched, the
+// founder-panel layout NEVER found the access cookie — even a logged-in
+// FOUNDER was redirected to /login?returnTo=/founder-panel, so the
+// focus-trap-keyboard spec timed out waiting for the trigger button.
+// Importing the canonical constant from src/lib/auth.ts guarantees the
+// layout reads the same cookie name that issueSession writes.
 
 export default async function FounderPanelLayout({
   children,
