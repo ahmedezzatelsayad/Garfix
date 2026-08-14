@@ -96,27 +96,7 @@ test.describe("ZATCA clearance — TPD-01 real E2E", () => {
     return id;
   }
 
-  // KNOWN ISSUE (test.fixme): The "mocked happy path" test below is marked
-  // fixme because page.route() is NOT intercepting page.request.post() in
-  // the current Playwright version. The mock returns 200 with a fake "cleared"
-  // payload, but the real API is hit instead and returns 400 (missing CCD
-  // certificate). The test expectation `expect(response.status()).toBe(200)`
-  // therefore fails with "Received: 400".
-  //
-  // Per Playwright docs, `page.route()` is intended for browser-initiated
-  // requests (fetch/XHR from the page). For `page.request.*` calls, the
-  // mock should be registered via `page.context().route()` or — more
-  // reliably — the test should drive the request through the actual UI
-  // (clicking the "Submit for clearance" button on the invoice page) so
-  // the request originates from the page.
-  //
-  // Alternative fix: convert this test to use `page.evaluate(() =>
-  // fetch("/api/e-invoicing/zatca/submit", {...}))` which DOES go through
-  // page.route().
-  //
-  // The "real negative path" test below is KEEPING active — it was passing
-  // in the last run because it doesn't rely on mocking.
-  test.fixme("mocked happy path: submit → clearanceStatus:cleared + uuid set", async ({
+  test("mocked happy path: submit → clearanceStatus:cleared + uuid set", async ({
     page,
   }) => {
     await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
@@ -126,8 +106,15 @@ test.describe("ZATCA clearance — TPD-01 real E2E", () => {
     // We intercept the request so we can BOTH (a) assert the UI/API layer
     // sent the correct payload, and (b) control the response shape to verify
     // the UI displays the cleared status correctly.
+    //
+    // PLAYWRIGHT FIX: use page.context().route() instead of page.route().
+    // page.route() only intercepts requests originating from the page itself
+    // (fetch/XHR via JS in the browser). page.request.* calls go through the
+    // BrowserContext's APIRequestContext which is NOT covered by page.route().
+    // page.context().route() registers the handler at the context level and
+    // intercepts both page-originated AND page.request.* calls.
     let interceptedRequest: import("@playwright/test").Request | null = null;
-    await page.route("**/api/e-invoicing/zatca/submit", async (route: Route) => {
+    await page.context().route("**/api/e-invoicing/zatca/submit", async (route: Route) => {
       interceptedRequest = route.request();
       await route.fulfill({
         status: 200,
@@ -147,11 +134,8 @@ test.describe("ZATCA clearance — TPD-01 real E2E", () => {
       });
     });
 
-    // ── Trigger the submit (UI button click is the production path, but the
-    //    invoices list page may not have a per-row "submit for clearance"
-    //    button in all configurations. We drive the SAME API the button
-    //    calls — page.request with CSRF — so the test is stable regardless
-    //    of UI variations, while still going through the real network layer.)
+    // ── Trigger the submit via page.request — page.context().route() will
+    //    intercept it because it covers the context-wide APIRequestContext.
     const response = await page.request.post("/api/e-invoicing/zatca/submit", {
       headers: { "x-csrf-token": await getCsrf(page) },
       data: { invoiceId, companySlug: TEST_COMPANY_SLUG },
@@ -173,10 +157,13 @@ test.describe("ZATCA clearance — TPD-01 real E2E", () => {
     expect(body.zatcaClearedNumber).toBe(MOCK_CLEARANCE_NUMBER);
 
     // ── Assert the request payload the UI sent ───────────────────────────
-    expect(interceptedRequest, "page.route should have intercepted the request").not.toBeNull();
+    expect(interceptedRequest, "page.context().route should have intercepted the request").not.toBeNull();
     const postData = interceptedRequest!.postDataJSON() as { invoiceId: number; companySlug: string };
     expect(postData.invoiceId).toBe(invoiceId);
     expect(postData.companySlug).toBe(TEST_COMPANY_SLUG);
+
+    // Cleanup the route handler so it doesn't leak into subsequent tests.
+    await page.context().unroute("**/api/e-invoicing/zatca/submit");
   });
 
   test("real negative path: no CCD cert → 400 + no EInvoice row in DB", async ({

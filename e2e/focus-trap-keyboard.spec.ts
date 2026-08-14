@@ -31,8 +31,8 @@
  */
 import { test, expect } from "@playwright/test";
 import {
-  ADMIN_EMAIL,
-  ADMIN_PASSWORD,
+  FOUNDER_EMAIL,
+  FOUNDER_PASSWORD,
   TEST_COMPANY_SLUG,
   prisma,
   ensureTestCompany,
@@ -59,12 +59,15 @@ const MODAL_OK_LABEL = "حسناً";
 
 test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
   test.beforeEach(async () => {
-    // Seed the test company + admin user (idempotent).
+    // Seed the test company + founder user (idempotent).
+    // FOUNDER FIX: previously this test logged in as ADMIN_EMAIL which is
+    // rejected by /founder-panel/layout.tsx (isFounderEmail() check). Now
+    // we seed + log in as FOUNDER_EMAIL so the founder-panel guard passes.
     await ensureTestCompany();
     await ensureTestUser({
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
-      role: "admin",
+      email: FOUNDER_EMAIL,
+      password: FOUNDER_PASSWORD,
+      role: "founder",
       companies: [TEST_COMPANY_SLUG],
     });
   });
@@ -78,24 +81,15 @@ test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
     await prisma.$disconnect().catch(() => {});
   });
 
-  // KNOWN ISSUE (test.fixme): These two tests are marked fixme because the
-  // /founder-panel/layout.tsx server-side guard checks the `garfix_access`
-  // cookie, but auth.ts only sets `inv_token`. As a result EVERY user
-  // (including the actual founder) is redirected away from /founder-panel,
-  // so the "اختبار الاتصال" (Test Connection) button on /founder-panel/ai-settings
-  // is never visible. The test logs in as ADMIN_EMAIL which is also wrong —
-  // should be FOUNDER_EMAIL.
-  //
-  // To re-enable: (1) fix founder-panel/layout.tsx to check `inv_token`
-  // (or use resolveAuth() server-side), (2) update these tests to log in as
-  // FOUNDER_EMAIL with role "founder". Tracked separately from the migration
-  // fixes — this is a pre-existing cookie-name mismatch bug.
-  test.fixme("Tab cycles inside modal; Escape closes; focus returns to trigger", async ({
+  test("Tab cycles inside modal; Escape closes; focus returns to trigger", async ({
     page,
   }) => {
-    // ── 1. Log in as admin ────────────────────────────────────────────────
-    const loginRes = await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
-    expect(loginRes.status, "admin login should succeed").toBe(200);
+    // ── 1. Log in as founder (NOT admin) ─────────────────────────────────
+    // The /founder-panel/* routes are guarded by isFounderEmail() — admin
+    // users are redirected away. We must log in as the founder to access
+    // /founder-panel/ai-settings.
+    const loginRes = await login(page, FOUNDER_EMAIL, FOUNDER_PASSWORD);
+    expect(loginRes.status, "founder login should succeed").toBe(200);
 
     // ── 2. Stub the AI test endpoint so the modal opens deterministically ─
     //
@@ -199,13 +193,14 @@ test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
     ).toBe(true);
   });
 
-  test.fixme("modal close button (X) also restores focus to trigger", async ({
+  test("modal close button (X) also restores focus to trigger", async ({
     page,
   }) => {
     // Variant: closing via the X button (aria-label="إغلاق") should ALSO
     // restore focus, not just Escape. This catches a regression where the
     // X button calls onClose() without deactivating the focus trap.
-    const loginRes = await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+    // FOUNDER FIX: log in as founder (not admin) — see comment above.
+    const loginRes = await login(page, FOUNDER_EMAIL, FOUNDER_PASSWORD);
     expect(loginRes.status).toBe(200);
 
     await page.route("**/api/founder-panel/ai-test", async (route) => {

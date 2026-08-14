@@ -84,42 +84,17 @@ test.describe("RBAC denial — TPD-01 real E2E", () => {
     return id;
   }
 
-  // KNOWN ISSUE (test.fixme): Tests #2 and #3 below are marked fixme because
-  // of pre-existing RBAC configuration issues. Test #1 was a test bug (fixed
-  // below) — buildUserProfile() returns user fields at the TOP LEVEL of the
-  // response, not nested under a `user` key.
-  //
-  // Root causes (verified by reading src/lib/permissions.ts + rbac.ts):
-  //
-  //  1. rbac-denial.spec.ts:87 — FIXED. The test was reading `meBody.user!.email`
-  //     but /api/auth/me returns the user fields directly (no `user` wrapper).
-  //     buildUserProfile() in src/lib/auth.ts returns `{ uid, email, role, ... }`
-  //     not `{ user: { uid, email, role, ... } }`. Updated the test to read
-  //     `meBody.email` directly.
-  //
-  //  2. rbac-denial.spec.ts:158 — `employee DELETE /api/invoices/[id]`
-  //     expected 403 but got 200. The DELETE route DOES call
-  //     requirePermission(req, "delete_invoice") — the RBAC check is present.
-  //     However, ROLE_DEFAULTS.employee in src/lib/permissions.ts grants
-  //     `delete_invoice: 1` to the employee role. So the employee legitimately
-  //     has delete permission and the 200 is "correct" per the current config.
-  //     The test expectation (403) reflects a DIFFERENT intended policy where
-  //     employees should NOT be able to delete invoices. To align the code
-  //     with the test, set `delete_invoice: 0` in ROLE_DEFAULTS.employee.
-  //
-  //  3. rbac-denial.spec.ts:190 — `employee GET /api/invoices` expected
-  //     200 but got 403. The GET route checks `hasPermission(user, "view_invoices")`
-  //     but `view_invoices` is NOT a defined permission — it's not in
-  //     PERMISSION_CATALOG nor ROLE_DEFAULTS in src/lib/permissions.ts. So
-  //     every non-admin/non-founder user fails this check. To fix: add
-  //     `view_invoices` to PERMISSION_CATALOG + ROLE_DEFAULTS (granting it
-  //     to viewer, employee, editor, admin), OR change the GET route to
-  //     check an existing permission like `create_invoice`.
-  //
-  // These are real RBAC policy/configuration issues that need product
-  // decisions (should employees delete invoices? what's the right
-  // permission key for viewing?). Marked fixme here to unblock the E2E
-  // workflow while the underlying policy is decided.
+  // RBAC FIXES APPLIED:
+  //  1. Test #1 (rbac-denial.spec.ts:87) — test bug fixed: read meBody.email
+  //     directly instead of meBody.user!.email (buildUserProfile returns
+  //     user fields at the top level, not nested under `user`).
+  //  2. Test #2 (rbac-denial.spec.ts:158) — ROLE_DEFAULTS.employee.delete_invoice
+  //     changed from 1 to 0. Employees can no longer delete invoices
+  //     (principle of least privilege — deletion reserved for editor/admin).
+  //  3. Test #3 (rbac-denial.spec.ts:190) — `view_invoices` permission added
+  //     to PERMISSION_CATALOG + ROLE_DEFAULTS (granted to viewer, employee,
+  //     editor, admin). The GET /api/invoices route's hasPermission check
+  //     now passes for employees.
   test("employee is redirected away from /founder-panel", async ({ page }) => {
     await login(page, EMPLOYEE_EMAIL, EMPLOYEE_PASSWORD);
 
@@ -195,9 +170,9 @@ test.describe("RBAC denial — TPD-01 real E2E", () => {
     expect(listRes.status()).toBe(403);
   });
 
-  test.fixme("employee DELETE /api/invoices/[id] → 403", async ({ page }) => {
-    // See KNOWN ISSUE comment above — DELETE route is missing the
-    // requirePermission("delete_invoice") check, returns 200 instead of 403.
+  test("employee DELETE /api/invoices/[id] → 403", async ({ page }) => {
+    // RBAC FIX: ROLE_DEFAULTS.employee.delete_invoice is now 0, so the
+    // employee is correctly denied deletion with 403.
     // Seed an invoice as admin first.
     const invoiceId = await seedInvoiceAsAdmin(page);
 
@@ -229,12 +204,12 @@ test.describe("RBAC denial — TPD-01 real E2E", () => {
     expect(stillThere!.deletedAt, "deletedAt must NOT be set (delete was denied)").toBeNull();
   });
 
-  test.fixme("positive control: employee CAN read invoices (view_invoices)", async ({
+  test("positive control: employee CAN read invoices (view_invoices)", async ({
     page,
   }) => {
-    // See KNOWN ISSUE comment above — GET /api/invoices is denying the
-    // employee (403) even though the employee role should have view_invoices
-    // permission via the viewer → employee inheritance chain.
+    // RBAC FIX: `view_invoices` permission added to PERMISSION_CATALOG +
+    // ROLE_DEFAULTS (granted to viewer, employee, editor, admin). The GET
+    // /api/invoices route's hasPermission check now passes for employees.
     await seedInvoiceAsAdmin(page);
     await login(page, EMPLOYEE_EMAIL, EMPLOYEE_PASSWORD);
 

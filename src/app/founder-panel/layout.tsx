@@ -13,14 +13,18 @@
  *
  * The original client layout (sidebar, navigation) is now FounderPanelShell,
  * imported as a client component child.
+ *
+ * COOKIE FIX: previously read `garfix_access` which is NEVER set by
+ * src/lib/auth.ts (it sets `inv_token`). This caused EVERY user — including
+ * the actual founder — to be redirected to /login, making the entire
+ * founder-panel unreachable. Now we import ACCESS_COOKIE from auth.ts to
+ * guarantee the cookie name stays in sync with the issuer.
  */
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken, ACCESS_COOKIE } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import FounderPanelShell from "./FounderPanelShell";
-
-const ACCESS_COOKIE = "garfix_access";
 
 export default async function FounderPanelLayout({
   children,

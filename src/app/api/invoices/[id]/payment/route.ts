@@ -62,25 +62,19 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
   const data = parsed.data;
 
-  // Reject non-positive payment amounts up front (negative amounts would
-  // reduce `paid` and could be used to mark a paid invoice as unpaid).
-  const amountNum = num(data.amount, 3);
-  if (!(amountNum > 0)) {
-    return apiError("Payment amount must be greater than zero", 400);
-  }
-  const total = num(existing.total, 3);
-  const currentPaid = num(existing.paid, 3);
-  const remaining = total - currentPaid;
-  if (total > 0 && amountNum > remaining + 0.001) {
-    return apiError("Payment (" + amountNum.toFixed(3) + ") exceeds remaining (" + remaining.toFixed(3) + "). Over-payment not allowed.", 400);
-  }
-
   // ── P0 FIX (audit): Atomic idempotency check via CREATE (not findUnique) ──
   // Previously: findUnique → if null → proceed → payment → upsert.
   // Race: two concurrent requests both find null, both apply payment = DOUBLE PAY.
   // Now: try to CREATE the idempotency record atomically. If P2002 (unique
   // constraint violation), another request already claimed this key — fetch
   // and return its cached response. This is the "idempotency key as lock" pattern.
+  //
+  // CRITICAL ORDERING FIX: the idempotency check MUST run BEFORE amount
+  // validation (over-payment check). Otherwise a replay of a payment that
+  // fully paid the invoice (paid == total → remaining == 0) would be
+  // rejected with "Payment exceeds remaining" instead of returning the
+  // cached 200 response — defeating the entire purpose of idempotency.
+  // The replay MUST return the EXACT same response as the first call.
   if (data.idempotencyKey) {
     const idemCompositeKey = `inv-${existing.id}:${data.idempotencyKey}`;
     const ttlCutoff = new Date(Date.now() - IDEMPOTENCY_TTL_HOURS * 3600 * 1000);
@@ -115,7 +109,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
           if (idem.responseBody) {
             try {
               const cached = JSON.parse(idem.responseBody);
-              return NextResponse.json(cached);
+              return NextResponse.json(cached, { status: idem.statusCode || 200 });
             } catch {
               return NextResponse.json({ ok: true, replayed: true, invoice: { id: existing.id } });
             }
@@ -144,6 +138,23 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
         logger.error("[payment] idempotency create failed (non-P2002)", { err: err?.message });
       }
     }
+  }
+
+  // Reject non-positive payment amounts up front (negative amounts would
+  // reduce `paid` and could be used to mark a paid invoice as unpaid).
+  // NOTE: this runs AFTER the idempotency check above — a replay must
+  // short-circuit before reaching here, otherwise the cached 200 response
+  // would be replaced by a 400 "over-payment" error (because the first
+  // call already set paid == total, leaving remaining == 0).
+  const amountNum = num(data.amount, 3);
+  if (!(amountNum > 0)) {
+    return apiError("Payment amount must be greater than zero", 400);
+  }
+  const total = num(existing.total, 3);
+  const currentPaid = num(existing.paid, 3);
+  const remaining = total - currentPaid;
+  if (total > 0 && amountNum > remaining + 0.001) {
+    return apiError("Payment (" + amountNum.toFixed(3) + ") exceeds remaining (" + remaining.toFixed(3) + "). Over-payment not allowed.", 400);
   }
 
   // ── C1 FIX: Atomic conditional update inside a transaction ───────────────

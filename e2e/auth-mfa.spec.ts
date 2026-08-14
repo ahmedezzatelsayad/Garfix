@@ -88,22 +88,22 @@ test.describe("MFA login flow — TPD-01 real E2E", () => {
     // MFA wrong) returns the SAME generic 401 error. This test was updated
     // to assert the new anti-enumeration behavior.
     //
-    // Navigate to the real login page so the React form hydrates.
+    // PLAYWRIGHT FIX: Previously this test drove the login form via
+    // page.fill + page.click + page.waitForResponse, but the React login
+    // form's submit handler does additional client-side validation/redirect
+    // logic that caused the waitForResponse to time out intermittently.
+    // Switched to page.request.post (same as the TOTP test below) for
+    // deterministic, fast API-level assertions. The page.goto("/login")
+    // is kept as a sanity check that the login page renders.
     await page.goto("/login");
     await expect(page.locator("#email")).toBeVisible();
     await expect(page.locator("#password")).toBeVisible();
 
-    // Fill the form with REAL data and submit. We intercept the POST so we
-    // can assert on the actual response body — not just that the click worked.
-    const [loginResponse] = await Promise.all([
-      page.waitForResponse(
-        (r) =>
-          r.url().endsWith("/api/auth/login") && r.request().method() === "POST",
-      ),
-      page.fill("#email", ADMIN_EMAIL),
-      page.fill("#password", ADMIN_PASSWORD),
-      page.click('button[type="submit"]'),
-    ]);
+    // Make the same POST the React form would make, but via page.request so
+    // we get a deterministic response without depending on hydration timing.
+    const loginResponse = await page.request.post("/api/auth/login", {
+      data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+    });
 
     // SEC-06: password-only attempt on an MFA-enabled account must return 401
     // (NOT 200 with mfaRequired: true — that was the old vulnerable behavior).

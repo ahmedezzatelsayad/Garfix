@@ -19,6 +19,7 @@ export interface PermissionMeta {
 }
 
 export const PERMISSION_CATALOG: PermissionMeta[] = [
+  { key: "view_invoices", label: "عرض الفواتير", icon: "👁️", group: "فواتير", locked: false },
   { key: "create_invoice", label: "إنشاء فواتير", icon: "➕", group: "فواتير", locked: false },
   { key: "print_invoice", label: "طباعة الفواتير", icon: "🖨️", group: "فواتير", locked: false },
   { key: "edit_invoice", label: "تعديل الفواتير", icon: "✏️", group: "فواتير", locked: false },
@@ -42,6 +43,7 @@ export const ALL_PERMISSION_KEYS: string[] = PERMISSION_CATALOG.map((p) => p.key
 export const LOCKED_PERMS: string[] = PERMISSION_CATALOG.filter((p) => p.locked).map((p) => p.key);
 
 const DB_KEY_TO_CATALOG_KEY: Record<string, string> = {
+  "invoices:view": "view_invoices",
   "invoices:create": "create_invoice",
   "invoices:edit": "edit_invoice",
   "invoices:delete": "delete_invoice",
@@ -63,6 +65,7 @@ function fullSet(value: number): Record<string, number> {
 export const ROLE_DEFAULTS: Record<string, Record<string, number>> = {
   admin: { ...fullSet(1), e_invoicing_submit: 1 },
   editor: {
+    view_invoices: 1,
     create_invoice: 1,
     print_invoice: 1,
     view_customers: 1,
@@ -79,14 +82,20 @@ export const ROLE_DEFAULTS: Record<string, Record<string, number>> = {
     e_invoicing_submit: 1,
   },
   employee: {
+    // POLICY: employees can view + create + edit + print invoices, but
+    // NOT delete them (deletion is reserved for editor/admin). This matches
+    // the RBAC E2E test expectation (employee DELETE /api/invoices/[id] → 403)
+    // and the principle of least privilege — a front-line employee should
+    // not be able to destroy financial records.
+    view_invoices: 1,
     create_invoice: 1,
     print_invoice: 1,
     view_customers: 1,
     bulk_input: 1,
     edit_invoice: 1,
-    delete_invoice: 1,
+    delete_invoice: 0,
     edit_customer: 1,
-    delete_customer: 1,
+    delete_customer: 0,
     export_data: 0,
     reports_access: 0,
     settings_access: 0,
@@ -95,6 +104,8 @@ export const ROLE_DEFAULTS: Record<string, Record<string, number>> = {
     e_invoicing_submit: 0,
   },
   viewer: {
+    // POLICY: viewer can only READ invoices + customers — no writes at all.
+    view_invoices: 1,
     create_invoice: 0,
     print_invoice: 0,
     view_customers: 1,
