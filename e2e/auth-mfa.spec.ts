@@ -4,10 +4,17 @@
  *
  * Coverage:
  *   1. Fill email + password on /login → submit → assert the /api/auth/login
- *      response body contains `mfaRequired: true` (NOT a generic 200).
- *   2. Compute a real RFC-6238 TOTP code from the user's enrolled secret
- *      and submit it via the login route → assert HTTP 200 + `inv_token`
- *      session cookie is set + response body contains `user.email`.
+ *      response is HTTP 401 with the SEC-06 anti-enumeration generic error.
+ *      The previous contract (HTTP 200 + `{ mfaRequired: true }`) was an
+ *      intentional security regression — it leaked that the password was
+ *      correct, enabling MFA brute-force once the password was known.
+ *      SEC-06 (Audit v2 · Phase 2) closed that leak: every auth failure
+ *      (wrong password / user not found / MFA missing / MFA wrong) returns
+ *      the SAME generic Arabic error and 401 status.
+ *   2. Compute a real RFC-6238 TOTP code from the user's enrolled secret and
+ *      submit it in a SINGLE request alongside email + password → assert
+ *      HTTP 200 + `inv_token` session cookie is set + response body contains
+ *      `user.email`.
  *   3. Navigate to /dashboard → assert the URL is /dashboard (NOT redirected
  *      to /login — that would mean the session cookie wasn't accepted).
  *
@@ -78,7 +85,11 @@ test.describe("MFA login flow — TPD-01 real E2E", () => {
     await cleanupTestData({ userIds: [mfaUserUid] });
   });
 
-  test("password-only login returns mfaRequired:true (200, no session)", async ({
+  // SEC-06 FIX (Audit v2 · Phase 2): the generic Arabic error returned for
+  // EVERY auth failure (wrong password / user not found / MFA missing /
+  // MFA wrong) so an attacker cannot distinguish which step failed.
+  const AUTH_GENERIC_ERROR = "بيانات الدخول غير صحيحة أو التحقق الثنائي مطلوب";
+  test("password-only login on MFA-enabled account is REJECTED with a generic 401 (SEC-06 anti-enumeration)", async ({
     page,
   }) => {
     // Navigate to the real login page so the React form hydrates.
@@ -100,39 +111,53 @@ test.describe("MFA login flow — TPD-01 real E2E", () => {
       page.click('button[type="submit"]'),
     ]);
 
-    expect(loginResponse.status()).toBe(200);
+    // SEC-06 FIX: a password-only attempt on an MFA-enabled account MUST
+    // return the SAME 401 + generic error as a wrong password. The previous
+    // 200 + { mfaRequired: true } contract leaked that the password was
+    // correct — enabling MFA brute-force once the password was known.
+    expect(loginResponse.status(), "password-only attempt must NOT succeed").toBe(401);
     const body = await loginResponse.json();
-    // SPECIFIC value assertion — not `expect(typeof body.mfaRequired).toBe("boolean")`.
-    expect(body.mfaRequired).toBe(true);
-    expect(body.email).toBe(ADMIN_EMAIL);
-    // A password-only attempt must NOT receive a user object — that would
-    // mean MFA was bypassed.
+    expect(body.error, "error must be the SEC-06 generic anti-enumeration message").toBe(AUTH_GENERIC_ERROR);
+    // The response MUST NOT leak that the password was correct.
+    expect(body.mfaRequired, "mfaRequired flag must NOT be returned (enumeration leak)").toBeUndefined();
+    expect(body.ok, "ok flag must NOT be returned").toBeUndefined();
+    // A password-only attempt must NOT receive a user object.
     expect(body.user).toBeUndefined();
 
-    // And no session cookie should have been issued yet.
+    // And no session cookie should have been issued.
     const cookies = await page.context().cookies();
     const sessionCookie = cookies.find((c) => c.name === "inv_token");
     expect(sessionCookie).toBeUndefined();
   });
 
-  test("TOTP code completes login and issues session cookie", async ({
+  test("password-only attempt returns 401 + generic error; TOTP-completed login issues session cookie", async ({
     page,
   }) => {
-    // Step 1: password attempt → mfaRequired
+    // Step 1: password attempt WITHOUT mfaCode → SEC-06 generic 401.
+    // The previous contract (200 + mfaRequired:true) leaked that the password
+    // was correct. SEC-06 closes that leak by returning the SAME response
+    // shape as a wrong-password attempt.
     const first = await page.request.post("/api/auth/login", {
       data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
     });
-    expect(first.status()).toBe(200);
-    expect((await first.json()).mfaRequired).toBe(true);
+    expect(first.status(), "password-only attempt must return 401 (SEC-06)").toBe(401);
+    const firstBody = await first.json();
+    expect(firstBody.error, "error must be the SEC-06 generic message").toBe(AUTH_GENERIC_ERROR);
+    expect(firstBody.mfaRequired, "mfaRequired flag must NOT be returned").toBeUndefined();
+    // No session cookie should be issued for the rejected attempt.
+    const cookiesAfterReject = await page.context().cookies();
+    expect(cookiesAfterReject.find((c) => c.name === "inv_token")).toBeUndefined();
 
-    // Step 2: compute a real TOTP from the enrolled secret and resubmit.
+    // Step 2: compute a real TOTP from the enrolled secret and submit it in a
+    // SINGLE request alongside the credentials. The login route validates
+    // password + MFA together and only issues a session if BOTH pass.
     const code = generateTOTP(MFA_BASE32_SECRET);
     expect(code).toMatch(/^\d{6}$/);
 
     const second = await page.request.post("/api/auth/login", {
       data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD, mfaCode: code },
     });
-    expect(second.status()).toBe(200);
+    expect(second.status(), "TOTP-completed login must return 200").toBe(200);
     const body = await second.json();
     expect(body.ok).toBe(true);
     expect(body.user).toBeDefined();

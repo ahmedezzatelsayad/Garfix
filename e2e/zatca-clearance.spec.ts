@@ -127,33 +127,67 @@ test.describe("ZATCA clearance — TPD-01 real E2E", () => {
       });
     });
 
-    // ── Trigger the submit (UI button click is the production path, but the
-    //    invoices list page may not have a per-row "submit for clearance"
-    //    button in all configurations. We drive the SAME API the button
-    //    calls — page.request with CSRF — so the test is stable regardless
-    //    of UI variations, while still going through the real network layer.)
-    const response = await page.request.post("/api/e-invoicing/zatca/submit", {
-      headers: { "x-csrf-token": await getCsrf(page) },
-      data: { invoiceId, companySlug: TEST_COMPANY_SLUG },
-    });
-    expect(response.status()).toBe(200);
-    const body = (await response.json()) as {
-      ok: boolean;
-      submissionStatus: string;
-      clearanceStatus: string;
-      uuid: string;
-      zatcaClearedNumber: string | null;
-    };
+    // ── Trigger the submit via fetch() INSIDE the browser context ───────
+    //
+    // E2E FIX: Playwright's `page.route()` only intercepts requests made BY
+    // the page's browser context — it does NOT intercept calls made via
+    // `page.request.*` (the APIRequestContext runs in Node, not in the
+    // browser, and bypasses page.route). The previous code used
+    // `page.request.post("/api/e-invoicing/zatca/submit", ...)` which meant
+    // the mock above never fired — the real endpoint was hit, returning 400
+    // "no active CCD cert", and the test failed on `expect(200)`.
+    //
+    // The fix is to dispatch the POST from inside the browser via
+    // `page.evaluate(() => fetch(...))`. fetch() IS intercepted by
+    // page.route(), so the mock fires and we get the deterministic
+    // "cleared" payload. We must first navigate the page to the app origin
+    // (about:blank has no origin, so a relative fetch would fail); the
+    // session cookies set by `login()` are already in the browser context
+    // cookie jar and will be sent automatically with credentials:"include".
+    // We read the inv_csrf cookie and echo it in the x-csrf-token header
+    // (same as the React client does).
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+
+    const csrfCookie = (await page.context().cookies()).find((c) => c.name === "inv_csrf");
+    const csrfToken = csrfCookie?.value || (await getCsrf(page));
+    const body = await page.evaluate(
+      async ({ url, csrf, payload }: { url: string; csrf: string; payload: { invoiceId: number; companySlug: string } }) => {
+        const res = await fetch(url, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            "x-csrf-token": csrf,
+          },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        return { status: res.status, body: json as {
+          ok: boolean;
+          submissionStatus: string;
+          clearanceStatus: string;
+          uuid: string;
+          zatcaClearedNumber: string | null;
+        } };
+      },
+      {
+        url: "/api/e-invoicing/zatca/submit",
+        csrf: csrfToken,
+        payload: { invoiceId, companySlug: TEST_COMPANY_SLUG },
+      },
+    );
 
     // ── Assert specific values in the response ───────────────────────────
-    expect(body.ok).toBe(true);
-    expect(body.submissionStatus).toBe("cleared");
-    expect(body.clearanceStatus).toBe("cleared");
-    expect(body.uuid).toBe(MOCK_CLEARANCE_UUID);
-    expect(body.zatcaClearedNumber).toBe(MOCK_CLEARANCE_NUMBER);
+    expect(body.status, "mocked submit should return 200").toBe(200);
+    expect(body.body.ok).toBe(true);
+    expect(body.body.submissionStatus).toBe("cleared");
+    expect(body.body.clearanceStatus).toBe("cleared");
+    expect(body.body.uuid).toBe(MOCK_CLEARANCE_UUID);
+    expect(body.body.zatcaClearedNumber).toBe(MOCK_CLEARANCE_NUMBER);
 
     // ── Assert the request payload the UI sent ───────────────────────────
-    expect(interceptedRequest, "page.route should have intercepted the request").not.toBeNull();
+    expect(interceptedRequest, "page.route should have intercepted the fetch() request").not.toBeNull();
     const postData = interceptedRequest!.postDataJSON() as { invoiceId: number; companySlug: string };
     expect(postData.invoiceId).toBe(invoiceId);
     expect(postData.companySlug).toBe(TEST_COMPANY_SLUG);

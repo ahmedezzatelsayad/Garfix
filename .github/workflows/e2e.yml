@@ -38,6 +38,13 @@ env:
   DEEPSEEK_API_KEY: "sk-e2e-test-placeholder"
   DEEPSEEK_MODEL: "deepseek-chat"
   APP_URL: "http://localhost:3000"
+  # E2E FIX: middleware.ts gates every non-allow-listed API path on
+  # process.env.SETUP_COMPLETE === "true" (Edge runtime can't read the
+  # .setup-complete marker file from disk). Without this env var, every
+  # authenticated API call returns 307 → /setup → the test sees HTML
+  # instead of JSON and fails with confusing parse errors. This is the
+  # single highest-impact fix for the 11 failing E2E specs.
+  SETUP_COMPLETE: "true"
 
 jobs:
   e2e:
@@ -134,6 +141,10 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           JWT_SECRET: ${{ env.JWT_SECRET }}
           FOUNDER_EMAIL: ${{ env.FOUNDER_EMAIL }}
+          # E2E FIX: middleware.ts reads SETUP_COMPLETE at request time, but
+          # also pass it at build time so any build-time inlining picks up
+          # the correct value.
+          SETUP_COMPLETE: ${{ env.SETUP_COMPLETE }}
 
       - name: Start application
         run: |
@@ -149,6 +160,13 @@ jobs:
             echo "Waiting for app... attempt $i/30"
             sleep 2
           done
+        env:
+          # E2E FIX: explicitly forward SETUP_COMPLETE so the running Next.js
+          # server exposes it to middleware.ts at runtime.
+          SETUP_COMPLETE: ${{ env.SETUP_COMPLETE }}
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          JWT_SECRET: ${{ env.JWT_SECRET }}
+          FOUNDER_EMAIL: ${{ env.FOUNDER_EMAIL }}
 
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
