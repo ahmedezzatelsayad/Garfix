@@ -50,3 +50,12 @@ CVE-2026-69192  # HIGH — ip-address 10.1.0, same parsing DoS class (new CVE id
 # The regex DoS requires attacker-controlled pattern input.
 CVE-2026-33671  # picomatch 4.0.3 — ReDoS via crafted pattern
 CVE-2026-33672  # picomatch 4.0.3 — same class as above
+
+# uuid — transitive dependency via exceljs (exceljs pins uuid ^8.3.0).
+# Used only for spreadsheet export features (xlsx report generation).
+# The CVE (Out-of-bounds write in v3/v5/v6 with external buffer) requires
+# the caller to pass a too-small buffer to uuid.v3()/v5()/v6(). Garfix
+# never uses uuid with external buffers — it uses the default return-value
+# form (uuid.v4()). No user input reaches the affected code paths.
+# Upgrading to uuid 14.x requires exceljs 5.x which has breaking API changes.
+CVE-2026-41907  # MEDIUM — uuid 8.3.2, OOB write in v3/v5/v6 with external buf

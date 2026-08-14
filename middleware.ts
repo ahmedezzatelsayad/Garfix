@@ -51,6 +51,14 @@ const CSRF_EXEMPT_ROUTES = [
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
   "/api/auth/refresh",  // refresh only rotates tokens; can't be read cross-origin
+  // Setup wizard endpoints — exempt because they run BEFORE the founder has
+  // a session or CSRF cookie. Once /api/setup/complete writes the marker
+  // file, these routes return 410 Gone and refuse to do anything.
+  "/api/setup/test-db",
+  "/api/setup/run-migrations",
+  "/api/setup/create-founder",
+  "/api/setup/save-integrations",
+  "/api/setup/complete",
 ];
 
 const MUTATING_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
@@ -177,6 +185,37 @@ function withSecurityHeaders(response: NextResponse, pathname?: string): NextRes
 
 export function middleware(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
+
+  // ── 0. Setup wizard routing ─────────────────────────────────────────────
+  // Edge-runtime-safe check: reads SETUP_COMPLETE env var (no fs access).
+  // The full fs-based check is done inside /api/setup/status; middleware only
+  // needs to handle the redirect logic. If SETUP_COMPLETE is unset (first
+  // boot), we redirect unauthenticated / traffic to /setup so the founder
+  // can configure the app before anyone uses it. If SETUP_COMPLETE=true,
+  // we redirect /setup → / so the wizard can't be re-run.
+  //
+  // Allow these paths regardless of setup state:
+  //   - /api/setup/*          (wizard APIs)
+  //   - /_next, /favicon.ico  (static assets)
+  //   - /login                (so the founder can log in after setup)
+  const isSetupDone = process.env.SETUP_COMPLETE === "true";
+  const SETUP_ALLOW_PATHS = ["/login", "/api/auth/login", "/api/setup"];
+  const isSetupAllowedPath =
+    pathname === "/setup" ||
+    SETUP_ALLOW_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+
+  if (!isSetupDone && !isSetupAllowedPath && !pathname.startsWith("/_next") && pathname !== "/favicon.ico") {
+    // Redirect everything else to /setup
+    const url = req.nextUrl.clone();
+    url.pathname = "/setup";
+    return NextResponse.redirect(url);
+  }
+  if (isSetupDone && pathname === "/setup") {
+    // Setup is done — refuse to serve the wizard
+    const url = req.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
 
   // ── 1. CSRF double-submit verification for mutating methods ────────────
   // Pure string comparison — no DB, no JWT, no Redis. The inv_csrf cookie

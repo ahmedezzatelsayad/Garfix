@@ -487,7 +487,7 @@ model JournalEntryLine {
   // P2-Sprint-4: made entryId/createdAt/updatedAt optional — many call sites
   // create JournalEntryLine without these (they're auto-managed by the DB
   // via defaults or populated later by audit hooks).
-  entryId      Int?
+  entryId      String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   // ── P2-Sprint6: add costCenterId ──
@@ -762,7 +762,7 @@ model BankTransaction {
   transactionType String
   isReconciled    Boolean
   reconciledWith  String?
-  reconciledId    Int?
+  reconciledId    String?
   category        String?
 
   // DB-13 FIX (Audit v2 · Phase 3): Optimistic locking for concurrent bank
@@ -1253,7 +1253,7 @@ model HRPerformance {
 // ─── Invoice (matches db.invoice) ───
 
 model Invoice {
-  id                    Int                  @id @default(autoincrement())
+  id                    String               @id @default(cuid())
   invoiceNumber         String
   clientName            String?
   clientId              String?
@@ -1358,7 +1358,7 @@ model PurchaseInvoice {
   taxRate               Decimal                @default(0) // DB-07 FIX: String→Decimal
   taxAmount             Decimal                @default(0) // DB-07 FIX: String→Decimal
   paid                  Decimal                @default(0) // DB-07 FIX: String→Decimal
-  purchaseOrderId       Int?
+  purchaseOrderId       String?
   createdBy             String?
   // P2-Sprint6: back-relation for LandedCostAllocation
   landedCostAllocations LandedCostAllocation[]
@@ -1397,7 +1397,7 @@ model Quotation {
   taxRate            Decimal @default(0) // DB-07 FIX: String→Decimal
   taxAmount          Decimal @default(0) // DB-07 FIX: String→Decimal
   notes              String?
-  convertedInvoiceId Int?
+  convertedInvoiceId String?
   createdBy          String?
 
   // DB-13 FIX (Audit v2 · Phase 3): Optimistic locking for concurrent quote
@@ -1479,7 +1479,7 @@ model StockMovement {
 // meaning every PaymentTransaction.create with these fields would throw at runtime.
 model PaymentTransaction {
   id                String    @id @default(cuid())
-  invoiceId         Int?
+  invoiceId         String?
   amount            Decimal
   method            String // cash, bank_transfer, card, online
   reference         String?
@@ -1560,10 +1560,10 @@ model PostDatedCheck {
   payee         String?
   payer         String?
   direction     String
-  clientId      Int?
-  supplierId    Int?
-  bankAccountId Int?
-  glAccountId   Int?
+  clientId      String?
+  supplierId    String?
+  bankAccountId String?
+  glAccountId   String?
   depositedAt   DateTime?
   cancelledAt   DateTime?
   clearedAt     DateTime?
@@ -1621,7 +1621,7 @@ model TaxFiling {
 
 model EInvoice {
   id               String    @id @default(cuid())
-  invoiceId        Int       @unique
+  invoiceId        String       @unique
   authorityType    String    @default("none") // none, zatca, uae_fta, bahrain_nbr, oman_tax, kuwait_decree_10_2026, eta_egypt
   submissionStatus String    @default("pending") // pending, submitted, accepted, rejected, cleared
   uuid             String?
@@ -1660,7 +1660,7 @@ model EInvoice {
 model EInvoiceReceipt {
   id              String   @id @default(cuid())
   companySlug     String
-  invoiceId       Int? // nullable: some webhooks arrive before invoice row exists
+  invoiceId       String? // nullable: some webhooks arrive before invoice row exists
   authority       String // zatca, eta_egypt, uae_fta, kuwait_decree_10_2026, bahrain_nbr, oman_tax, qatar_gta
   eventType       String // clearance_requested, cleared, rejected, cancelled, delivery_report
   externalUuid    String? // UUID issued by the authority (e.g. ZATCA invoice UUID, ETA document UUID)
@@ -1713,7 +1713,7 @@ model ProductAlias {
   product     ProductCatalog @relation(fields: [productId], references: [id])
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  productCatalogId Int
+  productCatalogId String
   source           String
   confidence       Float
   isVerified       Boolean
@@ -1736,7 +1736,7 @@ model ProductMatchAudit {
   product          ProductCatalog? @relation(fields: [matchedProductId], references: [id])
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  invoiceId    Int?
+  invoiceId    String?
   matchedAlias String?
   tier         String
   action       String
@@ -1761,10 +1761,10 @@ model MatchOverride {
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
   inputNormalized String?
-  fromProductId   Int?
-  toProductId     Int?
+  fromProductId   String?
+  toProductId     String?
   chosenAlias     String?
-  auditId         Int?
+  auditId         String?
   reason          String?
 
   @@unique([inputText, companySlug])
@@ -1889,8 +1889,7 @@ model EmailVerification {
 // ─── Platform Settings (matches db.platformSettings) ───
 
 model PlatformSettings {
-  id          Int                       @id @default(autoincrement())
-  key         String                    @unique
+  key         String                    @id
   value       String
   category    String                    @default("general") // general, ai, billing, security, e-invoicing
   description String?
@@ -1910,12 +1909,12 @@ model PlatformSettings {
 
 model PlatformSettingsHistory {
   id        Int              @id @default(autoincrement())
-  settingId Int
+  settingId String
   oldValue  String?
   newValue  String
   changedBy String?
   createdAt DateTime         @default(now())
-  setting   PlatformSettings @relation(fields: [settingId], references: [id])
+  setting   PlatformSettings @relation(fields: [settingId], references: [key])
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
   settingKey     String
@@ -1977,8 +1976,7 @@ model SupportTicket {
 // ─── Landing Content (matches db.landingContent) ───
 
 model LandingContent {
-  id        Int      @id @default(autoincrement())
-  section   String   @unique
+  section   String   @id
   title     String?
   subtitle  String?
   body      String?
@@ -2047,7 +2045,7 @@ model AccountingAuditLog {
 // ─── Admin Audit Log (matches db.adminAuditLog) ───
 
 model AdminAuditLog {
-  id         Int      @id @default(autoincrement())
+  id         String      @id @default(cuid())
   adminEmail String
   action     String
   targetType String?
@@ -2495,7 +2493,7 @@ model WebhookDelivery {
   endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id])
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  eventId      Int?
+  eventId      String?
   responseBody String?
 
   @@index([status, nextRetryAt])
@@ -2506,7 +2504,6 @@ model WebhookDelivery {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 model InvoiceBrainHeaderMap {
-  id          Int      @id @default(autoincrement())
   companySlug String
   headerName  String
   mappedField String
@@ -2519,7 +2516,6 @@ model InvoiceBrainHeaderMap {
 }
 
 model InvoiceBrainTemplate {
-  id           Int      @id @default(autoincrement())
   companySlug  String
   templateName String
   columnMap    String? // JSON
@@ -2567,7 +2563,7 @@ model InvoiceTemplateSettings {
   updatedAt         DateTime @updatedAt
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  templateId      Int?
+  templateId      String?
   primaryColor    String
   fontFamily      String
   fontSize        Int
@@ -2587,7 +2583,7 @@ model InvoiceTemplateSettings {
 // ─── Announcement (matches db.announcement) ───
 
 model Announcement {
-  id         Int      @id @default(autoincrement())
+  id         String      @id @default(cuid())
   title      String
   body       String?
   type       String   @default("info") // info, warning, critical

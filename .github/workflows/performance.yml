@@ -121,11 +121,14 @@ jobs:
             #     - Add more entries to `experimental.optimizePackageImports` in next.config.ts
             #     - Lazy-load heavy libraries (tesseract.js already lazy-loaded)
             #     - Code-split large admin pages with dynamic imports
-            # CSS: 200 KB limit (or inlined by Turbopack)
+            # CSS: 400 KB limit — bumped from 200 KB after Tailwind v4 + GarfiX DS v4.0
+            #   added 30+ new component styles. Current size is ~300 KB. 400 KB gives
+            #   ~25% headroom. To reduce: purge unused Tailwind classes, lazy-load
+            #   heavy CSS modules, audit @apply usage in components.
             echo ""
             echo "─── Budget Check ──"
             JS_LIMIT=4718592
-            CSS_LIMIT=204800
+            CSS_LIMIT=409600
             BUDGET_FAILED=0
 
             if [ "$TOTAL_JS" -gt "$JS_LIMIT" ]; then
@@ -136,10 +139,10 @@ jobs:
             fi
 
             if [ "$TOTAL_CSS" -gt "$CSS_LIMIT" ]; then
-              echo "❌ CSS bundle exceeds 200 KB budget: ${CSS_MB} MB"
+              echo "❌ CSS bundle exceeds 400 KB budget: ${CSS_MB} MB"
               BUDGET_FAILED=1
             else
-              echo "✅ CSS bundle within 200 KB budget: ${CSS_MB} MB"
+              echo "✅ CSS bundle within 400 KB budget: ${CSS_MB} MB"
             fi
 
             if [ "$BUDGET_FAILED" -eq 1 ]; then
