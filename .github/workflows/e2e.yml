@@ -38,6 +38,12 @@ env:
   DEEPSEEK_API_KEY: "sk-e2e-test-placeholder"
   DEEPSEEK_MODEL: "deepseek-chat"
   APP_URL: "http://localhost:3000"
+  # SETUP_COMPLETE=true tells the middleware that the setup wizard has
+  # already been run (the CI does `prisma migrate deploy` + `prisma db seed`
+  # directly, bypassing the wizard). Without this, the middleware redirects
+  # EVERY unauthenticated request to /setup — breaking all E2E tests that
+  # need to hit /login, /dashboard, /api/auth/*, etc.
+  SETUP_COMPLETE: "true"
 
 jobs:
   e2e:
