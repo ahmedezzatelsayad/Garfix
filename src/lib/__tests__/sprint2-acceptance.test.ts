@@ -116,8 +116,11 @@ describe("P1-3: IDOR WARN Fix (requireFounder in companies/[slug] DELETE)", () =
 describe("P1-4: PostgreSQL Migration", () => {
   test("Prisma schema uses postgresql provider (not sqlite)", async () => {
     const schemaContent = fs.readFileSync(path.join(PROJECT_ROOT, "prisma/schema.prisma"), "utf-8");
-    expect(schemaContent).toContain("provider = \"postgresql\"");
-    expect(schemaContent).not.toContain("provider = \"sqlite\"");
+    // Use regex instead of literal substring — the schema aligns the `provider`
+    // key with `url` / `directUrl` below it (extra space), so a strict
+    // `.toContain("provider = \"postgresql\"")` would fail on the whitespace.
+    expect(schemaContent).toMatch(/provider\s*=\s*"postgresql"/);
+    expect(schemaContent).not.toMatch(/provider\s*=\s*"sqlite"/);
   });
 
   test("Prisma schema has directUrl for migrations", async () => {
