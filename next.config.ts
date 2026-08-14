@@ -79,6 +79,17 @@ const nextConfig: NextConfig = {
     "jsonwebtoken",
     "bcryptjs",
     "exceljs",  // Phase 6 P3: externalize to reduce bundle
+    // PERF FIX: BullMQ is dynamically imported (await import("bullmq")) in
+    // src/lib/queues.ts. Webpack's static analysis traces the entire bullmq
+    // package, including dist/esm/classes/valkey-glide-client.js which tries
+    // to import "@valkey/valkey-glide" (an OPTIONAL peer dep we don't ship).
+    // That produced a build warning:
+    //   Module not found: Can't resolve '@valkey/valkey-glide' in
+    //   '.../node_modules/bullmq/dist/esm/classes'
+    // Marking bullmq as external makes Next.js load it from node_modules at
+    // runtime, skipping the webpack trace entirely. BullMQ is server-only
+    // (no client code imports it), so this is safe.
+    "bullmq",
   ],
   experimental: {
     // P3.7 (Cycle 5): added all 26 @radix-ui/react-* packages actually
