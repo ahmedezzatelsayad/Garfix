@@ -4,8 +4,8 @@
  * ?companySlug=X&direction=receivable|payable&asOfDate=YYYY-MM-DD
  */
 import { NextRequest, NextResponse } from "next/server";
-import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
-import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
+import { hasPermission } from "@/lib/middleware";
+import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { apiError, withErrorHandler } from "@/lib/api";
 import { calculateAging } from "@/lib/accounting/ar-ap";
 

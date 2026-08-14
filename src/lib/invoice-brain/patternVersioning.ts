@@ -32,7 +32,6 @@
 
 import { logger } from "@/lib/logger";
 import type { FieldTemplate, InvoiceTemplate } from "./patternStore";
-import { calculateConfidence, type TrackedTemplate, type ConfidenceMetrics } from "./patternConfidence";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -409,7 +408,7 @@ export class PatternVersionManager {
   /**
    * Get recent failure streak count.
    */
-  private getRecentFailureStreak(fingerprint: string): number {
+  private getRecentFailureStreak(_fingerprint: string): number {
     // In real implementation, would check recent usage records
     // For now, return 0 (placeholder)
     return 0;
@@ -445,8 +444,8 @@ export class PatternVersionManager {
   /**
    * Get pattern history/transitions.
    */
-  getTransitions(fingerprint: string): VersionTransition[] {
-    return this.transitions.filter(t => {
+  getTransitions(_fingerprint: string): VersionTransition[] {
+    return this.transitions.filter(_t => {
       // Would need to store fingerprint in transition - simplified here
       return true; // Return all for now
     });

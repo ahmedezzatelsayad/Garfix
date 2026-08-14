@@ -17,9 +17,7 @@ import {
 import { toast } from "sonner";
 import { 
   Plus, Trash2, UserCog, Pencil, Users, UserCheck, DollarSign, 
-  Calendar, TrendingUp, Download, 
-  // Tab icons for new navigation
-  Briefcase, Clock, Wallet, Percent, Plane, Award, Calculator
+  Calendar, TrendingUp, Download, Percent, Calculator
 } from "lucide-react";
 import { GratuityCalculator } from "./GratuityCalculator";
 import { cn, paginate } from "@/lib/utils";
@@ -34,7 +32,7 @@ import type {
   HREditItem,
   TableShared,
 } from "./types";
-import { PAGE_SIZE, DELETE_PATH, TAB_META } from "./types";
+import { PAGE_SIZE, TAB_META } from "./types";
 
 // ── DS v4.0 Components ──────────────────────────────────────────────────
 import {
@@ -53,12 +51,12 @@ import type { EnterpriseColumn } from "@/components/ui/GarfixEnterpriseTable";
 
 const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none max-md:min-h-[44px] focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
-const thStyle = "text-start px-3 py-2.5 text-[11px] text-muted-foreground font-bold";
-const tdStyle = "px-3 py-2.5 text-[13px]";
-const thCheck = "w-10 text-center px-2 py-2.5 text-[11px] text-muted-foreground font-bold";
-const iconBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center hover-lift active-press";
-const editBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border text-primary cursor-pointer flex items-center justify-center hover-lift active-press";
-const actionsCell = "flex items-center gap-1";
+const _thStyle = "text-start px-3 py-2.5 text-[11px] text-muted-foreground font-bold";
+const _tdStyle = "px-3 py-2.5 text-[13px]";
+const _thCheck = "w-10 text-center px-2 py-2.5 text-[11px] text-muted-foreground font-bold";
+const _iconBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center hover-lift active-press";
+const _editBtnStyle = "w-7 h-7 rounded-sm bg-transparent border border-border text-primary cursor-pointer flex items-center justify-center hover-lift active-press";
+const _actionsCell = "flex items-center gap-1";
 
 // ─── Tab Icons Map for DS v4.0 Navigation ───────────────────────────────
 
@@ -95,12 +93,12 @@ export function HRView() {
   const deleteLeaveMutation = useDeleteLeave();
   const deletePerformanceMutation = useDeletePerformance();
 
-  const employees = employeesQuery.data?.employees ?? [];
-  const attendance = attendanceQuery.data?.attendance ?? [];
+  const employees = useMemo(() => employeesQuery.data?.employees ?? [], [employeesQuery.data]);
+  const attendance = useMemo(() => attendanceQuery.data?.attendance ?? [], [attendanceQuery.data]);
   const salaries = salariesQuery.data?.salaries ?? [];
   const commissions = commissionsQuery.data?.commissions ?? [];
-  const leaves = leavesQuery.data?.leaves ?? [];
-  const performances = performanceQuery.data?.performance ?? [];
+  const leaves = useMemo(() => leavesQuery.data?.leaves ?? [], [leavesQuery.data]);
+  const performances = useMemo(() => performanceQuery.data?.performance ?? [], [performanceQuery.data]);
   
   const loading = employeesQuery.isLoading;
   const error = employeesQuery.isError;
@@ -111,30 +109,33 @@ export function HRView() {
   const [editingItem, setEditingItem] = useState<HREditItem | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [_bulkDeleting, setBulkDeleting] = useState(false);
 
   // ─── KPI Calculations ────────────────────────────────────────────────
   
   // Today's attendance count
   const today = new Date().toISOString().slice(0, 10);
   const attendanceToday = useMemo(() => {
-    return attendance.filter((a: any) => a.date === today && a.status === 'present').length;
+    return attendance.filter((a: Attendance) => a.date === today && a.status === 'present').length;
   }, [attendance, today]);
 
   // Total salaries calculation
   const totalSalaries = useMemo(() => {
-    return employees.reduce((sum: any, emp: any) => sum + emp.baseSalary, 0).toLocaleString("ar-EG");
+    return employees.reduce((sum: number, emp: Employee) => sum + ((emp.baseSalary as number) ?? 0), 0).toLocaleString("ar-EG");
   }, [employees]);
 
   // Pending leaves count
   const pendingLeaves = useMemo(() => {
-    return leaves.filter((l: any) => l.status === 'pending').length;
+    return leaves.filter((l: LeaveRequest) => l.status === 'pending').length;
   }, [leaves]);
 
   // Average performance score
   const avgPerformance = useMemo(() => {
     if (performances.length === 0) return 0;
-    const total = performances.reduce((sum: any, p: any) => sum + (p.overallScore || p.kpiScore || 0), 0);
+    const total = performances.reduce((sum: number, p: Performance) => {
+      const score = (p.overallScore ?? p.kpiScore ?? 0) as number;
+      return sum + score;
+    }, 0);
     return Math.round(total / performances.length);
   }, [performances]);
 
@@ -162,7 +163,7 @@ export function HRView() {
 
   // ─── Delete handlers ────────────────────────────────────────────────
   const handleDelete = (id: number) => {
-    const mutationMap: Record<string, any> = {
+    const mutationMap: Record<string, { mutate: (id: number, opts?: { onSuccess?: () => void; onError?: (err: unknown) => void }) => void }> = {
       employees: deleteEmployeeMutation,
       attendance: deleteAttendanceMutation,
       salaries: deleteSalaryMutation,
@@ -174,7 +175,7 @@ export function HRView() {
     if (!mutation) return;
     mutation.mutate(id, {
       onSuccess: () => toast.success("تم الحذف"),
-      onError: (err: any) => toast.error(err.message || "خطأ في الحذف"),
+      onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "خطأ في الحذف"),
     });
   };
 
@@ -265,7 +266,7 @@ export function HRView() {
       : 0,
   }));
 
-  const tableProps: TableShared = {
+  const _tableProps: TableShared = {
     selectedIds, toggleRow, handleDelete, handleEdit,
     pageItems, employees,
     selectAllChecked: selectedIds.size === pageItems.length && pageItems.length > 0,
@@ -659,7 +660,7 @@ const empName = (employees: Employee[], id: number) => employees.find((e) => e.i
 
 // ─── Checkbox ───────────────────────────────────────────────────────────────
 
-function Check({ checked, onChange, ariaLabel }: { checked: boolean; onChange?: () => void; ariaLabel: string }) {
+function _Check({ checked, onChange, ariaLabel }: { checked: boolean; onChange?: () => void; ariaLabel: string }) {
   return (
     <input
       type="checkbox"
@@ -697,7 +698,7 @@ function HRForm({ tab, company, employees, editItem, onClose, onSaved }: {
   const [empName_, setEmpName] = useState<string>(editEmployee?.name || "");
   const [position, setPosition] = useState<string>(editEmployee?.position || "");
   const [department, setDepartment] = useState<string>(editEmployee?.department || "");
-  const [baseSalary, setBaseSalary] = useState<number>(editEmployee?.baseSalary ?? editSalary?.baseSalary ?? 0);
+  const [baseSalary, setBaseSalary] = useState<number>((editEmployee?.baseSalary as number | undefined) ?? (editSalary?.baseSalary as number | undefined) ?? 0);
   const [phone, setPhone] = useState<string>(editEmployee?.phone || "");
   const [email, setEmail] = useState<string>(editEmployee?.email || "");
 
@@ -710,20 +711,20 @@ function HRForm({ tab, company, employees, editItem, onClose, onSaved }: {
   const [checkIn, setCheckIn] = useState<string>(editAttendance?.checkIn || "");
   const [checkOut, setCheckOut] = useState<string>(editAttendance?.checkOut || "");
   const [month, setMonth] = useState<string>(editSalary?.month || new Date().toISOString().slice(0, 7));
-  const [allowances, setAllowances] = useState<number>(editSalary?.allowances ?? 0);
-  const [deductions, setDeductions] = useState<number>(editSalary?.deductions ?? 0);
-  const [bonus, setBonus] = useState<number>(editSalary?.bonus ?? 0);
-  const [isPaid, setIsPaid] = useState<boolean>(editSalary?.isPaid ?? editCommission?.isPaid ?? false);
-  const [commissionType, setCommissionType] = useState<string>(editCommission?.type || "sales");
-  const [commissionAmount, setCommissionAmount] = useState<number>(editCommission?.amount ?? 0);
-  const [description, setDescription] = useState<string>(editCommission?.description || "");
-  const [leaveType, setLeaveType] = useState<string>(editLeave?.type || "annual");
+  const [allowances, setAllowances] = useState<number>((editSalary?.allowances as number | undefined) ?? 0);
+  const [deductions, setDeductions] = useState<number>((editSalary?.deductions as number | undefined) ?? 0);
+  const [bonus, setBonus] = useState<number>((editSalary?.bonus as number | undefined) ?? 0);
+  const [isPaid, setIsPaid] = useState<boolean>((editSalary?.isPaid as boolean | undefined) ?? (editCommission?.isPaid as boolean | undefined) ?? false);
+  const [commissionType, setCommissionType] = useState<string>((editCommission?.type as string | undefined) || "sales");
+  const [commissionAmount, setCommissionAmount] = useState<number>((editCommission?.amount as number | undefined) ?? 0);
+  const [description, setDescription] = useState<string>((editCommission?.description as string | undefined) || "");
+  const [leaveType, setLeaveType] = useState<string>((editLeave?.type as string | undefined) || "annual");
   const [startDate, setStartDate] = useState<string>(editLeave?.startDate || date);
   const [endDate, setEndDate] = useState<string>(editLeave?.endDate || date);
-  const [days, setDays] = useState<number>(editLeave?.days ?? 1);
+  const [days, setDays] = useState<number>((editLeave?.days as number | undefined) ?? 1);
   const [period, setPeriod] = useState<string>(editPerformance?.period || `${new Date().getFullYear()}-Q${Math.floor(new Date().getMonth() / 3) + 1}`);
-  const [kpiScore, setKpiScore] = useState<number>(editPerformance?.kpiScore ?? 80);
-  const [overallScore, setOverallScore] = useState<number>(editPerformance?.overallScore ?? 80);
+  const [kpiScore, setKpiScore] = useState<number>((editPerformance?.kpiScore as number | undefined) ?? 80);
+  const [overallScore, setOverallScore] = useState<number>((editPerformance?.overallScore as number | undefined) ?? 80);
   const [rating, setRating] = useState<string>(String(editPerformance?.rating || "جيد"));
 
   const createEmployeeMutation = useCreateEmployee();

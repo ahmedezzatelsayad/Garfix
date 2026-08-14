@@ -184,7 +184,7 @@ function calculateBreakdown(template: TrackedTemplate): ConfidenceBreakdown {
     : 0;
   
   // Sample Size Factor (diminishing returns)
-  const sampleSizeFactor = calculateSampleSizeFactor(template.totalUses);
+  const _sampleSizeFactor = calculateSampleSizeFactor(template.totalUses);
   
   // Recency Factor (based on last N uses)
   const recencyFactor = calculateRecencyFactor(template.recentUses);

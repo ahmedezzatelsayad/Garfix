@@ -13,6 +13,7 @@ import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { syncInventoryOnPurchase } from "@/lib/inventorySync";
+import type { InventoryLineItem } from "@/lib/inventorySync";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const ItemSchema = z.object({
@@ -97,11 +98,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   // P1 FIX: sync inventory on purchase (was missing — purchase invoices didn't update stock).
   // Mirrors the sale-side pattern in /api/invoices/route.ts.
-  const itemsForSync = data.items.map((it: any) => ({
-    description: it.description,
-    qty: num(it.qty),
-    price: num(it.price, 3),
-  }));
+  const itemsForSync = data.items.map((it: Record<string, unknown>) => ({
+    description: String(it.description ?? ""),
+    qty: num(it.qty as number | string),
+    price: num(it.price as number | string, 3),
+  })) as InventoryLineItem[];
   let inventoryWarnings: string[] = [];
   try {
     const syncResult = await db.$transaction(async (tx) => {

@@ -7,7 +7,7 @@ import {
   usePlatformTickets, usePlatformAudit, useQueueFailures,
   useClearQueueFailures, useDeletePlatformTenant, useCreateAnnouncement,
 } from "@/hooks/queries";
-import { useInventoryMovementsFiltered } from "@/hooks/queries";
+import { useInventoryMovementsFiltered, type InventoryMovement } from "@/hooks/queries";
 import { toast } from "sonner";
 import {
   Shield, Megaphone, Ticket as TicketIcon, BarChart3, Building2, Plus, X, Sparkles,
@@ -27,7 +27,7 @@ import { TicketDetailDrawer } from "./TicketDetailDrawer";
 import { FeatureFlagsTab } from "./FeatureFlagsTab";
 import { ReviewQueueTab } from "./ReviewQueueTab";
 import { paginate } from "@/lib/utils";
-import type { Stats, Tenant, Announcement, Ticket, AdminAudit, QueueFailure, StockMovement, Tab } from "./types";
+import type { Stats, Tab } from "./types";
 
 /* ── Lazy-loaded admin tabs (only fetched when the user clicks them) ── */
 const AiOrchestrationTab = dynamic(() => import("./AiOrchestrationTab").then(m => ({ default: m.AiOrchestrationTab })));
@@ -41,6 +41,13 @@ const BackupsTab = dynamic(() => import("./BackupsTab").then(m => ({ default: m.
 // delivery history + retry + test-fire UI). Was unreachable from any tab
 // before this commit.
 const WebhookManagementView = dynamic(() => import("./WebhookManagementView").then(m => ({ default: m.WebhookManagementView })));
+
+/* ── Module-level pagination button ───────────────────────────────────────
+ * Defined outside the parent component so React Compiler doesn't remount
+ * it on every render (which would lose focus / state). */
+function AdminPageBtn({ disabled, children, ...props }: { children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button className={`px-3 py-1.5 rounded-md border border-[var(--border)] font-inherit text-xs font-bold ${disabled ? "bg-transparent text-[var(--muted-foreground)] cursor-not-allowed opacity-50" : "bg-[var(--card)] text-[var(--foreground)] cursor-pointer"}`} disabled={disabled} {...props}>{children}</button>;
+}
 
 export function PlatformAdminPanel() {
   const [tab, setTab] = useState<Tab>("stats");
@@ -138,10 +145,6 @@ export function PlatformAdminPanel() {
   const auditTotalPages = Math.max(1, Math.ceil(audit.length / adminPageSize));
   const auditSafePage = Math.min(auditPage, auditTotalPages);
   const currentPageAudit = paginate(audit, auditSafePage, adminPageSize);
-
-  function AdminPageBtn({ disabled, children, ...props }: { children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-    return <button className={`px-3 py-1.5 rounded-md border border-[var(--border)] font-inherit text-xs font-bold ${disabled ? "bg-transparent text-[var(--muted-foreground)] cursor-not-allowed opacity-50" : "bg-[var(--card)] text-[var(--foreground)] cursor-pointer"}`} disabled={disabled} {...props}>{children}</button>;
-  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -591,7 +594,7 @@ export function PlatformAdminPanel() {
                       <th scope="col" className="text-right px-3 py-2.5 text-[11px] text-[var(--muted-foreground)] font-bold">ملاحظة</th>
                     </tr></thead>
                     <tbody>
-                      {stockMovements.slice(0, 300).map((m: any) => (
+                      {stockMovements.slice(0, 300).map((m: InventoryMovement) => (
                         <tr className="border-b border-b-[var(--border)]" key={m.id}>
                           <td className="px-3 py-2.5 text-[13px]">{new Date(m.createdAt).toLocaleString("ar-EG")}</td>
                           <td className="px-3 py-2.5 font-mono text-[11px] [direction:ltr] text-right">{m.companySlug}</td>

@@ -2,9 +2,6 @@ import { describe, it, expect } from 'bun:test';
 import {
   simulateE2ETenantJourney,
   seedEnterpriseData,
-  TelemetryCollector,
-  SeededRandom,
-  type E2EJourneyResult,
   type E2EJourneyStep,
 } from '../index';
 
@@ -76,7 +73,7 @@ describe('simulateE2ETenantJourney', () => {
 
   for (let i = 0; i < STEP_NAMES.length; i++) {
     const name = STEP_NAMES[i];
-    const slugName = name.toLowerCase().replace(/\s+/g, '-');
+    const _slugName = name.toLowerCase().replace(/\s+/g, '-');
 
     it(`step ${i + 1}: ${name} should succeed`, async () => {
       const company = getCompany();

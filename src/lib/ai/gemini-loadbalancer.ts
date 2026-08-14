@@ -544,9 +544,9 @@ export class GeminiLoadBalancer {
    * Analyze data (invoices, sales, etc.)
    */
   async analyze(
-    data: Record<string, any>,
+    data: Record<string, unknown>,
     type: string,
-    options?: { insights?: boolean; recommendations?: boolean }
+    _options?: { insights?: boolean; recommendations?: boolean }
   ): Promise<AIResponse> {
     const analysisPrompts: Record<string, string> = {
       invoice: `حلل هذه الفاتورة وقدم:\n1. ✅ صحة البيانات\n2. 💡 تحسينات مقترحة\n3. ⚠️ تحذيرات\n4. 📊 مقارنة بالمعايير`,

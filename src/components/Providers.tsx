@@ -28,9 +28,10 @@ function createQueryClient() {
         // call (real money on paid providers). For non-AI queries, 1 retry is
         // fine (transient network blips). The function inspects the queryKey
         // to determine if it's an AI call.
-        retry: (failureCount, error: any) => {
+        retry: (failureCount, error: unknown) => {
           // Don't retry 4xx errors (client error — retrying won't help)
-          if (error?.status >= 400 && error?.status < 500) return false;
+          const status = (error as { status?: number }).status;
+          if (status !== undefined && status >= 400 && status < 500) return false;
           // Phase 6 P1: don't retry AI queries (costs money)
           // Query keys for AI hooks start with ["ai", ...]
           // We can't access the queryKey here directly, but the api-client

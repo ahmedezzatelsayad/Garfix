@@ -23,9 +23,7 @@ import {
 } from "@/lib/ml/productLearningStore";
 import { extractPatterns } from "@/lib/ml/patternLearner";
 import {
-  mlMatchProduct,
   recordUserFeedback,
-  trainFromHistory,
   initializeMLEngine,
   getMetrics,
   updateConfig,
@@ -96,7 +94,7 @@ export async function POST(request: NextRequest) {
     let body: MLRequest;
     try {
       body = await request.json();
-    } catch (err) {
+    } catch (_err) {
       return NextResponse.json(
         { error: "جسم الطلب غير صالح - JSON مطلوب" },
         { status: 400 }
@@ -413,7 +411,7 @@ export async function PUT(request: NextRequest) {
   if (rl) return rl;
 
   try {
-    const authResult = await resolveAuth(request);
+    const _authResult = await resolveAuth(request);
     // Allow initialization without auth for system calls
     // In production, you'd want to validate an API key or system token
     // Note: We allow unauthenticated access for system initialization

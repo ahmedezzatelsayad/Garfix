@@ -9,9 +9,7 @@ import {
   useCreateFixedAsset, useRunDepreciation, useDisposeAsset,
 } from "@/hooks/queries";
 import {
-  Building2, Plus, X, Trash2, Calculator, TrendingDown,
-  CheckCircle2, Clock, FileText, Filter, DollarSign,
-  Calendar, ArrowUpDown,
+  Building2, Plus, Trash2, Calculator, TrendingDown, Filter, DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

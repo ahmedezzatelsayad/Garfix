@@ -8,9 +8,8 @@
  * 4. محرك المطابقة ML
  */
 
-import { recordCorrection, predictFromPatterns, getModelStats, clearCache, normalizeForPattern, calculatePatternScore } from "../src/lib/ml/productLearningStore";
+import { recordCorrection, predictFromPatterns, getModelStats, clearCache, normalizeForPattern } from "../src/lib/ml/productLearningStore";
 import { extractPatterns, classifyAlias, similarityScore } from "../src/lib/ml/patternLearner";
-import { mlMatchProduct, recordUserFeedback, getMetrics, initializeMLEngine } from "../src/lib/ml/mlMatchingEngine";
 
 // ─── Test Data ───────────────────────────────────────────────────────────
 

@@ -331,7 +331,7 @@ function AlertCard({ alert }: { alert: Alert }) {
 
 function UtilizationGauge({ value, max = 100 }: { value: number; max?: number }) {
   const percentage = Math.min((value / max) * 100, 100);
-  const rotation = (percentage / 100) * 180 - 90; // -90 to 90 degrees
+  const _rotation = (percentage / 100) * 180 - 90; // -90 to 90 degrees
   
   let color = '#22c55e'; // green
   if (percentage > 75) color = '#ef4444'; // red

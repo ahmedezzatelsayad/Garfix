@@ -1,5 +1,5 @@
 import { dbTyped as db } from '../src/lib/db';
-import { runWithTenantContext, getTenantContext } from '../src/lib/tenant-context';
+import { runWithTenantContext } from '../src/lib/tenant-context';
 
 async function smokeTest() {
   console.log('=== TASK-0 RLS Smoke Test (Verify set_config) ===\n');

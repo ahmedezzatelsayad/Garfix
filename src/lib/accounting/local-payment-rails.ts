@@ -273,8 +273,8 @@ export async function getAvailablePaymentMethods(
     );
 
     return { ok: true, methods };
-  } catch (err: any) {
-    return { ok: false, error: err.message || "فشل جلب طرق الدفع" };
+  } catch (err: unknown) {
+    return { ok: false, error: err instanceof Error ? err.message : "فشل جلب طرق الدفع" };
   }
 }
 
@@ -370,9 +370,10 @@ export async function initiateLocalPayment(
     });
 
     return result;
-  } catch (err: any) {
+  } catch (err: unknown) {
     // ── If we have an idempotency key and failed, enqueue for retry ──
-    if (idempotencyKey && err.message) {
+    const errMsg = err instanceof Error ? err.message : "";
+    if (idempotencyKey && errMsg) {
       retryQueue.enqueue({
         idempotencyKey,
         params: {
@@ -385,11 +386,11 @@ export async function initiateLocalPayment(
           idempotencyKey,
         },
         maxRetries: 3,
-        lastError: err.message,
+        lastError: errMsg,
       });
     }
 
-    return { ok: false, error: err.message || "فشل بدء الدفع" };
+    return { ok: false, error: errMsg || "فشل بدء الدفع" };
   }
 }
 
@@ -421,8 +422,8 @@ export async function verifyPayment(
     });
 
     return { ok: true, status: "completed" };
-  } catch (err: any) {
-    return { ok: false, error: err.message || "فشل التحقق من الدفع" };
+  } catch (err: unknown) {
+    return { ok: false, error: err instanceof Error ? err.message : "فشل التحقق من الدفع" };
   }
 }
 

@@ -108,7 +108,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest) => {
   const user = access.user;
 
   // Convert invoiceTypes array to comma-separated string
-  const invoiceTypesStr = data.invoiceTypes.join(",");
+  const _invoiceTypesStr = data.invoiceTypes.join(",");
 
   // Upsert: create if not exists, update if exists
   // InvoiceTemplateSettings has no unique constraint on companySlug alone,

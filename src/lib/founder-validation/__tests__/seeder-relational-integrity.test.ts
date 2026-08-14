@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { seedEnterpriseData, type SyntheticCompany, type SyntheticInvoice } from '../index';
+import { seedEnterpriseData } from '../index';
 
 describe('Enterprise Seeder — Relational Integrity (10 companies)', () => {
   const companies = seedEnterpriseData({ companyCount: 10 });

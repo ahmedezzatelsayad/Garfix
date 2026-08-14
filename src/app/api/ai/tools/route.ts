@@ -34,19 +34,19 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess, type AuthPayload } from "@/lib/auth";
-import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
+import { hasPermission } from "@/lib/middleware";
 import { calcInvoiceTotals, num } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
-import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
+import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { syncInventoryOnSale } from "@/lib/inventorySync";
 import { logAiUsage } from "@/lib/ai/costTracker";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ── File-based confirmation tokens (C4 FIX: persist across restarts) ────────
 const CONFIRM_TOKENS_PATH = join(process.cwd(), "data", "confirm-tokens.json");
-const CONFIRM_TOKEN_TTL = 5 * 60 * 1000; // 5 min
+const _CONFIRM_TOKEN_TTL = 5 * 60 * 1000; // 5 min
 
 interface ConfirmTokenEntry {
   intent: string;
@@ -305,7 +305,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
 // ─── Preview generators ─────────────────────────────────────────────────────
 
-async function generatePreview(intent: string, params: Record<string, unknown>, user: { uid: string; email: string; role: string; permissions: Record<string, number> }): Promise<ToolPreview | null> {
+async function generatePreview(intent: string, params: Record<string, unknown>, _user: { uid: string; email: string; role: string; permissions: Record<string, number> }): Promise<ToolPreview | null> {
   switch (intent) {
     case "create_invoice": {
       const clientName = params.clientName as string;

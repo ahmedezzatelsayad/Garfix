@@ -4,7 +4,7 @@
  * PATCH — update bank account
  * DELETE — soft-delete (set isActive=false)
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { dbTyped as db } from "@/lib/db";
 import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
 import { assertCompanyAccess } from "@/lib/auth";
@@ -12,7 +12,7 @@ import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
-import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { entityIdOptional } from "@/lib/validation";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const UpdateSchema = z.object({

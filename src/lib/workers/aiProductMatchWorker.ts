@@ -37,7 +37,7 @@
 
 import { dbTyped as db } from "../db";
 import { logger } from "../logger";
-import { registerWorker, QUEUE_NAMES, recoverPendingJobs } from "../queues";
+import { registerWorker, QUEUE_NAMES } from "../queues";
 import { resolveAmbiguousMatch, getAIResolutionAction } from "../aiProductResolver";
 import { num } from "../money";
 

@@ -11,7 +11,6 @@ import {
   Settings,
   Building,
   Key,
-  LayoutDashboard,
   Menu,
   X,
   Shield,

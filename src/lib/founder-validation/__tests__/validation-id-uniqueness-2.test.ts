@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+import { seedEnterpriseData } from '../index';
 describe('Validation: id-uniqueness 2', () => {
   it('validates id-uniqueness for 2', () => { const c = seedEnterpriseData(10, 3800+2); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
   it('validates id-uniqueness with 100 companies for 2', () => { const c = seedEnterpriseData(100, 3900+2); expect(c.length).toBe(100); });

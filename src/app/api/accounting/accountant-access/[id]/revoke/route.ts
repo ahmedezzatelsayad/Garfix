@@ -24,7 +24,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   const rl = await rateLimitResponse(req, "post:accounting-accountant-access-id-revoke", LIMITS.API_WRITE);
   if (rl) return rl;
 
-  const { id } = await params;
+  const { id: _id } = await params;
   // The id parameter is the role identifier; we also accept accountantEmail in body
   const body = await parseJsonBody(req);
   const parsed = RevokeSchema.safeParse(body);

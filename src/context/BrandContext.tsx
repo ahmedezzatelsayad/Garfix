@@ -125,7 +125,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       }
       setCompanies([]);
     }
-  }, [user, companiesQuery.data, companiesQuery.isLoading, companiesQuery.isError]);
+  }, [user, companiesQuery.data, companiesQuery.isLoading, companiesQuery.isError, companiesQuery.error, companiesQuery.isPending]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // When the user logs in (transitions from null → set), force a refetch of
@@ -140,7 +140,7 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-  }, [user?.uid]);
+  }, [user, companiesQuery]);
 
   const refreshCompanies = useCallback(async () => {
     await companiesQuery.refetch();

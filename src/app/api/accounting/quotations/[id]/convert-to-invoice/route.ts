@@ -66,7 +66,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
 
   // Wrap invoice creation + quotation update in a transaction for atomicity
   // (prevents data inconsistency if quotation update fails after invoice is created)
-  const { invoice, updatedQuotation } = await db.$transaction(async (tx) => {
+  const { invoice, updatedQuotation: _updatedQuotation } = await db.$transaction(async (tx) => {
     // Create invoice from quotation data
     const invoice = await tx.invoice.create({
       data: {

@@ -311,7 +311,7 @@ function CountryEInvoiceSettings({
        
       setForm((prev) => ({ ...prev, vat_number: vatNumberDefault }));
     }
-  }, [loadStatus]);
+  }, [loadStatus, fields, vatNumberDefault]);
 
   const handleSave = async () => {
     // Validate required fields

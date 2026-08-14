@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+import { seedEnterpriseData } from '../index';
 describe('Validation: boundary-values 17', () => {
   it('validates boundary-values for 17', () => { const c = seedEnterpriseData(10, 3800+17); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
   it('validates boundary-values with 100 companies for 17', () => { const c = seedEnterpriseData(100, 3900+17); expect(c.length).toBe(100); });

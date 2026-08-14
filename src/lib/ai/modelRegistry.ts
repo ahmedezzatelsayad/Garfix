@@ -275,7 +275,7 @@ export async function recomputeHealth(modelRegistryId: number): Promise<void> {
   );
   // p95 via nearest-rank
   const p95Idx = Math.max(0, Math.min(latencies.length - 1, Math.ceil(0.95 * latencies.length) - 1));
-  const p95LatencyMs = latencies[p95Idx] ?? avgLatencyMs;
+  const _p95LatencyMs = latencies[p95Idx] ?? avgLatencyMs;
   const avgQualityScore =
     recent.reduce((s, r) => s + Number(r.score || 0), 0) / recent.length;
 

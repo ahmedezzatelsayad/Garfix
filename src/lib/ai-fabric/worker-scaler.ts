@@ -19,7 +19,7 @@
 
 import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
-import { TIER_WORKER_LIMITS, planToTier, type SLATier, type RuntimeStatus } from "./types";
+import { TIER_WORKER_LIMITS, planToTier, type RuntimeStatus } from "./types";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 

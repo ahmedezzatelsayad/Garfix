@@ -39,7 +39,7 @@ interface GarfiXChatProps {
   showThinking?: boolean;
   showSuggestions?: boolean;
   onMessageSend?: (message: string) => void;
-  onMessageReceive?: (response: any) => void;
+  onMessageReceive?: (response: unknown) => void;
   welcomeMessage?: {
     ar?: string;
     en?: string;

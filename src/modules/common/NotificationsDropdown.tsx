@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Bell, X, CheckCheck, BellOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface NotificationsResponse {
+interface _NotificationsResponse {
   notifications: Notification[];
   unreadCount: number;
 }

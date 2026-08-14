@@ -17,9 +17,8 @@
  */
 
 import { dbTyped as db } from "@/lib/db";
-import { logger } from "@/lib/logger";
 import { getValkeyClient } from "@/lib/valkey";
-import { TIER_WORKER_LIMITS, planToTier, type SLATier } from "./types";
+import { TIER_WORKER_LIMITS, planToTier } from "./types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

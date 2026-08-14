@@ -3,11 +3,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { apiGet, ApiError } from "@/hooks/api-client";
+import { apiGet } from "@/hooks/api-client";
 import {
-  BookOpen, Calendar, Download, Printer, Search, Filter,
-  ChevronRight, ChevronLeft, RefreshCw, ArrowUpDown,
-  FileText, Eye, TrendingUp, TrendingDown,
+  BookOpen, Download, Printer, Search,
+  ChevronRight, ChevronLeft, RefreshCw, Eye, TrendingUp, TrendingDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
@@ -79,7 +78,7 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
   const [loading, setLoading] = useState(false);
   const [ledgerData, setLedgerData] = useState<GeneralLedgerResponse | null>(null);
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
-  const [accountsLoading, setAccountsLoading] = useState(true);
+  const [_accountsLoading, setAccountsLoading] = useState(true);
   const [searchAccount, setSearchAccount] = useState("");
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
   const [pagination, setPagination] = useState({
@@ -90,7 +89,7 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
 
   // Fetch accounts on mount
   useEffect(() => {
-    apiGet<any>(`/api/accounting/accounts?companySlug=${companySlug}`)
+    apiGet<{ accounts: AccountOption[] }>(`/api/accounting/accounts?companySlug=${companySlug}`)
       .then((res) => {
         setAccounts(res.accounts || []);
         // Auto-select first account if none selected
@@ -100,7 +99,7 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
       })
       .catch((err: unknown) => logger.error("Error fetching GL accounts", { err }))
       .finally(() => setAccountsLoading(false));
-  }, [companySlug]);
+  }, [companySlug, selectedAccountId]);
 
   // Fetch ledger data when selection changes
   const fetchLedger = useCallback(async () => {

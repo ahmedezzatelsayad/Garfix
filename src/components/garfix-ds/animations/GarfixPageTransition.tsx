@@ -75,7 +75,7 @@ export function GarfixPageTransition({
   showLoading = false,
   loadingComponent,
   minDisplayTime = 300,
-  waitForContent = false,
+  waitForContent: _waitForContent = false,
   isReady = true,
   className,
   containerClassName,

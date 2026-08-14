@@ -457,7 +457,7 @@ const TESTS: TestCase[] = [
       const p = tryParseJson(c);
       if (!p.ok) return { score: 0, reason: `parse_failed: ${p.err?.slice(0, 60)}` };
       const obj = p.obj as Record<string, unknown>;
-      let hits = 0, total = 5;
+      let hits = 0; const total = 5;
       if (typeof obj.client === "string" && obj.client.length > 0) hits++;
       if (Number(obj.total) === 250 || obj.total === "250") hits++;
       if (obj.currency === "KWD" || obj.currency === "KWD") hits++;
@@ -478,7 +478,7 @@ const TESTS: TestCase[] = [
       const p = tryParseJson(c);
       if (!p.ok) return { score: 0, reason: `parse_failed: ${p.err?.slice(0, 60)}` };
       const obj = p.obj as Record<string, unknown>;
-      let hits = 0, total = 5;
+      let hits = 0; const total = 5;
       if (typeof obj.client === "string" && /نور/i.test(obj.client as string)) hits++;
       if (Array.isArray(obj.items) && obj.items.length === 2) hits++;
       if (Number(obj.subtotal) === 315 || obj.subtotal === "315") hits++;
@@ -501,7 +501,7 @@ const TESTS: TestCase[] = [
       const p = tryParseJson(c);
       if (!p.ok) return { score: 0, reason: `parse_failed` };
       const obj = p.obj as Record<string, unknown>;
-      let hits = 0, total = 3;
+      let hits = 0; const total = 3;
       if (obj.name === "GarfiX") hits++;
       if (Number(obj.users) === 120) hits++;
       if (obj.active === true) hits++;
@@ -521,7 +521,7 @@ const TESTS: TestCase[] = [
       if (!p.ok) return { score: 0, reason: `parse_failed` };
       if (!Array.isArray(p.obj)) return { score: 0.2, reason: "not array" };
       const arr = p.obj as Array<Record<string, unknown>>;
-      let hits = 0, total = 3;
+      let hits = 0; const total = 3;
       if (arr.length === 3) hits++;
       if (arr.every(it => typeof it.name === "string" && it.name.length > 0)) hits++;
       if (arr.every(it => typeof Number(it.price) === "number")) hits++;

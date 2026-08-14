@@ -86,7 +86,7 @@ export function GarfixAnimatedContainer({
   delay = 0,
   duration,
   stagger = false,
-  viewportOnly = false,
+  viewportOnly: _viewportOnly = false,
   initialHidden = true,
   animateOnMount = true,
   scrollAnimate = false,

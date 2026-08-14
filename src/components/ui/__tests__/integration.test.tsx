@@ -22,7 +22,6 @@ import {
   GarfixLoadingState,
   GarfixErrorState,
   GarfixOfflineState,
-  GarfixSkeleton,
   GarfixPageState,
 } from '../GarfixStates';
 
@@ -783,7 +782,7 @@ describe('Integration: Accessibility Patterns', () => {
   });
 
   it('should support keyboard navigation across interactive elements', async () => {
-    function KeyboardNavTest() {
+    function _KeyboardNavTest() {
       return (
         <div>
           <GarfixEnterpriseTable

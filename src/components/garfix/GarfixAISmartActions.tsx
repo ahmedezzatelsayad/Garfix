@@ -20,9 +20,8 @@ import {
   GarfixAIIcon,
   GarfixAIBadge,
 } from "./GarfixAIIcon"
-import {
-  AIInlineSuggestion,
-} from "./GarfixAIComponents"
+
+
 
 // ═══════════════════════════════════════════════════════════════
 // SECTION 1: Invoice Intelligence Components
@@ -442,7 +441,7 @@ export function AIKpiCard({
   aiCommentary,
   aiTrend,
   trendConfidence,
-  onClick,
+  onClick: _onClick,
   className,
 }: AIKpiCardProps) {
   const [showCommentary, setShowCommentary] = React.useState(false)

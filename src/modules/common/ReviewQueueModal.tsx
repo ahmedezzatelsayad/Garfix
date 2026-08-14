@@ -56,7 +56,7 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
   const undoMutation = useProductMatchingUndo();
 
   const handleUndo = (item: ReviewItem) => {
-    const slug = item.companySlug;
+    const _slug = item.companySlug;
     setUndoingId(item.id);
     undoMutation.mutate(
       { matchId: String(item.id) },
@@ -103,7 +103,7 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
     return { bg: 'rgba(245,158,11,0.2)', color: '#f59e0b' }; // Amber for low
   };
 
-  const tierColor = (tier: string) => {
+  const _tierColor = (tier: string) => {
     if (tier === "collision-recovery-failed") return "#ef4444";
     return "#f59e0b";
   };

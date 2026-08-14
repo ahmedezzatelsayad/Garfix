@@ -31,7 +31,7 @@
  */
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { logger } from "@/lib/logger";
 import { useDashboardStats } from "@/hooks/queries/dashboard";
@@ -42,9 +42,8 @@ import {
   Activity, ChevronDown, Star, Award, Bell, Settings, Download,
   Eye, RefreshCw, MoreHorizontal
 } from "lucide-react";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, AreaChart, Area,
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, AreaChart, Area,
 } from "recharts";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +51,7 @@ import { cn } from "@/lib/utils";
 // Types
 // ════════════════════════════════════════════════════════════════════════
 
-interface Stats {
+interface _Stats {
   totalInvoices: number;
   totalRevenue: number;
   totalPaid: number;
@@ -142,7 +141,7 @@ function useAnimatedValue(target: number, duration = 800): number {
     };
 
     requestAnimationFrame(animate);
-  }, [target, duration]);
+  }, [target, duration, current]);
 
   return current;
 }
@@ -859,7 +858,7 @@ export function DashboardView() {
                       </thead>
                       <tbody>
                         {stats.recent.slice(0, 5).map((inv) => {
-                          const st = STATUS_LABELS[inv.status] || { label: inv.status, color: "#999" };
+                          const _st = STATUS_LABELS[inv.status] || { label: inv.status, color: "#999" };
                           return (
                             <tr key={inv.id} className="hover-lift group">
                               <td className="font-bold font-mono text-[13px]">{inv.invoiceNumber}</td>
@@ -882,7 +881,7 @@ export function DashboardView() {
                   {/* Mobile Cards */}
                   <div className="md:hidden flex flex-col gap-3">
                     {stats.recent.slice(0, 3).map((inv) => {
-                      const st = STATUS_LABELS[inv.status] || { label: inv.status, color: "#999" };
+                      const _st = STATUS_LABELS[inv.status] || { label: inv.status, color: "#999" };
                       return (
                         <div
                           key={inv.id}

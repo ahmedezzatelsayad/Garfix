@@ -83,11 +83,11 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
       onComplete();
       return;
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing query data to local state
+     
     if ((d.step as number) > 0) setStep(Math.min(d.step as number, STEPS.length - 1));
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing query data to local state
+     
     if (d.data) setData(d.data as WizardData);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing query data to local state
+     
     setLoading(false);
   }, [onboardingQuery.isLoading, onboardingQuery.data, onComplete]);
 
@@ -106,14 +106,19 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
       .replace(/^-+|-+$/g, "");
     if (newCompanySlug === lastSuggestedSlugRef.current || !newCompanySlug) {
       lastSuggestedSlugRef.current = suggested;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-suggest slug from company name
+       
       setNewCompanySlug(suggested);
     }
   }, [newCompanyName, newCompanySlug]);
 
   // Onboarding P2 — debounced availability check.
   // Whenever the slug changes, wait 350ms then call the check endpoint.
-  /* eslint-disable react-hooks/set-state-in-effect */
+  // NOTE: `checkSlug` state and `slugCheckQuery` are declared BEFORE the
+  // debounced useEffect below so that `setCheckSlug` is in scope at the
+  // point the effect references it (react-hooks/immutability).
+  const [checkSlug, setCheckSlug] = useState("");
+  const slugCheckQuery = useCheckCompanySlug(checkSlug);
+
   useEffect(() => {
     if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
     if (!newCompanySlug || newCompanySlug.length < 2) {
@@ -133,12 +138,8 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
     return () => {
       if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
     };
-  }, [newCompanySlug]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  // Debounced slug check query
-  const [checkSlug, setCheckSlug] = useState("");
-  const slugCheckQuery = useCheckCompanySlug(checkSlug);
+  }, [newCompanySlug, setCheckSlug]);
+   
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {

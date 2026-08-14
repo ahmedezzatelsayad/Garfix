@@ -15,8 +15,6 @@ import "dotenv/config";
 import { extractInvoice, JsonFilePatternStore, mapBrainToOrder, buildCompanyContext } from "../src/lib/invoice-brain";
 import { fingerprintText } from "../src/lib/invoice-brain/fingerprint";
 import { verifyExtractedFields } from "../src/lib/invoice-brain/verifyExtraction";
-import { InvoiceSchema } from "../src/lib/invoice-brain/schema";
-import type { PatternStore } from "../src/lib/invoice-brain/patternStore";
 import path from "path";
 import fs from "fs";
 

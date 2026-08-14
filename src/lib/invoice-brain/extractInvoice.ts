@@ -33,7 +33,6 @@
 
 // Import new layout-based fingerprinting
 import { 
-  fingerprintTextLayout, 
   fingerprintTextHybrid,
   type FingerprintResult 
 } from "./fingerprint";
@@ -52,11 +51,6 @@ import { logger } from "@/lib/logger";
 import {
   calculateConfidence,
   createTrackedTemplate,
-  recordSuccess,
-  recordFailure,
-  shouldEvolvePattern,
-  evolvePattern,
-  type TrackedTemplate,
   type ConfidenceMetrics,
 } from "./patternConfidence";
 

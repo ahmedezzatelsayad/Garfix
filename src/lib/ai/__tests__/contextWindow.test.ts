@@ -205,7 +205,7 @@ describe("trimHistory — AI-13 FIX boundary cases", () => {
     //   i=1: 2+2=4, 4>=5? no. add. total=4.
     //   i=0: 4+2=6, 6>=5? YES. break.
     //   Result: 2 messages kept.
-    const msgs = [
+    const _msgs = [
       { role: "user", content: "ابجد" },      // 4 Arabic chars
       { role: "user", content: "هوزح" },      // 4 Arabic chars
       { role: "user", content: "طيكلمن" },    // 6 Arabic chars... wait, let me recalc

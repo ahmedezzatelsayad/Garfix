@@ -11,7 +11,7 @@
  *
  * Uses useAutomations (read), useUpdateAutomation (toggle), useDeleteAutomation (delete).
  */
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { useAutomations, useUpdateAutomation, useDeleteAutomation } from "@/hooks/queries";
 import { toast } from "sonner";
@@ -302,7 +302,8 @@ export function AutomationView() {
   const deleteMutation = useDeleteAutomation();
 
   // API returns { rules: [...] }
-  const rules: AutomationRule[] = (data?.rules ?? []) as  AutomationRule[];
+  // Wrap fallback array in useMemo so downstream useMemo hooks (activeCount, runsToday) don't see a new array reference on every render.
+  const rules: AutomationRule[] = useMemo(() => (data?.rules ?? []) as AutomationRule[], [data?.rules]);
 
   // Computed values for KPIs
   const activeCount = useMemo(() => rules.filter((r) => r.isActive).length, [rules]);

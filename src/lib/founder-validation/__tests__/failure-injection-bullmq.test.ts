@@ -4,9 +4,6 @@ import {
   TelemetryCollector,
   calculateMetrics,
   SeededRandom,
-  type SyntheticCompany,
-  type TelemetryEntry,
-  type SyntheticWorkerHistory,
 } from '../index';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -46,7 +43,7 @@ describe('Failure Injection: BullMQ Queue/Worker', () => {
     });
 
     it('should record retries only on failed or timed-out workers', () => {
-      const completedWithRetries = companies.flatMap(c =>
+      const _completedWithRetries = companies.flatMap(c =>
         c.workerHistory.filter(w => w.status === 'completed' && w.retries > 0),
       );
       const failedWithRetries = companies.flatMap(c =>

@@ -72,7 +72,7 @@ const HUNDREDS: string[] = [
 // ─── Fraction (sub-unit) number words ───────────────────────────────────
 // فلس/هللة/قرش are masculine nouns, so we use masculine forms
 
-const FRACTION_ONES: string[] = [
+const _FRACTION_ONES: string[] = [
   "",
   "واحد",
   "اثنان",
@@ -95,8 +95,8 @@ const FRACTION_ONES: string[] = [
   "تسعة عشر",
 ];
 
-const FRACTION_TENS: string[] = TENS; // same tens words for fractions
-const FRACTION_HUNDREDS: string[] = HUNDREDS; // same hundreds words for fractions
+const _FRACTION_TENS: string[] = TENS; // same tens words for fractions
+const _FRACTION_HUNDREDS: string[] = HUNDREDS; // same hundreds words for fractions
 
 // ─── Currency names ─────────────────────────────────────────────────────
 

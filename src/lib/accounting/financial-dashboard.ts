@@ -5,7 +5,7 @@
  * All monetary values stored as String; uses num() for arithmetic.
  */
 import { dbTyped as db } from "@/lib/db";
-import { num, toNum, subNums } from "@/lib/money";
+import { num } from "@/lib/money";
 import { logger } from "@/lib/logger";
 
 // ─── Dashboard Metrics ───────────────────────────────────────────────────

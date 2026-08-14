@@ -42,7 +42,7 @@ export const ALL_PERMISSION_KEYS: string[] = PERMISSION_CATALOG.map((p) => p.key
 
 export const LOCKED_PERMS: string[] = PERMISSION_CATALOG.filter((p) => p.locked).map((p) => p.key);
 
-const DB_KEY_TO_CATALOG_KEY: Record<string, string> = {
+const _DB_KEY_TO_CATALOG_KEY: Record<string, string> = {
   "invoices:view": "view_invoices",
   "invoices:create": "create_invoice",
   "invoices:edit": "edit_invoice",

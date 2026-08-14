@@ -25,12 +25,10 @@ import { db } from "../src/lib/db";
 import {
   getRegistry,
   recordBenchmarkResult,
-  ALL_CAPABILITIES,
   type AICapability,
 } from "../src/lib/ai/modelRegistry";
 import { callSingleProvider, type AiProviderConfig } from "../src/lib/aiProvider";
 import { getAiProviders } from "../src/lib/aiProvider";
-import { logger } from "../src/lib/logger";
 
 // ─── Test suite ─────────────────────────────────────────────────────────────
 

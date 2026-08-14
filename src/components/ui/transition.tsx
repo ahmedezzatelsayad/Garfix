@@ -22,12 +22,12 @@ interface PageTransitionProps {
 
 function PageTransition({
   children,
-  type = "fade",
+  type: _type = "fade",
   duration = 300,
   delay = 0,
   className,
 }: PageTransitionProps) {
-  const animations = {
+  const _animations = {
     fade: {
       initial: { opacity: 0 },
       animate: { opacity: 1 },
@@ -56,7 +56,7 @@ function PageTransition({
   }
 
   // CSS-only fallback (no Framer Motion dependency for basic usage)
-  const cssAnimationMap = {
+  const _cssAnimationMap = {
     fade: `fade-in ${duration}ms ease-out ${delay}ms both`,
     "slide-up": `fade-in ${duration}ms ease-out ${delay}ms both`,
     "slide-down": `fade-in ${duration}ms ease-out ${delay}ms both`,

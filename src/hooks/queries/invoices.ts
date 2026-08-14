@@ -56,7 +56,7 @@ export interface CreateInvoicePayload {
   discount?: number;
   notes?: string;
   expectedVersion?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for updating an existing invoice. */
@@ -71,7 +71,7 @@ export interface UpdateInvoicePayload {
   taxAmount?: number;
   total?: number;
   items?: Omit<InvoiceItem, "id">[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for updating the status of an invoice. */
@@ -88,7 +88,7 @@ export interface RecordPaymentPayload {
   method?: string;
   reference?: string;
   notes?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Response shape for the invoice list endpoint. */

@@ -8,7 +8,6 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { num } from "@/lib/money";
 import { getCountryConfig, getRetentionYears } from "@/lib/gulfConfig";
 
 // ── Replicated pure logic ──────────────────────────────────────────────────────

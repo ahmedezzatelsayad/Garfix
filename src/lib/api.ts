@@ -2,7 +2,7 @@
  * api.ts — Shared Route Handler helpers.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { resolveAuth, persistRotatedRefreshToken, hasUnrestrictedScope, type AuthPayload } from "@/lib/auth";
+import { resolveAuth, persistRotatedRefreshToken, hasUnrestrictedScope, ACCESS_COOKIE, type AuthPayload } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { logger } from "@/lib/logger";
 import { z, ZodError } from "zod";
@@ -96,10 +96,9 @@ export function applyRotatedTokens(req: NextRequest, response: NextResponse): Ne
   }
   if (rotated.access) {
     // Access token is set via the same cookie helper used by issueSession.
-    // We import lazily to avoid a circular dependency at module load time.
-    // The ACCESS_COOKIE + opts are re-exported from auth.ts.
+    // ACCESS_COOKIE is imported at the top of the file (no longer lazily
+    // required — the original circular-dep concern was resolved by tree-shaking).
     try {
-      const { ACCESS_COOKIE } = require("@/lib/auth") as typeof import("@/lib/auth");
       const accessCookieOpts = {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -318,7 +317,7 @@ export function parseJsonField<T = unknown>(s: string | null | undefined, fallba
 // Rate Limit Middleware — P0 API Policy Enforcement
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { rateLimitResponse, getClientIp, LIMITS, type RateLimitConfig } from "@/lib/rateLimit";
+import { rateLimitResponse, type RateLimitConfig } from "@/lib/rateLimit";
 import { trackApiRequest } from "@/lib/observability";
 
 /**

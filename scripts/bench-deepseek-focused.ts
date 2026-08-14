@@ -7,7 +7,6 @@
  * Runs a SMALL number of calls (4 chat + 1 invoice-brain) to stay within
  * the OpenRouter account's limited remaining credit budget.
  */
-import { randomUUID } from "node:crypto";
 
 const BASE = "http://localhost:3000";
 const TEST_EMAIL = `ds-${Date.now()}@garfix-bench.app`;

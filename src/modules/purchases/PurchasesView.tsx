@@ -2,8 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { usePurchases, useDeletePurchase, useCreatePurchase } from "@/hooks/queries";
-import type { CreatePurchasePayload } from "@/hooks/queries/dashboard";
+import { usePurchases, useDeletePurchase, useCreatePurchase, type CreatePurchasePayload } from "@/hooks/queries";
 import { toast } from "sonner";
 import { Plus, ShoppingCart, Trash2, X, DollarSign, Package, Users } from "lucide-react";
 import { cn, paginate } from "@/lib/utils";
@@ -40,11 +39,11 @@ export function PurchasesView() {
   const { data, isLoading, refetch } = usePurchases(activeCompany?.slug || "");
   const deleteMutation = useDeletePurchase();
 
-  const purchases: Purchase[] = (data?.purchases ?? []) as unknown as Purchase[];
+  const purchases: Purchase[] = useMemo(() => (data?.purchases ?? []) as unknown as Purchase[], [data?.purchases]);
   const [showForm, setShowForm] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [_bulkDeleting, setBulkDeleting] = useState(false);
   
   // Confirm Dialog State
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -72,11 +71,11 @@ export function PurchasesView() {
   const pagePurchases = paginate(purchases, currentPage, PAGE_SIZE);
   const safePage = Math.min(currentPage, totalPages);
 
-  const toggleSelectAll = () => {
+  const _toggleSelectAll = () => {
     if (selectedIds.size === pagePurchases.length && pagePurchases.length > 0) setSelectedIds(new Set());
     else setSelectedIds(new Set(pagePurchases.map((p) => p.id)));
   };
-  const toggleRow = (id: number) => {
+  const _toggleRow = (id: number) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -310,7 +309,7 @@ export function PurchasesView() {
 
 function PurchaseForm({ company, onClose, onSaved }: { company: { slug: string }; onClose: () => void; onSaved: () => void }) {
   const createMutation = useCreatePurchase();
-  const [num, setNum] = useState(`PUR-${Date.now().toString().slice(-6)}`);
+  const [num, setNum] = useState(() => `PUR-${Date.now().toString().slice(-6)}`);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [supplier, setSupplier] = useState("");
   const [items, setItems] = useState<PurchaseItem[]>([{ description: "", qty: 1, price: 0, localId: makePurchaseItemLocalId() }]);
@@ -334,7 +333,7 @@ function PurchaseForm({ company, onClose, onSaved }: { company: { slug: string }
         num, date, supplier,
         items: payloadItems,
         notes, companySlug: company.slug,
-      } as  any);
+      } as unknown as CreatePurchasePayload);
       toast.success("تم إنشاء فاتورة الشراء");
       onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }

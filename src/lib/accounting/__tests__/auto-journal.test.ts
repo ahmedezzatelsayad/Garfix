@@ -8,7 +8,7 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { num, addNums, subNums } from "@/lib/money";
+import { num, addNums } from "@/lib/money";
 
 // ── Replicated pure logic ──────────────────────────────────────────────────────
 

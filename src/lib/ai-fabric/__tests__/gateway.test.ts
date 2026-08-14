@@ -11,7 +11,7 @@
  * - Cost optimizer produces correct numbers from real AIRequestLog data
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
+import { describe, it, expect, afterAll, beforeEach } from "bun:test";
 import { dbTyped as db } from "@/lib/db";
 import { executeCascade, storeAIMemory, cacheStore, type GatewayRequest } from "@/lib/ai-fabric/gateway";
 import { calculateSavedCost, getCascadeBreakdown } from "@/lib/ai-fabric/cost-optimizer";
@@ -124,7 +124,7 @@ describe("AI Fabric Gateway — Phase 1", () => {
     });
 
     // Should have 2 logs (one from each call)
-    const logTests = logs.filter((l) => l.normalizedInput === undefined || true);
+    const _logTests = logs.filter((l) => l.normalizedInput === undefined || true);
     expect(logs.length).toBeGreaterThanOrEqual(2);
 
     // First should be 'ai', second should be 'cache'

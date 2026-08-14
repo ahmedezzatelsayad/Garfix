@@ -29,7 +29,6 @@ import { db } from "@/lib/db";
 import {
   matchProduct,
   invalidateKillSwitchCache,
-  normalizeArabic,
   extractBrands,
   deriveCategory,
   computeBrandMatch,

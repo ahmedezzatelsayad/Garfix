@@ -6,7 +6,6 @@ import {
   calculateMetrics,
   generateFounderReport,
   type TelemetryEntry,
-  type SyntheticCacheEntry,
 } from '../index';
 
 /**

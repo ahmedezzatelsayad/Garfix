@@ -33,8 +33,6 @@ import { logger } from '@/lib/logger';
 // Core Components
 import {
   GarfixButton,
-  GarfixCard,
-  KPICard,
   GarfixBadge,
   GarfixAvatar,
 } from '@/components/garfix-ds/core';
@@ -49,21 +47,18 @@ import {
 // Data Components
 import {
   GarfixDataTable,
-  GarfixStatCard,
 } from '@/components/garfix-ds/data';
 
 // Feedback Components
 import {
   GarfixAlert,
   GarfixProgressBar,
-  GarfixSkeleton,
 } from '@/components/garfix-ds/feedback';
 
 // Navigation Components
 import { GarfixTabPanel } from '@/components/garfix-ds/navigation';
 
 // Overlay Components
-import { GarfixModal, GarfixDrawer } from '@/components/garfix-ds/overlay';
 
 // Theme Components
 import {
@@ -76,7 +71,6 @@ import {
 import {
   AIPersonalizationProvider,
   useAIPersonalization,
-  GarfixAIInsights,
   GarfixSmartRecommendations,
   GarfixPersonalizedActions,
   GarfixAILearningProgress,
@@ -84,22 +78,16 @@ import {
 
 // Animation Components
 import {
-  GarfixAnimatedContainer,
   FadeUp,
   ScaleIn,
-  GarfixMotionDiv,
   MotionCard,
   GarfixPageTransition,
   GarfixAnimatedCounter,
-  GarfixCircularProgress,
-  GarfixStatCounter,
 } from '@/components/garfix-ds/animations';
 
 // Animation Hooks
 import {
-  useAnimation,
   useHoverAnimation,
-  useNumberAnimation,
   useReducedMotion,
 } from '@/hooks/useAnimation';
 
@@ -303,7 +291,7 @@ function AnimatedKPICard({
   delay?: number;
   suffix?: string;
 }) {
-  const { style: hoverStyle, handlers } = useHoverAnimation({ translateY: -4 });
+  const { style: _hoverStyle, handlers: _handlers } = useHoverAnimation({ translateY: -4 });
   
   const colorClasses = {
     emerald: 'from-emerald-500 to-emerald-600',
@@ -499,9 +487,9 @@ function AlertsPanel({ alerts }: { alerts: AlertItem[] }) {
 export function GarfixEnhancedAIDashboard() {
   const [metrics, setMetrics] = useState<AIMetricsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-  const { resolvedTheme, toggleTheme } = useTheme();
-  const { shouldReduceMotion } = useReducedMotion();
+  const [activeTab, _setActiveTab] = useState('overview');
+  const { resolvedTheme: _resolvedTheme, toggleTheme: _toggleTheme } = useTheme();
+  const { shouldReduceMotion: _shouldReduceMotion } = useReducedMotion();
   const aiContext = useAIPersonalization();
 
   // Fetch AI Metrics from Real API
@@ -573,7 +561,7 @@ export function GarfixEnhancedAIDashboard() {
       ...rec,
       priority: rec.priority,
     }));
-  }, [aiContext?.recommendations, aiContext?.preferences]);
+  }, [aiContext?.recommendations]);
 
   // Loading State
   if (isLoading && !metrics) {

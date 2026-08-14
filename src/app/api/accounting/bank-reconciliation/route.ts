@@ -12,7 +12,7 @@ import { reconcileBankAccount } from "@/lib/accounting/banking";
 import { num } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
-import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { entityId } from "@/lib/validation";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const CreateSchema = z.object({

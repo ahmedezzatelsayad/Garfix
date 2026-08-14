@@ -12,11 +12,10 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Plus, Package, AlertTriangle } from "lucide-react";
+import { Search, Plus, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 // ─── Types ───────────────────────────────────────────────────────────────
@@ -63,8 +62,13 @@ export function ProductPicker({
   const [options, setOptions] = useState<ProductOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
-  
+  // `debounceTimer` is stored in a ref (not state) because it is only read by
+  // the debounced-search effect's cleanup logic. Storing it in state would
+  // either require listing it as a useEffect dep (causing an infinite loop,
+  // since the effect also writes to it) or trigger spurious re-renders. Refs
+  // are stable and don't need to be listed as deps (react-hooks/exhaustive-deps).
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -88,7 +92,7 @@ export function ProductPicker({
       if (!res.ok) throw new Error("فشل في البحث");
       
       const data = await res.json();
-      const products: ProductOption[] = (data.products || []).map((p: any) => ({
+      const products: ProductOption[] = (data.products || []).map((p: { id: string; name: string; code?: string | null; sku?: string | null; sellingPrice?: string | number | null; purchasePrice?: string | number | null; aliases?: string[] }) => ({
         id: p.id,
         name: p.name,
         code: p.code || p.sku,
@@ -104,7 +108,7 @@ export function ProductPicker({
           const stockRes = await fetch(`/api/inventory?companySlug=${companySlug}&productIds=${ids}`);
           if (stockRes.ok) {
             const stockData = await stockRes.json();
-            const stockMap = new Map((stockData.items || []).map((item: any) => [item.productId, item.qty]));
+            const stockMap = new Map((stockData.items || []).map((item: { productId: string; qty: string | number }) => [item.productId, item.qty]));
             products.forEach(p => {
               p.stockQty = (stockMap.get(p.id) as number) ?? 0;
             });
@@ -127,17 +131,17 @@ export function ProductPicker({
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
     let timer: NodeJS.Timeout | undefined;
-    
+
     if (query.length >= 2) {
       timer = setTimeout(() => {
         searchProducts(query);
         setIsOpen(true);
         setSelectedIndex(-1);
       }, 300);
-      setDebounceTimer(timer);
+      debounceTimerRef.current = timer;
     } else {
       setOptions([]);
       setIsOpen(false);

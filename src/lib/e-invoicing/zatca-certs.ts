@@ -25,7 +25,7 @@ import crypto from "node:crypto";
 import { encryptSecret, decryptSecret } from "@/lib/cryptoVault";
 import { logger } from "@/lib/logger";
 import { dbTyped as db } from "@/lib/db";
-import { ZATCA_AUTHORITY, ZATCA_PORTAL_BASE_URL } from "./zatca";
+import { ZATCA_PORTAL_BASE_URL } from "./zatca";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

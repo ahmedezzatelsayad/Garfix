@@ -152,6 +152,18 @@ export const GarfixToast: React.FC<GarfixToastProps> = ({
     }
   }, []);
 
+  // Handle close with animation — declared before startTimer which references it.
+  const handleClose = useCallback(() => {
+    if (isClosing) return;
+
+    setIsClosing(true);
+    // Wait for exit animation (180ms + small buffer)
+    setTimeout(() => {
+      onClose?.();
+      onRemove?.();
+    }, 200);
+  }, [isClosing, onClose, onRemove]);
+
   // Start auto-dismiss timer
   const startTimer = useCallback(() => {
     if (duration > 0) {
@@ -160,19 +172,7 @@ export const GarfixToast: React.FC<GarfixToastProps> = ({
         handleClose();
       }, duration);
     }
-  }, [duration, clearTimer]);
-
-  // Handle close with animation
-  const handleClose = useCallback(() => {
-    if (isClosing) return;
-    
-    setIsClosing(true);
-    // Wait for exit animation (180ms + small buffer)
-    setTimeout(() => {
-      onClose?.();
-      onRemove?.();
-    }, 200);
-  }, [isClosing, onClose, onRemove]);
+  }, [duration, clearTimer, handleClose]);
 
   // Handle action click
   const handleActionClick = useCallback(() => {

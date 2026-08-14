@@ -6,7 +6,6 @@ import {
   SeededRandom,
   generateBusinessActivities,
   generateFounderReport,
-  type SyntheticCompany,
 } from '../index';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -108,7 +107,7 @@ describe('Failure Injection: Memory Pressure', () => {
       const start = Date.now();
       const gen = generateBusinessActivities(companies, 50, 1);
       let count = 0;
-      for (const batch of gen) {
+      for (const _batch of gen) {
         count++;
       }
       const elapsed = Date.now() - start;

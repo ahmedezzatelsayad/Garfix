@@ -12,7 +12,7 @@ import { createVoucher, type VoucherType } from "@/lib/accounting/vouchers";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { num } from "@/lib/money";
 import { z } from "zod";
-import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { entityIdOptional } from "@/lib/validation";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── GET ─────────────────────────────────────────────────────────────────

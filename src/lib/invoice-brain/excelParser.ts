@@ -56,7 +56,7 @@ export async function parseTabularAllSheets(buffer: Buffer): Promise<ParsedSheet
     const sheetHeaders: string[] = [];
     const sheetRows: Record<string, unknown>[] = [];
     let isFirstRow = true;
-    worksheet.eachRow((row, rowNumber) => {
+    worksheet.eachRow((row, _rowNumber) => {
       if (isFirstRow) {
         row.eachCell((cell, colNumber) => {
           sheetHeaders[colNumber] = String(cell.value ?? "");

@@ -9,10 +9,9 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
-import { resolveAuth, hasPermission } from "@/lib/auth";
+import { resolveAuth } from "@/lib/auth";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
-import { addMoney, subtractMoney, roundMoney, isZero } from "@/lib/money";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";

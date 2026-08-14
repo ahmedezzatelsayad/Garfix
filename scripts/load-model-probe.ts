@@ -20,7 +20,7 @@
  *
  * Usage:  bun run scripts/load-model-probe.ts
  */
-import { writeFileSync, mkdirSync, statSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 const BASE = "http://localhost:3000";

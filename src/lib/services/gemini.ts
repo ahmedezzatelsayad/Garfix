@@ -304,10 +304,10 @@ export class GeminiService {
       throw new Error(`Failed to list models: ${response.status}`);
     }
     
-    const data = await response.json();
+    const data: { models?: Array<{ name: string; displayName?: string }> } = await response.json();
     return (data.models || [])
-      .filter((m: any) => m.name.includes('gemini'))
-      .map((m: any) => ({
+      .filter((m) => m.name.includes('gemini'))
+      .map((m) => ({
         name: m.name,
         displayName: m.displayName || m.name,
       }));
@@ -336,25 +336,25 @@ export class GeminiService {
     };
   }
   
-  private buildRequestBody(contents: any[]): string {
-    const body: any = {
+  private buildRequestBody(contents: Array<{ role: string; parts: Array<{ text: string }> }>): string {
+    const body: Record<string, unknown> = {
       contents,
       generationConfig: {
         maxOutputTokens: this.config.maxOutputTokens,
         temperature: this.config.temperature,
       },
     };
-    
+
     if (this.config.systemInstruction) {
       body.systemInstruction = {
         parts: [{ text: this.config.systemInstruction }],
       };
     }
-    
+
     return JSON.stringify(body);
   }
   
-  private formatMessages(messages: ChatMessage[]): any[] {
+  private formatMessages(messages: ChatMessage[]): Array<{ role: string; parts: Array<{ text: string }> }> {
     return messages
       .filter(m => m.role !== 'system')
       .map(m => ({
@@ -363,15 +363,17 @@ export class GeminiService {
       }));
   }
   
-  private parseResponse(data: any, startTime: number): ChatResponse {
-    const candidate = data.candidates?.[0];
+  private parseResponse(data: Record<string, unknown>, startTime: number): ChatResponse {
+    const candidates = (data.candidates as Array<{ content?: { parts?: Array<{ text?: string }> }; safetyRatings?: Array<{ category: string; probability: string }>; finishReason?: string }> | undefined) ?? [];
+    const candidate = candidates[0];
     const content = candidate?.content;
     const text = content?.parts?.[0]?.text || '';
-    const usageMetadata = data.usageMetadata;
-    
+    const usageMetadata = (data.usageMetadata as { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number } | undefined) ?? undefined;
+    const modelVersion = (data.modelVersion as string | undefined) ?? undefined;
+
     return {
       text,
-      model: data.modelVersion || this.config.model,
+      model: modelVersion || this.config.model,
       usage: {
         promptTokens: usageMetadata?.promptTokenCount || 0,
         candidatesTokens: usageMetadata?.candidatesTokenCount || 0,

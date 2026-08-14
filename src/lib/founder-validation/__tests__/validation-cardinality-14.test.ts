@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+import { seedEnterpriseData } from '../index';
 describe('Validation: cardinality 14', () => {
   it('validates cardinality for 14', () => { const c = seedEnterpriseData(10, 3800+14); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
   it('validates cardinality with 100 companies for 14', () => { const c = seedEnterpriseData(100, 3900+14); expect(c.length).toBe(100); });

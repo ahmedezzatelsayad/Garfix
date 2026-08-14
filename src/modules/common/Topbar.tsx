@@ -26,7 +26,7 @@ interface TopbarProps {
   toggleTheme: () => void;
 }
 
-export function Topbar({ user, activeCompany, onOpenMobile }: TopbarProps) {
+export function Topbar({ user: _user, activeCompany, onOpenMobile }: TopbarProps) {
   const openCommandPalette = () => {
     window.dispatchEvent(new CustomEvent("garfix:open-command-palette"));
   };

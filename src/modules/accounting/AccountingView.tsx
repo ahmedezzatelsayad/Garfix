@@ -1,7 +1,7 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useState, useEffect, Suspense, lazy, useRef } from "react";
+import { useState, useEffect, Suspense, lazy, useRef, useCallback } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { toast } from "sonner";
 import {
@@ -16,8 +16,7 @@ import {
 import {
   Plus, Calculator, X, Trash2, Scale, FileBarChart,
   TrendingUp, TrendingDown, Wallet, Download, RotateCcw,
-  LayoutDashboard, Clock, Building, BarChart3, Landmark,
-  ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, XCircle,
+  LayoutDashboard, Clock, Building, BarChart3, Landmark, CheckCircle2, AlertTriangle, XCircle,
   Calendar, DollarSign, ArrowUpDown,
   FileText, Receipt, Globe, CreditCard, Building2, Package, Users,
   RefreshCcw, Shield, BookOpen,
@@ -164,20 +163,20 @@ export function AccountingView() {
   const deleteAccountMutation = useDeleteAccount();
   const deleteJournalEntryMutation = useDeleteJournalEntry();
   const reverseJournalEntryMutation = useReverseJournalEntry();
-  const createAccountMutation = useCreateAccount();
-  const createJournalEntryMutation = useCreateJournalEntry();
-  const closeFiscalPeriodMutation = useCloseFiscalPeriod();
-  const reopenFiscalPeriodMutation = useReopenFiscalPeriod();
-  const createFiscalPeriodMutation = useCreateFiscalPeriod();
-  const createCostCenterMutation = useCreateCostCenter();
-  const createBankAccountMutation = useCreateBankAccount();
+  const _createAccountMutation = useCreateAccount();
+  const _createJournalEntryMutation = useCreateJournalEntry();
+  const _closeFiscalPeriodMutation = useCloseFiscalPeriod();
+  const _reopenFiscalPeriodMutation = useReopenFiscalPeriod();
+  const _createFiscalPeriodMutation = useCreateFiscalPeriod();
+  const _createCostCenterMutation = useCreateCostCenter();
+  const _createBankAccountMutation = useCreateBankAccount();
 
-  const load = () => { accountsQuery.refetch(); journalEntriesQuery.refetch(); };
-  const loadTrial = () => { trialBalanceQuery.refetch(); };
-  const loadFiscalPeriods = () => { fiscalPeriodsQuery.refetch(); };
-  const loadCostCenters = () => { costCentersQuery.refetch(); };
-  const loadAging = () => { agingQuery.refetch(); };
-  const loadBankAccounts = () => { bankAccountsListQuery.refetch(); };
+  const load = useCallback(() => { accountsQuery.refetch(); journalEntriesQuery.refetch(); }, [accountsQuery, journalEntriesQuery]);
+  const loadTrial = useCallback(() => { trialBalanceQuery.refetch(); }, [trialBalanceQuery]);
+  const loadFiscalPeriods = useCallback(() => { fiscalPeriodsQuery.refetch(); }, [fiscalPeriodsQuery]);
+  const loadCostCenters = useCallback(() => { costCentersQuery.refetch(); }, [costCentersQuery]);
+  const loadAging = useCallback(() => { agingQuery.refetch(); }, [agingQuery]);
+  const loadBankAccounts = useCallback(() => { bankAccountsListQuery.refetch(); }, [bankAccountsListQuery]);
 
   useEffect(() => {
     if (tab === "trial" && activeCompany) loadTrial();
@@ -186,7 +185,7 @@ export function AccountingView() {
     if (tab === "aging" && activeCompany) loadAging();
     if (tab === "banking" && activeCompany) loadBankAccounts();
     if (tab === "dashboard" && activeCompany) { load(); loadAging(); loadBankAccounts(); }
-  }, [tab, activeCompany]);
+  }, [tab, activeCompany, load, loadAging, loadBankAccounts, loadCostCenters, loadFiscalPeriods, loadTrial]);
 
   const switchTab = (t: Tab) => {
     setTab(t);
@@ -698,7 +697,7 @@ function FinancialDashboard({ totalRevenue, totalExpenses, netProfit, totalAsset
   );
 }
 
-function DashboardCard({ label, value, color, icon, trend }: { label: string; value: string; color: string; icon: React.ReactNode; trend?: string }) {
+function DashboardCard({ label, value, color: _color, icon, trend }: { label: string; value: string; color: string; icon: React.ReactNode; trend?: string }) {
   return (
     <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
       <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center shrink-0", iconBadge)}>{icon}</div>
@@ -947,7 +946,7 @@ function AgingReport({ data, totalAR, totalAP }: { data: AgingBucket[]; totalAR:
 }
 
 /* ─── Bank Accounts ─────────────────────────────────────────────────────────── */
-function BankAccountsList({ accounts, company, onRefresh }: { accounts: BankAccount[]; company: { slug: string }; onRefresh: () => void }) {
+function BankAccountsList({ accounts, company: _company, onRefresh: _onRefresh }: { accounts: BankAccount[]; company: { slug: string }; onRefresh: () => void }) {
   const fmt = (n: number) => n.toLocaleString("ar-EG", { maximumFractionDigits: 3 });
 
   return (
@@ -1133,7 +1132,7 @@ function FinancialStatements({ company }: { company: { slug: string } }) {
   const loading = statementType === "profit-loss" ? profitLossQuery.isLoading
     : statementType === "balance-sheet" ? balanceSheetQuery.isLoading
     : cashFlowQuery.isLoading;
-  const queryError = statementType === "profit-loss" ? profitLossQuery.error
+  const _queryError = statementType === "profit-loss" ? profitLossQuery.error
     : statementType === "balance-sheet" ? balanceSheetQuery.error
     : cashFlowQuery.error;
   const data: ProfitLossData | BalanceSheetData | CashFlowData | null =
@@ -1218,7 +1217,7 @@ function FinancialStatements({ company }: { company: { slug: string } }) {
 
 function fmt(n: number): string { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 
-function StatementCard({ label, value, color, icon }: { label: string; value: number; color: string; icon: React.ReactNode }) {
+function StatementCard({ label, value, color: _color, icon }: { label: string; value: number; color: string; icon: React.ReactNode }) {
   return (
     <div className="bg-card rounded-lg border border-border py-3.5 px-4 flex items-center gap-3">
       <div className={cn("w-9 h-9 rounded-sm flex items-center justify-center", iconBadge)}>{icon}</div>
@@ -1282,7 +1281,7 @@ function BalanceSheetView({ data }: { data: BalanceSheetData }) {
   );
 }
 
-function BalanceSheetSection({ title, accounts, total, color }: { title: string; accounts: Array<{ code: string; nameAr: string; balance: number }>; total: number; color: string }) {
+function BalanceSheetSection({ title, accounts, total, color: _color }: { title: string; accounts: Array<{ code: string; nameAr: string; balance: number }>; total: number; color: string }) {
   return (
     <div className="bg-card rounded-[14px] border border-border overflow-hidden">
       <div className={cn("py-2.5 px-3.5 border-b border-border font-extrabold text-[13px]", sectionBadge)}>{title}</div>
@@ -1320,7 +1319,7 @@ function CashFlowView({ data }: { data: CashFlowData }) {
   );
 }
 
-function CashFlowSection({ title, details, net, color }: { title: string; details: Array<{ code: string; nameAr: string; amount: number }>; net: number; color: string }) {
+function CashFlowSection({ title, details, net, color: _color }: { title: string; details: Array<{ code: string; nameAr: string; amount: number }>; net: number; color: string }) {
   return (
     <div className="bg-card rounded-[14px] border border-border overflow-hidden">
       <div className={cn("py-2.5 px-3.5 border-b border-border font-extrabold text-[13px] flex justify-between", sectionBadge)}>

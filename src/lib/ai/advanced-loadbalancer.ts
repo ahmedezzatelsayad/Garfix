@@ -13,8 +13,8 @@
  * ═════════════════════════════════════════════════════════════
  */
 
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
-import { AIProviderConfig, KeyPoolStatus } from './types';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AIProviderConfig } from './types';
 import { logger } from "@/lib/logger";
 
 // ── Types ───────────────────────────────────────────────────
@@ -110,7 +110,7 @@ const HEALTH_CHECK_INTERVAL = 60_000;          // 60s — AI-15 FIX (was 30_000)
 const UNHEALTHY_FAILURE_THRESHOLD = 2;          // AI-15 FIX: 2 failures → unhealthy (was 3)
 const CIRCUIT_BREAKER_THRESHOLD = 3;            // Failures before opening circuit (full isolation)
 const CIRCUIT_RESET_TIMEOUT = 60_000;           // 60s before half-open
-const RPM_WINDOW_SIZE = 60;                     // 60 data points for RPM calculation
+const _RPM_WINDOW_SIZE = 60;                     // 60 data points for RPM calculation
 const MAX_TOKENS_PER_KEY_PER_DAY = 1_000_000;   // Free tier limit
 
 // AI-15 FIX (Audit v2 · Phase 4): alert hook registry.

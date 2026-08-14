@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readRawBody, recordReceipt, safeJsonParse, verifyHmacSignature, WebhookBodyTooLargeError } from "@/lib/e-invoicing/webhooks";
 import { getIntegrationConfig } from "@/lib/integrations/registry";
 import { logger } from "@/lib/logger";
-import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
+import { rateLimitResponse } from "@/lib/rateLimit";
 
 interface BhWebhookPayload {
   invoiceUuid?: string;

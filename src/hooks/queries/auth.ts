@@ -201,7 +201,7 @@ export function useRegister() {
 interface UpdateSaasUserPayload {
   uid: string;
   displayName?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**

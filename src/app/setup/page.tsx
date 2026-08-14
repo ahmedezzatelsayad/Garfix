@@ -131,8 +131,8 @@ export default function SetupWizard() {
   const [integrations, setIntegrations] = useState<Integrations>(DEFAULT_INTEGRATIONS);
   const [dbTestResult, setDbTestResult] = useState<{ serverVersion?: string; database?: string; currentUser?: string } | null>(null);
   const [migrationOutput, setMigrationOutput] = useState<string>("");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [founderResult, setFounderResult] = useState<{ founderEmail: string; companySlug: string } | null>(null);
+   
+  const [_founderResult, setFounderResult] = useState<{ founderEmail: string; companySlug: string } | null>(null);
   const [setupComplete, setSetupComplete] = useState(false);
   const router = useRouter();
 

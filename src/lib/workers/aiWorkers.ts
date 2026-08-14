@@ -18,9 +18,8 @@
 
 import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
-import { registerWorker, QUEUE_NAMES, enqueue, enqueueAsync } from "@/lib/queues";
+import { registerWorker, QUEUE_NAMES, enqueue } from "@/lib/queues";
 import { callAI as callAIProvider } from "@/lib/aiProvider";
-import { getGeminiLoadBalancer } from "@/lib/ai/gemini-loadbalancer";
 import { getGarfixBrain } from "@/lib/ai/garfix-brain";
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -107,11 +106,11 @@ export const QUEUE_SCALE_UP_THRESHOLD = 50;
 export const QUEUE_MAX_SIZE = 1000;
 
 /** Job TTL in milliseconds */
-const AI_JOB_TTL = 300_000; // 5 minutes
+const _AI_JOB_TTL = 300_000; // 5 minutes
 
 /** Retry configuration */
-const AI_RETRY_ATTEMPTS = 3;
-const AI_RETRY_BACKOFF = 2000; // 2 seconds base
+const _AI_RETRY_ATTEMPTS = 3;
+const _AI_RETRY_BACKOFF = 2000; // 2 seconds base
 
 // ── Metrics Collector ────────────────────────────────────────
 
@@ -262,7 +261,7 @@ class AIMetricsCollector {
   }
 
   /** Get full metrics snapshot */
-  getSnapshot(loadBalancer: any): AIMetricsSnapshot {
+  getSnapshot(_loadBalancer: unknown): AIMetricsSnapshot {
     const currentRPM = this.getCurrentRPM();
     
     return {
@@ -391,7 +390,7 @@ class AIRateLimiter {
       });
       aiMetrics.recordQueued();
       return { enqueued: true, jobId };
-    } catch (err) {
+    } catch (_err) {
       aiMetrics.recordRejected();
       return { 
         enqueued: false, 
@@ -426,7 +425,7 @@ export const aiRateLimiter = new AIRateLimiter();
 async function handleChatJob(data: Record<string, unknown>): Promise<void> {
   const d = data as Record<string, unknown>;
   const companySlug = String(d.companySlug || "");
-  const userId = String(d.userId || "");
+  const _userId = String(d.userId || "");
   const messages = (d.messages as ChatMessage[]) || [];
   const conversationId = String(d.conversationId || "");
   
@@ -484,13 +483,13 @@ async function handleInvoiceExtractJob(data: Record<string, unknown>): Promise<v
 
   try {
     // Import dynamically to avoid circular deps
-    const { extractInvoice, PrismaPatternStore, mapBrainToOrder, buildCompanyContext } = 
+    const { extractInvoice, PrismaPatternStore, mapBrainToOrder: _mapBrainToOrder, buildCompanyContext } = 
       await import('@/lib/invoice-brain');
 
     const company = await db.company.findUnique({ where: { slug: companySlug } });
     if (!company) throw new Error('Company not found');
 
-    const ctx = buildCompanyContext({
+    const _ctx = buildCompanyContext({
       slug: company.slug,
       currency: company.currency,
       country: company.country,
@@ -624,7 +623,7 @@ async function handleSpecialistAgentJob(data: Record<string, unknown>): Promise<
     });
 
     // Log audit trail
-    const { logAudit } = await import('@/lib/audit');
+    const { logAudit: _logAudit } = await import('@/lib/audit');
     // Note: user info would come from context in real implementation
   } catch (err) {
     logger.error(`[ai-worker-${agentType}] failed`, {

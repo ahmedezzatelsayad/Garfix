@@ -99,7 +99,7 @@ const {
 // WEBHOOK_EVENT_TYPES is defined in the API route module which
 // cannot be imported in tests. We define the expected catalog here
 // for testing purposes.
-const WEBHOOK_EVENT_TYPES = [
+const _WEBHOOK_EVENT_TYPES = [
   { id: "invoice.created", label: "Invoice Created", labelAr: "\u0641\u0627\u062a\u0648\u0631\u0629 \u062c\u062f\u064a\u062f\u0629", group: "financial", description: "Triggered when a new invoice is created" },
   { id: "invoice.updated", label: "Invoice Updated", labelAr: "\u062a\u062d\u062f\u064a\u062b \u0641\u0627\u062a\u0648\u0631\u0629", group: "financial", description: "Triggered when an invoice is edited" },
   { id: "invoice.deleted", label: "Invoice Deleted", labelAr: "\u062d\u0630\u0641 \u0641\u0627\u062a\u0648\u0631\u0629", group: "financial", description: "Triggered when an invoice is deleted" },

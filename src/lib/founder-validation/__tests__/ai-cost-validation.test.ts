@@ -8,7 +8,6 @@ import {
   calculateMetrics,
   generateFounderReport,
   SeededRandom,
-  type MetricsSummary,
 } from '../index';
 
 // ═══════════════════════════════════════════════════════════════════════════════

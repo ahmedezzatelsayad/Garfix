@@ -240,7 +240,7 @@ describe("CRITICAL: Test 3 — Trial balance is balanced after posted entries", 
   });
 
   test("Multiple JEs → trial balance is balanced", () => {
-    const postedLines: JELine[] = [
+    const _postedLines: JELine[] = [
       // Invoice JE: Debit AR, Credit Revenue
       { accountId: 1100, debit: "5000.000", credit: "0.000" },
       { accountId: 4000, debit: "0.000", credit: "5000.000" },

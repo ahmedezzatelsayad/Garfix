@@ -145,11 +145,11 @@ const idempotencyUpsert = mock(async (args: any) => {
 
 // P0 FIX: Mock create + update for the new atomic idempotency pattern
 // (create-before-payment as lock, update-after-payment with response)
-let lastIdempotencyCreateArgs: any = null;
-let lastIdempotencyUpdateArgs: any = null;
+let _lastIdempotencyCreateArgs: any = null;
+let _lastIdempotencyUpdateArgs: any = null;
 
 const idempotencyCreate = mock(async (args: any) => {
-  lastIdempotencyCreateArgs = args;
+  _lastIdempotencyCreateArgs = args;
   const key = args.data?.key;
   if (!key) return null;
   // Check if already exists (simulate unique constraint)
@@ -174,7 +174,7 @@ const idempotencyCreate = mock(async (args: any) => {
 });
 
 const idempotencyUpdate = mock(async (args: any) => {
-  lastIdempotencyUpdateArgs = args;
+  _lastIdempotencyUpdateArgs = args;
   const key = args.where?.key;
   if (!key) return null;
   const record = idempotencyStore.get(key);
@@ -545,8 +545,8 @@ beforeEach(() => {
   lastUpdateManyArgs = null;
   nextUpdateManyCount = null;
   lastIdempotencyUpsertArgs = null;
-  lastIdempotencyCreateArgs = null;
-  lastIdempotencyUpdateArgs = null;
+  _lastIdempotencyCreateArgs = null;
+  _lastIdempotencyUpdateArgs = null;
   idempotencyStore = new Map();
   invoiceFindUnique.mockClear();
   invoiceFindMany.mockClear();

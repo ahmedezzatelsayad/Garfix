@@ -16,7 +16,6 @@
  * Follows the same middleware pattern as kuwait-validation.ts and zatca-validation.ts.
  */
 
-import { getCountryConfig } from "@/lib/gulfConfig";
 import { validateUaeFtaInvoice, autoPopulateUaeFtaFields, UAE_FTA_CURRENCY, UAE_FTA_DECIMAL_PLACES, UAE_FTA_VAT_RATE, UAE_FTA_AUTHORITY } from "@/lib/e-invoicing/uae-fta";
 import { logger } from "@/lib/logger";
 
@@ -177,7 +176,7 @@ export function formatUaeFtaErrorsForResponse(
 
   // Primary error: all Arabic messages joined
   const allErrorsAr = result.blockingErrors.map((e) => e.messageAr).join("؛ ");
-  const allErrorsEn = result.blockingErrors.map((e) => e.messageEn).join("; ");
+  const _allErrorsEn = result.blockingErrors.map((e) => e.messageEn).join("; ");
 
   return {
     error: allErrorsAr,

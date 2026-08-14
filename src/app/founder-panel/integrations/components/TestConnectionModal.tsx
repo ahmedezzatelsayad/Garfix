@@ -20,7 +20,6 @@ import {
   RefreshCw,
   Loader2
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { GarfixModal } from "@/components/garfix-ds/overlay/GarfixModal";
 import { GarfixButton } from "@/components/garfix-ds/core/GarfixButton";
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+import { seedEnterpriseData } from '../index';
 describe('Validation: enum-validity 11', () => {
   it('validates enum-validity for 11', () => { const c = seedEnterpriseData(10, 3800+11); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
   it('validates enum-validity with 100 companies for 11', () => { const c = seedEnterpriseData(100, 3900+11); expect(c.length).toBe(100); });

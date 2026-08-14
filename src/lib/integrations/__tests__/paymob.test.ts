@@ -263,7 +263,7 @@ function restoreFetch() {
  * Create a mock fetch function compatible with Bun's `typeof fetch`
  * (which includes a static `preconnect` property).
  */
-function mockFetch(fn: (url: string | URL | Request, init?: RequestInit) => Promise<Response>): typeof fetch {
+function _mockFetch(fn: (url: string | URL | Request, init?: RequestInit) => Promise<Response>): typeof fetch {
   const mocked = fn as  typeof fetch;
   mocked.preconnect = originalFetch.preconnect;
   return mocked;
@@ -561,11 +561,11 @@ describe('paymob', () => {
   describe('initiatePaymobPayment', () => {
     it('should complete the full payment initiation flow (auth → order → payment key)', async () => {
       // Simulate the 3-step Paymob flow with mock fetch responses
-      let callIndex = 0;
+      let _callIndex = 0;
       // @ts-expect-error Bun fetch type includes static preconnect property
-      globalThis.fetch = async (url: string | URL | Request, init?: RequestInit) => {
+      globalThis.fetch = async (url: string | URL | Request, _init?: RequestInit) => {
         const urlStr = url.toString();
-        callIndex++;
+        _callIndex++;
         if (urlStr.includes('/api/auth/tokens')) {
           return { ok: true, json: async () => ({ token: 'auth_token_123' }) } as any;
         }

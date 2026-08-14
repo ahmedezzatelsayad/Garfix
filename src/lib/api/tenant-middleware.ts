@@ -37,7 +37,6 @@ import { resolveAuth, persistRotatedRefreshToken, hasUnrestrictedScope, type Aut
 import { dbTyped } from "@/lib/db";
 import { runWithTenantContext } from "@/lib/db-rls";
 import { logger } from "@/lib/logger";
-import { isFounderEmail } from "@/lib/founder";
 
 export interface TenantContext {
   user: AuthPayload;

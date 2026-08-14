@@ -6,7 +6,7 @@
  * tamperAudit integration (appendToChain, verifyChain).
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 

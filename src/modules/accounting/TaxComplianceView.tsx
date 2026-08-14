@@ -8,8 +8,8 @@ import {
   useTaxFiling, useCreateTaxFiling, useFilingReminders, useRetentionCheck,
 } from "@/hooks/queries";
 import {
-  Scale, FileText, Clock, Shield, Plus, Download, Send,
-  CheckCircle2, AlertTriangle, Calculator, MapPin, X,
+  Scale, FileText, Clock, Shield,
+  CheckCircle2, AlertTriangle, Calculator, MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,7 +43,7 @@ const COUNTRIES = [
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
 const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
-const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
+const _labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
 

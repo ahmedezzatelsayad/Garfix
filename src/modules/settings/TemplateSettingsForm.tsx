@@ -7,7 +7,6 @@ import { useInvoiceTemplates, useUpdateSettings } from "@/hooks/queries";
 import { toast } from "sonner";
 import { 
   Save, 
-  FileText, 
   Palette, 
   Type, 
   LayoutTemplate, 
@@ -17,7 +16,6 @@ import {
   Loader2,
   CheckCircle2
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";

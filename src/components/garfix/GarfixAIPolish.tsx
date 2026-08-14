@@ -124,24 +124,32 @@ export function AICelebration({
 }
 
 /** Confetti particles */
+const CONFETTI_COLORS = ["#7c3aed", "#a78bfa", "#f59e0b", "#10b981", "#ef4444"] as const
 function ConfettiAnimation({ size }: { size: "sm" | "md" | "lg" }) {
-  const colors = ["#7c3aed", "#a78bfa", "#f59e0b", "#10b981", "#ef4444"]
   const particleCount = size === "sm" ? 20 : size === "md" ? 40 : 60
-  
+
+  // Generate random particle positions ONCE per mount via a lazy useState
+  // initializer. Math.random is impure and must not run during render —
+  // useState's initializer is called only on the first render and the
+  // result is captured for the component's lifetime.
+  const [particles] = React.useState(() =>
+    Array.from({ length: particleCount }, (_, i) => ({
+      backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      top: `${Math.random() * 100}%`,
+      left: `${Math.random() * 100}%`,
+      animationDelay: `${Math.random() * 500}ms`,
+      animationDuration: `${1500 + Math.random() * 1000}ms`,
+      transform: `rotate(${Math.random() * 360}deg)`,
+    })),
+  )
+
   return (
     <div className="absolute inset-0 overflow-hidden rounded-full">
-      {[...Array(particleCount)].map((_, i) => (
+      {particles.map((p, i) => (
         <div
           key={i}
           className="absolute w-2 h-2 rounded-sm animate-confetti"
-          style={{
-            backgroundColor: colors[i % colors.length],
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 500}ms`,
-            animationDuration: `${1500 + Math.random() * 1000}ms`,
-            transform: `rotate(${Math.random() * 360}deg)`,
-          }}
+          style={p}
         />
       ))}
     </div>
@@ -151,20 +159,26 @@ function ConfettiAnimation({ size }: { size: "sm" | "md" | "lg" }) {
 /** Sparkles effect */
 function SparklesAnimation({ size }: { size: "sm" | "md" | "lg" }) {
   const sparkleCount = size === "sm" ? 8 : size === "md" ? 12 : 16
-  
+
+  // Random sparkle positions are computed once per mount via lazy useState
+  // initializer (Math.random is impure and cannot run during render).
+  const [sparkles] = React.useState(() =>
+    Array.from({ length: sparkleCount }, (_, i) => ({
+      top: `${20 + Math.random() * 60}%`,
+      left: `${20 + Math.random() * 60}%`,
+      animationDelay: `${i * 100}ms`,
+    })),
+  )
+
   return (
     <div className="relative size-full flex items-center justify-center">
       <GarfixAIIcon size={size === "sm" ? "lg" : "xl"} glow animated />
       
-      {[...Array(sparkleCount)].map((_, i) => (
+      {sparkles.map((s, i) => (
         <span
           key={i}
           className="absolute w-1.5 h-1.5 rounded-full bg-yellow-400 animate-sparkle"
-          style={{
-            top: `${20 + Math.random() * 60}%`,
-            left: `${20 + Math.random() * 60}%`,
-            animationDelay: `${i * 100}ms`,
-          }}
+          style={s}
         />
       ))}
     </div>
@@ -197,6 +211,16 @@ function CheckmarkAnimation({ size }: { size: "sm" | "md" | "lg" }) {
 
 /** Trophy achievement animation */
 function TrophyAnimation({ size }: { size: "sm" | "md" | "lg" }) {
+  // Random star positions are computed once per mount via lazy useState
+  // initializer (Math.random is impure and cannot run during render).
+  const [stars] = React.useState(() =>
+    Array.from({ length: 5 }, (_, i) => ({
+      top: `${10 + Math.random() * 30}%`,
+      left: `${10 + Math.random() * 80}%`,
+      animationDelay: `${i * 200}ms`,
+    })),
+  )
+
   return (
     <div className="relative flex flex-col items-center">
       <div className="animate-float">
@@ -219,15 +243,11 @@ function TrophyAnimation({ size }: { size: "sm" | "md" | "lg" }) {
       </div>
       
       {/* Stars around trophy */}
-      {[...Array(5)].map((_, i) => (
+      {stars.map((s, i) => (
         <span
           key={i}
           className="absolute text-yellow-400 text-lg animate-sparkle"
-          style={{
-            top: `${10 + Math.random() * 30}%`,
-            left: `${10 + Math.random() * 80}%`,
-            animationDelay: `${i * 200}ms`,
-          }}
+          style={s}
         >
           ★
         </span>
@@ -557,9 +577,9 @@ export function AIFeatureDiscovery({
 /**
  * useAIPerformance - Monitor AI component performance
  */
-export function useAIPerformance(componentName: string) {
+export function useAIPerformance(_componentName: string) {
   const renderCount = React.useRef(0)
-  const lastRenderTime = React.useRef<number>(Date.now())
+  const lastRenderTime = React.useRef<number>(0)
   const [metrics, setMetrics] = React.useState({
     renderCount: 0,
     avgRenderTime: 0,
@@ -569,7 +589,7 @@ export function useAIPerformance(componentName: string) {
   React.useEffect(() => {
     renderCount.current += 1
     const now = Date.now()
-    const renderTime = now - lastRenderTime.current
+    const renderTime = lastRenderTime.current === 0 ? 0 : now - lastRenderTime.current
     lastRenderTime.current = now
 
     setMetrics(prev => ({
@@ -577,7 +597,7 @@ export function useAIPerformance(componentName: string) {
       avgRenderTime: (prev.avgRenderTime * (prev.renderCount - 1) + renderTime) / prev.renderCount,
       lastRenderTime: renderTime,
     }))
-  })
+  }, [])
 
   return {
     ...metrics,

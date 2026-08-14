@@ -21,21 +21,13 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
   ChevronRight,
   ChevronLeft,
-  Menu,
   X,
-  LayoutDashboard,
-  FileText,
-  Users,
-  Settings,
-  BarChart3,
-  HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { GarfixButton } from "../core/GarfixButton";
 
 // ── Types ───────────────────────────────────────────────────────────────
 

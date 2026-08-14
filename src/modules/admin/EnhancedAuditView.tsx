@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useAuditLogFiltered, type AuditLogFilterParams } from "@/hooks/queries";
 import {
   History, Search, Download, Filter, RefreshCw, ChevronLeft, ChevronRight,
-  Eye, Wifi, WifiOff, X, FileSpreadsheet, User, Building2, Calendar,
+  Eye, Wifi, WifiOff, X, User, Building2,
   Shield, Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -116,8 +116,9 @@ export function EnhancedAuditView() {
   }), [filters]);
 
   const { data, isLoading, isRefetching, refetch } = useAuditLogFiltered(queryParams);
+  // Wrap fallback array in useMemo so downstream useMemo hooks (filteredLogs, companySlugs) don't see a new array reference on every render.
   // @ts-expect-error — local AuditLog adds userEmail, userUid, entity, createdAt; API returns these fields covered by hook type's [key: string]: any index sig.
-  const logs = (data?.logs ?? []) as AuditLog[];
+  const logs = useMemo(() => (data?.logs ?? []) as AuditLog[], [data?.logs]);
 
   // Client-side filtering + pagination
   const filteredLogs = useMemo(() => {

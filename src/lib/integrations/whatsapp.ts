@@ -57,7 +57,7 @@ class WhatsAppProvider implements IntegrationProvider {
         const msg = body?.error?.message || `HTTP ${res.status}`;
         return { ok: false, error: msg };
       }
-      const data = (await res.json()) as {
+      const _data = (await res.json()) as {
         display_phone_number?: string;
         verified_name?: string;
       };

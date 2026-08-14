@@ -29,7 +29,7 @@ interface MissionControlData {
   providerHealthCount: number;
   tokenRateLastHour: number | null;
   timestamp: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface FinOpsData {
@@ -73,7 +73,7 @@ interface FinOpsData {
   periodEnd: string;
   daysElapsed: number;
   daysInMonth: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface AIFabricData {
@@ -89,7 +89,7 @@ interface AIFabricData {
   totalAiCost: number;
   periodStart: string;
   periodEnd: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // APIs return data directly (not wrapped in { data: ... })

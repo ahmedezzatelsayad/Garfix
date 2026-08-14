@@ -169,7 +169,7 @@ export async function startPgBoss(): Promise<boolean> {
 
     // Create queues BEFORE starting to avoid "queue does not exist" errors
     // when pg-boss tries to process existing jobs on startup.
-    for (const [key, name] of Object.entries(QUEUE_NAMES) as [string, QueueName][]) {
+    for (const [_key, name] of Object.entries(QUEUE_NAMES) as [string, QueueName][]) {
       const config = getQueueConfig(name);
       try {
         await boss.createQueue(name, {

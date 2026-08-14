@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ savings, breakdown });
     }
 
-    const [savings, breakdown] = await Promise.all([
+    const [savings, _breakdown] = await Promise.all([
       getPlatformSavings(periodStart, periodEnd),
       // For platform-wide, we aggregate breakdown from calculateSavedCost
       getCascadeBreakdown("_all_", periodStart, periodEnd).catch(() => []),

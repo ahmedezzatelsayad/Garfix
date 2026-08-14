@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'bun:test';
 import {
   seedEnterpriseData,
-  type SyntheticCompany,
-  type InvoiceStatus,
   type Currency,
 } from '../index';
 

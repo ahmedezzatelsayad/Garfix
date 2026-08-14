@@ -5,7 +5,7 @@
  * isMFAEnabled, isMFARequired, disableMFA, getRecoveryCodeCount, and edge cases.
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 import crypto from "node:crypto";
 
 // ── Mock definitions ──────────────────────────────────────────────────────────

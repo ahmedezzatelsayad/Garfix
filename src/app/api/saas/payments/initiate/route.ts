@@ -24,7 +24,7 @@ import { withErrorHandler, apiError } from "@/lib/api";
 import { dbTyped as db } from "@/lib/db";
 import { getIntegrationConfig } from "@/lib/integrations/registry";
 import { logger } from "@/lib/logger";
-import { getCountryPricing, getCountryCurrency } from "@/lib/billing/pricing";
+import { getCountryPricing } from "@/lib/billing/pricing";
 import { initiatePaymobPayment } from "@/lib/integrations/paymob";
 import { z } from "zod";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
@@ -41,7 +41,7 @@ async function callMyFatoorah(
   apiKey: string,
   path: string,
   body?: Record<string, unknown>,
-): Promise<{ ok: boolean; data?: any; error?: string }> {
+): Promise<{ ok: boolean; data?: Record<string, unknown>; error?: string }> {
   try {
     const url = `${baseUrl.replace(/\/+$/, "")}${path}`;
     const res = await fetchSafe(url, {
@@ -281,13 +281,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   // Pick the first available payment method
-  const paymentMethods = initiateResult.data?.Data?.PaymentMethods;
+  const paymentMethods = (initiateResult.data?.Data as { PaymentMethods?: Array<{ PaymentMethodId: number; PaymentMethodCode?: string; Code?: string }> } | undefined)?.PaymentMethods;
   const methodId = Array.isArray(paymentMethods) && paymentMethods.length > 0
     ? paymentMethods[0].PaymentMethodId
     : 1; // fallback to card
 
   // Determine payment method slug based on methodId
-  const methodSlug = mapMyFatoorahMethodId(methodId, paymentMethods);
+  const methodSlug = mapMyFatoorahMethodId(methodId, paymentMethods ?? []);
 
   // 4. Execute Payment
   const countryCodePrefix = getCountryPhonePrefix(country);
@@ -323,8 +323,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError(`فشل تنفيذ الدفع: ${executeResult.error}`, 502);
   }
 
-  const invoiceId = executeResult.data?.Data?.InvoiceId;
-  const paymentUrl = executeResult.data?.Data?.PaymentURL;
+  const invoiceId = (executeResult.data?.Data as { InvoiceId?: number | string } | undefined)?.InvoiceId;
+  const paymentUrl = (executeResult.data?.Data as { PaymentURL?: string } | undefined)?.PaymentURL;
 
   if (!paymentUrl) {
     return apiError("لم يتم الحصول على رابط الدفع من MyFatoorah", 502);
@@ -374,10 +374,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function mapMyFatoorahMethodId(methodId: number, paymentMethods: any[]): string {
+function mapMyFatoorahMethodId(methodId: number, paymentMethods: Array<{ PaymentMethodId: number; PaymentMethodCode?: string; Code?: string }>): string {
   // Try to map from the PaymentMethod object
   if (Array.isArray(paymentMethods)) {
-    const method = paymentMethods.find((m: any) => m.PaymentMethodId === methodId);
+    const method = paymentMethods.find((m) => m.PaymentMethodId === methodId);
     if (method) {
       const code = (method.PaymentMethodCode || method.Code || '').toLowerCase();
       if (code.includes('mada')) return 'myfatoorah_mada';

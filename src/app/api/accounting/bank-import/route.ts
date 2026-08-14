@@ -8,7 +8,7 @@ import { logAudit } from "@/lib/audit";
 import { importBankStatement } from "@/lib/accounting/banking";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
-import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { entityId } from "@/lib/validation";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const ImportSchema = z.object({

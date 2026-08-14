@@ -66,7 +66,7 @@ const tdStyle = "px-3 py-2.5 align-middle";
 const iconBtn = "w-7 h-7 rounded-sm bg-transparent border border-border text-muted-foreground cursor-pointer flex items-center justify-center hover-lift duration-120"; // hover-lift per DS v4.0
 const primaryBtn = "active-press duration-150 px-6 py-2.5 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-none font-extrabold text-[13px] cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 max-md:min-h-[44px] shadow-brand-sm"; // active-press + emerald gradient per DS v4.0
 const ghostBtn = "hover-lift duration-120 px-5 py-2.5 rounded-md bg-transparent text-muted-foreground border border-border font-bold text-[13px] cursor-pointer max-md:min-h-[44px]"; // hover-lift per DS v4.0
-const kpiCardClass = "kpi-card p-4 rounded-[14px] border border-border"; // kpi-card per DS v4.0
+const _kpiCardClass = "kpi-card p-4 rounded-[14px] border border-border"; // kpi-card per DS v4.0
 
 export function TeamView() {
   const { activeCompany } = useBrand();

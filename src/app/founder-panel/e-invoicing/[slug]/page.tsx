@@ -8,7 +8,6 @@ import {
 } from "@/hooks/queries/founder-panel";
 import {
   ArrowRight,
-  ChevronLeft,
   ChevronDown,
   ChevronUp,
   Clock,

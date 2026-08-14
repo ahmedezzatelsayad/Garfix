@@ -52,14 +52,14 @@ const {
   validatePermissionChange,
   createCustomRole,
   deleteCustomRole,
-  updateCustomRole,
+  updateCustomRole: _updateCustomRole,
   getAllCustomRoles,
   getCustomRole,
   isWithinTimeRestriction,
   logPermissionAudit,
   getPermissionAuditLog,
   flatToResourcePerms,
-  CustomRoleInput,
+  CustomRoleInput: _CustomRoleInput,
 } = await import("@/lib/rbac");
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -5,9 +5,9 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { apiGet, apiPost, ApiError } from "@/hooks/api-client";
 import {
-  Lock, Unlock, Calendar, AlertTriangle, CheckCircle2,
-  FileText, RefreshCw, Eye, X, ChevronRight, ChevronLeft,
-  Shield, History, ArrowLeftRight, Download, Printer,
+  Lock, Unlock, AlertTriangle,
+  FileText, RefreshCw, X, ChevronRight, ChevronLeft,
+  Shield, History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
@@ -67,7 +67,7 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
   // Fetch year status
   const fetchYearStatus = useCallback(async (year: number) => {
     try {
-      const response = await apiGet<any>(
+      const response = await apiGet<{ isClosed: boolean; closeRecord: FiscalYearCloseRecord | null; canClose: boolean }>(
         `/api/accounting/fiscal/status?companySlug=${companySlug}&year=${year}`
       );
       setYearStatus(response);
@@ -431,7 +431,7 @@ function YearStatusBadge({ year, companySlug }: { year: number; companySlug: str
   const [status, setStatus] = useState<"closed" | "open" | "loading">("loading");
 
   useEffect(() => {
-    apiGet<any>(`/api/accounting/fiscal/status?companySlug=${companySlug}&year=${year}`)
+    apiGet<{ isClosed?: boolean }>(`/api/accounting/fiscal/status?companySlug=${companySlug}&year=${year}`)
       .then((res) => setStatus(res.isClosed ? "closed" : "open"))
       .catch(() => setStatus("open"));
   }, [year, companySlug]);
@@ -457,7 +457,7 @@ function YearStatusBadge({ year, companySlug }: { year: number; companySlug: str
 
 function CloseYearModal({
   year,
-  companySlug,
+  companySlug: _companySlug,
   loading,
   onClose,
   onConfirm,
@@ -564,7 +564,7 @@ function CloseYearModal({
 
 function ReopenYearModal({
   year,
-  companySlug,
+  companySlug: _companySlug,
   loading,
   onClose,
   onConfirm,
@@ -658,7 +658,7 @@ function ReopenYearModal({
 /* ─── Audit Log Modal ───────────────────────────────────────────────────────── */
 
 function AuditLogModal({
-  companySlug,
+  companySlug: _companySlug,
   entries,
   pagination,
   onPageChange,

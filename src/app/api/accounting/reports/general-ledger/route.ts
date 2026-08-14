@@ -15,7 +15,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
-import { resolveAuth, hasPermission, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
+import { resolveAuth, hasPermission, assertCompanyAccess } from "@/lib/auth";
 import { apiError, withErrorHandler } from "@/lib/api";
 import { num } from "@/lib/money";
 

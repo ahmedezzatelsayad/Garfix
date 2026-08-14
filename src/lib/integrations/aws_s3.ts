@@ -185,7 +185,7 @@ class AWSS3Provider implements IntegrationProvider {
   async getUploadUrl(
     key: string, 
     contentType: string, 
-    expiresInSec: number = 3600
+    _expiresInSec: number = 3600
   ): Promise<{ ok: boolean; url?: string; error?: string }> {
     const cfg = await getIntegrationConfig(this.type);
     if (!cfg || !cfg.access_key || !cfg.secret_key || !cfg.bucket_name || !cfg.region) {

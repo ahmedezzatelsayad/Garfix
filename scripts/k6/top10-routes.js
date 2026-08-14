@@ -42,7 +42,7 @@ const routes = [
   { method: 'GET', url: '/api/purchases' },
 ];
 
-export default function () {
+export default function k6TopRoutes() {
   const route = routes[Math.floor(Math.random() * routes.length)];
   const url = `${BASE_URL}${route.url}`;
 

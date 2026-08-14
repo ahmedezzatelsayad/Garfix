@@ -7,7 +7,7 @@
  * and multi-tenant isolation with company-prefixed keys.
  */
 
-import { describe, it, expect, beforeEach, afterEach, mock, spyOn, afterAll } from "bun:test";
+import { describe, it, expect, mock, spyOn, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -320,8 +320,8 @@ describe("cached", () => {
   });
 
   it("joins key parts with colon", async () => {
-    let capturedKey = "";
-    const fetcher = () => { capturedKey = "called"; return Promise.resolve("v"); };
+    let _capturedKey = "";
+    const fetcher = () => { _capturedKey = "called"; return Promise.resolve("v"); };
     await cached(["part1", "part2", "part3"], 60, fetcher);
     expect(getStoredKeys()).toContain("part1:part2:part3");
   });
@@ -445,7 +445,7 @@ describe("Multi-tenant isolation", () => {
 
     const r1 = await cached(["tenant-a", "dashboard"], 60, fetcher);
     const r2 = await cached(["tenant-b", "dashboard"], 60, fetcher);
-    const r3 = await cached(["tenant-a", "dashboard"], 60, fetcher); // hit
+    const _r3 = await cached(["tenant-a", "dashboard"], 60, fetcher); // hit
 
     expect(r1).toEqual({ invoices: 10 });
     expect(r2).toEqual({ invoices: 10 });

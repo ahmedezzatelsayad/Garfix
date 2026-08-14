@@ -11,15 +11,15 @@ import {
   useAccounts,
 } from "@/hooks/queries";
 import {
-  Landmark, Plus, X, Upload, ArrowRightLeft, CheckCircle2,
-  FileText, Download, Trash2, RefreshCw, AlertTriangle,
+  Landmark, Plus, Upload, ArrowRightLeft, CheckCircle2,
+  FileText, RefreshCw, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ─── Interfaces ───────────────────────────────────────────────────────────── */
 interface BankAccount { id: number; name: string; bankName: string; accountName: string; accountNumber: string; iban?: string; currency: string; accountType?: string; balance: number; glAccountId?: number; }
-interface ReconciliationItem { id: number; date: string; description: string; bankAmount: number; bookAmount: number; difference: number; status: string; }
-interface Transfer { id: number; fromAccount: string; toAccount: string; amount: number; currency: string; date: string; description?: string; status: string; reference: string; }
+interface _ReconciliationItem { id: number; date: string; description: string; bankAmount: number; bookAmount: number; difference: number; status: string; }
+interface _Transfer { id: number; fromAccount: string; toAccount: string; amount: number; currency: string; date: string; description?: string; status: string; reference: string; }
 
 type Tab = "accounts" | "reconciliation" | "import" | "transfer";
 

@@ -12,7 +12,7 @@
  * Uses mock for pg-boss since we don't have a real PG instance in test.
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach, spyOn } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 
 // ─── Mock setup ──────────────────────────────────────────────────────────
 
@@ -31,7 +31,7 @@ const mockBossInstance = {
   isInstalled: mock(async () => true),
 };
 
-const PgBossMock = mock(function (options) {
+const _PgBossMock = mock(function (_options) {
   return mockBossInstance;
 });
 
@@ -259,7 +259,7 @@ describe("registerWorker", () => {
   it("stores handler in internal map", async () => {
     const pgboss = await import("../queue-pgboss");
 
-    const handler = async (data: Record<string, unknown>) => {
+    const handler = async (_data: Record<string, unknown>) => {
       // noop
     };
 
@@ -322,7 +322,7 @@ describe("queue constants", () => {
 
 describe("JobPayload interface", () => {
   it("JobPayload has type, data, and optional attempts", async () => {
-    const queues = await import("../queues");
+    const _queues = await import("../queues");
     const payload: queues.JobPayload = {
       type: "test",
       data: { foo: "bar" },

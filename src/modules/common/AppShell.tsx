@@ -28,12 +28,8 @@ import {
   AccountingLoading,
 } from "@/components/ui/PageLoading";
 // GarfiX AI - Enhanced components for "Everywhere" strategy
-import { 
-  GarfixAIIcon,
-  AICelebration,
-  AIOnboardingTour,
-  AIFeatureDiscovery,
-} from "@/components/garfix";
+
+
 // Wire the real 7-step SetupWizard instead of the bare OnboardingScreen stub.
 // SetupWizard has been in the repo since 2025-09 but was never rendered — it
 // handles company creation, country selection, business type, feature

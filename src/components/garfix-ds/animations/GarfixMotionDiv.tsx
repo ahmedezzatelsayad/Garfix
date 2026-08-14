@@ -106,7 +106,7 @@ export function GarfixMotionDiv({
   initial = 'none',
   initialDelay = 0,
   layout = false,
-  layoutId,
+  layoutId: _layoutId,
   className,
   style: customStyle,
   onClick,
@@ -130,7 +130,7 @@ export function GarfixMotionDiv({
   });
   
   // Press animation hook
-  const { style: pressStyle, handlers: pressHandlers } = usePressAnimation({
+  const { style: _pressStyle, handlers: pressHandlers } = usePressAnimation({
     scale: pressScaleValue,
   });
   

@@ -22,7 +22,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
 import { requireFounder } from "@/lib/middleware";
-import { withErrorHandler, apiError } from "@/lib/api";
+import { withErrorHandler } from "@/lib/api";
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const founderAccess = await requireFounder(req);
@@ -57,13 +57,14 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const productIds = Array.from(new Set(
     items.map((i) => i.matchedProductId).filter((id): id is string => id != null),
   ));
-  const products: any = productIds.length > 0
+  type ProductLite = { id: string; name: string; code: string | null };
+  const products: ProductLite[] = productIds.length > 0
     ? await db.productCatalog.findMany({
         where: { id: { in: productIds } },
         select: { id: true, name: true, code: true },
-      })
+      }) as ProductLite[]
     : [];
-  const productMap: Map<any, any> = new Map(products.map((p: any) => [p.id, p]));
+  const productMap: Map<string, ProductLite> = new Map(products.map((p: ProductLite) => [p.id, p]));
 
   // Group by tenant for the founder panel's "by tenant" view.
   const byTenant = new Map<string, number>();

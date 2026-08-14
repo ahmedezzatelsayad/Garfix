@@ -8,9 +8,8 @@
  * ALL monetary values are String — use num()/toNum()/addNums()/mulNums() from money.ts.
  */
 import { dbTyped as db } from "@/lib/db";
-import { num, addNums, mulNums, subNums, toNum } from "@/lib/money";
+import { num } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
-import { logger } from "@/lib/logger";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -453,7 +452,7 @@ export async function recordInventoryAdjustment(
   const accounts = await db.account.findMany({
     where: { id: { in: accountIds }, companySlug: input.companySlug },
   });
-  const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
+  const accountMap = new Map(accounts.map((a) => [a.id, a]));
 
   for (const line of entry.lines) {
     const acc = accountMap.get(line.accountId);

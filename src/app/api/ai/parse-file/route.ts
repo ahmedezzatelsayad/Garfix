@@ -11,7 +11,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
-import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
+import { assertCompanyAccess } from "@/lib/auth";
 import { requirePermission } from "@/lib/middleware";
 import { num } from "@/lib/money";
 import { logAudit } from "@/lib/audit";

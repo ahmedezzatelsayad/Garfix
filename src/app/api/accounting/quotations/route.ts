@@ -12,7 +12,7 @@ import { logAudit } from "@/lib/audit";
 import { num, calcInvoiceTotals } from "@/lib/money";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
-import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { entityId } from "@/lib/validation";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── GET ─────────────────────────────────────────────────────────────────

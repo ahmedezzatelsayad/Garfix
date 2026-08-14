@@ -39,7 +39,6 @@ import {
   AIResponse,
   AIContext,
   AIMemory,
-  AIPersonality,
   AICapability,
   AIAction,
   AIEvent,
@@ -546,14 +545,14 @@ export class GarfixBrain {
   /**
    * Remember an entity (client name, product, etc.)
    */
-  rememberEntity(key: string, value: any): void {
+  rememberEntity(key: string, value: unknown): void {
     this.memory.longTerm.entityMemory.set(key, value);
   }
 
   /**
    * Recall an entity from memory
    */
-  recallEntity(key: string): any {
+  recallEntity(key: string): unknown {
     return this.memory.longTerm.entityMemory.get(key);
   }
 
@@ -697,7 +696,7 @@ export class GarfixBrain {
    * Public method for /api/ai/analyze endpoint
    */
   async analyze(
-    data: Record<string, any>,
+    data: Record<string, unknown>,
     type: string,
     options?: { insights?: boolean; recommendations?: boolean }
   ): Promise<AIResponse> {
@@ -735,7 +734,7 @@ export class GarfixBrain {
   /**
    * Emit event
    */
-  private emitEvent(type: AIEventType, data: Record<string, any>): void {
+  private emitEvent(type: AIEventType, data: Record<string, unknown>): void {
     this.eventEmitter.emit({
       type,
       timestamp: new Date(),

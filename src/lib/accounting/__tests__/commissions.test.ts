@@ -95,11 +95,11 @@ function buildCommissionEntries(
   salesByPerson: Map<number, { name: string; totalSales: number; commissionRate: number }>,
 ): CommissionEntry[] {
   const commissions: CommissionEntry[] = [];
-  let totalCommissions = 0;
+  let _totalCommissions = 0;
 
   for (const [salespersonId, data] of salesByPerson) {
     const commissionAmount = calculateCommissionAmount(data.totalSales, data.commissionRate);
-    totalCommissions += commissionAmount;
+    _totalCommissions += commissionAmount;
 
     commissions.push({
       salespersonId,
@@ -138,8 +138,8 @@ function buildCommissionJELines(
   totalAmount: number,
   expenseAccountId: number,
   payableAccountId: number,
-  periodFrom: string,
-  periodTo: string,
+  _periodFrom: string,
+  _periodTo: string,
 ): Array<{ accountId: number; debit: string; credit: string; description: string }> {
   return [
     {

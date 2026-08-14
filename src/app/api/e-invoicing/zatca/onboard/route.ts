@@ -27,7 +27,6 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { isFounderEmail } from "@/lib/founder";
-import { dbTyped as db } from "@/lib/db";
 import { requireAuth } from "@/lib/middleware";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import {

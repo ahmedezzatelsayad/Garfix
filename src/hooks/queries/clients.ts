@@ -25,7 +25,7 @@ export interface Client {
   notes?: string;
   companySlug: string;
   createdAt?: string | null;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for creating a new client. */
@@ -237,7 +237,7 @@ export interface Supplier {
   address?: string;
   notes?: string;
   companySlug: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Response shape for the supplier list endpoint. */

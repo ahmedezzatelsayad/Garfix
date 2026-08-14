@@ -32,7 +32,7 @@
 import { logger } from "@/lib/logger";
 import type { Invoice } from "./schema";
 import type { VerificationResult } from "./verifyExtraction";
-import { getDriftDetector, type DriftDetectionResult } from "./driftDetection";
+import { type DriftDetectionResult } from "./driftDetection";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -115,8 +115,8 @@ export interface ReviewCorrection {
   /** Which fields were corrected */
   correctedFields: Array<{
     fieldName: string;
-    originalValue: any;
-    correctedValue: any;
+    originalValue: unknown;
+    correctedValue: unknown;
     reason: string;
   }>;
   
@@ -260,7 +260,7 @@ export class HumanReviewManager {
     // Update/get reviewer info
     this.ensureReviewer(reviewerId);
     
-    const reviewer = this.reviewers.get(reviewerId)!;
+    const _reviewer = this.reviewers.get(reviewerId)!;
     
     // Check reviewer capacity
     const currentInProgress = this.getCountForReviewer(reviewerId, "in_progress");
@@ -351,7 +351,7 @@ export class HumanReviewManager {
     
     // Calculate average review time for completed today
     const avgReviewTime = completedToday.length > 0
-      ? completedToday.reduce((sum, i) => {
+      ? completedToday.reduce((sum, _i) => {
           // Estimate review time (would be tracked properly)
           return sum + 5 * 60 * 1000; // Assume 5 min average
         }, 0) / completedToday.length

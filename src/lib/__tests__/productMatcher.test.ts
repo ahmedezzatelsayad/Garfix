@@ -48,7 +48,7 @@ const dbMock = {
   platformSettings: { findMany: async () => [] },
   productAlias: {
     findUnique: async (args: any) => {
-      const { companySlug, alias } = args.where.companySlug_alias;
+      const { companySlug: _companySlug, alias } = args.where.companySlug_alias;
       const found = fakeAliases.find(a => a.alias === alias);
       return found || null;
     },

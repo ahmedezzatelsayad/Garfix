@@ -13,7 +13,7 @@
 
 import { logger } from "../logger";
 import { normalizeArabic } from "../productMatcher";
-import { type UserCorrection, type LearnedPattern } from "./productLearningStore";
+import { type UserCorrection } from "./productLearningStore";
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
@@ -251,7 +251,7 @@ function generateAliasDescription(
 
 function learnNormalizationRules(
   corrections: UserCorrection[],
-  companySlug: string
+  _companySlug: string
 ): NormalizationRule[] {
   const rules: NormalizationRule[] = [];
   const patternMap = new Map<string, { replacements: Map<string, number[]>; examples: string[] }>();
@@ -296,7 +296,7 @@ function learnNormalizationRules(
           };
           
           rules.push(rule);
-        } catch (e) {
+        } catch (_e) {
           // Invalid regex - skip this pattern
           logger.warn("[pattern-learner] invalid regex pattern", { pattern });
         }
@@ -329,7 +329,7 @@ function findDifferences(input: string, corrected: string): Difference[] {
     ["[ؤو]", "و", "waw-hamza"],
   ];
 
-  for (const [pattern, replacement, type] of arabicSubstitutions) {
+  for (const [pattern, replacement, _type] of arabicSubstitutions) {
     const regex = new RegExp(pattern, "g");
     if (regex.test(inputNorm) !== regex.test(correctedNorm)) {
       differences.push({
@@ -364,7 +364,7 @@ function findDifferences(input: string, corrected: string): Difference[] {
 
 function extractBrandAssociations(
   corrections: UserCorrection[],
-  companySlug: string
+  _companySlug: string
 ): BrandProductAssociation[] {
   const associations: BrandProductAssociation[] = [];
   const brandProductMap = new Map<string, Map<string, {

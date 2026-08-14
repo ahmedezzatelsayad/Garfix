@@ -25,7 +25,7 @@
  * Usage: bunx tsx scripts/test-zatca-submit-integration.ts
  */
 import { writeFileSync, mkdirSync } from "fs";
-import { createHmac, generateKeyPairSync } from "crypto";
+import { generateKeyPairSync } from "crypto";
 
 // ─── Test data ─────────────────────────────────────────────────────────────
 

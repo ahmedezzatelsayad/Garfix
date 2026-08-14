@@ -55,10 +55,8 @@ import {
   FrequentFeature,
   RecentItem,
   BehaviorEventType,
-  EventContext,
   DeviceInfo,
 } from "./types";
-import { logger } from "@/lib/logger";
 
 // ── Default Preferences ─────────────────────────────────────────────────
 
@@ -346,8 +344,10 @@ export const AIPersonalizationProvider: React.FC<AIPersonalizationProviderProps>
   const [insights, setInsights] = useState<AIInsight[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isLearning, setIsLearning] = useState(false);
+  const [session, setSession] = useState<UserSession | null>(null);
 
-  const sessionRef = useRef<UserSession | null>(null);
+  // eventsRef holds the raw event log — it's mutated imperatively inside
+  // trackEvent (high-frequency) and persisted to storage on unmount.
   const eventsRef = useRef<UserBehaviorEvent[]>([]);
 
   // ── Initialize Session ─────────────────────────────────────────────
@@ -361,93 +361,41 @@ export const AIPersonalizationProvider: React.FC<AIPersonalizationProviderProps>
       sessionStorage.setItem(STORAGE_KEYS.SESSION_ID, sessionId);
     }
 
-    sessionRef.current = {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time session init on mount / user change
+    setSession({
       id: sessionId,
       userId: user?.id || "anonymous",
       startTime: new Date(),
       events: [],
       deviceInfo: getDeviceInfo(),
-    };
+    });
 
     // Load stored events
     eventsRef.current = loadFromStorage(STORAGE_KEYS.BEHAVIOR_EVENTS, []);
 
     // Generate initial insights and recommendations
     if (enableAI) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization on mount/user change
       setInsights(generateSimulatedInsights(user));
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization on mount/user change
       setRecommendations(generateSimulatedRecommendations(adaptiveUI));
     }
 
     return () => {
       // Save events on unmount
       saveToStorage(STORAGE_KEYS.BEHAVIOR_EVENTS, eventsRef.current);
-      
-      if (sessionRef.current) {
-        sessionRef.current.endTime = new Date();
-      }
+
+      // Mark session end (mutates state object directly — this runs on unmount,
+      // so re-render is not needed).
+      setSession(prev => prev ? { ...prev, endTime: new Date() } : prev);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- init runs only when user?.id changes; re-running on adaptiveUI/enableAI/user would re-create the session
   }, [user?.id]);
 
-  // ── Auto-refresh Insights ──────────────────────────────────────────
-  useEffect(() => {
-    if (!enableAI || refreshInterval <= 0) return;
-
-    const interval = setInterval(async () => {
-      await refreshInsightsInternal();
-    }, refreshInterval);
-
-    return () => clearInterval(interval);
-  }, [enableAI, refreshInterval, adaptiveUI]);
-
-  // ── Track Event ────────────────────────────────────────────────────
-  const trackEvent = useCallback((
-    event: Omit<UserBehaviorEvent, "id" | "timestamp" | "sessionId">
-  ) => {
-    if (!enableTracking || !sessionRef.current) return;
-
-    const fullEvent: UserBehaviorEvent = {
-      ...event,
-      id: generateId(),
-      timestamp: new Date(),
-      sessionId: sessionRef.current.id,
-    };
-
-    // Add to session
-    sessionRef.current.events.push(fullEvent);
-    eventsRef.current.push(fullEvent);
-
-    // Keep only last 1000 events in storage
-    if (eventsRef.current.length > 1000) {
-      eventsRef.current = eventsRef.current.slice(-1000);
-    }
-
-    // Save to storage (debounced in production)
-    saveToStorage(STORAGE_KEYS.BEHAVIOR_EVENTS, eventsRef.current);
-
-    // Update frequent features based on clicks
-    if (event.type === "click" && event.context.component) {
-      updateFrequentFeature(event.context.component);
-    }
-
-    // Update recent items based on page views
-    if (event.type === "page_view" && event.data.itemId) {
-      addRecentItemInternal({
-        id: event.data.itemId as string,
-        type: (event.data.itemType as RecentItem["type"]) || "invoice",
-        title: (event.data.title as string) || "عنصر",
-        url: event.context.page,
-        accessedAt: new Date(),
-      });
-    }
-  }, [enableTracking]);
-
   // ── Update Frequent Features ───────────────────────────────────────
+  // Declared before trackEvent / auto-refresh effect because they reference it.
   const updateFrequentFeature = useCallback((componentId: string) => {
     setAdaptiveUI(prev => {
       const existing = prev.frequentFeatures.find(f => f.featureId === componentId);
-      
+
       if (existing) {
         return {
           ...prev,
@@ -484,6 +432,85 @@ export const AIPersonalizationProvider: React.FC<AIPersonalizationProviderProps>
     }));
   }, []);
 
+  // ── Refresh Insights ───────────────────────────────────────────────
+  // Declared before the auto-refresh effect because the effect references it.
+  const refreshInsightsInternal = useCallback(async () => {
+    setIsLearning(true);
+
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const newInsights = generateSimulatedInsights(user);
+    const newRecommendations = generateSimulatedRecommendations(adaptiveUI);
+
+    setInsights(newInsights);
+    setRecommendations(newRecommendations);
+    setIsLearning(false);
+
+    // Notify callback
+    newInsights.forEach(insight => {
+      if (insight.status === "new") {
+        onInsightGenerated?.(insight);
+      }
+    });
+  }, [user, adaptiveUI, onInsightGenerated]);
+
+  // ── Auto-refresh Insights ──────────────────────────────────────────
+  useEffect(() => {
+    if (!enableAI || refreshInterval <= 0) return;
+
+    const interval = setInterval(async () => {
+      await refreshInsightsInternal();
+    }, refreshInterval);
+
+    return () => clearInterval(interval);
+  }, [enableAI, refreshInterval, refreshInsightsInternal]);
+
+  // ── Track Event ────────────────────────────────────────────────────
+  const trackEvent = useCallback((
+    event: Omit<UserBehaviorEvent, "id" | "timestamp" | "sessionId">
+  ) => {
+    if (!enableTracking || !session) return;
+
+    const fullEvent: UserBehaviorEvent = {
+      ...event,
+      id: generateId(),
+      timestamp: new Date(),
+      sessionId: session.id,
+    };
+
+    // Add to session (immutable update so context consumers see the change)
+    setSession(prev => prev
+      ? { ...prev, events: [...prev.events, fullEvent] }
+      : prev
+    );
+    eventsRef.current.push(fullEvent);
+
+    // Keep only last 1000 events in storage
+    if (eventsRef.current.length > 1000) {
+      eventsRef.current = eventsRef.current.slice(-1000);
+    }
+
+    // Save to storage (debounced in production)
+    saveToStorage(STORAGE_KEYS.BEHAVIOR_EVENTS, eventsRef.current);
+
+    // Update frequent features based on clicks
+    if (event.type === "click" && event.context.component) {
+      updateFrequentFeature(event.context.component);
+    }
+
+    // Update recent items based on page views
+    if (event.type === "page_view" && event.data.itemId) {
+      addRecentItemInternal({
+        id: event.data.itemId as string,
+        type: (event.data.itemType as RecentItem["type"]) || "invoice",
+        title: (event.data.title as string) || "عنصر",
+        url: event.context.page,
+        accessedAt: new Date(),
+      });
+    }
+  }, [enableTracking, session, updateFrequentFeature, addRecentItemInternal]);
+
   const addFrequentFeature = useCallback((feature: FrequentFeature) => {
     setAdaptiveUI(prev => ({
       ...prev,
@@ -495,7 +522,7 @@ export const AIPersonalizationProvider: React.FC<AIPersonalizationProviderProps>
 
   const addRecentItem = useCallback((item: RecentItem) => {
     addRecentItemInternal(item);
-  }, []);
+  }, [addRecentItemInternal]);
 
   // ── Get Recommendations ─────────────────────────────────────────────
   const getRecommendations = useCallback((type?: RecommendationType) => {
@@ -518,28 +545,6 @@ export const AIPersonalizationProvider: React.FC<AIPersonalizationProviderProps>
     );
   }, []);
 
-  // ── Refresh Insights ───────────────────────────────────────────────
-  const refreshInsightsInternal = useCallback(async () => {
-    setIsLearning(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const newInsights = generateSimulatedInsights(user);
-    const newRecommendations = generateSimulatedRecommendations(adaptiveUI);
-    
-    setInsights(newInsights);
-    setRecommendations(newRecommendations);
-    setIsLearning(false);
-
-    // Notify callback
-    newInsights.forEach(insight => {
-      if (insight.status === "new") {
-        onInsightGenerated?.(insight);
-      }
-    });
-  }, [user, adaptiveUI, onInsightGenerated]);
-
   const refreshInsights = useCallback(async () => {
     await refreshInsightsInternal();
   }, [refreshInsightsInternal]);
@@ -558,7 +563,7 @@ export const AIPersonalizationProvider: React.FC<AIPersonalizationProviderProps>
     itemId: string,
     feedback: "positive" | "negative"
   ) => {
-    // In real implementation, send to ML service — using logger to avoid leaking data to console in production
+    // In real implementation, send to ML service.
     
     // Update recommendation relevance
     setRecommendations(prev =>
@@ -580,7 +585,7 @@ export const AIPersonalizationProvider: React.FC<AIPersonalizationProviderProps>
     user,
     preferences,
     trackEvent,
-    currentSession: sessionRef.current,
+    currentSession: session,
     insights,
     recommendations,
     getRecommendations,

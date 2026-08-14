@@ -10,7 +10,7 @@ import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { hasPermission } from "@/lib/middleware";
 import { num } from "@/lib/money";
-import { apiError, withErrorHandler, parseJsonField } from "@/lib/api";
+import { apiError, withErrorHandler } from "@/lib/api";
 
 type RouteParams = { params: Promise<{ id: string }> };
 

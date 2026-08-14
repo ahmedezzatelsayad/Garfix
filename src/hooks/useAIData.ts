@@ -233,7 +233,7 @@ export function useAIConfig(options: UseAPIOptions = {}) {
       } else {
         setError(result.error || 'Failed to fetch config');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('Network error');
     } finally {
       setIsLoading(false);
@@ -347,8 +347,8 @@ export function useAIChat(conversationId?: string) {
       setMessages(prev => [...prev, assistantMessage]);
       
       return assistantMessage;
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to send message';
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
       setError(errorMessage);
       throw err;
     } finally {
@@ -410,12 +410,12 @@ export function useAITestConnection() {
       }
       
       return data.data;
-    } catch (err: any) {
+    } catch (err: unknown) {
       const result = {
         success: false,
         latencyMs: 0,
         model: model || 'unknown',
-        error: err.message || 'Network error',
+        error: err instanceof Error ? err.message : 'Network error',
       };
       setLastResult(result);
       return result;

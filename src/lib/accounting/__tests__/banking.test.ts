@@ -6,7 +6,7 @@
  */
 
 import { describe, test, expect } from "bun:test";
-import { num, addNums, subNums } from "@/lib/money";
+import { num } from "@/lib/money";
 
 // ── Replicated pure logic ──────────────────────────────────────────────────────
 
@@ -86,7 +86,7 @@ function parseCSVRows(csvData: string): { importedCount: number; skippedCount: n
     const cols = row.split(/[,;\t]/).map((c) => c.trim().replace(/^"|"$/g, ""));
     if (cols.length < 4) { skippedCount++; continue; }
 
-    const [date, reference, description, amountStr] = cols;
+    const [date, _reference, _description, amountStr] = cols;
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) { skippedCount++; continue; }
 

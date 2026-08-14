@@ -42,7 +42,7 @@ async function testIntegrationConnection(
   details?: string;
   error?: string;
 }> {
-  const start = Date.now();
+  const _start = Date.now();
 
   switch (type) {
     // ── Payment Providers ──
@@ -119,7 +119,7 @@ async function testMyFatoorah() {
     }
 
     // MyFatoorah has a simple balance/status endpoint
-    const baseUrl = "https://api.myfatoorah.com";
+    const _baseUrl = "https://api.myfatoorah.com";
     
     // Simulate a lightweight test - in production this would call their API
     // For now we verify the provider is configured

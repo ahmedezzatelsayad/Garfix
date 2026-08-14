@@ -194,7 +194,7 @@ describe("SLO Definitions", () => {
   });
 
   it("each SLO has required fields", () => {
-    for (const [key, slo] of Object.entries(SLOs)) {
+    for (const [_key, slo] of Object.entries(SLOs)) {
       expect(slo.name).toBeTruthy();
       expect(slo.description.length).toBeGreaterThan(20);
       expect(slo.target).toBeGreaterThan(0);
@@ -257,7 +257,7 @@ describe("SLO Compliance Check", () => {
     const compliance = checkSLOCompliance();
 
     expect(Object.keys(compliance).length).toBe(Object.keys(SLOs).length);
-    for (const [key, report] of Object.entries(compliance)) {
+    for (const [_key, report] of Object.entries(compliance)) {
       expect(report.slo).toBeTruthy();
       expect(report.current).toBeTruthy();
       expect(typeof report.compliant).toBe("boolean");

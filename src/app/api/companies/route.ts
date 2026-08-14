@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
-import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
+import { resolveAuth, hasUnrestrictedScope } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { logAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/middleware";

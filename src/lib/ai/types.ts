@@ -77,10 +77,10 @@ export interface AIMemory {
     pendingQuestions: string[];
   };
   longTerm: {
-    userPreferences: Record<string, any>;
+    userPreferences: Record<string, unknown>;
     frequentQueries: Array<{ query: string; count: number }>;
     learnedPatterns: Array<{ pattern: string; response: string }>;
-    entityMemory: Map<string, any>; // Client names, product info, etc.
+    entityMemory: Map<string, unknown>; // Client names, product info, etc.
   };
   sessionHistory: AIMessage[];
 }
@@ -108,7 +108,7 @@ export interface AIAction {
         'generate_report' | 'search' | 'navigate' | 'calculate' | 'custom';
   label: string;             // Display text (Arabic)
   icon?: string;             // Emoji or icon name
-  payload?: Record<string, any>;
+  payload?: Record<string, unknown>;
   confidence: number;
 }
 
@@ -131,7 +131,7 @@ export interface AISuggestRequest {
 }
 
 export interface AIAnalyzeRequest {
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   type: 'invoice' | 'client' | 'product' | 'sales' | 'financial';
   insights?: boolean;
   recommendations?: boolean;
@@ -219,5 +219,5 @@ export type AIEventType =
 export interface AIEvent {
   type: AIEventType;
   timestamp: Date;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
 }

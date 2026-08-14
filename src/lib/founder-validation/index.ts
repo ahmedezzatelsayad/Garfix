@@ -664,7 +664,7 @@ const POSITIONS = [
 
 export const CURRENCIES: Currency[] = ['SAR', 'AED', 'KWD', 'BHD', 'OMR', 'QAR', 'EGP', 'JOD'];
 
-const CURRENCY_EXCHANGE_RATES: Record<Currency, number> = {
+const _CURRENCY_EXCHANGE_RATES: Record<Currency, number> = {
   SAR: 3.75, AED: 3.67, KWD: 0.31, BHD: 0.38, OMR: 0.38, QAR: 3.64, EGP: 48.5, JOD: 0.71,
 };
 
@@ -748,7 +748,7 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
   const rng = new SeededRandom(fullConfig.seed);
   const countries = ['SA', 'AE', 'KW', 'BH', 'OM'] as const;
   const countryCurrencies: Record<string, Currency> = { SA: 'SAR', AE: 'AED', KW: 'KWD', BH: 'BHD', OM: 'OMR' };
-  const plans: Array<'trial' | 'starter' | 'business' | 'enterprise'> = ['trial', 'starter', 'business', 'enterprise'];
+  const _plans: Array<'trial' | 'starter' | 'business' | 'enterprise'> = ['trial', 'starter', 'business', 'enterprise'];
   const planWeights: Array<['trial' | 'starter' | 'business' | 'enterprise', number]> = [
     ['trial', 2], ['starter', 3], ['business', 3], ['enterprise', 2],
   ];
@@ -872,8 +872,8 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
     // ── Clients (5–100 based on scale) ──
     const clientCount = Math.min(rng.int(5, 50) + Math.floor(fullConfig.companyCount / 100), 200);
     for (let cl = 0; cl < clientCount; cl++) {
-      const firstName = rng.pick(ARABIC_FIRST_NAMES_MALE);
-      const lastName = rng.pick(ARABIC_FAMILY_NAMES);
+      const _firstName = rng.pick(ARABIC_FIRST_NAMES_MALE);
+      const _lastName = rng.pick(ARABIC_FAMILY_NAMES);
       const clientNameAr = `${rng.pick(ARABIC_COMPANY_PREFIXES)} ${rng.pick(ARABIC_COMPANY_SUFFIXES)}`;
       const clientCity = rng.pick(GULF_CITIES[country] || GULF_CITIES.SA);
       company.clients.push({
@@ -983,8 +983,8 @@ export function seedEnterpriseData(configOrCount: Partial<SeederConfig> & { comp
 
     // ── Invoices (5–200 per company) ──
     const invoiceCount = Math.min(rng.int(5, 80) + Math.floor(fullConfig.companyCount / 50), 500);
-    const invoiceTypes: InvoiceType[] = ['sales', 'purchase', 'return', 'credit_note', 'debit_note'];
-    const invoiceStatuses: InvoiceStatus[] = ['draft', 'sent', 'paid', 'partial', 'overdue', 'cancelled'];
+    const _invoiceTypes: InvoiceType[] = ['sales', 'purchase', 'return', 'credit_note', 'debit_note'];
+    const _invoiceStatuses: InvoiceStatus[] = ['draft', 'sent', 'paid', 'partial', 'overdue', 'cancelled'];
     const typeWeights: Array<[InvoiceType, number]> = [
       ['sales', 50], ['purchase', 25], ['return', 8], ['credit_note', 10], ['debit_note', 7],
     ];
@@ -1424,7 +1424,7 @@ export async function selectFastestModel(apiKey: string): Promise<string> {
       clearTimeout(timeout);
 
       if (response.ok) {
-        const latencyMs = Date.now() - startMs;
+        const _latencyMs = Date.now() - startMs;
         return modelId; // First successful = fastest (ordered by expected speed)
       }
     } catch {

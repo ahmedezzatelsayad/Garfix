@@ -2,8 +2,6 @@ import { describe, it, expect } from 'bun:test';
 import {
   runFounderValidation,
   type ValidationRunResult,
-  type ValidationRunConfig,
-  type FounderReport,
 } from '../index';
 
 // ═══════════════════════════════════════════════════════════════════════════════

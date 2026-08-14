@@ -4,7 +4,7 @@
  * POST — Grant accountant access (companySlug, accountantEmail, accessLevel)
  * DELETE — Revoke accountant access
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";

@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
-import { num, toNum } from "@/lib/money";
+import { num } from "@/lib/money";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { calculateFxRevaluation } from "@/lib/accounting/trade-finance";
 import { z } from "zod";

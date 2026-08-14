@@ -5,7 +5,7 @@
  * All monetary values as String (no Float), using num() from money.ts.
  */
 import { dbTyped as db } from "@/lib/db";
-import { num, subNums, addNums, mulNums } from "@/lib/money";
+import { num, addNums } from "@/lib/money";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Depreciation Calculation

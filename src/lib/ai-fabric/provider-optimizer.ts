@@ -32,13 +32,11 @@ import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { callAIWithFallback, type RoutedChatOptions } from "@/lib/ai/smartRouter";
 import type { AIRequestType, ProviderRoutingDecision } from "./types";
-import { getCostRates, computeCallCostUsd } from "@/lib/ai/cost-rates";
+import { computeCallCostUsd } from "@/lib/ai/cost-rates";
 // P1.4: dynamic provider scoring + circuit breaker
 import {
   selectProvider,
   recordProviderOutcome,
-  getProviderScore,
-  type ProviderScore,
 } from "./provider-scoring";
 
 // ─── Task type → capability mapping (audited from actual code) ──────────────
@@ -216,7 +214,7 @@ export async function callWithProviderRouting(
 
   const callStart = Date.now();
   let callSucceeded = false;
-  let callError: unknown = null;
+  let _callError: unknown = null;
   // P2.1: capture the actual provider + token usage so the finally block
   // can compute real costUsd and feed it into recordProviderOutcome.
   // Previously the cost+confidence terms were omitted (left at cold-start
@@ -270,7 +268,7 @@ export async function callWithProviderRouting(
       routingDecision: routing,
     };
   } catch (err) {
-    callError = err;
+    _callError = err;
     const errorMsg = err instanceof Error ? err.message : String(err);
     logger.warn("[provider-optimizer] chosen provider failed", {
       taskType,

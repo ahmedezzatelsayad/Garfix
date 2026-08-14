@@ -15,7 +15,7 @@
  * (supports all RESP commands including pub/sub, SCAN, etc.)
  */
 
-import { describe, it, expect, mock, beforeEach, afterEach, spyOn, afterAll } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from "bun:test";
 
 // ─── Mocks to isolate from Prisma / cross-test contamination ────────────
 // Other test files mock @/lib/db globally via bun:test's mock.module().
@@ -53,19 +53,19 @@ mock.module("@/lib/queue-pgboss", () => ({
 const RedisMock = (await import("ioredis-mock")).default;
 
 // Create a shared mock instance that all modules will use
-const sharedMockRedis: InstanceType<typeof RedisMock> | null = null;
+const _sharedMockRedis: InstanceType<typeof RedisMock> | null = null;
 
-function createMockRedis(): InstanceType<typeof RedisMock> {
+function _createMockRedis(): InstanceType<typeof RedisMock> {
   const r = new RedisMock();
   // ioredis-mock doesn't have lazyConnect — stub it
   (r as any).connect = mock(() => Promise.resolve());
   (r as any).quit = mock(() => Promise.resolve());
-  (r as any).duplicate = mock(() => createMockRedis());
+  (r as any).duplicate = mock(() => _createMockRedis());
   return r;
 }
 
 // Intercept dynamic imports of ioredis
-const originalIoredis = (await import("ioredis")).default;
+const _originalIoredis = (await import("ioredis")).default;
 
 // We'll patch module-level singletons after imports via module reset tricks.
 // Instead, we inject VALKEY_URL and mock the ioredis import.
@@ -75,7 +75,7 @@ const originalIoredis = (await import("ioredis")).default;
 // We test each module in isolation by controlling environment variables.
 // Each test block sets/unsets VALKEY_URL before importing.
 
-const VALKEY_TEST_URL = "valkey://localhost:6379/0";
+const _VALKEY_TEST_URL = "valkey://localhost:6379/0";
 
 // ───────────────────────────────────────────────────────────────────────────
 // 1. UNIT: valkey.ts — Connection Manager
@@ -344,7 +344,7 @@ describe("rateLimit.ts — Rate Limiter (In-Memory Fallback)", () => {
   });
 
   it("all predefined LIMITS are valid", () => {
-    for (const [name, config] of Object.entries(LIMITS)) {
+    for (const [_name, config] of Object.entries(LIMITS)) {
       expect(config.maxAttempts).toBeGreaterThan(0);
       expect(config.windowMs).toBeGreaterThan(0);
       // lockoutMs is optional
@@ -394,8 +394,8 @@ describe("auth.ts — Token Blacklist (No Valkey)", () => {
 
 describe("queues.ts — Job Queue (In-Process Mode)", () => {
   let registerWorker: typeof import("@/lib/queues").registerWorker;
-  let enqueue: typeof import("@/lib/queues").enqueue;
-  let enqueueAsync: typeof import("@/lib/queues").enqueueAsync;
+  let _enqueue: typeof import("@/lib/queues").enqueue;
+  let _enqueueAsync: typeof import("@/lib/queues").enqueueAsync;
   let enqueueBackground: typeof import("@/lib/queues").enqueueBackground;
   let getDeadLetters: typeof import("@/lib/queues").getDeadLetters;
   let clearDeadLetters: typeof import("@/lib/queues").clearDeadLetters;
@@ -407,8 +407,8 @@ describe("queues.ts — Job Queue (In-Process Mode)", () => {
     delete process.env.REDIS_URL;
     const mod = await import("@/lib/queues");
     registerWorker = mod.registerWorker;
-    enqueue = mod.enqueue;
-    enqueueAsync = mod.enqueueAsync;
+    _enqueue = mod.enqueue;
+    _enqueueAsync = mod.enqueueAsync;
     enqueueBackground = mod.enqueueBackground;
     getDeadLetters = mod.getDeadLetters;
     clearDeadLetters = mod.clearDeadLetters;
@@ -441,7 +441,7 @@ describe("queues.ts — Job Queue (In-Process Mode)", () => {
 
     // Use a custom queue name to avoid conflicts with real workers
     const customQueue = "test-email-queue" as any;
-    registerWorker(customQueue, async (data) => {
+    registerWorker(customQueue, async (_data) => {
       executed = true;
     });
 

@@ -8,7 +8,7 @@
  * ALL monetary values as String — use num()/toNum()/addNums()/mulNums() from money.ts.
  */
 import { dbTyped as db } from "@/lib/db";
-import { num, addNums, mulNums, subNums, toNum } from "@/lib/money";
+import { num } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 
@@ -102,7 +102,7 @@ export async function consolidateGroup(
     where: { slug: { in: Array.from(companySlugs) } },
   });
 
-  const companyMap: Map<any, any> = new Map(companies.map((c) => [c.slug, c.name]));
+  const companyMap = new Map(companies.map((c) => [c.slug, c.name] as const));
 
   // Balance sheet accounts: asset, liability, equity (and contra types)
   const balanceSheetTypes = ["asset", "liability", "equity", "contra_asset", "contra_revenue"];

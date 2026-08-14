@@ -17,21 +17,8 @@
  * No real HTTP calls — they validate response shapes from mock/test data.
  */
 
-import type {
-  ErrorResult,
-  AuthResult,
-  UserDTO,
-  CompanyDTO,
-  InvoiceDTO,
-  VoucherDTO,
-  FinancialPeriodDTO,
-  AIResponseDTO,
-  AuditLogDTO,
-  HealthCheckDTO,
-  PaginatedResponse,
-  APIContractMap,
-  APIResponse,
-} from "./api-types";
+
+
 
 // ── Validation Result ────────────────────────────────────────────────────────
 
@@ -391,7 +378,7 @@ function validatePurchaseDTO(obj: Record<string, unknown>, errors: ContractError
   validateStringField(obj, "companySlug", true, errors, prefix);
 }
 
-function validateZATCAInvoiceDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+function _validateZATCAInvoiceDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
   validateStringField(obj, "invoiceNumber", true, errors, prefix);
   validateStringField(obj, "sellerVAT", true, errors, prefix);
   validateNumberField(obj, "totalAmount", true, errors, prefix);
@@ -416,7 +403,7 @@ function validateCommissionDTO(obj: Record<string, unknown>, errors: ContractErr
   validateEnumField(obj, "status", ["pending", "approved", "paid"], true, errors, prefix);
 }
 
-function validateGratuityRecordDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
+function _validateGratuityRecordDTO(obj: Record<string, unknown>, errors: ContractError[], prefix: string): void {
   validateStringField(obj, "id", true, errors, prefix);
   validateStringField(obj, "employeeId", true, errors, prefix);
   validateNumberField(obj, "totalGratuity", true, errors, prefix);

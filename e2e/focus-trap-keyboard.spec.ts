@@ -49,11 +49,11 @@ const MODAL_TRIGGER_LABEL = "اختبار الاتصال";
 
 /** The modal title that appears when the modal is open.
  *  Arabic for "Test Result". */
-const MODAL_TITLE = "نتيجة الاختبار";
+const _MODAL_TITLE = "نتيجة الاختبار";
 
 /** The button label inside the modal that closes it (the OK button).
  *  Arabic for "OK". */
-const MODAL_OK_LABEL = "حسناً";
+const _MODAL_OK_LABEL = "حسناً";
 
 // ─── Test suite ──────────────────────────────────────────────────────────
 

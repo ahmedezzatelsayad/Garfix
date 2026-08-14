@@ -50,7 +50,6 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-import { logger } from "@/lib/logger";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -65,7 +64,7 @@ export interface TelemetryEvent {
   type: TelemetryEventType;
   
   /** Event data */
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   
   /** Company slug (for multi-tenant analysis) */
   companySlug?: string;
@@ -485,15 +484,15 @@ export class TelemetryCollector {
     }
     
     // Extract numeric data for gauges/histograms
-    if (event.data.confidence !== undefined) {
+    if (typeof event.data.confidence === 'number') {
       this.recordGauge("invoice_brain.confidence.average", event.data.confidence);
     }
-    
-    if (event.data.durationMs !== undefined) {
+
+    if (typeof event.data.durationMs === 'number') {
       this.recordHistogram("invoice_brain.performance.extraction_time", event.data.durationMs);
     }
-    
-    if (event.data.costUsd !== undefined) {
+
+    if (typeof event.data.costUsd === 'number') {
       this.incrementCounter("invoice_brain.ai.cost_usd", event.data.costUsd);
     }
   }
@@ -516,7 +515,7 @@ export class TelemetryCollector {
   }
   
   private computeHistogramStats(): Record<string, { count: number; p50: number; p95: number; p99: number; avg: number }> {
-    const stats: Record<string, any> = {};
+    const stats: Record<string, { count: number; p50: number; p95: number; p99: number; avg: number }> = {};
     
     for (const [name, values] of this.histograms.entries()) {
       if (values.length === 0) continue;
@@ -535,7 +534,7 @@ export class TelemetryCollector {
     return stats;
   }
   
-  private getRecentEventsByType(limit: number): Record<string, number> {
+  private getRecentEventsByType(_limit: number): Record<string, number> {
     const byType: Record<string, number> = {};
     
     const recentEvents = this.events.slice(-1000); // Last 1000 events

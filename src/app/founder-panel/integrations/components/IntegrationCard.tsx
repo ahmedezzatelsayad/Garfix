@@ -22,12 +22,11 @@ import {
   XCircle,
   Clock
 } from "lucide-react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { GarfixCard } from "@/components/garfix-ds/core/GarfixCard";
 import { GarfixButton } from "@/components/garfix-ds/core/GarfixButton";
 import { GarfixBadge } from "@/components/garfix-ds/core/GarfixBadge";
-import type { IntegrationMeta, IntegrationCategory } from "@/lib/integrations/types";
+import type { IntegrationCategory } from "@/lib/integrations/types";
 
 // ─── Types ───────────────────────────────────────────────────────────────
 

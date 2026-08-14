@@ -30,21 +30,18 @@ import { logger } from "@/lib/logger";
 
 import {
   validateKuwaitInvoice,
-  generateKuwaitInvoicePayload,
   autoPopulateKuwaitFields,
   type KuwaitValidationResult,
 } from "@/lib/e-invoicing/kuwait";
 
 import {
   validateZatcaInvoice,
-  generateZatcaUblXml,
   autoPopulateZatcaFields,
   type ZatcaValidationResult,
 } from "@/lib/e-invoicing/zatca";
 
 import {
   validateUaeFtaInvoice,
-  generateUaeFtaUblXml,
   autoPopulateUaeFtaFields,
   type UaeFtaValidationResult,
 } from "@/lib/e-invoicing/uae-fta";
@@ -54,9 +51,7 @@ import {
   generateEgyptEtaInvoicePayload,
   submitEgyptEtaInvoice,
   autoPopulateEgyptEtaFields,
-  checkEgyptEtaInvoiceStatus,
   type EgyptEtaValidationResult,
-  type EgyptEtaInvoicePayload,
   type EgyptEtaSubmissionResult,
 } from "@/lib/e-invoicing/egypt-eta";
 
@@ -66,7 +61,6 @@ import {
   submitBahrainNbrInvoice,
   autoPopulateBahrainNbrFields,
   type BahrainNbrValidationResult,
-  type BahrainNbrInvoicePayload,
   type BahrainNbrSubmissionResult,
 } from "@/lib/e-invoicing/bahrain-nbr";
 
@@ -76,7 +70,6 @@ import {
   submitOmanTaxInvoice,
   autoPopulateOmanTaxFields,
   type OmanTaxValidationResult,
-  type OmanTaxInvoicePayload,
   type OmanTaxSubmissionResult,
 } from "@/lib/e-invoicing/oman-tax";
 

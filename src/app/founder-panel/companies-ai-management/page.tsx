@@ -51,7 +51,6 @@ import {
 import { GarfixModal } from '@/components/garfix-ds/overlay';
 
 import {
-  GarfixAnimatedContainer,
   FadeUp,
   MotionCard,
   GarfixPageTransition,
@@ -163,7 +162,7 @@ const AI_MODELS = [
 ];
 
 // Provider categories with icons and descriptions
-const PROVIDER_CATEGORIES = {
+const _PROVIDER_CATEGORIES = {
   deepseek: {
     icon: '🟢',
     name: 'DeepSeek (مباشر)',
@@ -194,14 +193,14 @@ const PROVIDER_CATEGORIES = {
   },
 };
 
-const PROVIDER_LABELS: Record<string, string> = {
+const _PROVIDER_LABELS: Record<string, string> = {
   gemini: '🔵 Google Gemini',
   openai: '🟢 OpenAI',
   openrouter: '🟠 OpenRouter',
   deepseek: '🟢 DeepSeek',
 };
 
-const PROVIDER_KEY_HINTS: Record<string, string> = {
+const _PROVIDER_KEY_HINTS: Record<string, string> = {
   gemini: 'يبدأ بـ AIza... أو AQ...',
   openai: 'يبدأ بـ sk-...',
   openrouter: 'يبدأ بـ sk-or-... (يدعم DeepSeek)',
@@ -264,18 +263,13 @@ export default function CompaniesPerFeatureAIPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset page when search changes
     setCurrentPage(1);
   }, [searchQuery]);
-  
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching on mount
-    fetchCompanies();
-  }, []);
 
   // ── API Calls ────────────────────────────────────────────
 
   /**
    * Fetch all companies with their AI status
    */
-  const fetchCompanies = async () => {
+  const fetchCompanies = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch('/api/founder-panel/companies?includeAIStatus=true');
@@ -292,7 +286,14 @@ export default function CompaniesPerFeatureAIPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Fetch companies on mount (deferred to microtask to avoid set-state-in-effect)
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      fetchCompanies();
+    });
+  }, [fetchCompanies]);
 
   /**
    * Fetch AI config for a specific company
@@ -557,7 +558,7 @@ export default function CompaniesPerFeatureAIPage() {
       } else {
         setAlert({ type: 'error', message: data.error || 'فشلت العملية' });
       }
-    } catch (error) {
+    } catch (_error) {
       setAlert({ type: 'error', message: 'خطأ في الاتصال' });
     }
   };

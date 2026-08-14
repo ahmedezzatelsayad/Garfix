@@ -16,7 +16,6 @@
  * Follows the same middleware pattern as kuwait-validation.ts and zatca-validation.ts.
  */
 
-import { getCountryConfig } from "@/lib/gulfConfig";
 import { validateEgyptEtaInvoice, autoPopulateEgyptEtaFields, EGYPT_ETA_CURRENCY, EGYPT_ETA_DECIMAL_PLACES, EGYPT_ETA_VAT_RATE, EGYPT_ETA_AUTHORITY, determineEgyptEtaInvoiceType } from "@/lib/e-invoicing/egypt-eta";
 import { logger } from "@/lib/logger";
 

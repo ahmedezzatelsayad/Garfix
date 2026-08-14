@@ -19,10 +19,9 @@
  * The structure is ready to plug in when the portal becomes available.
  */
 
-import { toHijri, formatDualDate, formatHijri } from "@/lib/hijri";
-import { fmtMoney, num, calcInvoiceTotals, type LineItem } from "@/lib/money";
+import { formatDualDate, formatHijri } from "@/lib/hijri";
+import { num, calcInvoiceTotals, type LineItem } from "@/lib/money";
 import {
-  getCountryConfig,
   type EInvoiceAuthority,
 } from "@/lib/gulfConfig";
 import { logger } from "@/lib/logger";
@@ -143,7 +142,7 @@ export const OMAN_TAX_DECIMAL_PLACES = 3;
 export const OMAN_TAX_VAT_RATE = 5;
 export const OMAN_TAX_REGULATION = "Oman Tax Authority e-invoicing";
 export const OMAN_TAX_MAX_FINE_OMR = 20000;
-const OMAN_TAX_PORTAL_BASE_URL = "https://tax.gov.om/api/v1"; // placeholder
+const _OMAN_TAX_PORTAL_BASE_URL = "https://tax.gov.om/api/v1"; // placeholder
 
 // ── Arabic error messages (Gulf Arabic — Omani style) ─────────────────────
 

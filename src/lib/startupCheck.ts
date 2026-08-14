@@ -36,14 +36,14 @@ import { DEFAULT_PLANS } from "./plans";
 // import "./workers/backupWorker";
 // import "./workers/schedulerWorker";
 
-const REQUIRED_FOR_PRODUCTION = [
+const _REQUIRED_FOR_PRODUCTION = [
   "JWT_SECRET",
   "JWT_REFRESH_SECRET",
   "FOUNDER_EMAIL",
   "DATABASE_URL",
 ];
 
-const RECOMMENDED = [
+const _RECOMMENDED = [
   "WHATSAPP_ALLOWED_SENDERS",
   "PAYMENTS_ENC_KEY",
   "SMTP_HOST",

@@ -75,9 +75,16 @@
 
 import { dbTyped as db } from "./db";
 import { logger } from "./logger";
-import { num } from "./money";
 import { enqueueBackground, QUEUE_NAMES } from "./queues";
 import { AI_PRODUCT_MATCH_JOB_TYPE } from "./workers/aiProductMatchWorker";
+
+// P5-M6 NOTE: `tx`/`dbClient` parameters use `any` because this file has
+// pre-existing schema-drift bugs (e.g. `companySlug_alias` compound unique
+// constraint name mismatch, `product` relation not existing on `ProductAlias`,
+// `createdBy` field missing on ProductMatchAudit) that `dbClient: any` was
+// hiding. Fixing these is out of scope for the current lint cleanup — they
+// should be addressed in a focused schema-reconciliation sprint (see also
+// src/lib/inventorySync.ts).
 
 // ─── Arabic normalization (with confidence cost) ───────────────────────────
 //
@@ -202,11 +209,8 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n];
 }
 
-function similarity(a: string, b: string): number {
-  const maxLen = Math.max(a.length, b.length);
-  if (maxLen === 0) return 1.0;
-  return 1.0 - levenshtein(a, b) / maxLen;
-}
+// Note: `similarity(a, b)` (Levenshtein-based) was removed — unused.
+// Bigram Jaccard is used as the prefilter instead.
 
 // ─── Bigram Jaccard (prefilter) ────────────────────────────────────────────
 
@@ -875,6 +879,7 @@ function singleCandidate(
 
 export async function matchProduct(
   input: MatchInput,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- schema-drift deferral: see P5-M6 note at top of file
   tx?: any,
 ): Promise<MatchResult> {
   const dbClient = tx || db;
@@ -993,7 +998,7 @@ export async function matchProduct(
   //     transposition (order-insensitive), so max(lev, msJacc) reported 1.0
   //     for "كويل شاعال" vs "كويل اشعال" even though Levenshtein scored 0.8.
   //     The cap encodes "fuzzy match → at most 0.88 confidence".
-  const candidates = allAliases.filter((a: any) => {
+  const candidates = allAliases.filter((a: { alias: string }) => {
     const na = normalizeArabic(a.alias);
     return bigramJaccard(na, inputNormResult.normalized) >= PREFILTER_BIGRAM_THRESHOLD;
   });
@@ -1193,6 +1198,7 @@ interface BuildResultArgs {
   candidates: MatchCandidate[];
   companySlug: string;
   input: MatchInput;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- schema-drift deferral: see P5-M6 note at top of file
   dbClient: any;
   config: TenantConfig;
   auditInvoiceId: number | null;
@@ -1322,6 +1328,7 @@ export async function recordMatchOverride(params: {
  * previously corrected this input to product B, we boost confidence for B.
  */
 async function lookupOverride(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- schema-drift deferral: see P5-M6 note at top of file
   dbClient: any,
   companySlug: string,
   inputNormalized: string,

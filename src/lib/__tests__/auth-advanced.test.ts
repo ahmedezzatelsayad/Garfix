@@ -7,7 +7,7 @@
  * issueSession/clearSession.
  */
 
-import { describe, it, expect, mock, spyOn, beforeEach, afterAll } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 

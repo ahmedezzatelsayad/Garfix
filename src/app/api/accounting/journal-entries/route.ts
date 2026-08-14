@@ -17,7 +17,7 @@ import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { preventPostingToClosedPeriod } from "@/lib/accounting/period-close";
 import { accountingTx } from "@/lib/accounting/tx";
-import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { entityId } from "@/lib/validation";
 import { resolveCompanyId } from "@/lib/company-resolver";
 
 const LineSchema = z.object({
@@ -110,7 +110,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError(`P0-5: Accounts not found or inactive: IDs ${missingIds.join(", ")}`, 400);
   }
 
-  const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
+  const accountMap = new Map(accounts.map((a) => [a.id, a]));
 
   // ── P0-4: Check fiscal period before posting ──
   if (data.status === "posted") {

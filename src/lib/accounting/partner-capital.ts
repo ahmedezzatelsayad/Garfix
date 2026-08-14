@@ -123,7 +123,7 @@ export async function calculateProfitDistribution(
   // Format: "partner:X%" or we distribute equally
 
   const partners: PartnerDistribution[] = [];
-  let totalOwnership = 0;
+  let _totalOwnership = 0;
 
   // First pass: extract ownership percentages
   const ownershipMap = new Map<string, number>();
@@ -168,7 +168,7 @@ export async function calculateProfitDistribution(
   for (const [accId, percent] of ownershipMap) {
     const normalized = rawTotal > 0 ? (percent / rawTotal) * 100 : 0;
     ownershipMap.set(accId, normalized);
-    totalOwnership += normalized;
+    _totalOwnership += normalized;
   }
 
   // Calculate profit shares
@@ -291,7 +291,7 @@ export async function postProfitDistributionJE(
     // Update account balances
     const accountIds = [...new Set(linesData.map((l) => l.accountId))];
     const accounts = await tx.account.findMany({ where: { id: { in: accountIds }, companySlug } });
-    const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
+    const accountMap = new Map(accounts.map((a) => [a.id, a]));
 
     for (const line of linesData) {
       const acc = accountMap.get(line.accountId);

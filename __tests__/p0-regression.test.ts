@@ -9,7 +9,7 @@
  * 5. MFA rate limiting and replay protection
  */
 
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
 
 // ─── Test 1: companySlug is present on all business child tables ─────────
 

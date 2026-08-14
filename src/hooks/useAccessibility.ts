@@ -72,7 +72,7 @@ export function useFocusTrap(
       cleanupRef.current?.();
       cleanupRef.current = null;
     };
-  }, [active]);
+  }, [active, options]);
 
   return containerRef;
 }
@@ -209,7 +209,7 @@ export function useKeyboardNavigation(
       setFocusedIndex(newIndex);
       items[newIndex]?.focus();
     },
-    [focusedIndex, orientation, loop, onSelect]
+    [focusedIndex, orientation, loop, onSelect, containerRef]
   );
 
   return { focusedIndex, setFocusedIndex, handleKeyDown };
@@ -241,11 +241,13 @@ export interface AriaAttributeOptions {
  * Hook to generate ARIA attributes
  */
 export function useAriaAttributes(options: AriaAttributeOptions = {}) {
-  const idRef = useRef({
+  // useState with a lazy initializer produces stable IDs per component instance
+  // without tripping the “no ref access during render” rule.
+  const [ids] = useState(() => ({
     id: generateUniqueId(),
     labelledById: generateUniqueId("label"),
     describedById: generateUniqueId("desc"),
-  });
+  }));
 
   const ariaProps: Record<string, string | boolean | number | undefined> = {};
 
@@ -267,7 +269,7 @@ export function useAriaAttributes(options: AriaAttributeOptions = {}) {
 
   return {
     ...ariaProps,
-    ids: idRef.current,
+    ids,
   };
 }
 
@@ -279,18 +281,18 @@ export function useAriaAttributes(options: AriaAttributeOptions = {}) {
  * Hook to create a live region for dynamic content announcements
  */
 export function useLiveRegion(priority: "polite" | "assertive" = "polite") {
-  const regionId = useRef(generateUniqueId("live-region"));
+  const [regionId] = useState(() => generateUniqueId("live-region"));
   const contentRef = useRef<string>("");
 
   const updateContent = useCallback((newContent: string) => {
     contentRef.current = newContent;
     
     // Find or create the live region
-    let region = document.getElementById(regionId.current);
+    let region = document.getElementById(regionId);
     
     if (!region) {
       region = document.createElement("div");
-      region.id = regionId.current;
+      region.id = regionId;
       region.setAttribute("role", "status");
       region.setAttribute("aria-live", priority);
       region.setAttribute("aria-atomic", "true");
@@ -315,7 +317,7 @@ export function useLiveRegion(priority: "polite" | "assertive" = "polite") {
         region.textContent = newContent;
       }
     });
-  }, [priority]);
+  }, [priority, regionId]);
 
-  return { regionId: regionId.current, updateContent };
+  return { regionId, updateContent };
 }

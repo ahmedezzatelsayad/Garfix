@@ -26,15 +26,13 @@ import { fetchSafe } from "@/lib/ssrf";
  * Fines for non-compliance: up to SAR 50,000 per violation.
  */
 
-import { toHijri, formatDualDate, formatHijri } from "@/lib/hijri";
-import { fmtMoney, num, calcInvoiceTotals, type LineItem } from "@/lib/money";
+import { toHijri, formatHijri } from "@/lib/hijri";
+import { num, calcInvoiceTotals, type LineItem } from "@/lib/money";
 import {
-  getCountryConfig,
   type EInvoiceAuthority,
 } from "@/lib/gulfConfig";
 import { logger } from "@/lib/logger";
 import { dbTyped as db } from "@/lib/db";
-import { encryptSecret } from "@/lib/cryptoVault";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -188,8 +186,8 @@ const ZATCA_VAT_RATE = 15;
 const ZATCA_REGULATION = "ZATCA Phase 2";
 const ZATCA_MAX_FINE_SAR = 50000;
 const ZATCA_PORTAL_BASE_URL = "https://gw-fatoora.zatca.gov.sa/e-invoicing/simulation/v2"; // simulation env
-const ZATCA_CLEARED_ENDPOINT = "/invoices/cleared";
-const ZATCA_REPORTED_ENDPOINT = "/invoices/reported";
+const _ZATCA_CLEARED_ENDPOINT = "/invoices/cleared";
+const _ZATCA_REPORTED_ENDPOINT = "/invoices/reported";
 const ZATCA_CLEARED_SIMULATION_ENDPOINT = "/invoices/cleared/simulation";
 const ZATCA_REPORTED_SIMULATION_ENDPOINT = "/invoices/reported/simulation";
 
@@ -198,7 +196,7 @@ const UBL_NS = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2";
 const CBC_NS = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2";
 const CAC_NS = "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2";
 const UBL_EXT_NS = "urn:oasis:names:specification:ubl:schema:xsd:ExtensionContent-2";
-const SIG_NS = "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2";
+const _SIG_NS = "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2";
 
 // ── Arabic error messages (Saudi Arabic) ────────────────────────────────────
 
@@ -372,8 +370,8 @@ export function computeInvoiceHash(xml: string): string {
   try {
     // Dynamic import for Node.js crypto (SSR only)
      
-    const nodeCrypto = require("node:crypto");
-    return nodeCrypto.createHash("sha256").update(xml, "utf8").digest("hex");
+    // crypto is imported at the top of the file (node:crypto built-in).
+    return crypto.createHash("sha256").update(xml, "utf8").digest("hex");
   } catch {
     // Fallback for environments where node:crypto is not available
     logger.warn("[zatca] node:crypto not available for hash computation — using placeholder");
@@ -552,8 +550,8 @@ export function generateZatcaUblXml(
   const dueDate = (invoice.dueDate as string) || issueDate;
 
   // Hijri dates
-  const hijriIssue = toHijri(issueDate);
-  const hijriDue = toHijri(dueDate);
+  const _hijriIssue = toHijri(issueDate);
+  const _hijriDue = toHijri(dueDate);
 
   // Line items parsing
   const rawLineItems = invoice.lineItems as LineItem[] | string;
@@ -594,7 +592,7 @@ export function generateZatcaUblXml(
   // Simplified (B2C) = 388 (Simplified Invoice)
   const invoiceTypeCode = invoiceType === "standard" ? "381" : "388";
   const invoiceTypeNameAr = invoiceType === "standard" ? "فاتورة ضريبية" : "فاتورة مبسطة";
-  const invoiceTypeNameEn = invoiceType === "standard" ? "Standard Invoice" : "Simplified Invoice";
+  const _invoiceTypeNameEn = invoiceType === "standard" ? "Standard Invoice" : "Simplified Invoice";
 
   // ── Build UBL 2.1 XML ─────────────────────────────────────────────────
 
@@ -849,10 +847,10 @@ export function signZatcaInvoice(
     // when real ZATCA CSID/CCD certificates are injected.
 
      
-    const nodeCrypto = require("node:crypto");
+    // crypto is imported at the top of the file (node:crypto built-in).
 
     // Sign with ECDSA P-256 (placeholder: uses provided key material)
-    const sign = nodeCrypto.createSign("SHA256");
+    const sign = crypto.createSign("SHA256");
     sign.update(invoiceHash);
     sign.end();
 
@@ -881,7 +879,7 @@ export function signZatcaInvoice(
     }
 
     // Certificate hash (SHA-256 of the certificate content)
-    const certificateHash = nodeCrypto.createHash("sha256")
+    const certificateHash = crypto.createHash("sha256")
       .update(certificate)
       .digest("hex");
 
@@ -1041,9 +1039,9 @@ export async function submitZatcaInvoice(
     };
 
     const submissionStatus = invoiceType === "standard" ? "cleared" : "reported";
-    const clearanceUuid = zatcaResult.clearanceUuid || zatcaResult.reportingUUID || "";
-    const qrCodeData = zatcaResult.qrCode || null;
-    const submissionId = zatcaResult.submissionId || null;
+    const _clearanceUuid = zatcaResult.clearanceUuid || zatcaResult.reportingUUID || "";
+    const _qrCodeData = zatcaResult.qrCode || null;
+    const _submissionId = zatcaResult.submissionId || null;
 
     // Phase 14 P0 fix: use the EXPLICIT invoiceId passed by the caller.
     if (!invoiceId) {

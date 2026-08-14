@@ -14,9 +14,8 @@
 
 import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
-import { TIER_WORKER_LIMITS, planToTier, type SLATier } from "./types";
+import { TIER_WORKER_LIMITS, planToTier } from "./types";
 import { getAdvancedLoadBalancer, type PoolMetrics } from "@/lib/ai/advanced-loadbalancer";
-import { aiMetrics } from "@/lib/workers/aiWorkers";
 
 // ── Constants ───────────────────────────────────────────────
 
@@ -31,7 +30,7 @@ const QUEUE_THRESHOLDS = {
 } as const;
 
 /** Scaling decisions based on pool health */
-const POOL_HEALTH_SCALE_FACTORS = {
+const _POOL_HEALTH_SCALE_FACTORS = {
   healthy: 1.0,      // Full scaling allowed
   degraded: 0.5,     // Limited scaling (50% capacity)
   critical: 0.25,    // Minimal scaling (25% capacity)

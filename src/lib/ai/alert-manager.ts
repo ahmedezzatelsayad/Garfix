@@ -104,7 +104,7 @@ export interface Alert {
   suppressionReason?: string;
   
   // Context
-  context: Record<string, any>;
+  context: Record<string, unknown>;
 }
 
 export interface AlertStats {
@@ -337,33 +337,34 @@ function evaluateCondition(
   }
 }
 
-function getNestedValue(obj: any, path: string): { value: any; source?: string } {
+function getNestedValue(obj: unknown, path: string): { value: unknown; source?: string } {
   // Handle wildcard paths like 'keys.*.latencyMs'
   if (path.includes('*')) {
-    const [arrayPath, ...rest] = path.split('.*.');
+    const [arrayPath, ..._rest] = path.split('.*.');
     const array = getNestedValue(obj, arrayPath).value;
-    
+
     if (Array.isArray(array)) {
       // Return first matching value (for simple evaluation)
       // The evaluator should iterate through all items
-      return { value: array[0], source: array[0]?.keyName || arrayPath };
+      const first = array[0] as Record<string, unknown> | undefined;
+      return { value: array[0], source: (first && typeof first.keyName === 'string') ? first.keyName : arrayPath };
     }
   }
 
   const parts = path.split('.');
-  let current = obj;
-  
+  let current: unknown = obj;
+
   for (const part of parts) {
     if (current === undefined || current === null) {
       return { value: undefined };
     }
-    current = current[part];
+    current = (current as Record<string, unknown>)[part];
   }
-  
+
   return { value: current };
 }
 
-function formatMessage(template: string, vars: Record<string, any>): string {
+function formatMessage(template: string, vars: Record<string, unknown>): string {
   let result = template;
   for (const [key, value] of Object.entries(vars)) {
     result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), String(value));
@@ -497,7 +498,7 @@ export class AIAlertManager extends EventEmitter {
   /**
    * Evaluate metrics against all rules and generate alerts
    */
-  async evaluateMetrics(metrics: any): Promise<Alert[]> {
+  async evaluateMetrics(metrics: unknown): Promise<Alert[]> {
     const newAlerts: Alert[] = [];
     const now = Date.now();
 
@@ -506,12 +507,12 @@ export class AIAlertManager extends EventEmitter {
 
       try {
         const { value: currentValue, source } = getNestedValue(metrics, rule.metricPath);
-        
+
         if (currentValue === undefined || currentValue === null) continue;
 
         // Handle numeric conversion for string values (like circuit state)
-        const numericValue = typeof currentValue === 'number' 
-          ? currentValue 
+        const numericValue: number = typeof currentValue === 'number'
+          ? currentValue
           : currentValue === rule.threshold ? 1 : 0;
 
         const conditionMet = evaluateCondition(
@@ -669,7 +670,7 @@ export class AIAlertManager extends EventEmitter {
   private checkRateLimit(channel: NotificationChannel, config: ChannelConfig): boolean {
     const key = `channel:${channel}`;
     const now = Date.now();
-    const windowStart = now - 60000; // 1 minute window
+    const _windowStart = now - 60000; // 1 minute window
     
     let state = this.channelSendCounts.get(key);
     
@@ -991,12 +992,15 @@ export function resetAlertManager(): void {
 
 // ============== API Route Integration Helpers ==============
 
+type AlertRouteReq = { query?: Record<string, unknown>; params?: Record<string, unknown>; body?: Record<string, unknown> };
+type AlertRouteRes = { status: (code: number) => AlertRouteRes; json: (body: unknown) => void };
+
 /**
  * Express/Next.js route handler helper for getting alerts
  */
-export function handleGetAlerts(req: any, res: any): void {
+export function handleGetAlerts(req: AlertRouteReq, res: AlertRouteRes): void {
   const manager = getAlertManager();
-  const { severity, status, limit } = req.query;
+  const { severity, status, limit } = (req.query ?? {}) as Record<string, unknown>;
   
   const alerts = manager.getActiveAlerts({
     severity: severity as AlertSeverity,
@@ -1009,12 +1013,13 @@ export function handleGetAlerts(req: any, res: any): void {
 /**
  * Express/Next.js route handler for acknowledging alerts
  */
-export async function handleAcknowledgeAlert(req: any, res: any): Promise<void> {
+export async function handleAcknowledgeAlert(req: AlertRouteReq, res: AlertRouteRes): Promise<void> {
   const manager = getAlertManager();
-  const { alertId } = req.params;
-  const { user } = req.body || {};
-  
-  const alert = manager.acknowledgeAlert(alertId, user || 'anonymous');
+  const { alertId } = (req.params ?? {}) as Record<string, unknown>;
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const { user } = body;
+
+  const alert = manager.acknowledgeAlert(String(alertId), typeof user === 'string' ? user : 'anonymous');
   
   if (alert) {
     res.json({ success: true, alert });
@@ -1026,12 +1031,13 @@ export async function handleAcknowledgeAlert(req: any, res: any): Promise<void> 
 /**
  * Express/Next.js route handler for resolving alerts
  */
-export async function handleResolveAlert(req: any, res: any): Promise<void> {
+export async function handleResolveAlert(req: AlertRouteReq, res: AlertRouteRes): Promise<void> {
   const manager = getAlertManager();
-  const { alertId } = req.params;
-  const { message } = req.body || {};
+  const { alertId } = (req.params ?? {}) as Record<string, unknown>;
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const { message } = body;
   
-  const alert = await manager.resolveAlert(alertId, message);
+  const alert = await manager.resolveAlert(String(alertId), typeof message === 'string' ? message : undefined);
   
   if (alert) {
     res.json({ success: true, alert });

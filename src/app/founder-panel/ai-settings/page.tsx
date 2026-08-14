@@ -27,7 +27,6 @@ import { logger } from '@/lib/logger';
 
 import {
   GarfixButton,
-  GarfixCard,
   GarfixInput,
   GarfixBadge,
 } from '@/components/garfix-ds/core';
@@ -49,16 +48,13 @@ import { GarfixTabPanel } from '@/components/garfix-ds/navigation';
 import { GarfixModal } from '@/components/garfix-ds/overlay';
 
 import {
-  GarfixAnimatedContainer,
   FadeUp,
   ScaleIn,
   MotionCard,
   GarfixPageTransition,
   GarfixAnimatedCounter,
-  GarfixCircularProgress,
 } from '@/components/garfix-ds/animations';
 
-import { useHoverAnimation } from '@/hooks/useAnimation';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -173,16 +169,9 @@ export default function AISettingsPage() {
     memory: true,
   });
   
-  // Fetch config on mount
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetching on mount
-    fetchConfig();
-    fetchUsage();
-  }, []);
-  
   // ── API Calls ─────────────────────────────────────────────
   
-  const fetchConfig = async () => {
+  const fetchConfig = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch('/api/founder-panel/ai-config');
@@ -209,9 +198,9 @@ export default function AISettingsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
   
-  const fetchUsage = async () => {
+  const fetchUsage = useCallback(async () => {
     try {
       const response = await fetch('/api/founder-panel/ai-config/usage?days=30');
       const data = await response.json();
@@ -222,7 +211,15 @@ export default function AISettingsPage() {
     } catch (error) {
       logger.error('Failed to fetch usage:', { err: error });
     }
-  };
+  }, []);
+
+  // Fetch config on mount (deferred to microtask to avoid set-state-in-effect)
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      fetchConfig();
+      fetchUsage();
+    });
+  }, [fetchConfig, fetchUsage]);
   
   const saveConfig = async () => {
     try {
@@ -313,7 +310,7 @@ export default function AISettingsPage() {
       }
       
       setShowTestModal(true);
-    } catch (error) {
+    } catch (_error) {
       setTestResult({
         success: false,
         latencyMs: 0,

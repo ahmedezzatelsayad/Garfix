@@ -24,9 +24,8 @@
  * ═════════════════════════════════════════════════════════════
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach , mock} from "bun:test";
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { describe, it, expect,  mock} from "bun:test";
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // ── Mocks ───────────────────────────────────────────────────
 
@@ -904,7 +903,7 @@ describe('GarfiX DS Theme Components', () => {
     });
     
     it('toggles between light and dark', async () => {
-      const { GarfixThemeProvider, useTheme, GarfixThemeToggle } = await import('@/components/garfix-ds/theme/GarfixThemeProvider');
+      const { GarfixThemeProvider, useTheme, GarfixThemeToggle: _GarfixThemeToggle } = await import('@/components/garfix-ds/theme/GarfixThemeProvider');
       
       function TestApp() {
         const { resolvedTheme, toggleTheme } = useTheme();

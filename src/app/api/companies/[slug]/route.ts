@@ -31,7 +31,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { requirePermissionForCompany, requireFounder } from "@/lib/middleware";
-import { isFounderEmail } from "@/lib/founder";
 import { logAudit, logAdminAction } from "@/lib/audit";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
@@ -161,7 +160,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   // Cascade: financial records SOFT-DELETE (retention), operational records PHYSICAL DELETE.
   // Mirrors the tenants/[slug] DELETE transaction shape exactly.
   const now = new Date();
-  const founderEmail = founder.email;
+  const _founderEmail = founder.email;
   await db.$transaction(async (tx) => {
     await tx.inventoryItem.deleteMany({ where: { companySlug: slug } }).catch((error) => { logger.error("Hard-delete cascade: inventoryItem delete failed", { slug, error }); });
     await tx.warehouse.deleteMany({ where: { companySlug: slug } }).catch((error) => { logger.error("Hard-delete cascade: warehouse delete failed", { slug, error }); });

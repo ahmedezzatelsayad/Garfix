@@ -19,10 +19,9 @@
  * The structure is ready to plug in when the portal becomes available.
  */
 
-import { toHijri, formatDualDate, formatHijri } from "@/lib/hijri";
-import { fmtMoney, num, calcInvoiceTotals, type LineItem } from "@/lib/money";
+import { formatDualDate, formatHijri } from "@/lib/hijri";
+import { num, calcInvoiceTotals, type LineItem } from "@/lib/money";
 import {
-  getCountryConfig,
   type EInvoiceAuthority,
 } from "@/lib/gulfConfig";
 import { logger } from "@/lib/logger";
@@ -143,7 +142,7 @@ export const BAHRAIN_NBR_DECIMAL_PLACES = 3;
 export const BAHRAIN_NBR_VAT_RATE = 10;
 export const BAHRAIN_NBR_REGULATION = "Bahrain NBR e-invoicing";
 export const BAHRAIN_NBR_MAX_FINE_BHD = 10000;
-const BAHRAIN_NBR_PORTAL_BASE_URL = "https://nbr.gov.bh/api/v1"; // placeholder
+const _BAHRAIN_NBR_PORTAL_BASE_URL = "https://nbr.gov.bh/api/v1"; // placeholder
 
 // ── Arabic error messages (Gulf Arabic — Bahraini style) ──────────────────
 

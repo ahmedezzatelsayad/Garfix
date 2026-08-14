@@ -98,7 +98,7 @@ export async function GET() {
   //   timeout fires, Prisma cancels the underlying query and releases the
   //   pooled connection — preventing connection-pool exhaustion under DB
   //   slowness (the original `Promise.race` left the query running).
-  let dbOk = true;
+  let _dbOk = true;
   try {
     await db.$transaction(
       async (tx) => {
@@ -108,7 +108,7 @@ export async function GET() {
     );
     checks.db = { ok: true };
   } catch (err) {
-    dbOk = false;
+    _dbOk = false;
     checks.db = {
       ok: false,
       error: err instanceof Error ? err.message : String(err),

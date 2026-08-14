@@ -64,7 +64,7 @@ const FORBIDDEN_PATTERNS = [
   },
 ];
 
-const SCAN_EXTENSIONS = new Set([".ts"]);
+const _SCAN_EXTENSIONS = new Set([".ts"]);
 
 /** Only scan files ending in `.spec.ts` — these are the actual test files
  *  where the forbidden assertion patterns would appear. Helper modules

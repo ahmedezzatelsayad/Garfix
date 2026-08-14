@@ -209,7 +209,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
 
   // Cascade: financial records SOFT-DELETE (retention), operational records PHYSICAL DELETE
   const now = new Date();
-  const founderEmail = founder.email;
+  const _founderEmail = founder.email;
   await db.$transaction(async (tx) => {
     // 1. Inventory + warehouse + products (physical)
     await tx.inventoryItem.deleteMany({ where: { companySlug: slug } });

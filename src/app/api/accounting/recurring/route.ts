@@ -41,7 +41,7 @@ const CreateRecurringSchema = z.object({
 
 // ─── Helper: Calculate next run date based on frequency ───────────────────────
 
-function calculateNextRunDate(
+function _calculateNextRunDate(
   frequency: string,
   intervalValue: number,
   fromDate: Date,

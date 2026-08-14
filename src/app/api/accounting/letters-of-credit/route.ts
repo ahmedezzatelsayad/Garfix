@@ -11,7 +11,7 @@ import { num } from "@/lib/money";
 import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
 import { trackLetterOfCredit } from "@/lib/accounting/trade-finance";
 import { z } from "zod";
-import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { entityId } from "@/lib/validation";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 const CreateLCSchema = z.object({

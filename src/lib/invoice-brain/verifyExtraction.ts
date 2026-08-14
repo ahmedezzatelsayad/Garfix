@@ -58,10 +58,10 @@ const RELATIVE_TOLERANCE = 0.25;    // monetary fields (total, tax, subtotal) �
 const QUANTITY_TOLERANCE = 0.15;    // quantity fields (qty, unit count)
 
 /** Minimum number of digits for something to look like a phone number. */
-const PHONE_MIN_DIGITS = 7;
+const _PHONE_MIN_DIGITS = 7;
 
 /** Maximum number of digits for a phone number. */
-const PHONE_MAX_DIGITS = 15;
+const _PHONE_MAX_DIGITS = 15;
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 

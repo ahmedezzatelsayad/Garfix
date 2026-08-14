@@ -135,7 +135,7 @@ GarfixThemeIcon.displayName = "GarfixThemeIcon";
 export const GarfixThemeSwitch: React.FC<GarfixThemeToggleProps & {
   showLabel?: boolean;
 }> = ({
-  size = "md",
+  size: _size = "md",
   showLabel = false,
   className,
 }) => {
@@ -199,7 +199,7 @@ GarfixThemeSwitch.displayName = "GarfixThemeSwitch";
 // ════════════════════════════════════════════════════════════════════════
 
 export const GarfixThemeSegmented: React.FC<Omit<GarfixThemeToggleProps, "variant">> = ({
-  size = "md",
+  size: _size = "md",
   className,
 }) => {
   const { theme, setTheme } = useTheme();

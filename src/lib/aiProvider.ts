@@ -19,7 +19,6 @@
 import { dbTyped as db } from "./db";
 import { decryptSecret, encryptSecret } from "./cryptoVault";
 import { logger } from "./logger";
-import { z } from "zod";
 // P1-1: fetchSafe provides DNS-pinning SSRF protection. Used for custom AI
 // endpoints (type: "custom") where the user supplies baseUrl — all other
 // provider types hit hard-coded public URLs and don't need this guard.

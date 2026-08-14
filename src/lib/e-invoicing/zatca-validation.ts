@@ -15,8 +15,7 @@
  * Follows the same middleware pattern as kuwait-validation.ts.
  */
 
-import { getCountryConfig } from "@/lib/gulfConfig";
-import { validateZatcaInvoice, autoPopulateZatcaFields, ZATCA_CURRENCY, ZATCA_DECIMAL_PLACES, ZATCA_VAT_RATE, ZATCA_AUTHORITY } from "@/lib/e-invoicing/zatca";
+import { validateZatcaInvoice, autoPopulateZatcaFields, ZATCA_CURRENCY, ZATCA_DECIMAL_PLACES, ZATCA_VAT_RATE } from "@/lib/e-invoicing/zatca";
 import { logger } from "@/lib/logger";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -176,7 +175,7 @@ export function formatZatcaErrorsForResponse(
 
   // Primary error: first Arabic message
   const allErrorsAr = result.blockingErrors.map((e) => e.messageAr).join("؛ ");
-  const allErrorsEn = result.blockingErrors.map((e) => e.messageEn).join("; ");
+  const _allErrorsEn = result.blockingErrors.map((e) => e.messageEn).join("; ");
 
   return {
     error: allErrorsAr,

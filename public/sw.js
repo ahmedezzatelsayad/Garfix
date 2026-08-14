@@ -19,8 +19,8 @@ const APP_SHELL = [
 
 // Maximum cache ages (in seconds)
 const API_MAX_AGE = 30;      // 30 seconds — stale API data is risky
-const STATIC_MAX_AGE = 86400; // 1 day — static assets rarely change
-const PAGE_MAX_AGE = 300;     // 5 minutes — pages update on deploy
+const _STATIC_MAX_AGE = 86400; // 1 day — static assets rarely change
+const _PAGE_MAX_AGE = 300;     // 5 minutes — pages update on deploy
 
 // ── Install ──────────────────────────────────────────────────────────
 self.addEventListener("install", (event) => {
@@ -63,7 +63,7 @@ async function networkFirst(request, cacheName, maxAge) {
       cache.put(request, cachedResponse);
     }
     return networkResponse;
-  } catch (err) {
+  } catch (_err) {
     // Offline fallback — check cache
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {

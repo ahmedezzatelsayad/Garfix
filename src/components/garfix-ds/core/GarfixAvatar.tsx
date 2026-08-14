@@ -18,6 +18,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 // ── Types ───────────────────────────────────────────────────────────────
@@ -108,11 +109,13 @@ export const GarfixAvatar: React.FC<GarfixAvatarProps> = ({
         )}
       >
         {showImage ? (
-          <img
+          <Image
             src={src}
             alt={alt}
             onError={() => setImageError(true)}
+            fill
             className="h-full w-full object-cover"
+            sizes="40px"
           />
         ) : (
           <span aria-hidden="true">{initials || "?"}</span>

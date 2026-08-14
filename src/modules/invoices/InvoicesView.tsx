@@ -24,7 +24,6 @@ import { LazyReviewQueueModal } from "@/modules/common/LazyModals";
 import { ProductPicker, type ProductOption } from "@/modules/catalog/ProductPicker";
 import { QuickCreateProductDialog } from "@/modules/catalog/QuickCreateProductDialog";
 import { Invoice, LineItem, STATUS_LABELS, StatusFilter } from "./types";
-import { EmptyInvoices, AISearchBar } from "@/components/garfix";
 
 /**
  * P0 FIX (audit feedback): local LineItem variant with a stable client-side `localId`
@@ -62,10 +61,10 @@ export function InvoicesView() {
   // TanStack Query replaces the stub useInvoices
   const invoicesQuery = useInvoicesQuery(companySlug);
   const deleteInvoiceMutation = useDeleteInvoice();
-  const recordPaymentMutation = useRecordPayment();
-  const updateStatusMutation = useUpdateInvoiceStatus();
+  const _recordPaymentMutation = useRecordPayment();
+  const _updateStatusMutation = useUpdateInvoiceStatus();
 
-  const allInvoices = ((invoicesQuery.data as  { invoices?: Invoice[] })?.invoices ?? []) as Invoice[];
+  const allInvoices = useMemo(() => ((invoicesQuery.data as  { invoices?: Invoice[] })?.invoices ?? []) as Invoice[], [invoicesQuery.data]);
   const loading = invoicesQuery.isLoading;
 
   // Local UI state
@@ -74,9 +73,9 @@ export function InvoicesView() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [bulkDeleting, setBulkDeleting] = useState(false);
-  const [reviewQueueWarnings, setReviewQueueWarnings] = useState<any[]>([]);
+  const [reviewQueueWarnings, setReviewQueueWarnings] = useState<unknown[]>([]);
   const [showWarningsBanner, setShowWarningsBanner] = useState(false);
-  const [inventoryWarnings, setInventoryWarnings] = useState<any[]>([]);
+  const [inventoryWarnings, setInventoryWarnings] = useState<unknown[]>([]);
   const [showInventoryBanner, setShowInventoryBanner] = useState(false);
   const [showReviewQueue, setShowReviewQueue] = useState(false);
   const pageSize = 20;
@@ -106,7 +105,7 @@ export function InvoicesView() {
     let list = allInvoices;
     // ── Branch/warehouse filter ──
     if (warehouseFilter) {
-      list = list.filter((inv: any) => inv.warehouseId === warehouseFilter);
+      list = list.filter((inv: Invoice) => inv.warehouseId === warehouseFilter);
     }
     if (search) {
       const s = search.toLowerCase();
@@ -123,13 +122,13 @@ export function InvoicesView() {
   const currentPageInvoices = paginate(filteredInvoices, safePage, pageSize);
 
   const paidInvoices = allInvoices.filter((inv: Invoice) => inv.status === "paid");
-  const pendingInvoices = allInvoices.filter((inv: Invoice) => inv.status === "sent" || inv.status === "partial");
+  const _pendingInvoices = allInvoices.filter((inv: Invoice) => inv.status === "sent" || inv.status === "partial");
   const overdueInvoices = allInvoices.filter((inv: Invoice) => inv.status === "overdue");
   const totalRevenue = paidInvoices.reduce((s: number, inv: Invoice) => s + inv.total, 0);
   // Compute outstanding on the client — the API doesn't return an `outstanding`
   // field (only `total` and `paid`). Reading `inv.outstanding` directly was
   // producing NaN in the KPI card ("مستحقة: NaN").
-  const outstanding = allInvoices.reduce(
+  const _outstanding = allInvoices.reduce(
     (s: number, inv: Invoice) => s + Math.max(0, (inv.total ?? 0) - (inv.paid ?? 0)),
     0,
   );
@@ -143,7 +142,7 @@ export function InvoicesView() {
   const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
 
   // Toggle selection
-  const toggleSelectAll = () => {
+  const _toggleSelectAll = () => {
     if (selectedIds.size === currentPageInvoices.length && currentPageInvoices.length > 0) setSelectedIds(new Set());
     else setSelectedIds(new Set(currentPageInvoices.map((i: Invoice) => i.id))); 
   };
@@ -159,7 +158,7 @@ export function InvoicesView() {
   const handleDelete = (id: number) => {
     deleteInvoiceMutation.mutate(id, {
       onSuccess: () => toast.success("تم حذف الفاتورة"),
-      onError: (err: any) => toast.error(err.message || "خطأ في الحذف"),
+      onError: (err: unknown) => toast.error(err instanceof Error ? err.message : "خطأ في الحذف"),
     });
   };
 
@@ -273,7 +272,7 @@ export function InvoicesView() {
           <AlertDescription>
             <ul className="list-disc pr-5 text-sm space-y-1 mt-1">
               {inventoryWarnings.slice(0, 5).map((w, i) => (
-                <li key={`${w}-${i}`}>{w}</li>
+                <li key={`${i}`}>{String(w)}</li>
               ))}
               {inventoryWarnings.length > 5 && (
                 <li className="text-xs opacity-70">+ {inventoryWarnings.length - 5} تحذيرات أخرى…</li>
@@ -307,8 +306,8 @@ export function InvoicesView() {
             <div className="flex flex-col gap-2">
               <ul className="m-0 ps-5 flex flex-col gap-1 list-disc">
                 {reviewQueueWarnings.slice(0, 5).map((w, i) => (
-                  <li key={`${w}-${i}`} className="text-[12px] leading-[1.5] text-foreground">
-                    {w}
+                  <li key={`${i}`} className="text-[12px] leading-[1.5] text-foreground">
+                    {String(w)}
                   </li>
                 ))}
                 {reviewQueueWarnings.length > 5 && (
@@ -862,7 +861,7 @@ function InvoiceForm({
   const updateInvoiceMutation = useUpdateInvoice();
   const updateInvoiceStatusMutation = useUpdateInvoiceStatus();
 
-  const [invoiceNumber, setInvoiceNumber] = useState(editing?.invoiceNumber || `INV-${Date.now().toString().slice(-6)}`);
+  const [invoiceNumber, setInvoiceNumber] = useState(() => editing?.invoiceNumber || `INV-${Date.now().toString().slice(-6)}`);
   const [clientName, setClientName] = useState(editing?.clientName || "");
   const [clientEmail, setClientEmail] = useState(editing?.clientEmail || "");
   const [clientPhone, setClientPhone] = useState(editing?.clientPhone || "");
@@ -922,7 +921,7 @@ function InvoiceForm({
     setShowCreateDialog(true);
   };
   
-  const handleProductCreated = (product: any) => {
+  const handleProductCreated = (product: unknown) => {
     if (createDialogIndex !== null) {
       handleProductSelect(createDialogIndex, product as ProductOption);
     }
@@ -1370,11 +1369,11 @@ function PaymentDialog({ invoice, onClose, onPaid }: { invoice: Invoice; onClose
       { id: invoice.id, amount: amt, date: new Date().toISOString().slice(0, 10), method },
       {
         onSuccess: () => { toast.success("تم تسجيل الدفعة بنجاح"); onPaid(); },
-        onError: (err: any) => {
-          if (err.status === 403) {
+        onError: (err: unknown) => {
+          if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 403) {
             toast.error("ليس لديك صلاحية مالية (finance_access) لتسجيل الدفعات");
           } else {
-            toast.error(err.message || "تعذّر تسجيل الدفعة");
+            toast.error(err instanceof Error ? err.message : "تعذّر تسجيل الدفعة");
           }
         },
       },

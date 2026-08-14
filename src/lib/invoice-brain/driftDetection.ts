@@ -179,7 +179,7 @@ export class DriftDetector {
     extractedData: Invoice,
     verificationResult: VerificationResult
   ): DriftDetectionResult {
-    const now = Date.now();
+    const _now = Date.now();
     
     // Record this extraction
     this.recordExtraction(fingerprint, {

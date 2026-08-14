@@ -9,7 +9,6 @@ import {
   ChevronsUpDown,
   Loader2,
   Inbox,
-  ArrowUpDown,
   Check,
   X,
   Pencil,

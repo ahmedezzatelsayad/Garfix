@@ -29,11 +29,9 @@
  * ═══════════════════════════════════════════════════════════════
  */
 
-import { BenchmarkDataset, GeneratedInvoice, generateQuickTestSet } from "./dataset";
-import { fingerprintTextLayout, fingerprintTextHybrid } from "../fingerprint";
+import { BenchmarkDataset, generateQuickTestSet } from "./dataset";
+import { fingerprintTextLayout } from "../fingerprint";
 import { smartSplit } from "../smartSplit";
-import { extractInvoice } from "../extractInvoice";
-import { PrismaPatternStore } from "../patternStore";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -248,7 +246,7 @@ function estimatePatternHitRate(dataset: BenchmarkDataset): MetricResult {
   // - OCR error rate impact
   // - Drift rate impact
   
-  const uniqueLayouts = dataset.stats.uniqueLayouts;
+  const _uniqueLayouts = dataset.stats.uniqueLayouts;
   const driftedCount = dataset.stats.driftedInvoices;
   const ocrErrorCount = dataset.stats.invoicesWithOcrErrors;
   const total = dataset.stats.totalInvoices;

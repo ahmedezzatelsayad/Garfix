@@ -10,7 +10,6 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
-import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
 import { num } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
@@ -169,7 +168,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   try {
     // Use the VLM (Vision Language Model) from z-ai-web-dev-sdk
     const ZAI = (await import("z-ai-web-dev-sdk")).default;
-    const ai = await ZAI.create();
+    const _ai = await ZAI.create();
 
     // Strip data URL prefix if present
     const cleaned = imageBase64.replace(/^data:[^;]+;base64,/, "");

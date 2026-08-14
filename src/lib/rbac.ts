@@ -16,7 +16,6 @@
  */
 
 import { computeEffectivePermissions } from "@/lib/permissions";
-import { ALL_PERMISSION_KEYS, LOCKED_PERMS } from "@/lib/permissions";
 
 // ── Enums ────────────────────────────────────────────────────────────────────
 
@@ -423,7 +422,7 @@ export function getInheritedPermissions(roleId: string): ResourcePermission[] {
   // The checkPermission function handles deduplication by finding
   // the best matching permission (preferring wider scope & higher level).
   for (const rid of chain) {
-    const def: any = ROLE_DEFINITIONS[rid] || customRoles.get(rid);
+    const def: RoleDefinition | undefined = ROLE_DEFINITIONS[rid] || customRoles.get(rid);
     if (!def) continue;
     collected.push(...def.resourcePermissions);
   }
@@ -440,7 +439,7 @@ export function getInheritanceChain(roleId: string): string[] {
 
   while (current) {
     chain.unshift(current); // add at beginning (root first)
-    const def: any = ROLE_DEFINITIONS[current] || customRoles.get(current);
+    const def: RoleDefinition | undefined = ROLE_DEFINITIONS[current] || customRoles.get(current);
     current = def?.inheritsFrom ?? null;
   }
 
@@ -633,7 +632,7 @@ export function getEffectivePermissions(
   customPerms: Record<string, number> | null | undefined,
   isFounder: boolean,
   customRolePerms?: ResourcePermission[],
-  timeRestrictions?: Record<string, TimeRestriction>,
+  _timeRestrictions?: Record<string, TimeRestriction>,
 ): {
   flat: Record<string, number>;
   resources: ResourcePermission[];
@@ -703,7 +702,7 @@ export function validatePermissionChange(
   const actorDef = ROLE_DEFINITIONS[actorRole];
   const targetDef = ROLE_DEFINITIONS[change.targetRole] || customRoles.get(change.targetRole);
   if (actorDef && targetDef) {
-    const actorChain = getInheritanceChain(actorRole);
+    const _actorChain = getInheritanceChain(actorRole);
     const targetChain = getInheritanceChain(change.targetRole);
     // If the target role's chain includes the actor's role, the actor can't revoke
     if (targetChain.includes(actorRole) && change.type === "revoke") {
@@ -729,7 +728,7 @@ function wouldCreateCircularInheritance(newRoleId: string, inheritsFrom: string)
     if (current === newRoleId) return true;
     if (visited.has(current)) return true; // existing circular chain
     visited.add(current);
-    const def: any = ROLE_DEFINITIONS[current] || customRoles.get(current);
+    const def: RoleDefinition | undefined = ROLE_DEFINITIONS[current] || customRoles.get(current);
     current = def?.inheritsFrom ?? null;
   }
 

@@ -3,7 +3,7 @@
  * GET — download WPS file content
  * PATCH — update WPS file status (submit/accept/reject)
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";

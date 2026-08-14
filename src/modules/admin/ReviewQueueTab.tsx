@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 import { ListChecks, AlertTriangle, Eye } from "lucide-react";
 import { IconBtn } from "./shared-helpers";
 import { useReviewQueueFiltered } from "@/hooks/queries";

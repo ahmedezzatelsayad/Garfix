@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { num } from "@/lib/money";
-import { withErrorHandler, parseJsonField } from "@/lib/api";
+import { withErrorHandler } from "@/lib/api";
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const sp = req.nextUrl.searchParams;

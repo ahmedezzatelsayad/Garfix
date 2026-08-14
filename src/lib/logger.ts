@@ -96,10 +96,10 @@ function format(level: Level, msg: string, meta?: LogMeta): string {
 
 export const logger = {
   debug(msg: string, meta?: LogMeta) {
-    if (shouldLog("debug")) console.log(format("debug", msg, meta));
+    if (shouldLog("debug")) process.stdout.write(format("debug", msg, meta) + "\n");
   },
   info(msg: string, meta?: LogMeta) {
-    if (shouldLog("info")) console.log(format("info", msg, meta));
+    if (shouldLog("info")) process.stdout.write(format("info", msg, meta) + "\n");
   },
   warn(msg: string, meta?: LogMeta) {
     if (shouldLog("warn")) console.warn(format("warn", msg, meta));

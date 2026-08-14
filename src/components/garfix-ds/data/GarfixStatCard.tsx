@@ -117,8 +117,12 @@ function useAnimatedValue(targetValue: number, enabled: boolean, duration = 800)
   const [currentValue, setCurrentValue] = useState(targetValue);
   const currentValueRef = useRef(targetValue);
 
-  // Keep the ref in sync so the animation closure reads the latest settled value.
-  currentValueRef.current = currentValue;
+  // Keep the ref in sync so the animation closure reads the latest settled
+  // value. Refs must not be written during render (react-hooks/refs), so we
+  // sync inside an effect that runs after every render.
+  useEffect(() => {
+    currentValueRef.current = currentValue;
+  });
 
   useEffect(() => {
     if (!enabled || typeof targetValue !== "number") {

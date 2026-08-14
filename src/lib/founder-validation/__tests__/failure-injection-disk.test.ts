@@ -2,7 +2,6 @@ import { describe, it, expect } from 'bun:test';
 import {
   seedEnterpriseData,
   TelemetryCollector,
-  calculateMetrics,
   SeededRandom,
   type SyntheticCompany,
   type TelemetryEntry,

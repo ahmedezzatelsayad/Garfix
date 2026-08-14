@@ -10,7 +10,6 @@ import {
   type BusinessActivity,
   type BusinessActivityType,
   type SyntheticCompany,
-  type MetricsSummary,
 } from '../index';
 
 describe('Load Test: 1000 Concurrent Users', () => {

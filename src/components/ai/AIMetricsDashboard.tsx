@@ -28,21 +28,17 @@ import {
   Zap, 
   Server, 
   AlertTriangle, 
-  CheckCircle2, 
-  XCircle,
+  CheckCircle2,
   TrendingUp,
   TrendingDown,
   Clock,
   Cpu,
-  Database,
   RefreshCw,
   Bell,
   Settings,
   BarChart3,
   Users,
-  Key,
-  ArrowUpRight,
-  ArrowDownRight
+  Key
 } from 'lucide-react';
 
 // ============== Types ==============
@@ -333,7 +329,7 @@ function MetricCard({
   title: string; 
   value: string | number; 
   unit?: string; 
-  icon: any; 
+  icon: React.ComponentType<{ className?: string }>;
   trend?: 'up' | 'down' | 'stable';
   trendValue?: string;
   description?: string;
@@ -534,9 +530,9 @@ export function AIMetricsDashboard() {
       const data = await response.json();
       setMetrics(data);
       setLastRefresh(new Date());
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('Failed to fetch AI metrics:', { err });
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'Unknown error');
       
       // Use mock data for demo/development
       setMetrics(generateMockMetrics());

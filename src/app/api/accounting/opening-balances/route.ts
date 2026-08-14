@@ -12,7 +12,7 @@ import { logAccountingChange } from "@/lib/accounting/accountant-collab";
 import { num } from "@/lib/money";
 import { apiError, apiOk, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { z } from "zod";
-import { entityId, entityIdOptional, entityIdNullable } from "@/lib/validation";
+import { entityId } from "@/lib/validation";
 import { resolveCompanyId } from "@/lib/company-resolver";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
@@ -199,7 +199,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       const accounts = await tx.account.findMany({
         where: { id: { in: accountIds }, companySlug: data.companySlug },
       });
-      const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
+      const accountMap = new Map(accounts.map((a) => [a.id, a]));
 
       for (const line of lines) {
         const acc = accountMap.get(line.accountId);

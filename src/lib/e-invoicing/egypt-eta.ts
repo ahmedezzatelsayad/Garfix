@@ -22,10 +22,9 @@
  * - Export invoices → special handling per customs regulations
  */
 
-import { toHijri, formatDualDate, formatHijri } from "@/lib/hijri";
-import { fmtMoney, num, calcInvoiceTotals, type LineItem } from "@/lib/money";
+import { formatDualDate, formatHijri } from "@/lib/hijri";
+import { num, calcInvoiceTotals, type LineItem } from "@/lib/money";
 import {
-  getCountryConfig,
   type EInvoiceAuthority,
 } from "@/lib/gulfConfig";
 import { logger } from "@/lib/logger";
@@ -150,9 +149,9 @@ export const EGYPT_ETA_VAT_RATE = 14;
 export const EGYPT_ETA_REGULATION = "ETA Egypt e-invoicing";
 export const EGYPT_ETA_MAX_FINE_EGP = 500000;
 const EGYPT_ETA_PORTAL_BASE_URL = "https://invoicing.eta.gov.eg/api/v1"; // placeholder
-const EGYPT_ETA_RECEIPT_ENDPOINT = "/receiptrequests";
-const EGYPT_ETA_INVOICE_ENDPOINT = "/invoiceRequests";
-const EGYPT_ETA_EXPORT_ENDPOINT = "/exportInvoiceRequests";
+const _EGYPT_ETA_RECEIPT_ENDPOINT = "/receiptrequests";
+const _EGYPT_ETA_INVOICE_ENDPOINT = "/invoiceRequests";
+const _EGYPT_ETA_EXPORT_ENDPOINT = "/exportInvoiceRequests";
 
 // ── Arabic error messages (Egyptian Arabic — مصلحة الضرائب المصرية) ──────────
 

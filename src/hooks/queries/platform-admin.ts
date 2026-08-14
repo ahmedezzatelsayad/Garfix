@@ -28,7 +28,28 @@ export interface PlatformTenant {
   slug: string;
   name: string;
   status: string;
-  [key: string]: any;
+  id: string | number;
+  nameAr?: string;
+  emoji?: string;
+  plan: string;
+  subscriptionStatus?: string;
+  createdAt: string;
+  stats: {
+    invoices: number;
+    users: number;
+    clients: number;
+    revenue: number;
+  };
+  // P1.8: optional plan-limits block — present when /api/platform-admin/tenants
+  // returns the new planLimits field. Older responses (cached) may omit it.
+  planLimits?: {
+    maxInvoicesPerMonth: number;
+    maxUsers: number;
+    maxCompanies?: number;
+    invoiceUtilization: number;
+    userUtilization: number;
+  };
+  [key: string]: unknown;
 }
 
 /** Shape of a platform audit log entry. */
@@ -37,7 +58,12 @@ export interface PlatformAuditEntry {
   action: string;
   actor: string;
   timestamp: string;
-  [key: string]: any;
+  // Convenience aliases used by the admin UI (also exposed via index signature).
+  adminEmail: string;
+  targetType?: string;
+  targetId?: string;
+  createdAt: string;
+  [key: string]: unknown;
 }
 
 /** Shape of the platform statistics response. */
@@ -45,7 +71,7 @@ export interface PlatformStats {
   totalTenants: number;
   activeUsers: number;
   revenue: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of an AI provider configuration record. */
@@ -55,7 +81,7 @@ export interface AIProvider {
   type: string;
   enabled: boolean;
   config: Record<string, unknown>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of the AI usage statistics response. */
@@ -63,7 +89,7 @@ export interface AIUsage {
   totalTokens: number;
   totalRequests: number;
   costBreakdown: Record<string, number>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of the AI orchestration configuration response. */
@@ -71,7 +97,7 @@ export interface AIOrchestration {
   routingStrategy: string;
   fallbackProvider: string;
   rules: Record<string, unknown>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of a feature flag record. */
@@ -87,7 +113,7 @@ export interface PlatformFeatureFlag {
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for creating a new feature flag. */
@@ -97,13 +123,13 @@ export interface CreateFeatureFlagPayload {
   description?: string | null;
   plans?: string[];
   isActive?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for updating an existing feature flag. */
 export interface UpdateFeatureFlagPayload {
   id: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of an announcement record. */
@@ -113,7 +139,10 @@ export interface PlatformAnnouncement {
   body: string;
   type: string;
   publishedAt?: string;
-  [key: string]: any;
+  // Fields used by the admin UI (also exposed via index signature).
+  isActive: boolean;
+  createdAt: string;
+  [key: string]: unknown;
 }
 
 /** Payload for creating a new announcement. */
@@ -121,13 +150,13 @@ export interface CreateAnnouncementPayload {
   title: string;
   body: string;
   type: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for updating an existing announcement. */
 export interface UpdateAnnouncementPayload {
   id: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of a platform integration record. */
@@ -137,7 +166,7 @@ export interface PlatformIntegration {
   type: string;
   enabled: boolean;
   config: Record<string, unknown>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of a review queue entry. */
@@ -147,7 +176,7 @@ export interface ReviewQueueEntry {
   entityId: string;
   status: string;
   submittedAt: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of a queue failure record. */
@@ -156,7 +185,13 @@ export interface QueueFailure {
   queueName: string;
   errorMessage: string;
   failedAt: string;
-  [key: string]: any;
+  // Convenience aliases used by the admin UI (also exposed via index signature).
+  queue: string;
+  type?: string;
+  error: string;
+  attempts: number;
+  payload?: unknown;
+  [key: string]: unknown;
 }
 
 /** Shape of a support ticket record. */
@@ -166,20 +201,25 @@ export interface PlatformTicket {
   status: string;
   priority: string;
   createdBy: string;
-  [key: string]: any;
+  // Fields used by the admin UI (also exposed via index signature).
+  userEmail: string;
+  createdAt: string;
+  body?: string;
+  replies?: Array<{ id: string; senderEmail: string; senderRole: string; body: string; createdAt: string; [key: string]: unknown }>;
+  [key: string]: unknown;
 }
 
 /** Payload for updating a support ticket. */
 export interface UpdateTicketPayload {
   id: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for replying to a support ticket. */
 export interface ReplyToTicketPayload {
   id: number;
   message: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of a SaaS user record. */
@@ -189,13 +229,13 @@ export interface SaaSUser {
   displayName: string;
   role: string;
   status: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for updating a SaaS user. */
 export interface UpdateSaaSUserPayload {
   uid: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of a SaaS payment record. */
@@ -206,7 +246,7 @@ export interface SaaSPayment {
   currency: string;
   status: string;
   createdAt: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for initiating a SaaS payment. */
@@ -214,7 +254,7 @@ export interface InitiatePaymentPayload {
   userId: string;
   amount: number;
   currency: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of the landing page content response. */
@@ -222,13 +262,13 @@ export interface LandingContent {
   heroTitle: string;
   heroSubtitle: string;
   sections: Record<string, unknown>[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for updating a tenant. */
 export interface UpdateTenantPayload {
   slug: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // ─── Platform Admin Query Hooks ─────────────────────────────────────────────
@@ -1004,7 +1044,7 @@ export interface PlatformBackup {
   name: string;
   size: number;
   createdAt: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Response shape for the platform-level backups list endpoint. */
@@ -1016,7 +1056,7 @@ interface PlatformBackupListResponse {
 interface PlatformBackupCreateResponse {
   backupName?: string;
   name?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -1058,7 +1098,7 @@ export function useCreatePlatformBackup() {
 interface PlatformSettingsResponse {
   settings: Record<string, unknown>;
   defaults?: Record<string, unknown>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -1102,13 +1142,13 @@ export interface LandingContentItem {
   value: unknown;
   updatedAt: string;
   updatedBy: string | null;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Response shape for the landing content admin endpoint. */
 interface LandingContentAdminResponse {
   items: LandingContentItem[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**

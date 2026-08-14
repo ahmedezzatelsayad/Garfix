@@ -191,7 +191,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isFounder = !!user?.isFounder;
   const perms = resolvePerms(user);
   const canEdit = !!perms.edit_invoice;
-  const allowedCompanies = user?.companies || [];
+  // Wrap fallback array in useMemo so the context value's deps stay stable
+  // (avoids react-hooks/exhaustive-deps "logical expression" warning).
+  const allowedCompanies = useMemo(() => user?.companies || [], [user?.companies]);
 
   const value = useMemo(() => ({ user, loading, isAdmin, isFounder, canEdit, allowedCompanies, perms, login, logout, refresh }), [user, loading, isAdmin, isFounder, canEdit, allowedCompanies, perms, login, logout, refresh]);
   return (

@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, hasPermission } from "@/lib/auth";
 import { assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
-import { apiError, withErrorHandler } from "@/lib/api";
+import { withErrorHandler } from "@/lib/api";
 
 // ─── GET: Fiscal status check ────────────────────────────────────────────────
 
@@ -73,4 +73,4 @@ export async function GET(req: NextRequest) {
 }
 
 // Wrap with error handler for consistency
-const GET_handler = withErrorHandler(GET);
+const _GET_handler = withErrorHandler(GET);

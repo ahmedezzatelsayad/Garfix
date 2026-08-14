@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { toast } from "sonner";
 import {
@@ -12,31 +12,30 @@ import {
   useProfitDistribution, usePostProfitDistribution,
 } from "@/hooks/queries";
 import {
-  Plus, X, FileText, Receipt, ShoppingCart, Scale,
-  Users, DollarSign, Calendar, CheckCircle2, XCircle,
+  Plus, X, FileText, Receipt, ShoppingCart, DollarSign, CheckCircle2, XCircle,
   Printer, ArrowRight, CreditCard, BookOpen, Percent,
   HandCoins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ─── Interfaces ──────────────────────────────────────────────────────────── */
-interface Voucher {
+interface _Voucher {
   id: number; voucherType: string; date: string; amount: number;
   currency: string; payee: string; payer: string; status: string;
   amountTextAr?: string;
 }
-interface Quotation {
+interface _Quotation {
   id: number; clientName: string; date: string; validUntil: string;
   lineItems: LineItem[]; totalAmount: number; status: string;
 }
-interface PurchaseOrder {
+interface _PurchaseOrder {
   id: number; supplierName: string; date: string; expectedDelivery: string;
   lineItems: LineItem[]; totalAmount: number; status: string;
 }
 interface LineItem { id?: number; localId?: string; description: string; quantity: number; unitPrice: number; total: number; }
-interface OpeningBalance { id: number; accountId: number; accountCode: string; accountNameAr: string; amount: number; posted: boolean; }
-interface Commission { id: number; salesperson: string; totalSales: number; commissionAmount: number; posted: boolean; }
-interface ProfitDistribution { id: number; partnerName: string; ownershipPercent: number; profitShare: number; posted: boolean; }
+interface _OpeningBalance { id: number; accountId: number; accountCode: string; accountNameAr: string; amount: number; posted: boolean; }
+interface _Commission { id: number; salesperson: string; totalSales: number; commissionAmount: number; posted: boolean; }
+interface _ProfitDistribution { id: number; partnerName: string; ownershipPercent: number; profitShare: number; posted: boolean; }
 
 type Tab = "vouchers" | "quotations" | "purchase-orders" | "opening-balances" | "commissions" | "profit-distribution";
 

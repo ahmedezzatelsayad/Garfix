@@ -107,13 +107,13 @@ export interface GenerateResult {
 
 export interface ExtractParams {
   text: string;
-  schema?: Record<string, any>;
+  schema?: Record<string, unknown>;
   instructions?: string;
 }
 
 export interface ExtractResult {
   success: boolean;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   rawText?: string;
   confidence: number; // 0-1
   latencyMs: number;
@@ -262,7 +262,7 @@ async function callGeminiAPI(
   apiKey: string,
   model: string,
   params: GenerateParams,
-  feature: FeatureType
+  _feature: FeatureType
 ): Promise<GenerateResult> {
   const startTime = Date.now();
   
@@ -275,7 +275,7 @@ async function callGeminiAPI(
       parts: [{ text: msg.content }],
     }));
     
-    const requestBody: Record<string, any> = {
+    const requestBody: Record<string, unknown> = {
       contents,
       generationConfig: {
         temperature: params.temperature ?? 0.7,
@@ -285,7 +285,7 @@ async function callGeminiAPI(
     
     // Enable JSON mode if requested
     if (params.jsonMode) {
-      requestBody.generationConfig.responseMimeType = 'application/json';
+      (requestBody.generationConfig as Record<string, unknown>).responseMimeType = 'application/json';
     }
     
     const response = await fetchSafe(url, {
@@ -806,7 +806,7 @@ Respond ONLY with valid JSON matching the schema. Do not include explanations ou
       }
 
       // 6. Parse the extracted JSON.
-      let extractedData: Record<string, any>;
+      let extractedData: Record<string, unknown>;
       try {
         extractedData = JSON.parse(generateResult.content || '{}');
       } catch {

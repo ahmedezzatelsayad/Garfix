@@ -33,7 +33,7 @@ export function TicketDetailDrawer({
   const [replyBody, setReplyBody] = useState("");
   const [status, setStatus] = useState(ticket?.status || "open");
   const [sending, setSending] = useState(false);
-  const [localReplies, setLocalReplies] = useState<TicketReply[]>(ticket?.replies || []);
+  const [localReplies, _setLocalReplies] = useState<TicketReply[]>(ticket?.replies || []);
 
   if (!ticket) {
     return null;

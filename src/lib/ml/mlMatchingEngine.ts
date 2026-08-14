@@ -15,13 +15,11 @@
  * 5. **A/B Testing**: مقارنة أداء ML vs Traditional
  */
 
-import { dbTyped as db } from "../db";
 import { logger } from "../logger";
 import {
   recordCorrection,
   predictFromPatterns,
   loadPatternsToCache,
-  getModelStats,
   type UserCorrection,
   type LearnedPattern,
 } from "./productLearningStore";

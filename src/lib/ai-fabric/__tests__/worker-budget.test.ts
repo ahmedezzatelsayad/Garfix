@@ -9,7 +9,7 @@
  * - Budget engine: record spend, threshold alert, hard stop, forecast
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from "bun:test";
+import { describe, it, expect, beforeEach, afterAll } from "bun:test";
 import { dbTyped as db } from "@/lib/db";
 import { getOrCreateRuntime, scaleWorkers, getActiveWorkerCounts, __setResourcePctForTesting } from "@/lib/ai-fabric/worker-scaler";
 import { scheduleNextJob, getAllocationMap, requestSlot, __resetActiveSlugs } from "@/lib/ai-fabric/scheduler";

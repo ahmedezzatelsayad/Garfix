@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import {
-  Globe, Mail, Phone, MapPin, ChevronUp,
+  Globe, Mail, Phone, ChevronUp,
   Shield, FileText, HelpCircle, Info, MessageCircle,
 } from "lucide-react";
 

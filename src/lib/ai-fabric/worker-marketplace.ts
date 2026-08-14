@@ -20,7 +20,6 @@
  */
 
 import { dbTyped as db } from "@/lib/db";
-import { logger } from "@/lib/logger";
 import type { SLATier } from "./types";
 
 // ─── SLA Latency Defaults (ms) ──────────────────────────────────────────────
@@ -241,7 +240,7 @@ export async function findPreemptableJob(
     if (fromRank >= toRank) continue;
 
     // Find the lowest-priority waiting job for this company
-    const oldestPending = await db.jobQueue.findFirst({
+    const _oldestPending = await db.jobQueue.findFirst({
       where: {
         queue: `ai-queue:${slug}`,
         status: "pending",

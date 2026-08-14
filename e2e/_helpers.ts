@@ -72,7 +72,7 @@ const prismaUrl =
 if (!prismaUrl) {
   // We don't throw — some CI environments run the lint check without a DB —
   // but we log loudly so a developer running the suite knows what to set.
-  // eslint-disable-next-line no-console
+   
   console.warn(
     "[e2e/_helpers] DATABASE_URL is not set — DB assertions will fail at runtime.",
   );

@@ -112,7 +112,7 @@ describe('Load Test: 10000 Concurrent Users', () => {
     for (const a of activities) {
       counts.set(a.type, (counts.get(a.type) ?? 0) + 1);
     }
-    for (const [type, count] of counts) {
+    for (const [_type, count] of counts) {
       expect(count).toBeGreaterThan(10);
       expect(count).toBeLessThan(activities.length);
     }

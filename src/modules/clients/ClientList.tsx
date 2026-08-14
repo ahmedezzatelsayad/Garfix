@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useClients, useDeleteClient, useBulkDeleteClients } from "@/hooks/queries";
 import { toast } from "sonner";
 import { 
@@ -42,7 +42,7 @@ interface ClientListProps {
 const pageSize = 20;
 
 // Status labels for clients
-const CLIENT_STATUS_LABELS: Record<string, { label: string; className: string }> = {
+const _CLIENT_STATUS_LABELS: Record<string, { label: string; className: string }> = {
   active: { label: "نشط", className: "active" },
   inactive: { label: "غير نشط", className: "archived" },
   vip: { label: "VIP", className: "active" },
@@ -74,7 +74,7 @@ export function ClientList({
   const deleteClient = useDeleteClient();
   const bulkDeleteClients = useBulkDeleteClients();
 
-  const clients: Client[] = data?.clients || [];
+  const clients: Client[] = useMemo(() => data?.clients || [], [data?.clients]);
 
   // Update KPI stats when clients data changes
   useEffect(() => {
@@ -106,7 +106,7 @@ export function ClientList({
   const currentPageClients = paginate(clients, currentPage, pageSize);
   const safePage = Math.min(currentPage, totalPages);
 
-  const toggleSelectAll = () => {
+  const _toggleSelectAll = () => {
     if (selectedIds.size === currentPageClients.length && currentPageClients.length > 0) {
       setSelectedIds(new Set());
     } else {

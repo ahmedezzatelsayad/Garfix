@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -172,7 +173,7 @@ export function AiProviderSettings() {
   return (
     <div className="flex flex-col gap-3 sm:gap-4">
       <div className="flex items-center gap-2.5 px-3 sm:px-4 py-2 sm:py-3 rounded-xl bg-card border border-border">
-        <img src="/logo.svg" alt="GarfiX" width={20} height={20} className="w-5 h-5 rounded shrink-0" />
+        <Image src="/logo.svg" alt="GarfiX" width={20} height={20} className="w-5 h-5 rounded shrink-0" />
         <div className="flex-1">
           <div className="text-sm font-extrabold">إعدادات مزودي الذكاء الاصطناعي</div>
           <div className="text-xs text-muted-foreground">
@@ -203,7 +204,7 @@ export function AiProviderSettings() {
                     p.isEnabled ? "bg-gradient-to-br from-emerald-600 to-emerald-400 text-white" : "bg-muted text-muted-foreground"
                   )}
                 >
-                  <img src="/logo.svg" alt="GarfiX" width={20} height={20} className="w-5 h-5 rounded" />
+                  <Image src="/logo.svg" alt="GarfiX" width={20} height={20} className="w-5 h-5 rounded" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">

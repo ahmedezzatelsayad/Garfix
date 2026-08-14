@@ -9,8 +9,6 @@
  * 5. Metrics collection accuracy
  */
 
-import { readFileSync } from 'fs';
-import { join } from 'path';
 
 // ============== Configuration ==============
 const CONFIG = {

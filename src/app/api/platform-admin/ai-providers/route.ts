@@ -10,7 +10,6 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import { requireFounder } from "@/lib/middleware";
 import { getAiProviders, setProviderApiKey, setProviderModel, setProviderEnabled, setProviderPriority, PROVIDER_INFO, type ProviderType } from "@/lib/aiProvider";
-import { decryptSecret, isEncrypted } from "@/lib/cryptoVault";
 import { dbTyped as db } from "@/lib/db";
 import { logAdminAction } from "@/lib/audit";
 import { withErrorHandler, parseJsonBody, apiError } from "@/lib/api";
@@ -21,7 +20,7 @@ import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const authResult = await requireFounder(req);
   if (authResult instanceof NextResponse) return authResult;
-  const user = authResult.user;
+  const _user = authResult.user;
 
   const providers = await getAiProviders();
 

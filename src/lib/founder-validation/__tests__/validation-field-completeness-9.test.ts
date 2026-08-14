@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+import { seedEnterpriseData } from '../index';
 describe('Validation: field-completeness 9', () => {
   it('validates field-completeness for 9', () => { const c = seedEnterpriseData(10, 3800+9); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
   it('validates field-completeness with 100 companies for 9', () => { const c = seedEnterpriseData(100, 3900+9); expect(c.length).toBe(100); });

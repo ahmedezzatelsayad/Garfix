@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isFounderEmail } from "@/lib/founder";
 import { resolveAuth } from "@/lib/auth";
 import { withErrorHandler, parseJsonBody, apiError, apiOk } from "@/lib/api";
-import { checkPermission, PermissionScope, getEffectivePermissions, validatePermissionChange } from "@/lib/rbac";
+import { checkPermission, PermissionScope, getEffectivePermissions } from "@/lib/rbac";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 export const POST = withErrorHandler(async (req: NextRequest) => {

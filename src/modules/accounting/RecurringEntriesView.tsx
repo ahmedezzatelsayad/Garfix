@@ -5,10 +5,9 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { apiGet, apiPost, apiPatch, apiDelete, ApiError } from "@/hooks/api-client";
 import {
-  Plus, Play, Pause, Trash2, Edit3, Clock, Calendar,
-  RefreshCw, AlertCircle, CheckCircle2, XCircle,
-  ChevronRight, ChevronLeft, Search, Filter,
-  RotateCcw, FileText, ArrowUpDown,
+  Plus, Play, Pause, Trash2, Edit3, Clock,
+  RefreshCw, CheckCircle2, XCircle,
+  ChevronRight, ChevronLeft, Search, FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
@@ -130,7 +129,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
       await apiPatch(`/api/accounting/recurring/${id}`, { isActive: !isActive });
       toast.success(isActive ? "تم إيقاف القيد الدوري" : "تم تفعيل القيد الدوري");
       fetchEntries();
-    } catch (err) {
+    } catch (_err) {
       toast.error("خطأ في تحديث الحالة");
     } finally {
       setActionLoading(null);
@@ -143,7 +142,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
       await apiPost(`/api/accounting/recurring/${id}/run`, {});
       toast.success("تم تشغيل القيد بنجاح");
       fetchEntries();
-    } catch (err) {
+    } catch (_err) {
       toast.error("خطأ في تشغيل القيد");
     } finally {
       setActionLoading(null);
@@ -158,7 +157,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
       await apiDelete(`/api/accounting/recurring/${id}`);
       toast.success("تم حذف القيد الدوري");
       fetchEntries();
-    } catch (err) {
+    } catch (_err) {
       toast.error("خطأ في حذف القيد");
     } finally {
       setActionLoading(null);
@@ -193,7 +192,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
       toast.success(`تم ${action === "delete" ? "حذف" : action === "pause" ? "إيقاف" : "تفعيل"} القيود المحددة`);
       setSelectedIds(new Set());
       fetchEntries();
-    } catch (err) {
+    } catch (_err) {
       toast.error("خطأ في تنفيذ الإجراء");
     } finally {
       setActionLoading(null);
@@ -655,7 +654,7 @@ function RecurringEntryModal({
 
   // Fetch accounts on mount
   useEffect(() => {
-    apiGet<any>(`/api/accounting/accounts?companySlug=${companySlug}`)
+    apiGet<{ accounts: Array<{ id: string; code: string; name: string; nameAr?: string }> }>(`/api/accounting/accounts?companySlug=${companySlug}`)
       .then((res) => setAccounts(res.accounts || []))
       .catch((err: unknown) => logger.error("Error fetching recurring accounts", { err }));
   }, [companySlug]);

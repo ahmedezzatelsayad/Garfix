@@ -8,17 +8,17 @@ import {
   useFXRevaluation, useCreateFXRevaluation,
 } from "@/hooks/queries";
 import {
-  Plus, X, Landmark, DollarSign, Calendar, ArrowRightLeft,
-  TrendingUp, TrendingDown, FileText, Clock, ShieldCheck,
+  Plus, X, Landmark, ArrowRightLeft,
+  TrendingUp, TrendingDown, Clock, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ─── Interfaces ──────────────────────────────────────────────────────────── */
-interface LetterOfCredit {
+interface _LetterOfCredit {
   id: number; lcNumber: string; supplier: string; bank: string;
   amount: number; currency: string; issueDate: string; expiryDate: string; status: string;
 }
-interface FXRevaluation {
+interface _FXRevaluation {
   id: number; fromCurrency: string; toCurrency: string; rate: number;
   period: string; realizedGain: number; realizedLoss: number;
   unrealizedGain: number; unrealizedLoss: number; netEffect: number;

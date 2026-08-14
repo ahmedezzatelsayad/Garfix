@@ -9,7 +9,7 @@ export interface Stats {
   ticketsOpen: number; totalRevenue: number;
   byPlan: Record<string, number>;
   monthlyGrowth: Array<{ month: string; tenants: number }>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface Tenant {
@@ -25,7 +25,7 @@ export interface Tenant {
     invoiceUtilization: number;
     userUtilization: number;
   };
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface TenantDetail {
@@ -43,35 +43,35 @@ export interface TenantDetail {
     oversellCount: number;
     lastActivityAt: string;
   };
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface Announcement {
   id: number; title: string; body: string; type: string; isActive: boolean; createdAt: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface TicketReply {
   id: string; senderEmail: string; senderRole: string; body: string; createdAt: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface Ticket {
   id: number; userEmail: string; subject: string; status: string; priority: string; createdAt: string;
   body?: string;
   replies?: TicketReply[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface AdminAudit {
   id: number; adminEmail: string; action: string; targetType?: string; targetId?: string; createdAt: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface QueueFailure {
   id: number; queue: string; type?: string; payload: unknown; error: string; failedAt: string; attempts: number;
   queueName: string; errorMessage: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface StockMovement {
@@ -80,7 +80,7 @@ export interface StockMovement {
   warehouseId: number; warehouseName: string; warehouseCode: string;
   qty: number; sourceType: string; sourceId: number | null;
   note: string | null; createdBy: string; createdAt: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export type Tab = "stats" | "tenants" | "announcements" | "tickets" | "audit" | "ai-settings" | "queue-failures" | "stock-ledger" | "feature-flags" | "ai-usage" | "ai-orchestration" | "review-queue" | "landing-content" | "integrations" | "retention-cleanup" | "plans" | "backups" | "webhooks";

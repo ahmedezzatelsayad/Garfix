@@ -124,7 +124,7 @@ export function AIAgentsView() {
       setSelectedAgent(apiAgents[0].type);
     }
     setLoadingAgents(!agentsQuery.isLoading && !agentsQuery.data);
-  }, [apiAgents, agentsQuery.isLoading]);
+  }, [apiAgents, agentsQuery.isLoading, agentsQuery.data]);
 
   // Reset chat when switching agent
    
@@ -188,10 +188,10 @@ export function AIAgentsView() {
         },
       },
     );
-  }, [activeCompany, input, selectedAgent, sending]);
+  }, [activeCompany, input, selectedAgent, sending, agentMessageMutation]);
 
   const currentAgent = agents.find((a) => a.type === selectedAgent) || agents[0];
-  const currentPerformance = AGENT_PERFORMANCE[selectedAgent] || 85;
+  const _currentPerformance = AGENT_PERFORMANCE[selectedAgent] || 85;
 
   // Get confidence level class
   const getConfidenceClass = (score: number) => {

@@ -83,12 +83,14 @@ export function CatalogView() {
   const deleteMutation = useDeleteCatalogItem();
 
   // API returns { products: [...] }; the hook now types this correctly.
-  const products: Product[] = (data?.products ?? []) as unknown as Product[];
+  const products: Product[] = useMemo(() => (data?.products ?? []) as unknown as Product[], [data?.products]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [_bulkDeleting, setBulkDeleting] = useState(false);
+  // Pre-compute sparkline jitter once per mount (Math.random is impure).
+  const [sparkJitters] = useState(() => Array.from({ length: 7 }, () => Math.random()));
 
   // ── Computed Values for KPI Cards ────────────────────────────────────
   const totalValue = useMemo(() => {
@@ -109,20 +111,20 @@ export function CatalogView() {
     // Generate a simple trend based on product count
     const base = Math.min(products.length, 50);
     return Array.from({ length: 7 }, (_, i) => 
-      base + Math.sin(i * 0.8) * (base * 0.3) + Math.random() * base * 0.2
+      base + Math.sin(i * 0.8) * (base * 0.3) + sparkJitters[i] * base * 0.2
     );
-  }, [products.length]);
+  }, [products.length, sparkJitters]);
 
   const totalPages = Math.max(1, Math.ceil(products.length / PAGE_SIZE));
   const pageProducts = paginate(products, currentPage, PAGE_SIZE);
   const safePage = Math.min(currentPage, totalPages);
 
-  const toggleSelectAll = () => {
+  const _toggleSelectAll = () => {
     if (selectedIds.size === pageProducts.length && pageProducts.length > 0) setSelectedIds(new Set());
     else setSelectedIds(new Set(pageProducts.map((p) => p.id)));
   };
   
-  const toggleRow = (id: number) => {
+  const _toggleRow = (id: number) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);

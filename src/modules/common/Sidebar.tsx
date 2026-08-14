@@ -1,17 +1,16 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { useBrand, type CompanyInfo } from "@/context/BrandContext";
+import { type CompanyInfo } from "@/context/BrandContext";
 import { useCreateCompany } from "@/hooks/queries";
 import type { ViewKey } from "./AppShell";
 import { preloadView } from "./AppShell";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, FileText, Users, Package, ShoppingCart, UserCog,
-  Calculator, Settings, Building2, Shield, History, LogOut, Menu, X,
+  Calculator, Settings, Building2, Shield, History, LogOut, X,
   Sun, Moon, ChevronDown, Plus, Sparkles, BarChart3, User, Boxes, Zap, Bot,
-  Activity, DollarSign, Cpu, KeyRound, Plug, Rocket,
+  Activity, DollarSign, Cpu, KeyRound, Plug,
 } from "lucide-react";
 
 interface SidebarProps {

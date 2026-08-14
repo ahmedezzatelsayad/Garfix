@@ -279,7 +279,7 @@ export function RolesView() {
 function RoleDetailModal({
   role,
   onClose,
-  onUpdated,
+  onUpdated: _onUpdated,
 }: {
   role: RoleDefinition;
   onClose: () => void;

@@ -24,10 +24,10 @@
  * Fines for non-compliance: up to AED 20,000 per violation.
  */
 
-import { toHijri, formatDualDate, formatHijri } from "@/lib/hijri";
-import { fmtMoney, num, calcInvoiceTotals, type LineItem } from "@/lib/money";
+import crypto from "node:crypto";
+import { toHijri, formatHijri } from "@/lib/hijri";
+import { num, calcInvoiceTotals, type LineItem } from "@/lib/money";
 import {
-  getCountryConfig,
   type EInvoiceAuthority,
 } from "@/lib/gulfConfig";
 import { logger } from "@/lib/logger";
@@ -366,8 +366,8 @@ export function determineUaeFtaInvoiceType(invoice: Record<string, unknown>): Ua
 export function computeUaeFtaInvoiceHash(xml: string): string {
   try {
      
-    const nodeCrypto = require("node:crypto");
-    return nodeCrypto.createHash("sha256").update(xml, "utf8").digest("hex");
+    // crypto is imported at the top of the file (node:crypto built-in).
+    return crypto.createHash("sha256").update(xml, "utf8").digest("hex");
   } catch {
     logger.warn("[uae-fta] node:crypto not available for hash computation — using placeholder");
     let hash = 0;
@@ -566,8 +566,8 @@ export function generateUaeFtaUblXml(
   const dueDate = (invoice.dueDate as string) || issueDate;
 
   // Hijri dates (optional for UAE)
-  const hijriIssue = toHijri(issueDate);
-  const hijriDue = toHijri(dueDate);
+  const _hijriIssue = toHijri(issueDate);
+  const _hijriDue = toHijri(dueDate);
 
   // Line items parsing
   const rawLineItems = invoice.lineItems as LineItem[] | string;
@@ -608,7 +608,7 @@ export function generateUaeFtaUblXml(
   // Simplified (B2C) = 380 with simplified structure (same code but different content)
   // Note: Peppol BIS 3 uses 380 for standard invoices, not 381 (ZATCA-specific)
   const invoiceTypeCode = "380";
-  const invoiceTypeNameAr = invoiceType === "standard" ? "فاتورة ضريبية" : "فاتورة مبسطة";
+  const _invoiceTypeNameAr = invoiceType === "standard" ? "فاتورة ضريبية" : "فاتورة مبسطة";
   const invoiceTypeNameEn = invoiceType === "standard" ? "Standard Tax Invoice" : "Simplified Tax Invoice";
 
   // ── Build UBL 2.1 XML (Peppol BIS 3) ──────────────────────────────────
@@ -857,10 +857,10 @@ export function signUaeFtaInvoice(
 
   try {
      
-    const nodeCrypto = require("node:crypto");
+    // crypto is imported at the top of the file (node:crypto built-in).
 
     // Sign with PKI (placeholder: uses provided key material)
-    const sign = nodeCrypto.createSign("SHA256");
+    const sign = crypto.createSign("SHA256");
     sign.update(invoiceHash);
     sign.end();
 
@@ -870,19 +870,19 @@ export function signUaeFtaInvoice(
         digitalSignature = sign.sign(privateKey, "base64");
       } catch {
         logger.warn("[uae-fta] PKI signing failed with provided key — using placeholder");
-        digitalSignature = nodeCrypto.createHash("sha256")
+        digitalSignature = crypto.createHash("sha256")
           .update(invoiceHash + certificate)
           .digest("base64");
       }
     } else {
       // Placeholder signature: hash of (invoiceHash + certificate)
-      digitalSignature = nodeCrypto.createHash("sha256")
+      digitalSignature = crypto.createHash("sha256")
         .update(invoiceHash + certificate)
         .digest("base64");
     }
 
     // Certificate hash (SHA-256 of the certificate content)
-    const certificateHash = nodeCrypto.createHash("sha256")
+    const certificateHash = crypto.createHash("sha256")
       .update(certificate)
       .digest("hex");
 

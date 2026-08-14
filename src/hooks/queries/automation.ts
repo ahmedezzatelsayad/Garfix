@@ -26,7 +26,7 @@ export interface Automation {
   companySlug: string;
   createdAt?: string;
   updatedAt?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of an automation log entry returned by the API. */
@@ -36,7 +36,7 @@ export interface AutomationLog {
   status: string;
   message?: string;
   ranAt: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for creating a new automation. */
@@ -47,7 +47,7 @@ export interface CreateAutomationPayload {
   actions: Array<{ type: string; params?: Record<string, unknown> }>;
   isActive?: boolean;
   companySlug: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for updating an existing automation. */
@@ -60,7 +60,7 @@ export interface UpdateAutomationPayload {
   condition?: Record<string, unknown>;
   actions?: Array<{ type: string; params?: Record<string, unknown> }>;
   isActive?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Response shape for the automation list endpoint. */

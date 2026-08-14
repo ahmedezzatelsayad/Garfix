@@ -22,13 +22,8 @@
 import { toHijri, formatDualDate, formatHijri } from "@/lib/hijri";
 import { fmtMoney, num, calcInvoiceTotals, type LineItem } from "@/lib/money";
 import {
-  getCountryConfig,
   isKuwait,
-  isArabicMandatory,
-  getRetentionYears,
-  getCurrencyDecimalPlaces,
   getPaymentGatewayLicense,
-  getDecreeRef,
   type EInvoiceAuthority,
 } from "@/lib/gulfConfig";
 import { logger } from "@/lib/logger";

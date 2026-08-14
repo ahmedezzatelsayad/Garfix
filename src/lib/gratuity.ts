@@ -173,7 +173,7 @@ export function calculateGratuity(input: GratuityInput): GratuityResult {
 }
 
 /** Check if an employee is eligible for gratuity (minimum 1 year in most Gulf countries). */
-export function isEligibleForGratuity(joinDate: string, endDate?: string | null, countryCode = "KW"): boolean {
+export function isEligibleForGratuity(joinDate: string, endDate?: string | null, _countryCode = "KW"): boolean {
   const end = endDate ? new Date(endDate) : new Date();
   const start = new Date(joinDate);
   const years = (end.getTime() - start.getTime()) / (365.25 * 24 * 60 * 60 * 1000);

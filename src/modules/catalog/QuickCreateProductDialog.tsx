@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { X, Plus, Package, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { X, Package, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,7 +87,7 @@ export function QuickCreateProductDialog({
 
   // ─── Form Handlers ─────────────────────────────────────────────────
 
-  const updateField = (field: keyof ProductFormData, value: any) => {
+  const updateField = (field: keyof ProductFormData, value: unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setError(null);
   };

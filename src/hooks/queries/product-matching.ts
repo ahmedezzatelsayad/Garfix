@@ -20,7 +20,7 @@ interface ProductMatchItem {
   confidence: number;
   status: "pending" | "confirmed" | "rejected";
   companySlug: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface ProductMatchConfig {
@@ -29,7 +29,7 @@ interface ProductMatchConfig {
   algorithm: "fuzzy" | "exact" | "semantic";
   companySlug: string;
   isActive: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface ProductMatchReviewResponse {

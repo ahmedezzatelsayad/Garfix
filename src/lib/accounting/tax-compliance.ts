@@ -8,15 +8,13 @@
  * ALL country-specific calculations use getCountryConfig from gulfConfig.ts.
  */
 import { dbTyped as db } from "@/lib/db";
-import { num, addNums, mulNums, subNums, toNum } from "@/lib/money";
+import { num } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
 import {
   getCountryConfig,
   getRetentionYears,
-  GULF_COUNTRIES,
   type CountryConfig,
 } from "@/lib/gulfConfig";
-import { logger } from "@/lib/logger";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -410,7 +408,7 @@ function getFilingPeriod(country: string, taxType: string): "monthly" | "quarter
 /**
  * Calculate the next filing deadline based on the period type and last filing end.
  */
-function calculateNextDeadline(lastPeriodEnd: Date, period: "monthly" | "quarterly" | "yearly", country: string): Date {
+function calculateNextDeadline(lastPeriodEnd: Date, period: "monthly" | "quarterly" | "yearly", _country: string): Date {
   // Deadline is typically the end of the following period + grace period
   // Standard: deadline is 28-30 days after the period end
   const graceDays = 28;

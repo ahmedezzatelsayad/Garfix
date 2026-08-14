@@ -14,7 +14,7 @@
  */
 import { NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
-import { withErrorHandler, parseJsonField } from "@/lib/api";
+import { withErrorHandler } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 

@@ -32,7 +32,7 @@ export interface CompanyInfo {
   timezone?: string;
   workingHours?: Record<string, string>;
   aiModel?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of an invoice template row returned by the API. */
@@ -71,7 +71,7 @@ export interface UpdateSettingsPayload {
   timezone?: string;
   workingHours?: Record<string, string>;
   aiModel?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for creating a new invoice template. */

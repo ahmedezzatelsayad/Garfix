@@ -6,9 +6,8 @@
  * All monetary values as String (no Float), using num() from money.ts.
  */
 import { dbTyped as db } from "@/lib/db";
-import { Prisma } from "@prisma/client";
-import { num, addNums, subNums, mulNums } from "@/lib/money";
-import { getCountryConfig, getCurrencyDecimalPlaces } from "@/lib/gulfConfig";
+import { num } from "@/lib/money";
+import { getCountryConfig } from "@/lib/gulfConfig";
 import { calculateGratuity } from "@/lib/gratuity";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -27,7 +26,7 @@ interface EmployeeForPayroll {
   email: string | null;
   position: string | null;
   department: string | null;
-  baseSalary: any;
+  baseSalary: { toString(): string } | number | string | null;
   currency: string;
   joinDate: string | null;
   isActive: boolean;
@@ -35,14 +34,15 @@ interface EmployeeForPayroll {
   companySlug: string;
   civilId?: string | null;
   bankAccount?: string | null;
+  [key: string]: unknown;
 }
 
-interface SalaryForPayroll {
+interface _SalaryForPayroll {
   id: number;
   companySlug: string;
   employeeId: number;
   month: string;
-  baseSalary: any;
+  baseSalary: string | number | null;
   allowances: string;
   deductions: string;
   bonus: string;
@@ -52,7 +52,7 @@ interface SalaryForPayroll {
   notes: string | null;
 }
 
-interface CommissionForPayroll {
+interface _CommissionForPayroll {
   id: number;
   companySlug: string;
   employeeId: number;
@@ -63,7 +63,7 @@ interface CommissionForPayroll {
   isPaid: boolean;
 }
 
-interface LeaveRequestForPayroll {
+interface _LeaveRequestForPayroll {
   id: number;
   companySlug: string;
   employeeId: number;
@@ -142,7 +142,7 @@ const SOCIAL_INSURANCE_RATES: Record<string, SocialInsuranceRate> = {
  * Calculate social insurance contributions for an employee in a given country.
  */
 export function calculateSocialInsurance(
-  employee: { baseSalary: any; allowances: string },
+  employee: { baseSalary: string | number | null; allowances: string },
   country: string,
 ): SocialInsuranceResult {
   const rate = SOCIAL_INSURANCE_RATES[country] || SOCIAL_INSURANCE_RATES.KW;
@@ -224,7 +224,7 @@ export async function calculateNetSalary(
 
   // Get salary record for the month
   // P2-Sprint5-B2: HRSalary has no `companySlug` column — filter via Employee relation.
-  const salaryRecord = await db.hRSalary.findFirst({
+  const _salaryRecord = await db.hRSalary.findFirst({
     where: { employeeId, month, employee: { companySlug: employee.companySlug } },
   });
 
@@ -342,7 +342,7 @@ export async function generateWpsFile(
 
   const config = getCountryConfig(country);
   const decimals = config?.currencyDecimalPlaces ?? 3;
-  const currency = config?.currency || "KWD";
+  const _currency = config?.currency || "KWD";
 
   let fileContent: string;
   let fileName: string;
@@ -527,10 +527,10 @@ function generateAeWps(
 
 function generateGenericWps(
   calculations: WpsCalculationItem[],
-  company: { slug: string; name: string; nameAr?: string | null },
-  month: string,
-  country: string,
-  decimals: number,
+  _company: { slug: string; name: string; nameAr?: string | null },
+  _month: string,
+  _country: string,
+  _decimals: number,
 ): string {
   // Generic CSV format
   const lines: string[] = [];

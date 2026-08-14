@@ -10,7 +10,7 @@
  * Uses real Prisma (SQLite) — no mocks for DB.
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from "bun:test";
+import { describe, it, expect, beforeEach, afterAll } from "bun:test";
 import { dbTyped as db } from "@/lib/db";
 
 // ─── Phase 13 imports ───────────────────────────────────────────────────────
@@ -385,7 +385,7 @@ describe("Worker Prediction — Phase 13", () => {
 
     // Second call: should step down from 3 → 2
     const results2 = await getPostEventScaleDown();
-    const predResult2 = results2.find((r) => r.companySlug === SLUG_PRED);
+    const _predResult2 = results2.find((r) => r.companySlug === SLUG_PRED);
     // After reaching target, the entry should be cleaned up
     // But the result of this call may or may not include it depending on timing
     const rt2 = await db.companyRuntime.findUniqueOrThrow({ where: { companyId: company.id } });
@@ -714,7 +714,7 @@ describe("Cost Per Invoice — Phase 15", () => {
   });
 
   it("linkInvoiceCost should store AI cost reference in invoice source", async () => {
-    const company = await createCompany(SLUG_COST, "business");
+    const _company = await createCompany(SLUG_COST, "business");
     const invoice = await createInvoice(SLUG_COST);
 
     // Create an AI request log

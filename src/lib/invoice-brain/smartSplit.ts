@@ -191,7 +191,7 @@ interface RuleSplitResult {
 function trySplitWithRule(
   text: string, 
   priority: number, 
-  alreadyDetected: SplitRule[]
+  _alreadyDetected: SplitRule[]
 ): RuleSplitResult | null {
   switch (priority) {
     case 1:
@@ -235,7 +235,7 @@ function tryExplicitSeparator(text: string): RuleSplitResult | null {
  * Rule 2: Double newline separation
  */
 function tryDoubleNewline(text: string): RuleSplitResult | null {
-  const { pattern, name } = SPLIT_RULES.doubleNewline;
+  const { pattern: _pattern, name } = SPLIT_RULES.doubleNewline;
   
   // Check if there are meaningful double newlines
   const matches = text.match(/\n{2,}/g);

@@ -6,15 +6,12 @@ import { toast } from "sonner";
 import {
   usePaymentMethods, useAccountingInitiatePayment as useInitiatePayment, useVerifyPayment,
 } from "@/hooks/queries";
-import {
-  Plus, X, CreditCard, Send, ShieldCheck, Search,
-  Globe, DollarSign, CheckCircle2, XCircle, Clock,
-  ArrowRight, ExternalLink, Wallet, Landmark,
+import { CreditCard, Send, ShieldCheck, Search, CheckCircle2, XCircle, Clock, ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ─── Interfaces ──────────────────────────────────────────────────────────── */
-interface PaymentMethod {
+interface _PaymentMethod {
   id: number; name: string; nameAr: string; type: string;
   fees: number; currency: string; country: string; available: boolean;
 }

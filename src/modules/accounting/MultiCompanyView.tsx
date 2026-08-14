@@ -9,8 +9,7 @@ import {
   useCreateConsolidation,
 } from "@/hooks/queries";
 import {
-  Building2, ArrowRightLeft, Plus, X, CheckCircle2, Scale,
-  Calendar, FileText, DollarSign, TrendingUp, ChevronDown,
+  Building2, ArrowRightLeft, Plus, Scale, FileText, DollarSign, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -293,7 +292,7 @@ function InterCompanyForm({ companies, company, onClose, onSaved }: {
     );
   };
 
-  const companyLabel = (slug: string) => {
+  const _companyLabel = (slug: string) => {
     const c = companies.find(x => x.slug === slug);
     return c ? (c.nameAr || c.name) : slug;
   };

@@ -5,7 +5,7 @@ import { useAIFabric } from "@/hooks/queries/founder-panel";
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 // Kept locally for rendering convenience (hook uses same shape)
-interface AIFabricData {
+interface _AIFabricData {
   companiesCount: number;
   workersActive: number;
   activeRuntimeCount: number;

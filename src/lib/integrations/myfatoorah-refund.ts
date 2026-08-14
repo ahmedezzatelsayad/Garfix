@@ -49,13 +49,13 @@ export const GetRefundStatusSchema = z.object({
  * @param paymentTxnId - ID of the PaymentTransaction to refund
  * @param amount - Amount to refund (may be partial, must be <= original amount)
  * @param reason - Free-text reason for the refund
- * @param createdBy - UID of the user initiating the refund
+ * @param _createdBy - UID of the user initiating the refund
  */
 export async function initiateRefund(
   paymentTxnId: number,
   amount: number,
   reason?: string,
-  createdBy?: string,
+  _createdBy?: string,
 ): Promise<{ ok: boolean; refundId?: string; providerRefundId?: string; error?: string }> {
   // 1. Validate the payment transaction
   const txn = await db.paymentTransaction.findUnique({

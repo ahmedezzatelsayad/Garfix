@@ -148,19 +148,20 @@ export async function POST(request: NextRequest) {
 async function handleGenerate(
   companyId: string,
   feature: FeatureType,
-  params: any
+  params: Record<string, unknown>
 ): Promise<NextResponse> {
   // Validate messages
-  if (!params.messages || !Array.isArray(params.messages) || params.messages.length === 0) {
+  const messages = params.messages;
+  if (!Array.isArray(messages) || messages.length === 0) {
     return apiError('messages array is required', 400);
   }
   
   // Call the per-feature router
   const result = await generateWithFeature(companyId, feature, {
-    messages: params.messages,
-    temperature: params.temperature,
-    maxTokens: params.maxTokens,
-    jsonMode: params.jsonMode,
+    messages: messages as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>,
+    temperature: typeof params.temperature === 'number' ? params.temperature : undefined,
+    maxTokens: typeof params.maxTokens === 'number' ? params.maxTokens : undefined,
+    jsonMode: typeof params.jsonMode === 'boolean' ? params.jsonMode : undefined,
   });
   
   // Return response
@@ -186,18 +187,18 @@ async function handleGenerate(
 async function handleExtract(
   companyId: string,
   feature: FeatureType,
-  params: any
+  params: Record<string, unknown>
 ): Promise<NextResponse> {
   // Validate text
-  if (!params.text || typeof params.text !== 'string') {
+  if (typeof params.text !== 'string') {
     return apiError('text is required', 400);
   }
   
   // Call the per-feature router
   const result = await extractWithFeature(companyId, feature, {
     text: params.text,
-    schema: params.schema,
-    instructions: params.instructions,
+    schema: (params.schema as Record<string, unknown> | undefined),
+    instructions: typeof params.instructions === 'string' ? params.instructions : undefined,
   });
   
   // Return response

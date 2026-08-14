@@ -1,7 +1,7 @@
 /**
  * ═════════════════════════════════════════════════════════════
  * GarfiX DS v4.0 - Animation Hooks (خطاطيف الحركة)
- * 
+ *
  * Custom React hooks for animation control:
  * - useAnimation: Core animation state management
  * - useSpring: Physics-based spring animations
@@ -24,13 +24,11 @@ import {
   getAnimationStyle,
   getStaggerDelay,
   prefersReducedMotion,
-  getAccessibleAnimation,
   calculateSpring,
   injectKeyframes,
   type SpringConfig,
   type StaggerConfig,
   type KeyframeAnimation,
-  type MotionState,
 } from '@/lib/animations';
 
 // ── Context ─────────────────────────────────────────────────
@@ -49,22 +47,22 @@ export const useAnimationContext = () => useContext(AnimationContext);
 
 export function AnimationProvider({ children }: { children: React.ReactNode }) {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  
+
   useEffect(() => {
     // Inject keyframes on mount
     injectKeyframes();
-    
+
     // Check reduced motion preference
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     // eslint-disable-next-line react-hooks/set-state-in-effect -- subscribing to reduced-motion media-query; setState is the subscription callback
     setPrefersReducedMotion(mq.matches);
-    
+
     const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
     mq.addEventListener('change', handler);
-    
+
     return () => mq.removeEventListener('change', handler);
   }, []);
-  
+
   return (
     <AnimationContext.Provider value={{ prefersReducedMotion, isReducedMotion: prefersReducedMotion }}>
       {children}
@@ -114,25 +112,25 @@ export function useAnimation(options: UseAnimationOptions = {}): UseAnimationRet
     autoEnter = true,
     onComplete,
   } = options;
-  
+
   const [state, setState] = useState(initial);
   const [isAnimating, setIsAnimating] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const clearAnimationTimeout = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
   }, []);
-  
+
   const getStyle = useCallback((animationState: string): React.CSSProperties => {
     if (prefersReducedMotion()) {
       return animationState === 'entered' || animationState === 'entering'
         ? { opacity: 1 }
         : { opacity: 0 };
     }
-    
+
     switch (animationState) {
       case 'entering':
         return getAnimationStyle(enterAnimation);
@@ -145,31 +143,31 @@ export function useAnimation(options: UseAnimationOptions = {}): UseAnimationRet
         return { opacity: 0, pointerEvents: 'none' as const };
     }
   }, [enterAnimation, exitAnimation]);
-  
+
   const enter = useCallback(() => {
     clearAnimationTimeout();
     setState('entering');
     setIsAnimating(true);
-    
+
     timeoutRef.current = setTimeout(() => {
       setState('entered');
       setIsAnimating(false);
       onComplete?.('entered');
     }, enterAnimation.duration);
   }, [enterAnimation.duration, clearAnimationTimeout, onComplete]);
-  
+
   const exit = useCallback(() => {
     clearAnimationTimeout();
     setState('exiting');
     setIsAnimating(true);
-    
+
     timeoutRef.current = setTimeout(() => {
       setState('exited');
       setIsAnimating(false);
       onComplete?.('exited');
     }, exitAnimation.duration);
   }, [exitAnimation.duration, clearAnimationTimeout, onComplete]);
-  
+
   const toggle = useCallback(() => {
     if (state === 'exited' || state === 'exiting') {
       enter();
@@ -177,13 +175,13 @@ export function useAnimation(options: UseAnimationOptions = {}): UseAnimationRet
       exit();
     }
   }, [state, enter, exit]);
-  
+
   const reset = useCallback(() => {
     clearAnimationTimeout();
     setState(initial);
     setIsAnimating(false);
   }, [clearAnimationTimeout, initial]);
-  
+
   useEffect(() => {
     if (autoEnter && initial === 'exited') {
       // Small delay to ensure DOM is ready
@@ -192,12 +190,12 @@ export function useAnimation(options: UseAnimationOptions = {}): UseAnimationRet
       });
       return () => cancelAnimationFrame(id);
     }
-  }, []);
-  
+  }, [autoEnter, initial, enter]);
+
   useEffect(() => {
     return () => clearAnimationTimeout();
   }, [clearAnimationTimeout]);
-  
+
   return {
     state,
     style: getStyle(state),
@@ -250,43 +248,46 @@ export function useSpring(options: UseSpringOptions): UseSpringReturn {
     onSettle,
     immediate = true,
   } = options;
-  
+
   const [value, setValue] = useState<number | Record<string, number>>(initialFrom);
   const [velocity, setVelocity] = useState<number | Record<string,number>>(0);
   const [isAnimating, setIsAnimating] = useState(false);
-  
+
   const targetRef = useRef(initialTo);
   const velocityRef = useRef(typeof initialFrom === 'number' ? 0 : {});
   const rafRef = useRef<number | null>(null);
   const valueRef = useRef(value);
-  
+  // stepRef holds the latest step function so the rAF loop can self-recurse
+  // without referencing the `step` const before its declaration completes.
+  const stepRef = useRef<() => void>(() => {});
+
   const isSingleValue = typeof initialTo === 'number';
-  
+
   const step = useCallback(() => {
     if (isSingleValue) {
-      const current = typeof valueRef.current === 'number' 
-        ? valueRef.current 
+      const current = typeof valueRef.current === 'number'
+        ? valueRef.current
         : 0;
-      const target = typeof targetRef.current === 'number' 
-        ? targetRef.current 
+      const target = typeof targetRef.current === 'number'
+        ? targetRef.current
         : 0;
-      const vel = typeof velocityRef.current === 'number' 
-        ? velocityRef.current 
+      const vel = typeof velocityRef.current === 'number'
+        ? velocityRef.current
         : 0;
-      
+
       const { value: newValue, newVelocity } = calculateSpring(
         current,
         target,
         vel,
         springConfig
       );
-      
+
       velocityRef.current = newVelocity;
       valueRef.current = newValue;
       setValue(newValue);
       setVelocity(newVelocity);
       onUpdate?.(newValue);
-      
+
       // Check if settled (velocity near zero and close to target)
       if (Math.abs(newVelocity) < 0.01 && Math.abs(newValue - target) < 0.01) {
         setValue(target);
@@ -296,16 +297,21 @@ export function useSpring(options: UseSpringOptions): UseSpringReturn {
         return;
       }
     }
-    
-    rafRef.current = requestAnimationFrame(step);
+
+    rafRef.current = requestAnimationFrame(() => stepRef.current());
   }, [isSingleValue, springConfig, onUpdate, onSettle]);
-  
+
+  // Keep stepRef in sync after each render so the rAF loop sees the latest closure.
+  useEffect(() => {
+    stepRef.current = step;
+  }, [step]);
+
   const start = useCallback(() => {
     if (rafRef.current) return;
     setIsAnimating(true);
     rafRef.current = requestAnimationFrame(step);
   }, [step]);
-  
+
   const stop = useCallback(() => {
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
@@ -313,28 +319,28 @@ export function useSpring(options: UseSpringOptions): UseSpringReturn {
     }
     setIsAnimating(false);
   }, []);
-  
+
   const set = useCallback((newTarget: number | Record<string, number>) => {
     targetRef.current = newTarget;
     if (!isAnimating) {
       start();
     }
   }, [isAnimating, start]);
-  
+
   const reset = useCallback(() => {
     stop();
     setValue(initialFrom);
     setVelocity(typeof initialFrom === 'number' ? 0 : {});
     targetRef.current = initialTo;
   }, [stop, initialFrom, initialTo]);
-  
+
   useEffect(() => {
     if (immediate) {
       start();
     }
     return () => stop();
-  }, []);
-  
+  }, [immediate, start, stop]);
+
   return {
     value,
     set,
@@ -376,32 +382,32 @@ export function useStagger(options: UseStaggerOptions): UseStaggerReturn {
     animationPreset = PRESETS.fadeUp,
     autoStart = true,
   } = options;
-  
+
   const [visibleIndices, setVisibleIndices] = useState<number[]>([]);
   const [isComplete, setIsComplete] = useState(false);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
-  
+
   const clearAllTimeouts = useCallback(() => {
     timeoutsRef.current.forEach(clearTimeout);
     timeoutsRef.current = [];
   }, []);
-  
+
   const getStyle = useCallback((index: number): React.CSSProperties => {
     if (prefersReducedMotion()) {
       return { opacity: 1 };
     }
-    
+
     const delay = getStaggerDelay(index, config);
     return getAnimationStyle(animationPreset, delay);
   }, [config, animationPreset]);
-  
+
   const start = useCallback(() => {
     clearAllTimeouts();
     setVisibleIndices([]);
     setIsComplete(false);
-    
+
     const totalDuration = getStaggerDelay(count - 1, config) + animationPreset.duration;
-    
+
     for (let i = 0; i < count; i++) {
       const delay = getStaggerDelay(i, config);
       const timeout = setTimeout(() => {
@@ -409,26 +415,26 @@ export function useStagger(options: UseStaggerOptions): UseStaggerReturn {
       }, delay);
       timeoutsRef.current.push(timeout);
     }
-    
+
     const completeTimeout = setTimeout(() => {
       setIsComplete(true);
     }, totalDuration + 50); // Small buffer
-    
+
     timeoutsRef.current.push(completeTimeout);
   }, [count, config, animationPreset, clearAllTimeouts]);
-  
+
   const restart = useCallback(() => {
     start();
   }, [start]);
-  
+
   useEffect(() => {
     if (autoStart) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- stagger animation: auto-start on mount
       start();
     }
     return clearAllTimeouts;
-  }, []);
-  
+  }, [autoStart, start, clearAllTimeouts]);
+
   return {
     getStyle,
     isComplete,
@@ -474,25 +480,25 @@ export function useScrollAnimation(
     onEnter,
     onLeave,
   } = options;
-  
+
   const ref = useRef<HTMLElement | null>(null);
   const [isInView, setIsInView] = useState(false);
   const [hasBeenInView, setHasBeenInView] = useState(false);
   const [entry, setEntry] = useState<IntersectionObserverEntry | null>(null);
-  
+
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
-    
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         setEntry(entry);
         setIsInView(entry.isIntersecting);
-        
+
         if (entry.isIntersecting) {
           setHasBeenInView(true);
           onEnter?.(entry);
-          
+
           if (once) {
             observer.unobserve(element);
           }
@@ -502,12 +508,12 @@ export function useScrollAnimation(
       },
       { threshold, rootMargin }
     );
-    
+
     observer.observe(element);
-    
+
     return () => observer.disconnect();
   }, [threshold, rootMargin, once, onEnter, onLeave]);
-  
+
   return { ref, isInView, hasBeenInView, entry };
 }
 
@@ -524,18 +530,18 @@ interface UseReducedMotionReturn {
 
 export function useReducedMotion(): UseReducedMotionReturn {
   const [prefersReduced, setPrefersReduced] = useState(false);
-  
+
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     // eslint-disable-next-line react-hooks/set-state-in-effect -- subscribing to reduced-motion media-query; setState is the subscription callback
     setPrefersReduced(mq.matches);
-    
+
     const handler = (e: MediaQueryListEvent) => setPrefersReduced(e.matches);
     mq.addEventListener('change', handler);
-    
+
     return () => mq.removeEventListener('change', handler);
   }, []);
-  
+
   const getSafeStyle = useCallback(
     (style: React.CSSProperties): React.CSSProperties => {
       if (prefersReduced) {
@@ -545,7 +551,7 @@ export function useReducedMotion(): UseReducedMotionReturn {
     },
     [prefersReduced]
   );
-  
+
   return {
     prefersReducedMotion: prefersReduced,
     shouldReduceMotion: prefersReduced,
@@ -589,17 +595,17 @@ export function useHoverAnimation(
     duration = DURATIONS.normal,
     enableOnTouch = false,
   } = options;
-  
+
   const [isHovered, setIsHovered] = useState(false);
   const [isTouch, setIsTouch] = useState(false);
-  
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time touch capability check on mount
     setIsTouch('ontouchstart' in window || navigator.maxTouchPoints > 0);
   }, []);
-  
+
   const shouldAnimate = enableOnTouch || !isTouch;
-  
+
   const style: React.CSSProperties = isHovered && shouldAnimate
     ? {
         transform: `translateY(${translateY}px) scale(${scale})`,
@@ -611,14 +617,14 @@ export function useHoverAnimation(
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
         transition: `transform ${duration}ms ${EASING.easeOut}, box-shadow ${duration}ms ${EASING.easeOut}`,
       };
-  
+
   const handlers = {
     onMouseEnter: () => shouldAnimate && setIsHovered(true),
     onMouseLeave: () => shouldAnimate && setIsHovered(false),
     onTouchStart: () => enableOnTouch && setIsHovered(true),
     onTouchEnd: () => enableOnTouch && setTimeout(() => setIsHovered(false), 150),
   };
-  
+
   return { style, handlers, isHovered };
 }
 
@@ -648,7 +654,7 @@ export function usePressAnimation(
 ): UsePressAnimationReturn {
   const { scale = 0.97, duration = DURATIONS.fast } = options;
   const [isPressed, setIsPressed] = useState(false);
-  
+
   const style: React.CSSProperties = isPressed
     ? {
         transform: `scale(${scale})`,
@@ -658,10 +664,10 @@ export function usePressAnimation(
         transform: 'scale(1)',
         transition: `transform ${duration}ms ${EASING.easeIn}`,
       };
-  
+
   const activate = () => setIsPressed(true);
   const deactivate = () => setIsPressed(false);
-  
+
   const handlers = {
     onMouseDown: activate,
     onMouseUp: deactivate,
@@ -669,7 +675,7 @@ export function usePressAnimation(
     onTouchStart: activate,
     onTouchEnd: deactivate,
   };
-  
+
   return { style, handlers, isPressed };
 }
 
@@ -720,46 +726,53 @@ export function useNumberAnimation(
     autoStart = true,
     locale = 'ar-EG',
   } = options;
-  
+
   const [value, setValue] = useState(from);
   const [isAnimating, setIsAnimating] = useState(false);
   const [progress, setProgress] = useState(0);
   const startTimeRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
-  
+
+  const animateRef = useRef<(timestamp: number) => void>(() => {});
+
   const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
-  
+
   const animate = useCallback((timestamp: number) => {
     if (!startTimeRef.current) startTimeRef.current = timestamp;
-    
+
     const elapsed = timestamp - startTimeRef.current;
     const rawProgress = Math.min(elapsed / duration, 1);
     const easedProgress = easeOutCubic(rawProgress);
-    
+
     const currentValue = from + (target - from) * easedProgress;
     setValue(currentValue);
     setProgress(rawProgress);
-    
+
     if (rawProgress < 1) {
-      rafRef.current = requestAnimationFrame(animate);
+      rafRef.current = requestAnimationFrame((t) => animateRef.current(t));
     } else {
       setValue(target);
       setProgress(1);
       setIsAnimating(false);
     }
   }, [from, target, duration]);
-  
+
+  // Keep animateRef in sync after each render so the rAF loop sees the latest closure.
+  useEffect(() => {
+    animateRef.current = animate;
+  }, [animate]);
+
   const start = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    
+
     startTimeRef.current = null;
     setValue(from);
     setProgress(0);
     setIsAnimating(true);
-    
+
     rafRef.current = requestAnimationFrame(animate);
   }, [from, animate]);
-  
+
   useEffect(() => {
     if (autoStart) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- number animation: auto-start on mount
@@ -768,13 +781,13 @@ export function useNumberAnimation(
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, []);
-  
+  }, [autoStart, start]);
+
   const display = `${prefix}${value.toLocaleString(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })}${suffix}`;
-  
+
   return { value, display, start, isAnimating, progress };
 }
 

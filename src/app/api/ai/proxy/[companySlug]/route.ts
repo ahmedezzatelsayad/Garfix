@@ -59,7 +59,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbTyped as db } from '@/lib/db';
 import { resolveAuth } from '@/lib/auth';
 import { apiError, withErrorHandler } from '@/lib/api';
-import { logger } from '@/lib/logger';
 import { logAudit } from '@/lib/audit';
 import { rateLimitResponse, LIMITS } from '@/lib/rateLimit';
 import { generateWithFeature } from '@/lib/ai/per-feature-router';

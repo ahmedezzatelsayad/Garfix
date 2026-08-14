@@ -14,6 +14,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "node:crypto";
 import { dbTyped as db } from "@/lib/db";
 import { isFounderEmail } from "@/lib/founder";
 import { computeEffectivePermissions } from "@/lib/permissions";
@@ -53,7 +54,6 @@ function resolveSecret(envVar: string, name: string): string {
       // runtime, JWTs would be signed with a predictable key (anyone could
       // forge tokens). A random placeholder fails safely: tokens signed during
       // build won't validate at runtime (different random value each call).
-      const { randomBytes } = require("node:crypto");
       return `build-placeholder-${randomBytes(32).toString("hex")}`;
     }
     if (process.env.NODE_ENV === "production") {

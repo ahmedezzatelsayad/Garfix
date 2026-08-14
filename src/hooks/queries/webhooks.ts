@@ -11,7 +11,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost, apiPatch, apiPut, apiDelete, ApiError } from "@/hooks/api-client";
+import { apiGet, apiPost, apiPut, apiDelete, ApiError } from "@/hooks/api-client";
 import { queryKeys } from "@/hooks/query-keys";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ export interface WebhookEndpoint {
   isActive: boolean;
   createdAt: string;
   companySlug?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface WebhookDelivery {
@@ -34,14 +34,14 @@ interface WebhookDelivery {
   status: "success" | "failed" | "pending";
   attempts: number;
   createdAt: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface WebhookEvent {
   type: string;
   timestamp: string;
   payload: Record<string, unknown>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface WebhookEndpointListResponse {
@@ -64,7 +64,7 @@ interface CreateWebhookEndpointPayload {
   url: string;
   events: string[];
   companySlug?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface UpdateWebhookEndpointPayload {
@@ -72,7 +72,7 @@ interface UpdateWebhookEndpointPayload {
   url?: string;
   events?: string[];
   isActive?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // ─── useWebhookEndpoints ─────────────────────────────────────────────────────
@@ -233,7 +233,7 @@ export interface WebhookDeliveriesFilterParams {
   eventType?: string;
   endpointId?: string;
   limit?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface WebhookDeliveriesFilteredResponse {

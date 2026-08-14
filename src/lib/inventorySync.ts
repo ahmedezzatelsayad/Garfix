@@ -9,16 +9,15 @@
  * - [REVIEW-QUEUE] + [OVERSELL] warnings surfaced to callers
  */
 
-import { dbTyped as db } from "./db";
 import { num } from "./money";
 import { logger } from "./logger";
 import { matchProduct } from "./productMatcher";
 
-// P5-M6 NOTE: This file's `tx` parameters were temporarily migrated to `DbTx`
-// but reverted because the file has ~13 schema-drift bugs (e.g. `warehouseId_productId`
-// compound unique constraint name mismatch, `createdBy` field missing on
-// ProductMatchAudit, `productCatalogId` typed as `any` from upstream `product.id`)
-// that `tx: any` was hiding. Fixing these is out of scope for P5-M6 — they
+// P5-M6 NOTE: This file's `tx` parameters use `any` because the file has ~13
+// schema-drift bugs (e.g. `warehouseId_productId` compound unique constraint
+// name mismatch, `createdBy` field missing on ProductMatchAudit,
+// `productCatalogId` typed as `any` from upstream `product.id`) that `tx: any`
+// was hiding. Fixing these is out of scope for the current lint cleanup — they
 // should be addressed in a focused schema-reconciliation sprint.
 
 export interface InventoryLineItem {
@@ -32,6 +31,7 @@ export function isReviewQueueWarning(w: string): boolean {
 }
 
 export async function recordStockMovement(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- schema-drift deferral: see P5-M6 note above
   tx: any, companySlug: string, productId: string | number | null, warehouseId: string | number,
   signedQty: number, sourceType: string, sourceId: string | number | null,
   note?: string, createdBy: string = "system",
@@ -53,6 +53,7 @@ export interface InventorySyncResult {
 }
 
 export async function syncInventoryOnSale(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- schema-drift deferral: see P5-M6 note above
   tx: any, companySlug: string, items: InventoryLineItem[], invoiceId: number,
 ): Promise<InventorySyncResult> {
   const warnings: string[] = [];
@@ -130,6 +131,7 @@ export async function syncInventoryOnSale(
 }
 
 export async function syncInventoryOnPurchase(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- schema-drift deferral: see P5-M6 note above
   tx: any, companySlug: string, items: InventoryLineItem[], purchaseInvoiceId: string | number,
 ): Promise<InventorySyncResult> {
   const warnings: string[] = [];

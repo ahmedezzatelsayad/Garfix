@@ -9,7 +9,7 @@ import {
   useDownloadWPSFile,
 } from "@/hooks/queries";
 import {
-  Banknote, FileText, Plus, X, Download, Send, Clock,
+  Banknote, FileText, Download, Send,
   CheckCircle2, Users, Calculator, RefreshCw, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,7 @@ type Tab = "payroll" | "wps";
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
 const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring";
-const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
+const _labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
 
@@ -95,7 +95,7 @@ export function PayrollWpsView() {
 }
 
 /* ─── Payroll ──────────────────────────────────────────────────────────────── */
-function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsurance, totalDeductions, totalNet, selectedMonth, onMonthChange, company, calculating, onCalculate }: {
+function PayrollView({ salaries, totalBase, totalAllowances, totalSocialInsurance, totalDeductions, totalNet, selectedMonth, onMonthChange, company, calculating: _calculating, onCalculate }: {
   salaries: EmployeeSalary[]; totalBase: number; totalAllowances: number; totalSocialInsurance: number;
   totalDeductions: number; totalNet: number; selectedMonth: string;
   onMonthChange: (m: string) => void; company: { slug: string }; calculating: boolean; onCalculate: () => void;

@@ -11,7 +11,7 @@ import { logAudit } from "@/lib/audit";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { calcInvoiceTotals, num } from "@/lib/money";
 import { z } from "zod";
-import { apiError, withErrorHandler, parseJsonBody, parseJsonField } from "@/lib/api";
+import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { syncInventoryOnSale } from "@/lib/inventorySync";
 import { applyKuwaitCompliance, formatKuwaitErrorsForResponse } from "@/lib/e-invoicing/kuwait-validation";
@@ -224,13 +224,14 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // ONE $transaction. Previously invoice.create was OUTSIDE the transaction —
   // if inventory sync failed, the error was swallowed and the invoice persisted
   // without inventory update → financial/stock drift. Now ANY failure rolls back BOTH.
-  const itemsForSync = data.lineItems.map((it: any) => ({
+  type LineItemInput = { description: string; qty: number | string; price: number | string; total?: number | string };
+  const itemsForSync = data.lineItems.map((it: LineItemInput) => ({
     description: it.description,
     qty: num(it.qty),
     price: num(it.price, 3),
   }));
 
-  let invoice: any;
+  let invoice: { id: number | string };
   let inventoryWarnings: string[] = [];
   try {
     const txResult = await db.$transaction(async (tx) => {

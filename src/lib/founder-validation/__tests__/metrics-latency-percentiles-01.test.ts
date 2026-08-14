@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { TelemetryCollector, calculateMetrics, seedEnterpriseData, type TelemetryEntry } from "../index";
+import { TelemetryCollector, calculateMetrics, type TelemetryEntry } from "../index";
 
 describe("Metrics latency percentile calculations", () => {
   function makeEntry(overrides: Partial<TelemetryEntry> = {}): TelemetryEntry {

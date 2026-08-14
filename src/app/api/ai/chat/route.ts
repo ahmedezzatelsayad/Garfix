@@ -37,7 +37,7 @@ const PAGE_DESCRIPTIONS: Record<string, string> = {
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { dbTyped as db } from "@/lib/db";
-import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
+import { resolveAuth } from "@/lib/auth";
 import { requirePermissionForCompany, requirePermission } from "@/lib/middleware";
 import { num } from "@/lib/money";
 import { z } from "zod";
@@ -45,7 +45,6 @@ import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { redactPii } from "@/lib/ai/piiRedactor"; // Phase 8 P1: PII redaction before LLM
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
-import { callAI as callAIProvider, type ChatResult } from "@/lib/aiProvider";
 import { getGlobalAiConfig } from "@/lib/aiConfig";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { logAiUsage } from "@/lib/ai/costTracker";
@@ -432,7 +431,7 @@ ${isFounder ? "- هذا المستخدم هو مؤسس المنصة — ساعد
   // Stage config for chat: skip pattern/rule (they're for extraction, not chat),
   // keep cache + memory + budget + AI.
   let outcome = await callAI(systemPrompt, trimmedMessages);
-  let cascadeMeta: { resolvedBy: string; latencyMs: number; cacheHitCount?: number; budgetBlocked?: boolean } | undefined;
+  let _cascadeMeta: { resolvedBy: string; latencyMs: number; cacheHitCount?: number; budgetBlocked?: boolean } | undefined;
   try {
     const { executeCascade } = await import("@/lib/ai-fabric/gateway");
     const lastUserMessage = trimmedMessages[trimmedMessages.length - 1]?.content || "";
@@ -458,7 +457,7 @@ ${isFounder ? "- هذا المستخدم هو مؤسس المنصة — ساعد
         },
       },
     );
-    cascadeMeta = {
+    _cascadeMeta = {
       resolvedBy: cascadeResult.resolvedBy,
       latencyMs: cascadeResult.latencyMs,
       cacheHitCount: cascadeResult.cacheHitCount,

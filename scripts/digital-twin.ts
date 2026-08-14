@@ -40,7 +40,7 @@
 
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { cpus, totalmem, freemem, hostname } from 'node:os';
-import { performance, PerformanceObserver, constants as perfConstants } from 'node:perf_hooks';
+import { performance, PerformanceObserver } from 'node:perf_hooks';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { createHash } from 'node:crypto';
 

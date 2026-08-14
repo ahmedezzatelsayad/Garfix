@@ -4,7 +4,6 @@
  */
 import { dbTyped as db } from "./db";
 import { DEFAULT_PLANS, type PlanKey } from "./plans";
-import { logger } from "./logger";
 
 export interface QuotaCheck {
   ok: boolean;

@@ -24,7 +24,7 @@ import {
   OMAN_TAX_REGULATION,
   OMAN_TAX_MAX_FINE_OMR,
 } from "../oman-tax";
-import { formatHijri, formatDualDate } from "../../hijri";
+import { formatHijri } from "../../hijri";
 import { num } from "../../money";
 
 // ── Test fixtures ──────────────────────────────────────────────────────────

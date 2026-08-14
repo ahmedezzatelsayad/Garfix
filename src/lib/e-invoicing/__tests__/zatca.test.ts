@@ -40,7 +40,6 @@ import {
 } from "../zatca";
 import {
   zatcaInvoiceValidationMiddleware,
-  applyZatcaCompliance,
   formatZatcaErrorsForResponse,
 } from "../zatca-validation";
 import { formatHijri, formatDualDate } from "../../hijri";

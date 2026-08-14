@@ -63,7 +63,7 @@
  * Stripe, Shopify, Uber, etc. for event-driven systems.
  */
 
-import type { PrismaClient, Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { dbTyped as db } from "./db";
 import { logger } from "./logger";
 import { enqueue, QUEUE_NAMES } from "./queues";

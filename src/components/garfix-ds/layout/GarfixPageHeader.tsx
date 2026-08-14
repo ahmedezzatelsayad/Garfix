@@ -22,7 +22,6 @@
 import React from "react";
 import { ArrowRight, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { GarfixButton } from "../core/GarfixButton";
 
 // ── Types ───────────────────────────────────────────────────────────────
 

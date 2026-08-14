@@ -100,7 +100,7 @@ export const GarfixSmartRecommendations: React.FC<GarfixSmartRecommendationsProp
   className,
 }) => {
   const {
-    recommendations,
+    recommendations: _recommendations,
     getRecommendations,
     provideFeedback,
   } = useAIPersonalization();

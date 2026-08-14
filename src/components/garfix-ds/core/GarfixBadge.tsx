@@ -169,7 +169,7 @@ export const StatusBadge: React.FC<Omit<GarfixBadgeProps, "variant"> & { status:
 export const NotificationBadge: React.FC<{ count: number; max?: number } & Omit<GarfixBadgeProps, "children" | "variant" | "pulse">> = ({
   count,
   max = 99,
-  ...props
+  ..._props
 }) => (
   <GarfixBadge variant="error" size="sm" pulse>
     {count > max ? `${max}+` : count}

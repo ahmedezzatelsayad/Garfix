@@ -23,7 +23,6 @@
 
 import { dbTyped as db } from "@/lib/db";
 import { logger } from "@/lib/logger";
-import { fabricHash } from "./types";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 

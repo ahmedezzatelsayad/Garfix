@@ -66,7 +66,9 @@ export function useGarfiXAI(options: UseGarfiXAIOptions = {}): UseGarfiXAIReturn
     currentResponse: null,
   });
 
-  const sessionIdRef = useRef(`session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  // Session ID is generated once per hook instance via lazy useState initializer
+  // (Date.now() / Math.random are impure and must not run during render).
+  const [sessionId, setSessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const lastMessageRef = useRef<string>('');
 
   /**
@@ -104,7 +106,7 @@ export function useGarfiXAI(options: UseGarfiXAIOptions = {}): UseGarfiXAIReturn
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message,
-          session_id: sessionIdRef.current,
+          session_id: sessionId,
           context: {
             ...context,
             language: context.language || 'ar',
@@ -178,15 +180,15 @@ export function useGarfiXAI(options: UseGarfiXAIOptions = {}): UseGarfiXAIReturn
       onError?.(errorMessage);
       return null;
     }
-  }, [state.isLoading, state.messages, context, enableThinking, onMessageSend, onMessageReceive, onError]);
+  }, [state.isLoading, state.messages, context, enableThinking, onMessageSend, onMessageReceive, onError, sessionId]);
 
   /**
    * Clear all messages
    */
   const clearMessages = useCallback(() => {
-    sessionIdRef.current = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    setSessionId(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
     lastMessageRef.current = '';
-    
+
     setState({
       messages: [],
       isLoading: false,
@@ -195,7 +197,7 @@ export function useGarfiXAI(options: UseGarfiXAIOptions = {}): UseGarfiXAIReturn
       error: null,
       currentResponse: null,
     });
-  }, []);
+  }, [setSessionId]);
 
   /**
    * Clear error state
@@ -220,7 +222,7 @@ export function useGarfiXAI(options: UseGarfiXAIOptions = {}): UseGarfiXAIReturn
     clearMessages,
     clearError,
     retryLastMessage,
-    sessionId: sessionIdRef.current,
+    sessionId,
   };
 }
 
@@ -261,7 +263,7 @@ export function useAIThinking(): UseAIThinkingReturn {
           `🧠 ${data.data.reasoning}`,
         ]);
       }
-    } catch (error) {
+    } catch (_error) {
       setThoughtProcess(['❌ فشل في التفكير']);
     } finally {
       setIsThinking(false);
@@ -329,7 +331,7 @@ interface UseAIAnalyzeReturn {
   confidence: number;
   isLoading: boolean;
   error: string | null;
-  analyze: (data: Record<string, any>, type: 'invoice' | 'client' | 'product' | 'sales' | 'financial') => Promise<void>;
+  analyze: (data: Record<string, unknown>, type: 'invoice' | 'client' | 'product' | 'sales' | 'financial') => Promise<void>;
 }
 
 /**
@@ -342,7 +344,7 @@ export function useAIAnalyze(): UseAIAnalyzeReturn {
   const [error, setError] = useState<string | null>(null);
 
   const analyze = useCallback(async (
-    data: Record<string, any>,
+    data: Record<string, unknown>,
     type: 'invoice' | 'client' | 'product' | 'sales' | 'financial'
   ) => {
     setIsLoading(true);

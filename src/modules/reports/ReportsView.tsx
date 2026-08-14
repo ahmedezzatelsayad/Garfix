@@ -5,8 +5,7 @@ import { useBrand } from "@/context/BrandContext";
 import { useReportsFiltered, useDownloadReportCsv, type ReportFilterParams } from "@/hooks/queries";
 import { toast } from "sonner";
 import {
-  Loader2, FileText, Download, Calendar, TrendingUp, DollarSign,
-  AlertCircle, Receipt, Wallet, BarChart3,
+  Loader2, FileText, Download, Calendar, TrendingUp, DollarSign, Receipt, Wallet, BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {

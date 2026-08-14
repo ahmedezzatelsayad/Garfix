@@ -33,7 +33,7 @@ mock.module("@/lib/db", () => ({
 // ─── Real imports (tenantScope is pure, no DB needed) ────────────────────
 
 const { buildTenantScope, canAccessCompany } = await import("@/lib/tenantScope");
-const { PERMISSION_CATALOG, LOCKED_PERMS, computeEffectivePermissions, can, ROLE_DEFAULTS, ALL_PERMISSION_KEYS } = await import("@/lib/permissions");
+const { PERMISSION_CATALOG: _PERMISSION_CATALOG, LOCKED_PERMS: _LOCKED_PERMS, computeEffectivePermissions, can: _can, ROLE_DEFAULTS: _ROLE_DEFAULTS, ALL_PERMISSION_KEYS: _ALL_PERMISSION_KEYS } = await import("@/lib/permissions");
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 

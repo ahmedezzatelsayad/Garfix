@@ -119,7 +119,7 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
         employeeId,
         endDate,
         companySlug: "", // companySlug handled by mutation context
-      })) as  any;
+      })) as unknown as GratuityResponse;
       setResult(data);
       if (!data.eligible) {
         toast.warning(data.message || "الموظف غير مؤهل");
@@ -168,7 +168,7 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
             </select>
             {selectedEmployee && (
               <div className="text-[10px] text-muted-foreground mt-1">
-                الراتب الأساسي: {fmt(selectedEmployee.baseSalary)} {selectedEmployee.currency}
+                الراتب الأساسي: {fmt(selectedEmployee.baseSalary ?? 0)} {selectedEmployee.currency}
                 {selectedEmployee.joinDate ? ` • تاريخ الالتحاق: ${selectedEmployee.joinDate}` : ""}
               </div>
             )}

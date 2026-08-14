@@ -24,7 +24,7 @@ import {
   useTestWebhookEvent,
 } from "@/hooks/queries/webhooks";
 import {
-  Webhook, Activity, Plus, Trash2, RefreshCw, Send,
+  Webhook, Activity, Plus, RefreshCw, Send,
   CheckCircle2, XCircle, Clock, AlertTriangle, ExternalLink,
 } from "lucide-react";
 
@@ -113,7 +113,7 @@ export function WebhookManagementView() {
   const testEventMutation = useTestWebhookEvent();
 
   // ── Derived data from queries ──────────────────────────────────────────────
-  const endpoints = (endpointsQuery.data?.endpoints ?? []) as WebhookEndpointLocal[];
+  const endpoints = (endpointsQuery.data?.endpoints ?? []) as unknown as WebhookEndpointLocal[];
   // @ts-expect-error — API returns extra fields (eventType, statusCode, etc.) not declared in the hook's WebhookDelivery type; covered by its [key: string]: any index sig at runtime.
   const deliveries = (deliveriesQuery.data?.deliveries ?? []) as WebhookDeliveryLocal[];
   const stats = deliveriesQuery.data?.stats as DeliveryStats | null | undefined;
@@ -149,7 +149,7 @@ export function WebhookManagementView() {
       setFormUrl("");
       setFormEvents([]);
       setFormActive(true);
-    } catch (err) {
+    } catch (_err) {
       // error handled via mutation error state
     }
   };
@@ -157,7 +157,7 @@ export function WebhookManagementView() {
   const handleDeleteEndpoint = async (id: string) => {
     if (!confirm("هل تريد حذف نقطة الربط هذه؟")) return;
     deleteEndpointMutation.mutate({ id }, {
-      onError: (err) => { /* error handled via mutation state */ },
+      onError: (_err) => { /* error handled via mutation state */ },
     });
   };
 

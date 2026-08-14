@@ -4,8 +4,6 @@ import {
   seedEnterpriseData,
   TelemetryCollector,
   SeededRandom,
-  calculateMetrics,
-  type FounderReport,
   type TelemetryEntry,
 } from '../index';
 

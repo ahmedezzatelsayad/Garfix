@@ -9,8 +9,8 @@ import {
   useLandedCost, useCreateLandedCost,
 } from "@/hooks/queries";
 import {
-  Package, TrendingDown, Calculator, Plus, X, DollarSign,
-  Calendar, ArrowUpDown,
+  Package, TrendingDown, Calculator, Plus, DollarSign,
+  Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -108,7 +108,7 @@ export function InventoryCostingView() {
 }
 
 /* ─── Valuation ─────────────────────────────────────── */
-function ValuationView({ items, totalValue, company, onRefresh }: {
+function ValuationView({ items, totalValue, company: _company, onRefresh }: {
   items: ValuationItem[]; totalValue: number; company: { slug: string }; onRefresh: (d?: string) => void;
 }) {
   const [asOfDate, setAsOfDate] = useState("");

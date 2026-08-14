@@ -307,7 +307,7 @@ export async function POST(request: NextRequest) {
  * This endpoint can be called during user registration
  * to automatically assign an API key to the new user.
  */
-async function ASSIGN_KEY_API(request: NextRequest) {
+async function _ASSIGN_KEY_API(request: NextRequest) {
   return withErrorHandler(async () => {
     // Can be called with session token or internal token
     const body = await request.json().catch(() => ({}));

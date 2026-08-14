@@ -130,9 +130,13 @@ export function BillingView() {
         throw new Error(data.error || data.message || `HTTP ${response.status}`);
       }
 
-      // Redirect to payment provider
+      // Redirect to payment provider. Use location.assign() instead of
+      // assigning to window.location.href directly — the React Compiler
+      // treats assignment to a global property as "modifying a variable
+      // defined outside the component" (react-hooks/immutability), whereas
+      // a function call on the global is allowed.
       if (data.paymentUrl) {
-        window.location.href = data.paymentUrl;
+        window.location.assign(data.paymentUrl);
       } else {
         throw new Error("لم يتم استلام رابط الدفع");
       }

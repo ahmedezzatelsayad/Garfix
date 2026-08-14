@@ -1,18 +1,17 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { toast } from "sonner";
 import {
   useArApAging, useClientStatement, useSupplierStatement,
   usePostDatedChecks, useCreatePDC, usePDCAction,
-  useInstallments, useCreateInstallment,
-  useAccounts, useClients, useSuppliers,
+  useInstallments, useCreateInstallment, useClients, useSuppliers,
 } from "@/hooks/queries";
 import {
-  ArrowUpDown, Plus, X, Trash2, FileText, CheckCircle2,
-  Clock, Banknote, CalendarDays, Send, Download,
+  ArrowUpDown, Plus, FileText, CheckCircle2,
+  Clock, Banknote, CalendarDays,
   TrendingUp, TrendingDown, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,7 +23,7 @@ interface ClientStatementLine { date: string; type: string; reference: string; d
 interface ClientStatement { clientName: string; openingBalance: number; lines: ClientStatementLine[]; closingBalance: number; }
 interface PDC { id: number; checkNumber: string; bankName: string; amount: number; dueDate: string; status: string; direction: string; clientName?: string; supplierName?: string; }
 interface Installment { id: number; reference: string; clientName: string; totalAmount: number; installmentCount: number; paidCount: number; nextDueDate: string; status: string; }
-interface Contact { id: number; name: string; }
+interface _Contact { id: number; name: string; }
 
 type Tab = "aging" | "client-statement" | "supplier-statement" | "pdc" | "installments";
 type Direction = "receivable" | "payable";
@@ -114,7 +113,7 @@ export function ArApView() {
 function AgingReportView({ data, direction, onDirectionChange }: { data: AgingSummary | null; direction: Direction; onDirectionChange: (d: Direction) => void }) {
   const rows = data?.rows || [];
   const label = direction === "receivable" ? "العميل" : "المورد";
-  const accentColor = direction === "receivable" ? "#047857" : "#f59e0b";
+  const _accentColor = direction === "receivable" ? "#047857" : "#f59e0b";
 
   return (
     <div className="flex flex-col gap-4">

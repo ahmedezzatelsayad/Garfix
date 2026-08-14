@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import Image from "next/image";
 import { useBrand } from "@/context/BrandContext";
 import { useAuth } from "@/context/AuthContext";
-import { useAIChatHistory, useAIChatMessages, useAITools, useAIToolsExecute } from "@/hooks/queries";
+import { useAIChatHistory, useAIChatMessages, useAIToolsExecute } from "@/hooks/queries";
 import { cn } from "@/lib/utils";
 import {
   Bot, User, Send, X, Maximize2, Minimize2, ShieldAlert,
@@ -411,7 +412,7 @@ export function AICopilotBubble() {
         title="مساعد Garfix AI"
         className="fixed bottom-6 left-6 w-[60px] h-[60px] rounded-full text-white border-2 border-white/15 cursor-pointer flex items-center justify-center z-[150] transition-[transform,box-shadow] duration-[250ms] hover:scale-[1.06] shadow-[0_12px_32px_rgba(212,165,116,0.5)] animate-[garfix-agent-pulse_3s_infinite] ai-badge-premium bg-[linear-gradient(135deg,#d4a574_0%,#e8c49a_60%,#f5ddb0_100%)]"
       >
-        {open ? <X size={26} /> : <img src="/logo.svg" alt="GarfiX" width={30} height={30} className="rounded-md" />}
+        {open ? <X size={26} /> : <Image src="/logo.svg" alt="GarfiX" width={30} height={30} className="rounded-md" />}
         {/* Small "online" indicator dot */}
         <span
           className="absolute top-1 right-1 w-[12px] h-[12px] rounded-full bg-green-500 border-2 border-white"
@@ -447,7 +448,7 @@ export function AICopilotBubble() {
             <div
               className="w-9 h-9 rounded-[10px] flex items-center justify-center bg-white/[0.18] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"
             >
-              <img src="/logo.svg" alt="GarfiX" width={20} height={20} className="rounded" />
+              <Image src="/logo.svg" alt="GarfiX" width={20} height={20} className="rounded" />
             </div>
 
             {/* Title + Agent badge */}
@@ -496,7 +497,7 @@ export function AICopilotBubble() {
                 <div
                   className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-[14px] text-white shadow-[0_8px_24px_rgba(212,165,116,0.4)] ai-card bg-gradient-to-br from-[#d4a574] to-[#e8c49a]"
                 >
-                  <img src="/logo.svg" alt="GarfiX" width={32} height={32} className="rounded-md" />
+                  <Image src="/logo.svg" alt="GarfiX" width={32} height={32} className="rounded-md" />
                 </div>
                 <div className="text-sm font-bold mb-1">
                   مرحباً {user.displayName}!

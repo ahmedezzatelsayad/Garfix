@@ -85,7 +85,7 @@ export async function fireEvent(event: TriggerEvent): Promise<void> {
  * Never throws — every failure is captured and persisted.
  */
 export async function executeRule(rule: RuleShape, event: TriggerEvent): Promise<void> {
-  const start = Date.now();
+  const _start = Date.now();
   let status = "pending";
   let error: string | null = null;
 

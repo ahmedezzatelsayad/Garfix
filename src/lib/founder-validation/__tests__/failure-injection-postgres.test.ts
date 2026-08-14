@@ -140,7 +140,7 @@ describe('Failure Injection: Postgres (Database)', () => {
     const collector = new TelemetryCollector(companies);
     const t1 = collector.generateAll(new SeededRandom(101));
     const len1 = t1.length;
-    const t2 = collector.generateAll(new SeededRandom(101));
+    const _t2 = collector.generateAll(new SeededRandom(101));
     // generateAll returns the FULL entries array, not just the new ones.
     // After two calls with the same seed, collector.size should be 2 × len1.
     expect(collector.size).toBe(len1 * 2);

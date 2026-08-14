@@ -12,7 +12,6 @@
  */
 
 import { dbTyped as db } from "@/lib/db";
-import { logger } from "@/lib/logger";
 import { num } from "@/lib/money";
 
 // ─── 1. Support SLA Tracking ───────────────────────────────────────────────
@@ -466,7 +465,7 @@ export interface RetentionMetrics {
 
 export async function getRetentionMetrics(): Promise<RetentionMetrics> {
   const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const _thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   const companies = await db.company.findMany({
     where: { deletedAt: null },

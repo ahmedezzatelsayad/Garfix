@@ -11,14 +11,13 @@ import { dbTyped as db } from "@/lib/db";
 import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
 import { resolveAuth } from "@/lib/auth";
 import { reopenFiscalPeriod } from "@/lib/accounting/period-close";
-import { logAudit } from "@/lib/audit";
 import { apiError, withErrorHandler, apiOk } from "@/lib/api";
 import { z } from "zod";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-const ReopenSchema = z.object({
+const _ReopenSchema = z.object({
   reason: z.string().min(1, "Reason for reopening is required"),
 });
 

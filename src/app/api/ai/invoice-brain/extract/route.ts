@@ -58,7 +58,6 @@ import { computeCallCostUsd } from "@/lib/ai/cost-rates";
 // Import enhanced extraction functions
 import {
   extractInvoice,
-  extractBatch,
   PrismaPatternStore,
   mapBrainToOrder,
   buildCompanyContext,
@@ -244,7 +243,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       // and memory (result.source === "memory") stages.
       if (result.source === "ai" && result.data) {
         try {
-          const { storeAIMemory, fabricHash, executeCascade } = await import("@/lib/ai-fabric/gateway");
+          const { storeAIMemory, fabricHash, executeCascade: _executeCascade } = await import("@/lib/ai-fabric/gateway");
           // FC-2: executeCascade is called for invoice-brain to enable
           // budget enforcement + cache + memory stages
           await storeAIMemory({

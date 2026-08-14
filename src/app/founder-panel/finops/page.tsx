@@ -83,7 +83,7 @@ function fmt(value: number | null | undefined, prefix = "$"): string {
   return `${prefix}${value.toFixed(2)}`;
 }
 
-function fmtCompact(value: number | null | undefined, prefix = "$"): string {
+function _fmtCompact(value: number | null | undefined, prefix = "$"): string {
   if (value === null || value === undefined) return "N/A";
   if (Math.abs(value) >= 1000) return `${prefix}${(value / 1000).toFixed(1)}k`;
   if (Math.abs(value) >= 1) return `${prefix}${value.toFixed(2)}`;

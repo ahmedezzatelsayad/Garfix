@@ -12,14 +12,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { dbTyped as db } from "@/lib/db";
-import { getValkeyClient } from "@/lib/valkey";
-import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   const lines: string[] = [
     "# HELP garfix_request_count_total Total HTTP requests",
     "# TYPE garfix_request_count_total counter",

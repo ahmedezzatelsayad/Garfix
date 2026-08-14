@@ -36,8 +36,8 @@ function resolveEncryptionKey(): string {
     if (isBuildPhase) {
       console.warn("⚠️  PAYMENTS_ENC_KEY not set during build — will be validated at runtime. DO NOT deploy without setting this.");
       // Phase 9 P1 fix: random placeholder instead of deterministic string.
-      const { randomBytes } = require("node:crypto");
-      return `build-placeholder-${randomBytes(32).toString("hex")}`;
+      // randomBytes is from top-level crypto import
+      return `build-placeholder-${crypto.randomBytes(32).toString("hex")}`;
     }
     if (process.env.NODE_ENV === "production") {
       throw new Error("FATAL: PAYMENTS_ENC_KEY (or VAULT_ENCRYPTION_KEY) must be set to at least 32 characters for production.");
@@ -100,7 +100,7 @@ export function invalidateVaultCache(): void {
 }
 const ALGO = "aes-256-gcm";
 const IV_LEN = 12;
-const TAG_LEN = 16;
+const _TAG_LEN = 16;
 const KEY_LEN = 32;
 const SCRYPT_N = 16384;
 

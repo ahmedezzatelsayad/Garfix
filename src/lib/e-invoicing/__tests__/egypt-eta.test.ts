@@ -30,7 +30,7 @@ import {
   applyEgyptEtaCompliance,
   formatEgyptEtaErrorsForResponse,
 } from "../egypt-eta-validation";
-import { formatHijri, formatDualDate } from "../../hijri";
+import { formatHijri } from "../../hijri";
 import { num } from "../../money";
 
 // ── Test fixtures ──────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ const egyptCompany = {
   recordRetentionYears: 5,
 };
 
-const egyptCompanyMinimal = {
+const _egyptCompanyMinimal = {
   id: 2,
   slug: "egypt-minimal",
   name: "Egypt Minimal",

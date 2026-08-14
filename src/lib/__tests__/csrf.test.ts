@@ -138,12 +138,12 @@ describe("CSRF double-submit token matching", () => {
 
   it("undefined cookie fails verification", () => {
     const cookieValue: string | undefined = undefined;
-    const headerToken = generateCsrfToken();
+    const _headerToken = generateCsrfToken();
     expect(cookieValue).toBeUndefined();
   });
 
   it("undefined header fails verification", () => {
-    const cookieToken = generateCsrfToken();
+    const _cookieToken = generateCsrfToken();
     const headerValue: string | undefined = undefined;
     expect(headerValue).toBeUndefined();
   });

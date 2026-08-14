@@ -186,7 +186,7 @@ export async function processPendingDeliveries(): Promise<{
       } else {
         throw new Error(`HTTP ${response.status}`);
       }
-    } catch (err) {
+    } catch (_err) {
       const newAttempts = delivery.attempts + 1;
       if (newAttempts >= delivery.maxAttempts) {
         await db.webhookDelivery.update({

@@ -1,10 +1,10 @@
-# P5-A1 FIX (Audit v2 · Phase 5): axe-core AAA CI gate
-#
-# This script runs axe-core accessibility scans on all pages.
-# It's designed to be run in CI after the dev server starts.
-#
-# Usage: node scripts/axe-core-scan.mjs
-# Requires: npx playwright install && npm install @axe-core/playwright
+// P5-A1 FIX (Audit v2 · Phase 5): axe-core AAA CI gate
+//
+// This script runs axe-core accessibility scans on all pages.
+// It's designed to be run in CI after the dev server starts.
+//
+// Usage: node scripts/axe-core-scan.mjs
+// Requires: npx playwright install && npm install @axe-core/playwright
 
 import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";

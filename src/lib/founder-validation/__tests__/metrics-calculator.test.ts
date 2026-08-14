@@ -6,7 +6,6 @@ import {
   SeededRandom,
   type TelemetryEntry,
   type SyntheticCompany,
-  type MetricsSummary,
 } from '../index';
 
 function makeCompany(slug: string, overrides: Partial<SyntheticCompany> = {}): SyntheticCompany {

@@ -12,7 +12,6 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "bun:test";
-import { PrismaClient } from "@prisma/client";
 import { runWithTenantContext, getTenantContext } from "../tenant-context";
 import { withTenantTx, dbTyped as db } from "../db";
 
@@ -21,7 +20,7 @@ const isPostgres = DATABASE_URL.startsWith("postgres");
 
 describe.skipIf(!isPostgres)("T0-A: Nested Transaction Atomicity", () => {
   const TEST_SLUG = "t0a-test-co";
-  const TEST_SLUG_2 = "t0a-wrong-co";
+  const _TEST_SLUG_2 = "t0a-wrong-co";
 
   beforeAll(async () => {
     // Seed a test company (using platform bypass)

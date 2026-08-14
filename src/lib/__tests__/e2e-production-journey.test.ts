@@ -5,7 +5,7 @@
  * All external deps mocked. Tests business logic correctness.
  */
 
-import { describe, it, expect, beforeEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach } from "bun:test";
 
 // ── Mocked State ──────────────────────────────────────────────────────
 interface SimState {
@@ -325,8 +325,8 @@ describe("Step 6: Budget Calculation", () => {
 
   it("should forecast end-of-month spend", () => {
     const daysElapsed = 15;
-    const daysInMonth = 30;
-    const dailyRate = state.budget.currentSpendUsd / daysElapsed;
+    const _daysInMonth = 30;
+    const _dailyRate = state.budget.currentSpendUsd / daysElapsed;
     state.budget.currentSpendUsd = 30;
     const forecast = 30 + (30 / 15) * (30 - 15);
     expect(forecast).toBe(60);

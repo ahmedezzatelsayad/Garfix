@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     const searchQuery = searchParams.get('search');
     
     // Build where clause
-    const whereClause: any = {
+    const whereClause: Record<string, unknown> = {
       deletedAt: null, // Exclude soft-deleted companies
     };
     
@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
             },
             updatedAt: company.aiConfig.updatedAt,
           };
-        } catch (e) {
+        } catch (_e) {
           // Invalid JSON in provider config
           logger.warn(`Invalid AI config JSON for company ${company.id}`);
         }

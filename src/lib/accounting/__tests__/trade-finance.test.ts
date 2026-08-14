@@ -45,7 +45,7 @@ function calculateFxRevaluation(
   originalAmount: number,
   originalRate: number,
   currentRate: number,
-  isRealized: boolean,
+  _isRealized: boolean,
 ): { revaluedAmount: number; gainLoss: number; gainLossType: "gain" | "loss" | "none" } {
   const originalInBase = num(originalAmount * originalRate, 3);
   const currentInBase = num(originalAmount * currentRate, 3);

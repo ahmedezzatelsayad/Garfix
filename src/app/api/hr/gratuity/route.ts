@@ -7,7 +7,6 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
-import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
 import { requirePermissionForCompany } from "@/lib/middleware";
 import { calculateGratuity, isEligibleForGratuity } from "@/lib/gratuity";
 import { num } from "@/lib/money";
@@ -34,7 +33,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // IDOR fix: tenant filter in WHERE (DB-layer enforcement)
   const access = await requirePermissionForCompany(req, "employee_management", companySlug);
   if ("error" in access) return access.error;
-  const user = access.user;
+  const _user = access.user;
   const employee = await db.employee.findFirst({ where: { id: employeeId, companySlug } });
   if (!employee) return apiError("الموظف غير موجود", 404);
 

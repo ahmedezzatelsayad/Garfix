@@ -14,7 +14,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from '@/lib/auth';
 import { apiError, withErrorHandler } from '@/lib/api';
-import { logger } from '@/lib/logger';
 import { subDays, format } from 'date-fns';
 
 /**
@@ -163,8 +162,8 @@ export async function GET(request: NextRequest) {
  * Generate recommendations based on usage patterns
  */
 function generateRecommendations(
-  usagePercent: number, 
-  config: any
+  usagePercent: number,
+  config: Record<string, unknown>
 ): Array<{ type: string; message: string; severity: 'info' | 'warning' | 'critical' }> {
   const recommendations: Array<{ type: string; message: string; severity: 'info' | 'warning' | 'critical' }> = [];
   
@@ -182,7 +181,7 @@ function generateRecommendations(
     });
   }
   
-  if (!config.enableMemory && config.requestsThisMonth > 100) {
+  if (!config.enableMemory && Number(config.requestsThisMonth as number | string) > 100) {
     recommendations.push({
       type: 'enable_memory',
       message: 'تفعيل الذاكرة يمكن أن يحسن استجابات AI ويقلل من استخدام التوكنات.',

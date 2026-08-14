@@ -226,9 +226,10 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
         },
       });
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     // P2002 = unique constraint violation = duplicate webhook already processed
-    if (err?.code === "P2002" && input.externalUuid) {
+    const code = (err as { code?: string }).code;
+    if (code === "P2002" && input.externalUuid) {
       logger.info("[e-invoicing:webhooks] duplicate receipt caught via P2002 — re-fetching existing", {
         authority: input.authority,
         externalUuid: input.externalUuid,

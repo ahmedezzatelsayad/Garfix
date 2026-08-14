@@ -18,9 +18,7 @@
 
 import {
   useInfiniteQuery,
-  UseInfiniteQueryOptions,
   QueryClient,
-  InfiniteData,
 } from "@tanstack/react-query";
 import { apiGet, ApiError } from "@/hooks/api-client";
 

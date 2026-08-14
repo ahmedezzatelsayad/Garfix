@@ -19,7 +19,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { resolveAuth, assertCompanyAccess, type AuthPayload } from "./auth";
+import { resolveAuth, type AuthPayload } from "./auth";
 import { canAccessCompany } from "./tenantScope";
 import { logAudit } from "./audit";
 import { logger } from "./logger";

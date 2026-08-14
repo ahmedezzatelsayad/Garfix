@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
-import { requirePermission, requirePermissionForCompany, hasPermission } from "@/lib/middleware";
+import { requirePermission } from "@/lib/middleware";
 import { logAudit } from "@/lib/audit";
 import { calcInvoiceTotals, num, type LineItem } from "@/lib/money";
 import { z } from "zod";

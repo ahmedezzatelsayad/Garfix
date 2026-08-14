@@ -5,11 +5,11 @@
  * rateLimitResponse, getClientIp, clearRateLimit, and edge cases.
  */
 
-import { describe, it, expect, beforeEach, mock, spyOn, afterAll } from "bun:test";
+import { describe, it, expect, mock, afterAll } from "bun:test";
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
-const mockValkeyClient = {
+const _mockValkeyClient = {
   incr: mock(() => Promise.resolve(1)),
   pexpire: mock(() => Promise.resolve(1)),
   pttl: mock(() => Promise.resolve(-1)),
@@ -124,7 +124,7 @@ describe("checkRateLimit — memory backend", () => {
 
   it("resets after window expires (simulated via different key)", async () => {
     const config = { windowMs: 60000, maxAttempts: 2 };
-    const r1 = await checkRateLimit("test:reset:1", config);
+    const _r1 = await checkRateLimit("test:reset:1", config);
     const r2 = await checkRateLimit("test:reset:1", config);
     expect(r2.ok).toBe(true);
     const r3 = await checkRateLimit("test:reset:1", config);

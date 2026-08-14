@@ -14,13 +14,13 @@
  *   const invoice = await sdk.invoices.getById(1, { companySlug: "acme" });
  */
 
-import { apiGet, apiPost, apiPatch, apiPut, apiDelete } from "@/hooks/api-client";
+import { apiGet, apiPost, apiPatch } from "@/hooks/api-client";
 import type { ErrorResult, PaginatedResponse } from "./api-types";
 
 // ─── SDK Types ──────────────────────────────────────────────────────────
 
 type SdkResponse<T> = T | PaginatedResponse<T> | null;
-type SdkError = ErrorResult;
+type _SdkError = ErrorResult;
 type SdkParams = Record<string, string | number | undefined>;
 
 // ─── SDK Configuration ──────────────────────────────────────────────────

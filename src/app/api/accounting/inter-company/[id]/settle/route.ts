@@ -33,7 +33,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   const body = await parseJsonBody(req);
   const parsed = SettleSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
-  const data = parsed.data;
+  const _data = parsed.data;
 
   const existing = await db.interCompanyTransaction.findUnique({
     where: { id: transactionId },
@@ -199,7 +199,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
     // Fetch current balances
     const accountIds = [...new Set(allLineAccounts.map((l) => l.id))];
     const accounts = await tx.account.findMany({ where: { id: { in: accountIds } } });
-    const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
+    const accountMap = new Map(accounts.map((a) => [a.id, a]));
 
     for (const line of allLineAccounts) {
       const acc = accountMap.get(line.id);

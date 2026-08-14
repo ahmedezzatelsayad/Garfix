@@ -24,7 +24,7 @@ import {
   BAHRAIN_NBR_REGULATION,
   BAHRAIN_NBR_MAX_FINE_BHD,
 } from "../bahrain-nbr";
-import { formatHijri, formatDualDate } from "../../hijri";
+import { formatHijri } from "../../hijri";
 import { num } from "../../money";
 
 // ── Test fixtures ──────────────────────────────────────────────────────────

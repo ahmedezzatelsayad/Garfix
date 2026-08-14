@@ -22,7 +22,7 @@ function readSrc(relPath: string): string {
   return fs.readFileSync(fullPath, "utf-8");
 }
 
-function readCompSrc(relPath: string): string {
+function _readCompSrc(relPath: string): string {
   const fullPath = path.join(COMPONENTS_DIR, relPath);
   if (!fs.existsSync(fullPath)) return "";
   return fs.readFileSync(fullPath, "utf-8");
@@ -34,7 +34,7 @@ function readCompSrc(relPath: string): string {
 const responsivePrefixRe = /\b(sm|md|lg|xl):/g;
 
 // Matches grid-cols-* without a responsive prefix before it (i.e. bare grid)
-const bareGridRe = /className="[^"]*grid grid-cols-[0-9]+[^"]*"/g;
+const _bareGridRe = /className="[^"]*grid grid-cols-[0-9]+[^"]*"/g;
 
 // Matches specific responsive patterns we expect
 const responsiveGridRe = /\b(sm|md|lg|xl):grid-cols-/g;
@@ -42,7 +42,7 @@ const responsivePaddingRe = /\b(sm|md|lg|xl):p-/g;
 const responsiveTextRe = /\b(sm|md|lg|xl):text-/g;
 const responsiveHiddenRe = /\b(sm|md|lg|xl):hidden\b/g;
 const responsiveBlockRe = /\b(sm|md|lg|xl):block\b/g;
-const overflowXAutoRe = /overflow-x-auto/g;
+const _overflowXAutoRe = /overflow-x-auto/g;
 
 /* ─── Module files to validate ─────────────────────────────────────────── */
 
@@ -231,7 +231,7 @@ describe("Responsive Design Breakpoints", () => {
     console.log("── End Summary ──\n");
 
     // Every tracked file that exists should have responsive prefixes
-    for (const [label, count] of Object.entries(summary)) {
+    for (const [_label, count] of Object.entries(summary)) {
       expect(count).toBeGreaterThan(0);
     }
   });

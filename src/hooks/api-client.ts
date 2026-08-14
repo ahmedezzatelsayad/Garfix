@@ -142,8 +142,10 @@ function handle401(): void {
   setTimeout(() => {
     if (typeof window !== "undefined") {
       // Preserve the current path so login can redirect back after success.
+      // Use replace() so the expired-auth URL doesn't linger in browser history
+      // (prevents the user from "back"-buttoning into a broken session).
       const returnUrl = encodeURIComponent(window.location.pathname + window.location.hash);
-      window.location.href = `/login?returnTo=${returnUrl}&reason=expired`;
+      window.location.replace(`/login?returnTo=${returnUrl}&reason=expired`);
     }
   }, 100);
 }

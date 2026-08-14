@@ -15,7 +15,7 @@
  * Don't use mock() from bun:test for module replacement.
  */
 import { describe, it, expect } from 'bun:test';
-import { getCountryPricing, COUNTRY_CURRENCY, COUNTRY_PRICES } from '@/lib/billing/pricing';
+import { getCountryPricing } from '@/lib/billing/pricing';
 
 // ─── Replicated pure functions from subscription-engine.ts ──────────────────
 // computeCycleEnd is private in the source module, so we replicate it here

@@ -15,7 +15,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
-import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
+import { requirePermission } from "@/lib/middleware";
 import { assertCompanyAccess } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
@@ -95,9 +95,11 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
         },
       });
       // Create succeeded — we hold the lock. Proceed to payment.
-    } catch (err: any) {
+    } catch (err: unknown) {
       // P2002 = unique constraint violation = another request already claimed this key
-      if (err?.code === "P2002") {
+      const code = (err as { code?: string }).code;
+      const message = err instanceof Error ? err.message : String(err);
+      if (code === "P2002") {
         logger.info("[payment] idempotent replay — returning cached result", {
           invoiceId: existing.id,
           idempotencyKey: data.idempotencyKey,
@@ -135,7 +137,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
         });
       } else {
         // Non-P2002 error — log and proceed without idempotency (best-effort)
-        logger.error("[payment] idempotency create failed (non-P2002)", { err: err?.message });
+        logger.error("[payment] idempotency create failed (non-P2002)", { err: message });
       }
     }
   }

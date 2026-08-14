@@ -322,7 +322,7 @@ export class FingerprintCache<T> {
    */
   cleanup(): { expired: number; evicted: number } {
     let expired = 0;
-    const now = Date.now();
+    const _now = Date.now();
     
     for (const [key, entry] of this.cache.entries()) {
       if (this.isExpired(entry)) {
@@ -358,7 +358,7 @@ export class FingerprintCache<T> {
   
   // ─── Private Methods ─────────────────────────────────────
   
-  private isExpired(entry: CacheEntry<any>): boolean {
+  private isExpired(entry: CacheEntry<unknown>): boolean {
     const age = Date.now() - entry.createdAt;
     return age > this.config.ttlMs;
   }

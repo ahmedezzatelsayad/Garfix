@@ -32,7 +32,7 @@
 
 import { PrismaClient } from '@prisma/client'
 import os from 'node:os';
-import { getTenantContext, markInTransaction } from './tenant-context'
+import { getTenantContext } from './tenant-context'
 
 const globalForPrisma = globalThis as typeof globalThis & {
   prisma: ReturnType<typeof createExtendedPrisma> | undefined
@@ -111,7 +111,7 @@ try {
   (basePrisma as any).$on('error', (e: { code?: string; message?: string }) => {
     if (e?.code === 'P1017' || e?.code === 'P1011' || e?.code === 'P1001') {
       lastConnectionError = { code: e.code, message: e.message || String(e) || 'DB connection lost', at: new Date() };
-      // eslint-disable-next-line no-console
+       
       console.error('[db] connection error (likely RDS failover) — scheduling reconnect', { code: e.code });
       scheduleReconnect();
     }
@@ -402,7 +402,7 @@ if (isDev) globalForPrisma.prisma = db;
  * greppable for future audits and forces conscious decisions about each
  * type-safety hole rather than blanket-disabling the whole client.
  */
-export const dbAsAny: any = db;
+export const dbAsAny: unknown = db;
 
 
 /**

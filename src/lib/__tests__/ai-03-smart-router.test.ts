@@ -73,7 +73,7 @@ mock.module("@/lib/logger", () => ({
 const { getModelsForCapability, invalidateRegistryCache } = await import(
   "@/lib/ai/modelRegistry"
 );
-const { callAIWithFallback, routeRequest } = await import(
+const { callAIWithFallback: _callAIWithFallback, routeRequest } = await import(
   "@/lib/ai/smartRouter"
 );
 

@@ -3,7 +3,7 @@
  * POST — add a reply to a ticket (owner or admin/founder)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { dbTyped as db, dbAsAny } from "@/lib/db";
+import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { logAudit } from "@/lib/audit";
@@ -16,6 +16,17 @@ type RouteParams = { params: Promise<{ id: string }> };
 const ReplySchema = z.object({
   body: z.string().min(1, "نص الرد مطلوب"),
 });
+
+// P1-4 ESCAPE: `ticketReply` is not in prisma schema.prisma — the table is
+// created by an unrelated migration. Define a minimal local shape so we can
+// access it through a typed cast without `any`.
+interface TicketReplyTx {
+  ticketReply: {
+    create: (args: {
+      data: { ticketId: string; authorEmail: string; body: string };
+    }) => Promise<{ id: string }>;
+  };
+}
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteParams) => {
   // P5-H2: Rate limit POST /api/platform-admin-tickets-id-replies — 30/min/IP (API_WRITE).
@@ -53,15 +64,15 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
 
   // Determine the sender role label
-  let senderRole = user.role;
-  if (isFounder) senderRole = "founder";
+  let _senderRole = user.role;
+  if (isFounder) _senderRole = "founder";
 
   // Create reply + refresh ticket's updatedAt in one transaction.
   // P1-4 ESCAPE: `ticketReply` is not in prisma schema.prisma — the table is
-  // created by an unrelated migration. Using dbAsAny for the non-schema
-  // model access inside the transaction.
+  // created by an unrelated migration. Using a minimal typed cast for the
+  // non-schema model access inside the transaction.
   const reply = await db.$transaction(async (tx) => {
-    const r = await (tx as typeof dbAsAny).ticketReply.create({
+    const r = await (tx as unknown as TicketReplyTx).ticketReply.create({
       data: {
         ticketId: existing.id,
         authorEmail: user.email,

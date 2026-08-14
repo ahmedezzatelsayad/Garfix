@@ -9,8 +9,7 @@ import { toast } from "sonner";
 import { 
   Save, 
   X, 
-  ChevronDown, 
-  ChevronUp,
+  ChevronDown,
   CheckCircle2,
   AlertCircle,
   AlertTriangle

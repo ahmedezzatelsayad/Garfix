@@ -405,7 +405,7 @@ describe("gateway memoryStage", () => {
   });
 
   it("returns hit: false when memories don't match input hash", async () => {
-    const inputHash = fabricHash("test-input");
+    const _inputHash = fabricHash("test-input");
     mockDb.cacheEntry.findUnique.mockResolvedValue(null);
     mockDb.ruleCandidate.findMany.mockResolvedValue([]);
     mockDb.aIMemoryEntry.findMany.mockResolvedValue([

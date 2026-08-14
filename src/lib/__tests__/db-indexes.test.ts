@@ -112,7 +112,7 @@ describe("P1-3 migration SQL — structural integrity", () => {
     // Count CREATE INDEX statements (excluding inline IF NOT EXISTS form)
     // and ensure they have a matching DO $$ guard.
     const inlineCount = (allMigrationSql.match(/CREATE INDEX\s+IF NOT EXISTS/g) || []).length;
-    const doBlockCreateCount = (allMigrationSql.match(/^\s*CREATE INDEX(?:\s+IF NOT EXISTS)?\s+"/gm) || []).length - 0;
+    const _doBlockCreateCount = (allMigrationSql.match(/^\s*CREATE INDEX(?:\s+IF NOT EXISTS)?\s+"/gm) || []).length - 0;
     // Total CREATE INDEX (both forms)
     const totalCreate = (allMigrationSql.match(/^\s*CREATE INDEX/gm) || []).length;
     // DO $$ guards

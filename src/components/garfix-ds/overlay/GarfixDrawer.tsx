@@ -22,7 +22,6 @@
 import React, { useEffect } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { GarfixButton } from "../core/GarfixButton";
 // FE-03 FIX (Audit v2 · Phase 1) — wire useFocusTrap so that Tab/Shift+Tab
 // stays inside the drawer and focus returns to the trigger element on close.
 // Before this fix, the drawer had NO focus trap and NO focus restoration —

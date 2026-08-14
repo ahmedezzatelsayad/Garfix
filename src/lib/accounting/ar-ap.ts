@@ -12,9 +12,8 @@
  */
 import { dbTyped as db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
-import { num, addNums, subNums, toNum } from "@/lib/money";
+import { num } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
-import { logger } from "@/lib/logger";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -230,7 +229,7 @@ export async function calculateAging(
       supplierMap.set(supplierKey, existing);
     }
 
-    for (const [supplierKey, supplierPurchases] of supplierMap) {
+    for (const [_supplierKey, supplierPurchases] of supplierMap) {
       const supplierName = supplierPurchases[0]?.supplier || "Unknown";
 
       let current = 0;

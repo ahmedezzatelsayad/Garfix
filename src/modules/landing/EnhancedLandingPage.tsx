@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  Sparkles, Shield, Zap, Globe, ChevronLeft, CheckCircle2, Star,
+  Sparkles, Zap, ChevronLeft, CheckCircle2, Star,
   BrainCircuit, FileText, Building2, Calculator, ArrowRight,
-  Download, Wifi, WifiOff, RefreshCw, MessageCircle, Phone, Mail,
+  Download,
 } from "lucide-react";
 import { DEFAULT_PLANS } from "@/lib/plans";
 import { cn } from "@/lib/utils";
@@ -121,7 +121,7 @@ function getPrice(tier: typeof PRICING_TIERS[0], billingPeriod?: string) {
 
 function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) {
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
-  const [isOnline, setIsOnline] = useState(true);
+  const [_isOnline, setIsOnline] = useState(true);
   const heroRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

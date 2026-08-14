@@ -28,7 +28,7 @@ export interface AIAgent {
   type: string;
   config: Record<string, unknown>;
   companySlug: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of an AI memory record returned by the API. */
@@ -37,7 +37,7 @@ export interface AIMemory {
   key: string;
   value: string;
   companySlug: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of the Invoice Brain statistics returned by the API. */
@@ -45,7 +45,7 @@ export interface InvoiceBrainStats {
   totalProcessed: number;
   successRate: number;
   avgConfidence: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for creating a new AI agent. */
@@ -54,7 +54,7 @@ export interface CreateAIAgentPayload {
   type: string;
   config?: Record<string, unknown>;
   companySlug: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for creating a new AI memory entry. */
@@ -62,7 +62,7 @@ export interface CreateAIMemoryPayload {
   key: string;
   value: string;
   companySlug: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for the invoice extraction mutation. */
@@ -70,7 +70,7 @@ export interface ExtractInvoicePayload {
   fileUrl?: string;
   fileData?: string;
   companySlug: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for the smart parse mutation. */
@@ -78,7 +78,7 @@ export interface SmartParsePayload {
   content: string;
   type?: string;
   companySlug?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Payload for the AI chat mutation. */
@@ -87,7 +87,7 @@ export interface AIChatPayload {
   agentId?: number;
   companySlug?: string;
   context?: Record<string, unknown>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Response shape for the AI agents list endpoint. */
@@ -316,7 +316,7 @@ export interface BulkImportPayload {
   companySlug: string;
   autoAddProducts?: boolean;
   createJournalEntries?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Shape of a parsed order from smart parse / invoice brain. */
@@ -330,7 +330,7 @@ export interface ParsedOrder {
   shipping: number;
   discount: number;
   notes: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export function useBulkImport() {
@@ -502,7 +502,7 @@ export interface ChatHistoryMessage {
   role: "user" | "assistant";
   content: string;
   conversationId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Response shape for the AI chat history endpoint. */
@@ -539,14 +539,14 @@ export interface AIChatMessagesPayload {
   messages: Array<{ role: string; content: string }>;
   companySlug?: string;
   conversationId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /** Response shape for the conversation-style chat endpoint. */
 interface AIChatMessagesResponse {
   reply: string;
   conversationId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -572,7 +572,7 @@ export interface ParseImageJsonPayload {
   mimeType?: string;
   companySlug: string;
   autoAddProducts?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -600,7 +600,7 @@ export interface ParseFileJsonPayload {
   fileBase64: string;
   fileName: string;
   companySlug: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**

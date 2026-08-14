@@ -17,8 +17,6 @@
  *
  * Usage: bun run scripts/bench-ai-effectiveness.ts
  */
-import { randomUUID } from "node:crypto";
-import bcrypt from "bcryptjs";
 
 // We hit the live server via the gateway (port 3000) so cookies flow through.
 const BASE = "http://localhost:3000";

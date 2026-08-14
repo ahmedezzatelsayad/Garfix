@@ -201,8 +201,8 @@ describe("Failover logic", () => {
   });
 
   it("promotes replica when primary fails", () => {
-    let current = "primary";
-    if (false) current = "replica";
+    let _current = "primary";
+    if (false) _current = "replica";
     // Simulate promotion
     const primaryFailed = true;
     const role = primaryFailed ? "replica" : "primary";

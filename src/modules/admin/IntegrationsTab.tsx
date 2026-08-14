@@ -13,7 +13,6 @@ import { IconBtn } from "./shared-helpers";
 import {
   usePlatformIntegrations,
   useUpdatePlatformIntegrations,
-  useTestIntegration,
 } from "@/hooks/queries";
 
 /**

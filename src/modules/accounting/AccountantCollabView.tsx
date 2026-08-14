@@ -8,9 +8,9 @@ import {
 } from "@/hooks/queries";
 import { toast } from "sonner";
 import {
-  Plus, X, Shield, Download, FileSpreadsheet, Clock,
-  UserCheck, UserX, Eye, Pencil, Lock, Unlock, Search,
-  History, ClipboardList, ChevronDown,
+  Plus, X, Shield, Download, FileSpreadsheet,
+  UserCheck, UserX, Eye, Pencil, Lock, Search,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

@@ -375,7 +375,7 @@ export async function cancelVoucher(
         // Update account balances for reversal
         const accountIds = [...new Set(originalJE.lines.map((l) => l.accountId))];
         const accounts = await tx.account.findMany({ where: { id: { in: accountIds } } });
-        const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
+        const accountMap = new Map(accounts.map((a) => [a.id, a]));
 
         for (const line of originalJE.lines) {
           const acc = accountMap.get(line.accountId);
@@ -451,7 +451,7 @@ async function findDefaultExpenseAccount(tx: DbTx, companySlug: string): Promise
   return expenseAccount.id;
 }
 
-async function findClientARAccount(tx: DbTx, companySlug: string, clientId: string | number): Promise<string> {
+async function findClientARAccount(tx: DbTx, companySlug: string, _clientId: string | number): Promise<string> {
   // Find AR (Accounts Receivable) account — typically code 1200 or similar
   const arAccount = await tx.account.findFirst({
     where: { companySlug, type: "asset", code: { startsWith: "12" }, isActive: true },
@@ -464,7 +464,7 @@ async function findClientARAccount(tx: DbTx, companySlug: string, clientId: stri
   return arAccount.id;
 }
 
-async function findSupplierAPAccount(tx: DbTx, companySlug: string, supplierId: string | number): Promise<string> {
+async function findSupplierAPAccount(tx: DbTx, companySlug: string, _supplierId: string | number): Promise<string> {
   // Find AP (Accounts Payable) account — typically code 2100 or similar
   const apAccount = await tx.account.findFirst({
     where: { companySlug, type: "liability", code: { startsWith: "21" }, isActive: true },

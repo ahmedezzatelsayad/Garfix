@@ -157,7 +157,7 @@ async function countVisibleRows(
 
 /** Same count, but for a non-null literal slug (used to count what would be
  *  visible if the policy were `companySlug = '<slug>'`). */
-async function countRowsForSlug(
+async function _countRowsForSlug(
   tx: Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0],
   table: TenantTable,
   slug: string,
@@ -173,7 +173,7 @@ async function countRowsForSlug(
 
 // ─── Test setup / teardown ───────────────────────────────────────────────
 
-async function seedTestData(): Promise<void> {
+async function _seedTestData(): Promise<void> {
   await withPlatformBypass(async (tx) => {
     // Parent company row (clients/invoices/journal_entries have an FK on
     // companySlug → companies.slug, so we must create the company first).

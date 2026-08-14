@@ -15,12 +15,11 @@
  */
 
 import { dbTyped as db } from "@/lib/db";
-import { logger } from "@/lib/logger";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 /** Minimum days of data required to build a meaningful heat map. */
-const MIN_DAYS_REQUIRED = 7;
+const _MIN_DAYS_REQUIRED = 7;
 
 /** Default number of days to look back. */
 const DEFAULT_DAYS_NEEDED = 7;

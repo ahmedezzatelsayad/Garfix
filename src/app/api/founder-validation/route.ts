@@ -16,12 +16,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   seedEnterpriseData,
-  generateBusinessActivities,
   callOpenRouter,
   TelemetryCollector,
-  calculateMetrics,
   generateFounderReport,
-  simulateE2ETenantJourney,
   runFounderValidation,
   SeededRandom,
   type ValidationRunConfig,

@@ -16,7 +16,7 @@
  *   - scale-load-test.md    (human-readable summary)
  */
 import { monitorEventLoopDelay } from "node:perf_hooks";
-import { writeFileSync, mkdirSync, readFileSync, existsSync, statSync } from "node:fs";
+import { writeFileSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { execSync } from "node:child_process";
 
 // ─── Config ──────────────────────────────────────────────────────────────────

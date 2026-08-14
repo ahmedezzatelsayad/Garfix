@@ -13,7 +13,7 @@ import { dbTyped as db } from "@/lib/db";
 import { resolveAuth, hasPermission } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { num } from "@/lib/money";
-import { apiError, withErrorHandler } from "@/lib/api";
+import { withErrorHandler } from "@/lib/api";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
 // ─── Helper: Calculate next run date ─────────────────────────────────────────

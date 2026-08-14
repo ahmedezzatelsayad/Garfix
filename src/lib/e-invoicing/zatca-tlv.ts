@@ -137,7 +137,7 @@ export function generateSimplifiedInvoiceQR(data: SimplifiedInvoiceQRData): stri
  */
 export function generateStandardInvoiceQR(data: StandardInvoiceQRData): string {
   // First validate the base fields
-  const baseQR = generateSimplifiedInvoiceQR(data);
+  const _baseQR = generateSimplifiedInvoiceQR(data);
 
   // Validate cryptographic fields
   if (!data.invoiceHash) throw new Error("P0-7: invoiceHash is required for Standard invoice QR");

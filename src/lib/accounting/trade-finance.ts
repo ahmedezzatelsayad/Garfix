@@ -5,7 +5,7 @@
  * All monetary values stored as String; uses num() for arithmetic.
  */
 import { dbTyped as db } from "@/lib/db";
-import { num, addNums, subNums, mulNums, toNum } from "@/lib/money";
+import { num, toNum } from "@/lib/money";
 import { logger } from "@/lib/logger";
 import { parseJsonField } from "@/lib/api";
 
@@ -671,7 +671,7 @@ export async function calculateFxRevaluation(
     if (!company) {
       return { ok: false, error: "الشركة غير موجودة" };
     }
-    const baseCurrency = company.currency || "KWD";
+    const _baseCurrency = company.currency || "KWD";
 
     // Find invoices with currency different from base
     const foreignInvoices = openInvoices.filter(
@@ -878,7 +878,7 @@ export async function calculateFxRevaluation(
           const accounts = await tx.account.findMany({
             where: { id: { in: accountIds } },
           });
-          const accountMap: Map<any, any> = new Map(accounts.map((a) => [a.id, a]));
+          const accountMap = new Map(accounts.map((a) => [a.id, a]));
 
           const deltas = new Map<string, number>();
           for (const line of lines) {

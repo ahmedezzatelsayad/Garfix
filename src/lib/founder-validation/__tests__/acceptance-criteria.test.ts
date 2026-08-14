@@ -2,12 +2,8 @@ import { describe, it, expect } from 'bun:test';
 import {
   seedEnterpriseData,
   TelemetryCollector,
-  calculateMetrics,
-  generateFounderReport,
   runFounderValidation,
   SeededRandom,
-  type TelemetryEntry,
-  type SyntheticCompany,
 } from '../index';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -61,7 +57,7 @@ describe('Acceptance Criteria — Final Gate', () => {
   describe('AC-2: Zero data corruption', () => {
     const companies = seedEnterpriseData({ companyCount: 1000, seed: 42 });
     const collector = new TelemetryCollector(companies);
-    const telemetry = collector.generateAll(new SeededRandom(43));
+    const _telemetry = collector.generateAll(new SeededRandom(43));
 
     it('should have no null/undefined company slugs', () => {
       for (const c of companies) {

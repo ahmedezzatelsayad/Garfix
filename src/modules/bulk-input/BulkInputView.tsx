@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import Image from "next/image";
 import { useBrand } from "@/context/BrandContext";
 import { toast } from "sonner";
 import {
@@ -8,9 +9,9 @@ import {
   useParseFileJson, useBulkImport,
 } from "@/hooks/queries";
 import {
-  Sparkles, Image as ImageIcon, FileText, Upload, X, Check, Loader2,
-  Trash2, Edit2, Plus, Save, AlertCircle, ChevronDown, ChevronUp, FileSpreadsheet,
-  Brain, Zap, AlertTriangle, ListChecks, Package,
+  Sparkles, Image as ImageIcon, FileText, Upload, X, Loader2,
+  Trash2, Edit2, Plus, Save, ChevronDown, ChevronUp, FileSpreadsheet,
+  Brain, AlertTriangle, ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -531,11 +532,13 @@ export function BulkInputView() {
               <div className="text-[11px] font-normal">PNG, JPG حتى 5 ميجابايت</div>
             </button>
           ) : (
-            <div className="relative">
-              <img
+            <div className="relative w-full h-[300px]">
+              <Image
                 src={imagePreview}
                 alt="Uploaded"
-                className="w-full max-h-[300px] object-contain rounded-[10px] border border-border"
+                fill
+                className="object-contain rounded-[10px] border border-border"
+                sizes="100vw"
               />
               <button
                 onClick={() => { setImageBase64(null); setImagePreview(null); }}

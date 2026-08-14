@@ -35,11 +35,11 @@ import {
 import { IntegrationCard } from "./components/IntegrationCard";
 import { TestConnectionModal } from "./components/TestConnectionModal";
 import { ConfigureIntegrationModal } from "./components/ConfigureIntegrationModal";
-import { INTEGRATION_META_FULL, CATEGORY_LABELS, type IntegrationMeta, type IntegrationCategory } from "@/lib/integrations/types";
+import { INTEGRATION_META_FULL, CATEGORY_LABELS, type IntegrationCategory } from "@/lib/integrations/types";
 
 // ─── Types ───────────────────────────────────────────────────────────────
 
-interface IntegrationWithMeta {
+interface _IntegrationWithMeta {
   id: string;
   type: string;
   name: string;

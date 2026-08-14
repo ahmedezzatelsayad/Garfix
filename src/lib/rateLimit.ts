@@ -164,7 +164,7 @@ async function checkRateLimitValkey(
   redis: import("ioredis").default,
   rawKey: string,
   config: RateLimitConfig,
-  now: number,
+  _now: number,
 ): Promise<RateLimitResult> {
   const windowKey = `rl:win:${rawKey}`;
   const lockKey = `rl:lock:${rawKey}`;

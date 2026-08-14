@@ -21,9 +21,8 @@ import {
   GarfixAIIcon,
   GarfixAIBadge,
 } from "./GarfixAIIcon"
-import {
-  AIInlineSuggestion,
-} from "./GarfixAIComponents"
+
+
 
 // ═══════════════════════════════════════════════════════════════
 // SECTION 1: Proactive Notification Components
@@ -483,7 +482,7 @@ export function AIMemoryContext({
   onExport,
   showSessionInfo = true,
   sessionId,
-  messageCount,
+  messageCount: _messageCount,
   className,
 }: AIMemoryContextProps) {
 
@@ -560,7 +559,7 @@ export function AIMemoryContext({
 
           {/* Messages List */}
           <div className="max-h-60 overflow-y-auto p-4 space-y-2 garfix-scroll">
-            {memories.map((memory, index) => (
+            {memories.map((memory, _index) => (
               <div
                 key={memory.id}
                 className={cn(
@@ -649,6 +648,13 @@ export function AIVoiceInput({
 
   const [transcript, setTranscript] = React.useState("")
   const [isSupported, setIsSupported] = React.useState(true)
+  // Pre-compute visualizer bar geometry once per mount (Math.random is impure).
+  const [visualizerBars] = React.useState(() =>
+    Array.from({ length: 7 }, () => ({
+      height: Math.random() * 80 + 20,
+      duration: Math.random() * 500 + 300,
+    }))
+  )
 
   // Check browser support
   React.useEffect(() => {
@@ -767,9 +773,9 @@ export function AIVoiceInput({
               key={i}
               className="w-1 bg-primary rounded-full animate-bounce"
               style={{
-                height: `${Math.random() * 80 + 20}%`,
+                height: `${visualizerBars[i].height}%`,
                 animationDelay: `${i * 100}ms`,
-                animationDuration: `${Math.random() * 500 + 300}ms`,
+                animationDuration: `${visualizerBars[i].duration}ms`,
               }}
             />
           ))}

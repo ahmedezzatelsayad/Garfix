@@ -4,7 +4,7 @@
  * Run: bun run scripts/test-valkey-connection.ts
  */
 
-import { getValkeyClient, VALKEY_CONFIGURED, valkeyHealthCheck, getValkeyUrl } from '../src/lib/valkey';
+import { VALKEY_CONFIGURED, valkeyHealthCheck, getValkeyUrl } from '../src/lib/valkey';
 
 console.log('╔══════════════════════════════════════════════════════════════╗');
 console.log('║           Valkey + BullMQ Connection Test                  ║');

@@ -21,7 +21,7 @@
  */
 
 import { logger } from "@/lib/logger";
-import { getTracer, traceExternalCall } from "@/lib/telemetry/tracing";
+import { traceExternalCall } from "@/lib/telemetry/tracing";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 

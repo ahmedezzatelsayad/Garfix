@@ -149,7 +149,7 @@ describe("30-Day Simulation: Revenue & Profitability", () => {
 
   it("should track daily cost trend", () => {
     const costs = metrics.map(d => d.totalCostUsd);
-    const avgCost = costs.reduce((a, b) => a + b, 0) / 30;
+    const _avgCost = costs.reduce((a, b) => a + b, 0) / 30;
     const maxCost = Math.max(...costs);
     const minCost = Math.min(...costs);
     expect(maxCost).toBeGreaterThan(minCost);
@@ -278,7 +278,7 @@ describe("30-Day Simulation: Provider Failure (Day 15)", () => {
 
   it("should show increased cost on day 15 (retries + fallback)", () => {
     const failureDay = metrics[14];
-    const dayBefore = metrics[13];
+    const _dayBefore = metrics[13];
     // Math.random() makes this non-deterministic; just verify cost is non-negative
     expect(failureDay.totalCostUsd).toBeGreaterThanOrEqual(0);
   });
@@ -291,7 +291,7 @@ describe("30-Day Simulation: Provider Failure (Day 15)", () => {
 
   it("should recover to normal error rate by day 17", () => {
     const recoveryDay = metrics[16];
-    const normalDay = metrics[10];
+    const _normalDay = metrics[10];
     // Error rate should be back to normal
     expect(recoveryDay.errors / recoveryDay.totalRequests).toBeLessThan(0.02);
   });

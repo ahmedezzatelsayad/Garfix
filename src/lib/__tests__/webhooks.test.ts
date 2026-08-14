@@ -478,7 +478,7 @@ describe("Webhooks Module", () => {
     const payload = '{"event":"test"}';
 
     it("returns true for correct signature", () => {
-      const sig = verifyWebhookSignature(payload, "sha256=abc", secret);
+      const _sig = verifyWebhookSignature(payload, "sha256=abc", secret);
       // We need the actual correct signature
       // using imported crypto;
       const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");

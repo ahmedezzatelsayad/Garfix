@@ -374,7 +374,7 @@ describe("Economy Engine — forecast calculations", () => {
     const now = new Date();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const daysElapsed = now.getDate();
-    const daysRemaining = daysInMonth - daysElapsed;
+    const _daysRemaining = daysInMonth - daysElapsed;
 
     // We can't access internal daysRemaining, but we can verify the forecast
     // When cost=0, forecast=0 regardless of days, so margin=100%

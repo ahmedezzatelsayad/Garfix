@@ -19,7 +19,6 @@ import {
   EASING,
   prefersReducedMotion,
 } from '@/lib/animations';
-import { useNumberAnimation } from '@/hooks/useAnimation';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -230,7 +229,7 @@ export function GarfixCircularProgress({
   
   // Animated offset
   const [animatedOffset, setAnimatedOffset] = useState(circumference);
-  const [isVisible, setIsVisible] = useState(false);
+  const [_isVisible, setIsVisible] = useState(false);
   
   useEffect(() => {
     if (prefersReducedMotion()) {
@@ -360,7 +359,7 @@ export function GarfixStatCounter({
   const isPositive = change > 0;
   
   // Format options
-  const formatOptions: Intl.NumberFormatOptions = {
+  const _formatOptions: Intl.NumberFormatOptions = {
     minimumFractionDigits: isCurrency ? 2 : 0,
     maximumFractionDigits: isCurrency ? 2 : 1,
   };

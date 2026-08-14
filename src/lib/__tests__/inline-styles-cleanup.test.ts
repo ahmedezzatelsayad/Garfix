@@ -122,7 +122,7 @@ describe("Inline Styles Cleanup", () => {
 
   it("should mark all kept inline styles with TAILWINDBREAK comment", () => {
     const tsxFiles = findTsxFiles(SRC_DIR);
-    const filesWithStyleButNoBreak: string[] = [];
+    const _filesWithStyleButNoBreak: string[] = [];
 
     for (const file of tsxFiles) {
       const content = fs.readFileSync(file, "utf-8");

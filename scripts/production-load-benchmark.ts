@@ -52,7 +52,6 @@ import {
 import * as fs from "fs";
 import * as path from "path";
 import { PerformanceObserver, monitorEventLoopDelay, performance } from "perf_hooks";
-import v8 from "v8";
 import inspector from "inspector";
 import os from "os";
 

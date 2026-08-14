@@ -8,9 +8,8 @@
  * ALL functions use db.$transaction for atomicity (JE + lines + balance updates).
  */
 import { dbTyped as db, type DbTx } from "@/lib/db";
-import { num, addNums, subNums, toNum } from "@/lib/money";
+import { num, addNums, subNums } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
-import { logger } from "@/lib/logger";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -233,21 +232,21 @@ export async function createInvoiceJE(
 
   // Determine the debit account: AR if unpaid, Cash/Bank if paid
   let debitAccountId: string;
-  let debitAccountType: string;
+  let _debitAccountType: string;
   if (isPaid) {
     // Paid invoice: debit Cash/Bank
     const cashAccount = await getAccountByCode(db, companySlug, "1010");
     debitAccountId = cashAccount.id;
-    debitAccountType = cashAccount.type;
+    _debitAccountType = cashAccount.type;
   } else if (paidAmount > 0) {
     // Partially paid: split between AR and Cash
     // We still debit full amount to AR; the payment will create a separate JE
     debitAccountId = arAccount.id;
-    debitAccountType = arAccount.type;
+    _debitAccountType = arAccount.type;
   } else {
     // Unpaid: debit AR
     debitAccountId = arAccount.id;
-    debitAccountType = arAccount.type;
+    _debitAccountType = arAccount.type;
   }
 
   const lines: { accountId: string; debit: string; credit: string; description: string | null }[] = [];
@@ -546,7 +545,7 @@ export async function createSalaryPaymentJE(
 ): Promise<{ id: string; [key: string]: unknown }> {
   const baseSalary = num(salary.baseSalary, 3);
   const allowances = num(salary.allowances, 3);
-  const deductions = num(salary.deductions, 3);
+  const _deductions = num(salary.deductions, 3);
   const bonus = num(salary.bonus, 3);
   const netSalary = num(salary.netSalary, 3);
 
@@ -563,7 +562,7 @@ export async function createSalaryPaymentJE(
   const gratuityProvisionAccount = await getAccountByCode(db, companySlug, "2120");
 
   // Total gross salary expense = base + allowances + bonus + social insurance expense
-  const grossExpense = addNums(baseSalary, allowances, bonus, socialInsuranceExpense);
+  const _grossExpense = addNums(baseSalary, allowances, bonus, socialInsuranceExpense);
 
   const lines = [
     // Debit: Salaries & Wages (base + allowances + bonus)

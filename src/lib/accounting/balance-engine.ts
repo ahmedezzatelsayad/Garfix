@@ -11,9 +11,8 @@
  * ALL monetary values as String (no Float), use num() from money.ts.
  */
 import { dbTyped as db } from "@/lib/db";
-import { num, addNums, subNums, toNum } from "@/lib/money";
+import { num } from "@/lib/money";
 import { logAudit } from "@/lib/audit";
-import { logger } from "@/lib/logger";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 

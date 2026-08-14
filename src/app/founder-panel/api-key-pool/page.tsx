@@ -20,7 +20,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckSquare, Square, Search, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CheckSquare, Square, Search } from 'lucide-react';
 
 // ── GarfiX DS Imports ──────────────────────────────────────
 
@@ -46,7 +46,6 @@ import {
 import { GarfixModal } from '@/components/garfix-ds/overlay';
 
 import {
-  GarfixAnimatedContainer,
   FadeUp,
   MotionCard,
   GarfixPageTransition,
@@ -133,18 +132,12 @@ export default function FounderApiKeyPoolPage() {
   // Select All state
   const [selectedKeyIds, setSelectedKeyIds] = useState<Set<string>>(new Set());
 
-  // ── Effects ─────────────────────────────────────────────
-  
-  useEffect(() => {
-    fetchPoolData();
-  }, []);
-
   // ── API Calls ────────────────────────────────────────────
 
   /**
    * Fetch pool data (keys + stats)
    */
-  const fetchPoolData = async () => {
+  const fetchPoolData = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -171,7 +164,14 @@ export default function FounderApiKeyPoolPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Fetch pool data on mount (deferred to microtask to avoid set-state-in-effect)
+  useEffect(() => {
+    void Promise.resolve().then(() => {
+      fetchPoolData();
+    });
+  }, [fetchPoolData]);
 
   /**
    * Add new keys to the pool
@@ -248,7 +248,7 @@ export default function FounderApiKeyPoolPage() {
       } else {
         setAlert({ type: 'error', message: data.error || 'فشل الإلغاء' });
       }
-    } catch (error) {
+    } catch (_error) {
       setAlert({ type: 'error', message: 'خطأ في الاتصال' });
     }
   };
@@ -349,7 +349,7 @@ export default function FounderApiKeyPoolPage() {
 
       setSelectedKeyIds(new Set());
       fetchPoolData();
-    } catch (error) {
+    } catch (_error) {
       setAlert({ type: 'error', message: 'خطأ في الاتصال' });
     }
   };

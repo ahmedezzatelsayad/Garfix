@@ -10,7 +10,7 @@
  * Uses real Prisma (SQLite) — no mocks for DB.
  */
 
-import { describe, it, expect, beforeAll, beforeEach, afterAll } from "bun:test";
+import { describe, it, expect, beforeEach, afterAll } from "bun:test";
 import { dbTyped as db } from "@/lib/db";
 
 // Phase 9
@@ -33,8 +33,6 @@ import {
   recordObservation,
   promoteCandidates,
   getLearningStatus,
-  MIN_SAMPLES,
-  MIN_CONFIDENCE,
 } from "@/lib/ai-fabric/learning-engine";
 
 // Phase 12

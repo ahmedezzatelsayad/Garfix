@@ -13,7 +13,6 @@ import { logAdminAction } from "@/lib/audit";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import "@/lib/integrations"; // side-effect: registers providers
 import { INTEGRATION_INFO, getProvider } from "@/lib/integrations";
-import { setIntegrationConfig, disconnectIntegration } from "@/lib/integrations/registry";
 import { z } from "zod";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 

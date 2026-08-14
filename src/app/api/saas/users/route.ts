@@ -4,11 +4,10 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { dbTyped as db } from "@/lib/db";
-import { resolveAuth, hasUnrestrictedScope } from "@/lib/auth";
+import { resolveAuth } from "@/lib/auth";
 import { isFounderEmail } from "@/lib/founder";
 import { withErrorHandler, parseJsonField } from "@/lib/api";
 import { z } from "zod";
-import bcrypt from "bcryptjs";
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";

@@ -80,7 +80,7 @@ const CompanyAIConfigSchema = z.object({
 /**
  * Test Connection Schema (Per-Feature)
  */
-const TestConnectionSchema = z.object({
+const _TestConnectionSchema = z.object({
   feature: z.enum(['chat', 'invoice', 'parse', 'memory']),
   apiKey: z.string().min(1),
   model: z.string().optional(),
@@ -156,7 +156,7 @@ async function getOrCreateCompanyAIConfig(companyId: string) {
 /**
  * Test Google Gemini API Connection for a specific feature
  */
-async function testGeminiConnection(
+async function _testGeminiConnection(
   apiKey: string, 
   model: string = 'gemini-2.0-flash',
   feature: string = 'chat'

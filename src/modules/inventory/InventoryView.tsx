@@ -6,10 +6,8 @@ import {
   useWarehouses, useInventoryItems, useCatalog,
   useDeleteWarehouse, useCreateWarehouse, useCreateInventoryItem,
 } from "@/hooks/queries";
-import type { CreateInventoryItemPayload } from "@/hooks/queries/inventory";
 import { toast } from "sonner";
-import {
-  Package, Plus, Trash2, Boxes, AlertTriangle, CheckCircle2,
+import { Plus, Boxes, AlertTriangle, CheckCircle2,
   XCircle, Warehouse as WarehouseIcon, ArrowDownUp, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -23,7 +21,7 @@ import {
 
 type Tab = "warehouses" | "stock";
 
-import type { Warehouse, InventoryItem } from "@/hooks/queries/inventory";
+import type { Warehouse, CreateInventoryItemPayload } from "@/hooks/queries/inventory";
 import type { CatalogItem } from "@/hooks/queries/catalog";
 
 type Product = CatalogItem;
@@ -65,7 +63,7 @@ export function InventoryView() {
     setCurrentPage(1);
   };
 
-  const handleDeleteWarehouse = async (id: number) => {
+  const _handleDeleteWarehouse = async (id: number) => {
     if (!confirm("حذف هذا المستودع؟ لا يمكن الحذف إذا كان يحتوي على أصناف.")) return;
     deleteWarehouseMutation.mutate(id, {
       onSuccess: () => toast.success("تم حذف المستودع"),
@@ -511,7 +509,7 @@ function AdjustStockForm({
         reorderQty: Number(reorderQty),
         batchNumber: batchNumber || null,
         expiryDate: expiryDate || null,
-      } as  any);
+      } as unknown as CreateInventoryItemPayload);
       toast.success(mode === "set" ? "تم تحديد المخزون" : "تم تعديل المخزون");
       onSaved();
     } catch (err) { toast.error(err instanceof Error ? err.message : "خطأ"); }

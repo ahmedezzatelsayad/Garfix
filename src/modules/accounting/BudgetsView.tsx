@@ -8,22 +8,21 @@ import {
   useBudgetVsActual, usePeriodComparison,
 } from "@/hooks/queries";
 import {
-  Plus, X, PieChart, BarChart3, TrendingUp, TrendingDown,
-  CheckCircle2, RotateCcw, DollarSign, Calendar, ArrowRightLeft,
-  FileBarChart,
+  Plus, X, PieChart, BarChart3, TrendingUp,
+  CheckCircle2, RotateCcw, DollarSign, ArrowRightLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ─── Interfaces ──────────────────────────────────────────────────────────── */
-interface BudgetEntry {
+interface _BudgetEntry {
   id: number; accountId: number; accountCode: string; accountNameAr: string;
   plannedAmount: number; actualAmount?: number; status: string;
 }
-interface BudgetVsActualRow {
+interface _BudgetVsActualRow {
   id: number; accountCode: string; accountNameAr: string;
   planned: number; actual: number; variance: number; variancePercent: number;
 }
-interface PeriodComparison {
+interface _PeriodComparison {
   id: number; periodName: string; revenue: number; expenses: number; profit: number; cash: number;
 }
 

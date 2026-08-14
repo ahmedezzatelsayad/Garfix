@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { seedEnterpriseData, TelemetryCollector, calculateMetrics } from '../index';
+import { seedEnterpriseData } from '../index';
 describe('Validation: date-consistency 3', () => {
   it('validates date-consistency for 3', () => { const c = seedEnterpriseData(10, 3800+3); expect(c.length).toBe(10); for(const x of c) { expect(x.id).toBeTruthy(); } });
   it('validates date-consistency with 100 companies for 3', () => { const c = seedEnterpriseData(100, 3900+3); expect(c.length).toBe(100); });

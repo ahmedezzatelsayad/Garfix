@@ -12,10 +12,10 @@
  * - Sets invoice type classification (standard/simplified)
  */
 
-import { isKuwait, getCountryConfig } from "@/lib/gulfConfig";
+import { isKuwait } from "@/lib/gulfConfig";
 import { validateKuwaitInvoice, autoPopulateKuwaitFields } from "@/lib/e-invoicing/kuwait";
 import { logger } from "@/lib/logger";
-import { KUWAIT_CURRENCY, KUWAIT_DECIMAL_PLACES, KUWAIT_AUTHORITY } from "@/lib/e-invoicing/kuwait";
+import { KUWAIT_CURRENCY, KUWAIT_DECIMAL_PLACES } from "@/lib/e-invoicing/kuwait";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -161,9 +161,9 @@ export function formatKuwaitErrorsForResponse(
   }
 
   // Primary error: first Arabic message
-  const primaryError = result.blockingErrors[0].messageAr;
+  const _primaryError = result.blockingErrors[0].messageAr;
   const allErrorsAr = result.blockingErrors.map((e) => e.messageAr).join("؛ ");
-  const allErrorsEn = result.blockingErrors.map((e) => e.messageEn).join("; ");
+  const _allErrorsEn = result.blockingErrors.map((e) => e.messageEn).join("; ");
 
   return {
     error: allErrorsAr,
