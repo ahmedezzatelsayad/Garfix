@@ -32,12 +32,13 @@
 -- before applying. Safe to re-run on databases that already have TEXT ids.
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- ─── Part 0: Drop ALL FK constraints referencing the 53 tables ──────────
--- PostgreSQL refuses to ALTER COLUMN TYPE when a FK constraint depends
--- on the column. We dynamically drop ALL foreign keys that reference
--- any of our 53 target tables, regardless of constraint name.
--- We do NOT re-create them — the app code doesn't rely on DB-level FK
--- enforcement (Prisma handles relations in JS).
+-- ─── Part 0: Drop ALL FK constraints in the public schema ────────────────
+-- We're changing the type of many id + *Id columns. Any FK constraint
+-- that depends on a column whose type is changing will block the ALTER
+-- with 'incompatible types' (error 42804). Rather than predict which
+-- FKs conflict, we drop ALL foreign key constraints in public schema.
+-- The app doesn't rely on DB-level FK enforcement (Prisma handles
+-- relations in JS), so dropping them is safe for E2E.
 
 DO $$
 DECLARE
@@ -50,12 +51,8 @@ BEGIN
     FROM pg_constraint con
     JOIN pg_class c ON c.oid = con.conrelid
     JOIN pg_namespace n ON n.oid = c.relnamespace
-    JOIN pg_class c2 ON c2.oid = con.confrelid
-    JOIN pg_namespace n2 ON n2.oid = c2.relnamespace
     WHERE con.contype = 'f'
       AND n.nspname = 'public'
-      AND n2.nspname = 'public'
-      AND c2.relname IN ('ai_fabric_cache_entries', 'accounts', 'automation_execution_logs', 'automation_rules', 'bank_accounts', 'bank_reconciliations', 'bank_transactions', 'budgets', 'budget_configs', 'clients', 'companies', 'cost_centers', 'depreciation_entries', 'e_invoices', 'hr_employees', 'feature_flags', 'fiscal_periods', 'fixed_assets', 'fx_revaluations', 'global_patterns', 'hr_attendance', 'hr_commissions', 'hr_leave_requests', 'hr_performance', 'hr_salaries', 'idempotency_keys', 'installment_schedules', 'inter_company_transactions', 'inventory_items', 'invoice_templates', 'journal_entries', 'journal_entry_lines', 'landed_cost_allocations', 'landed_cost_lines', 'letters_of_credit', 'match_overrides', 'modules', 'opening_balance_entries', 'payment_transactions', 'payment_vouchers', 'post_dated_checks', 'product_aliases', 'product_catalog', 'product_match_audit', 'provider_configs', 'purchase_invoices', 'purchase_orders', 'quotations', 'role_permissions', 'stock_movements', 'suppliers', 'tax_filings', 'warehouses')
   LOOP
     EXECUTE format('ALTER TABLE %I.%I DROP CONSTRAINT %I',
       fk_record.schema_name, fk_record.table_name, fk_record.constraint_name);
