@@ -4,14 +4,19 @@
  * Levels: debug, info, warn, error, fatal.
  * Output: JSON to stdout for production, pretty-printed in dev.
  *
- * Uses console.* methods (which Next.js routes work with across Node + Edge
- * runtimes) instead of process.stdout.write — same performance, better
- * runtime compatibility.
+ * BROWSER COMPATIBILITY FIX:
+ * Previously `debug()` and `info()` used `process.stdout.write()` which is
+ * undefined in the browser. When the logger is imported by a client-side
+ * module (e.g. AuthContext, Providers), calling `logger.info()` threw
+ * `TypeError: Cannot read properties of undefined (reading 'write')`,
+ * crashing React hydration and showing the ErrorBoundary ("تعذر تحميل التطبيق").
+ *
+ * The fix: detect the runtime and use `console.log()` / `console.info()` in
+ * the browser, `process.stdout.write()` on the server. This preserves the
+ * structured-JSON output on the server (for log aggregation) while keeping
+ * the browser console readable.
  *
  * Signature: `(message: string, meta?: LogMeta)` — message first, meta second.
- * This was previously documented backwards in this same file, which caused
- * the 92 caller files to copy the wrong order. The order is now correct here
- * and the callers are being fixed in a separate mechanical pass.
  *
  * Usage:
  *   import { logger } from "@/lib/logger";
@@ -94,22 +99,73 @@ function format(level: Level, msg: string, meta?: LogMeta): string {
   return `[${ts}] ${level.toUpperCase().padEnd(5)} ${msg}${metaStr}`;
 }
 
+/**
+ * Detect if we're running in a browser environment.
+ * In the browser, `process.stdout` is undefined, so we must use `console.*`.
+ * On the server (Node.js / Edge runtime), `process.stdout.write` is available
+ * and preferred for structured log output.
+ */
+const IS_BROWSER = typeof window !== "undefined";
+
+/**
+ * Write a log line to the appropriate output:
+ *   - Server: process.stdout.write (structured JSON, no console formatting)
+ *   - Browser: console.log/info/warn/error (browser devtools formatting)
+ */
+function writeLog(level: Level, msg: string, meta?: LogMeta): void {
+  const formatted = format(level, msg, meta);
+  if (IS_BROWSER) {
+    // Browser: use console methods (process.stdout is undefined here)
+    switch (level) {
+      case "debug":
+        console.debug(formatted);
+        break;
+      case "info":
+        console.info(formatted);
+        break;
+      case "warn":
+        console.warn(formatted);
+        break;
+      case "error":
+      case "fatal":
+        console.error(formatted);
+        break;
+    }
+  } else {
+    // Server: use process.stdout for debug/info (avoids console formatting)
+    // and console.warn/error for warnings/errors (matches existing behavior)
+    switch (level) {
+      case "debug":
+      case "info":
+        process.stdout.write(formatted + "\n");
+        break;
+      case "warn":
+        console.warn(formatted);
+        break;
+      case "error":
+      case "fatal":
+        console.error(formatted);
+        break;
+    }
+  }
+}
+
 export const logger = {
   debug(msg: string, meta?: LogMeta) {
-    if (shouldLog("debug")) process.stdout.write(format("debug", msg, meta) + "\n");
+    if (shouldLog("debug")) writeLog("debug", msg, meta);
   },
   info(msg: string, meta?: LogMeta) {
-    if (shouldLog("info")) process.stdout.write(format("info", msg, meta) + "\n");
+    if (shouldLog("info")) writeLog("info", msg, meta);
   },
   warn(msg: string, meta?: LogMeta) {
-    if (shouldLog("warn")) console.warn(format("warn", msg, meta));
+    if (shouldLog("warn")) writeLog("warn", msg, meta);
   },
   error(msg: string, meta?: LogMeta) {
-    if (shouldLog("error")) console.error(format("error", msg, meta));
+    if (shouldLog("error")) writeLog("error", msg, meta);
   },
   fatal(msg: string, meta?: LogMeta) {
     if (shouldLog("fatal")) {
-      console.error(format("fatal", msg, meta));
+      writeLog("fatal", msg, meta);
       // Don't call process.exit here — let the caller decide
     }
   },
