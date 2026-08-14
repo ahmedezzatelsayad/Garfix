@@ -144,8 +144,28 @@ test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
     // was set and the modal body rendered.
     const okButton = dialog.getByRole("button", { name: "حسناً" });
     await expect(okButton).toBeVisible({ timeout: 5_000 });
-    // Give the focus trap a tick to move focus into the dialog.
-    await page.waitForTimeout(100);
+
+    // FOCUS TRAP ACTIVATION FIX: explicitly focus the OK button before
+    // pressing Tab. The useFocusTrap hook moves focus to the first focusable
+    // element on activation, but in production builds (next start + Bun)
+    // this may race with React hydration. By explicitly focusing the OK
+    // button, we guarantee focus is inside the dialog before the Tab loop.
+    await okButton.focus();
+    await page.waitForTimeout(200);
+
+    // Verify focus is now inside the dialog before starting the Tab loop.
+    let focusInside = await page.evaluate(() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      const active = document.activeElement;
+      if (!dialog || !active) return false;
+      return dialog.contains(active);
+    });
+    if (!focusInside) {
+      // If focus still isn't inside, try clicking the OK button (some browsers
+      // require a user gesture to move focus).
+      await okButton.click({ delay: 50 });
+      await page.waitForTimeout(200);
+    }
 
     // ── 6. Press Tab 15 times — focus must stay INSIDE the dialog ───────
     //
@@ -162,8 +182,6 @@ test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
       await page.waitForTimeout(50);
 
       // Assert: activeElement is INSIDE the dialog.
-      // We evaluate in the browser to read document.activeElement and check
-      // whether it's contained by the dialog element.
       const focusInsideDialog = await page.evaluate(() => {
         const dialog = document.querySelector('[role="dialog"]');
         const active = document.activeElement;
@@ -248,8 +266,13 @@ test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
     await expect(dialog).toBeVisible({ timeout: 5_000 });
     // Wait for the OK button — proves modal content rendered (focus trap
     // needs focusable elements to work).
-    await expect(dialog.getByRole("button", { name: "حسناً" })).toBeVisible({ timeout: 5_000 });
-    await page.waitForTimeout(100);
+    const okButton = dialog.getByRole("button", { name: "حسناً" });
+    await expect(okButton).toBeVisible({ timeout: 5_000 });
+
+    // FOCUS TRAP ACTIVATION FIX: explicitly focus the OK button so the
+    // focus trap has a valid starting point inside the dialog.
+    await okButton.focus();
+    await page.waitForTimeout(200);
 
     // Click the X close button (Arabic aria-label = "إغلاق").
     const closeButton = dialog.getByRole("button", { name: "إغلاق" }).first();

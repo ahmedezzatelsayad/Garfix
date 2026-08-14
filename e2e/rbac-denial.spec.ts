@@ -108,9 +108,9 @@ test.describe("RBAC denial — TPD-01 real E2E", () => {
     const meBody = (await meRes.json()) as { email: string; role: string };
     expect(meBody.email).toBe(EMPLOYEE_EMAIL);
 
-    // Navigate to /founder-panel. The layout's client-side guard calls
-    // /api/auth/me on mount; if the user is not the founder, it calls
-    // router.replace("/") to redirect them away.
+    // Navigate to a /founder-panel sub-route (mission-control) to trigger
+    // the layout's client-side guard. We use a sub-route because /founder-panel
+    // itself has no page.tsx (returns 404 without the layout).
     //
     // LAYOUT FIX: founder-panel/layout.tsx was converted from a server
     // component (using next/navigation redirect()) to a client component
@@ -121,7 +121,7 @@ test.describe("RBAC denial — TPD-01 real E2E", () => {
     // Because the redirect is client-side, we need to wait for the page to
     // hydrate, fetch /api/auth/me, and then navigate away. This takes ~1-2s
     // in CI. We wait up to 10s for the URL to change.
-    await page.goto("/founder-panel");
+    await page.goto("/founder-panel/mission-control");
     try {
       await page.waitForURL(
         (url) => !url.toString().includes("/founder-panel"),

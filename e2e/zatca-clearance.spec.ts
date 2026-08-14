@@ -146,9 +146,16 @@ test.describe("ZATCA clearance — TPD-01 real E2E", () => {
     // Read the CSRF token from the BrowserContext cookie jar (NOT document.cookie
     // — that throws SecurityError on some origins). The fetch runs in the browser
     // context, so session cookies are attached automatically.
+    //
+    // URL FIX: page.evaluate runs in the browser, where relative URLs like
+    // "/api/..." need to be resolved against window.location.origin. Passing
+    // a bare "/api/..." string to fetch() inside page.evaluate throws
+    // "Failed to parse URL" in some Chromium versions. We resolve the full
+    // URL on the Node side (page.evaluate's argument) and pass it in.
     const cookies = await page.context().cookies();
     const csrfCookie = cookies.find((c) => c.name === "inv_csrf");
     const csrfToken = csrfCookie ? decodeURIComponent(csrfCookie.value) : "";
+    const baseUrl = await page.evaluate(() => window.location.origin);
 
     const result = await page.evaluate(async ({ url, csrf, payload }) => {
       const res = await fetch(url, {
@@ -163,7 +170,7 @@ test.describe("ZATCA clearance — TPD-01 real E2E", () => {
       const json = await res.json();
       return { status: res.status, body: json };
     }, {
-      url: "/api/e-invoicing/zatca/submit",
+      url: `${baseUrl}/api/e-invoicing/zatca/submit`,
       csrf: csrfToken,
       payload: { invoiceId, companySlug: TEST_COMPANY_SLUG },
     });
