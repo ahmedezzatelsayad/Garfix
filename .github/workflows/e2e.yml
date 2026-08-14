@@ -140,6 +140,11 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           JWT_SECRET: ${{ env.JWT_SECRET }}
           FOUNDER_EMAIL: ${{ env.FOUNDER_EMAIL }}
+          # SETUP_COMPLETE must be set at BUILD time because Next.js inlines
+          # process.env.SETUP_COMPLETE into the middleware bundle (Edge runtime).
+          # If unset at build, the middleware sees undefined and redirects every
+          # unauthenticated request to /setup — breaking all E2E tests.
+          SETUP_COMPLETE: ${{ env.SETUP_COMPLETE }}
 
       - name: Start application
         run: |
