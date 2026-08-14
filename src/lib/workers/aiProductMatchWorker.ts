@@ -153,14 +153,14 @@ export async function handleAIProductMatchJob(data: Record<string, unknown>): Pr
       await db.productAlias.upsert({
         where: { alias_companySlug_language: { alias: newProductName.trim(), companySlug, language: "ar" } },
         update: {
-          productCatalogId: candidateProductId,
+          productCatalogId: String(candidateProductId),
           source: "ai",
           confidence: aiResult.confidence,
           isVerified: true,
         },
         create: {
           productId: String(candidateProductId),
-          productCatalogId: candidateProductId,
+          productCatalogId: String(candidateProductId),
           companySlug,
           alias: newProductName.trim(),
           language: "ar",

@@ -31,8 +31,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (founderAccess instanceof NextResponse) return founderAccess;
   const founder = founderAccess.user;
 
-  const { id: idStr } = await params;
-  const id = parseInt(idStr);
+  const { id } = await params;
   const existing = await db.announcement.findUnique({ where: { id } });
   if (!existing) return apiError("Announcement not found", 404);
 
@@ -75,8 +74,7 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Rout
   if (founderAccess instanceof NextResponse) return founderAccess;
   const founder = founderAccess.user;
 
-  const { id: idStr } = await params;
-  const id = parseInt(idStr);
+  const { id } = await params;
   const existing = await db.announcement.findUnique({ where: { id } });
   if (!existing) return apiError("Announcement not found", 404);
 

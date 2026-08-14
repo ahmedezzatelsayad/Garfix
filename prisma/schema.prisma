@@ -1253,7 +1253,7 @@ model HRPerformance {
 // ─── Invoice (matches db.invoice) ───
 
 model Invoice {
-  id                    String               @id @default(cuid())
+  id                    Int                  @id @default(autoincrement())
   invoiceNumber         String
   clientName            String?
   clientId              String?
@@ -1397,7 +1397,7 @@ model Quotation {
   taxRate            Decimal @default(0) // DB-07 FIX: String→Decimal
   taxAmount          Decimal @default(0) // DB-07 FIX: String→Decimal
   notes              String?
-  convertedInvoiceId String?
+  convertedInvoiceId Int?
   createdBy          String?
 
   // DB-13 FIX (Audit v2 · Phase 3): Optimistic locking for concurrent quote
@@ -1479,7 +1479,7 @@ model StockMovement {
 // meaning every PaymentTransaction.create with these fields would throw at runtime.
 model PaymentTransaction {
   id                String    @id @default(cuid())
-  invoiceId         String?
+  invoiceId         Int?
   amount            Decimal
   method            String // cash, bank_transfer, card, online
   reference         String?
@@ -1621,7 +1621,7 @@ model TaxFiling {
 
 model EInvoice {
   id               String    @id @default(cuid())
-  invoiceId        String       @unique
+  invoiceId        Int       @unique
   authorityType    String    @default("none") // none, zatca, uae_fta, bahrain_nbr, oman_tax, kuwait_decree_10_2026, eta_egypt
   submissionStatus String    @default("pending") // pending, submitted, accepted, rejected, cleared
   uuid             String?
@@ -1660,7 +1660,7 @@ model EInvoice {
 model EInvoiceReceipt {
   id              String   @id @default(cuid())
   companySlug     String
-  invoiceId       String? // nullable: some webhooks arrive before invoice row exists
+  invoiceId       Int? // nullable: some webhooks arrive before invoice row exists
   authority       String // zatca, eta_egypt, uae_fta, kuwait_decree_10_2026, bahrain_nbr, oman_tax, qatar_gta
   eventType       String // clearance_requested, cleared, rejected, cancelled, delivery_report
   externalUuid    String? // UUID issued by the authority (e.g. ZATCA invoice UUID, ETA document UUID)
@@ -1736,7 +1736,7 @@ model ProductMatchAudit {
   product          ProductCatalog? @relation(fields: [matchedProductId], references: [id])
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  invoiceId    String?
+  invoiceId    Int?
   matchedAlias String?
   tier         String
   action       String
@@ -1889,7 +1889,8 @@ model EmailVerification {
 // ─── Platform Settings (matches db.platformSettings) ───
 
 model PlatformSettings {
-  key         String                    @id
+  id          Int                       @id @default(autoincrement())
+  key         String                    @unique
   value       String
   category    String                    @default("general") // general, ai, billing, security, e-invoicing
   description String?
@@ -1909,12 +1910,12 @@ model PlatformSettings {
 
 model PlatformSettingsHistory {
   id        Int              @id @default(autoincrement())
-  settingId String
+  settingId Int
   oldValue  String?
   newValue  String
   changedBy String?
   createdAt DateTime         @default(now())
-  setting   PlatformSettings @relation(fields: [settingId], references: [key])
+  setting   PlatformSettings @relation(fields: [settingId], references: [id])
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
   settingKey     String
@@ -1976,7 +1977,8 @@ model SupportTicket {
 // ─── Landing Content (matches db.landingContent) ───
 
 model LandingContent {
-  section   String   @id
+  id        Int      @id @default(autoincrement())
+  section   String   @unique
   title     String?
   subtitle  String?
   body      String?
@@ -2504,6 +2506,7 @@ model WebhookDelivery {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 model InvoiceBrainHeaderMap {
+  id          Int      @id @default(autoincrement())
   companySlug String
   headerName  String
   mappedField String
@@ -2516,6 +2519,7 @@ model InvoiceBrainHeaderMap {
 }
 
 model InvoiceBrainTemplate {
+  id           Int      @id @default(autoincrement())
   companySlug  String
   templateName String
   columnMap    String? // JSON
@@ -2563,7 +2567,7 @@ model InvoiceTemplateSettings {
   updatedAt         DateTime @updatedAt
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  templateId      String?
+  templateId      Int?
   primaryColor    String
   fontFamily      String
   fontSize        Int

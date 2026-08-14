@@ -17,7 +17,8 @@
  * middleware redirects /setup → / and the page never renders.
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -130,15 +131,16 @@ export default function SetupWizard() {
   const [integrations, setIntegrations] = useState<Integrations>(DEFAULT_INTEGRATIONS);
   const [dbTestResult, setDbTestResult] = useState<{ serverVersion?: string; database?: string; currentUser?: string } | null>(null);
   const [migrationOutput, setMigrationOutput] = useState<string>("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [founderResult, setFounderResult] = useState<{ founderEmail: string; companySlug: string } | null>(null);
   const [setupComplete, setSetupComplete] = useState(false);
+  const router = useRouter();
 
-  // Auto-slug company name
-  useEffect(() => {
-    if (!founderConfig.companySlug || founderConfig.companySlug === slugify(founderConfig.companyName.slice(0, -1))) {
-      setFounderConfig((c) => ({ ...c, companySlug: slugify(c.companyName) }));
-    }
-  }, [founderConfig.companyName]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Auto-slug company name (derived state, not an effect)
+  const effectiveCompanySlug = useMemo(
+    () => founderConfig.companySlug || slugify(founderConfig.companyName),
+    [founderConfig.companySlug, founderConfig.companyName],
+  );
 
   // ─── Step 2: Test DB ─────────────────────────────────────────────────
   const testDb = useCallback(async () => {
@@ -189,7 +191,7 @@ export default function SetupWizard() {
       founderPassword: founderConfig.founderPassword,
       founderName: founderConfig.founderName,
       companyName: founderConfig.companyName,
-      companySlug: founderConfig.companySlug,
+      companySlug: effectiveCompanySlug,
       companyCurrency: founderConfig.companyCurrency,
       companyVatNumber: founderConfig.companyVatNumber,
     });
@@ -203,7 +205,7 @@ export default function SetupWizard() {
     } else {
       setError(res.error || "Failed to create founder account");
     }
-  }, [dbConfig, founderConfig]);
+  }, [dbConfig, founderConfig, effectiveCompanySlug]);
 
   // ─── Step 5: Save integrations ──────────────────────────────────────
   const saveIntegrations = useCallback(async () => {
@@ -276,7 +278,7 @@ export default function SetupWizard() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Sparkles className="size-5" /> Welcome</CardTitle>
-              <CardDescription>Let's get your GarfiX installation ready</CardDescription>
+              <CardDescription>Let&apos;s get your GarfiX installation ready</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-lg bg-muted p-4 text-sm space-y-2">
@@ -383,7 +385,7 @@ export default function SetupWizard() {
                 <AlertTitle>Ready to migrate</AlertTitle>
                 <AlertDescription>
                   Connecting to <code className="text-xs bg-muted px-1 rounded">{dbConfig.host}:{dbConfig.port}/{dbConfig.database}</code> as <code className="text-xs bg-muted px-1 rounded">{dbConfig.user}</code>.
-                  We'll write this to <code className="text-xs bg-muted px-1 rounded">.env</code> and run <code className="text-xs bg-muted px-1 rounded">prisma migrate deploy</code>.
+                  We&apos;ll write this to <code className="text-xs bg-muted px-1 rounded">.env</code> and run <code className="text-xs bg-muted px-1 rounded">prisma migrate deploy</code>.
                 </AlertDescription>
               </Alert>
 
@@ -523,7 +525,7 @@ export default function SetupWizard() {
               <Alert>
                 <ShieldCheck className="size-4" />
                 <AlertDescription>
-                  A secure <code className="text-xs">NEXTAUTH_SECRET</code> and <code className="text-xs">PAYMENTS_ENC_KEY</code> will be auto-generated and written to <code className="text-xs">.env</code> if you don't provide them.
+                  A secure <code className="text-xs">NEXTAUTH_SECRET</code> and <code className="text-xs">PAYMENTS_ENC_KEY</code> will be auto-generated and written to <code className="text-xs">.env</code> if you don&apos;t provide them.
                 </AlertDescription>
               </Alert>
 
@@ -564,7 +566,7 @@ export default function SetupWizard() {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button size="lg" onClick={() => window.location.href = "/login"}>
+                    <Button size="lg" onClick={() => router.push("/login")}>
                       Go to Login <ArrowRight className="size-4 ml-2" />
                     </Button>
                   </div>
@@ -585,7 +587,7 @@ export default function SetupWizard() {
                     <ShieldCheck className="size-4" />
                     <AlertTitle>Final step</AlertTitle>
                     <AlertDescription>
-                      Clicking "Finish & Disable Installer" will:
+                      Clicking &quot;Finish &amp; Disable Installer&quot; will:
                       <ol className="list-decimal list-inside mt-1 space-y-0.5 text-xs">
                         <li>Write a <code>.setup-complete</code> marker file</li>
                         <li>Set <code>SETUP_COMPLETE=true</code> in <code>.env</code></li>

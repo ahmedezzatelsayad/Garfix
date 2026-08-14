@@ -122,11 +122,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       direction: data.direction,
       status: "pending",
       // Note (P2): PostDatedCheck.clientId/supplierId/glAccountId are
-      // Int? — convert string cuid input via Number(). Also `currency`/`issueDate`
+      // String? (cuid FKs) — pass strings directly. Also `currency`/`issueDate`
       // don't exist on the schema — removed.
-      clientId: data.clientId ? Number(data.clientId) : null,
-      supplierId: data.supplierId ? Number(data.supplierId) : null,
-      glAccountId: data.glAccountId ? Number(data.glAccountId) : null,
+      clientId: data.clientId || null,
+      supplierId: data.supplierId || null,
+      glAccountId: data.glAccountId || null,
     },
   });
 

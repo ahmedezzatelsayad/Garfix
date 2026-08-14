@@ -99,16 +99,20 @@ ALTER TABLE "inter_company_transactions" ALTER COLUMN "journalEntryIdFrom" TYPE 
 ALTER TABLE "inter_company_transactions" ALTER COLUMN "journalEntryIdTo" TYPE TEXT USING "journalEntryIdTo"::TEXT;
 
 -- ────────────────────────────────────────────────────────────────────────────
--- SECTION 4: Convert invoices.id from SERIAL to TEXT
---   P5 (commit da87eaa5) migrated 53 tables' SERIAL id → TEXT, but missed
---   `invoices`. The FK columns referencing it (e_invoices.invoiceId,
---   payment_transactions.invoiceId, e_invoice_receipts.invoiceId,
---   quotations.convertedInvoiceId, product_match_audit.invoiceId) were
---   migrated to TEXT, creating an FK/PK type mismatch. This block finishes
---   the job P5 started.
+-- SECTION 4: Convert Invoice FK columns from TEXT back to INTEGER
+--   P5 (commit da87eaa5) migrated 53 tables' SERIAL id → TEXT, but MISSED
+--   `invoices.id` (still SERIAL/INTEGER). However, P5 DID migrate the FK
+--   columns referencing it (e_invoices.invoiceId, payment_transactions.
+--   invoiceId, etc.) to TEXT — creating an FK/PK type mismatch in the DB.
+--
+--   Rather than convert invoices.id to TEXT (which would require fixing
+--   ~80 call sites that pass `number` for invoiceId), we take the simpler
+--   path: convert the 5 FK columns back to INTEGER to match invoices.id.
+--   All existing FK values are numeric strings (since invoices.id was
+--   SERIAL), so the cast succeeds.
 -- ────────────────────────────────────────────────────────────────────────────
 
--- Drop FK constraints that reference invoices.id (so we can change its type)
+-- Drop FK constraints that reference invoices.id (so we can change FK types)
 DO $$
 DECLARE
   r RECORD;
@@ -124,12 +128,14 @@ BEGIN
   END LOOP;
 END$$;
 
--- Drop default and sequence before type change
-ALTER TABLE "invoices" ALTER COLUMN "id" DROP DEFAULT;
-ALTER TABLE "invoices" ALTER COLUMN "id" TYPE TEXT USING "id"::TEXT;
-DROP SEQUENCE IF EXISTS "invoices_id_seq";
+-- Convert FK columns back to INTEGER (using ::INTEGER cast — values are numeric)
+ALTER TABLE "e_invoices" ALTER COLUMN "invoiceId" TYPE INTEGER USING "invoiceId"::INTEGER;
+ALTER TABLE "payment_transactions" ALTER COLUMN "invoiceId" TYPE INTEGER USING "invoiceId"::INTEGER;
+ALTER TABLE "e_invoice_receipts" ALTER COLUMN "invoiceId" TYPE INTEGER USING "invoiceId"::INTEGER;
+ALTER TABLE "quotations" ALTER COLUMN "convertedInvoiceId" TYPE INTEGER USING "convertedInvoiceId"::INTEGER;
+ALTER TABLE "product_match_audit" ALTER COLUMN "invoiceId" TYPE INTEGER USING "invoiceId"::INTEGER;
 
--- Re-add FK constraints (now TEXT → TEXT)
+-- Re-add FK constraints (now INTEGER → INTEGER)
 ALTER TABLE "e_invoices" ADD CONSTRAINT "e_invoices_invoiceId_fkey"
   FOREIGN KEY ("invoiceId") REFERENCES "invoices"("id") ON DELETE SET NULL;
 ALTER TABLE "payment_transactions" ADD CONSTRAINT "payment_transactions_invoiceId_fkey"
@@ -140,5 +146,64 @@ ALTER TABLE "quotations" ADD CONSTRAINT "quotations_convertedInvoiceId_fkey"
   FOREIGN KEY ("convertedInvoiceId") REFERENCES "invoices"("id") ON DELETE SET NULL;
 ALTER TABLE "product_match_audit" ADD CONSTRAINT "product_match_audit_invoiceId_fkey"
   FOREIGN KEY ("invoiceId") REFERENCES "invoices"("id") ON DELETE SET NULL;
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- SECTION 5: Add `id` SERIAL PK to natural-key tables
+--   4 tables (platform_settings, landing_content, invoice_brain_templates,
+--   invoice_brain_header_maps) were originally created with a natural-key PK
+--   (key/section/fingerprint/headerFingerprint). The schema.prisma declares
+--   `id Int @id @default(autoincrement())` for these, but the DB has no `id`
+--   column. We add `id` as a new SERIAL column and promote it to PK; the
+--   existing natural key stays as a UNIQUE constraint.
+-- ────────────────────────────────────────────────────────────────────────────
+
+-- platform_settings: existing PK is `key` — demote to UNIQUE, add `id` as PK
+DO $$
+BEGIN
+  -- Drop existing PK constraint (name varies; use dynamic SQL)
+  EXECUTE format('ALTER TABLE "platform_settings" DROP CONSTRAINT IF EXISTS %I',
+    (SELECT conname FROM pg_constraint WHERE conrelid = '"platform_settings"'::regclass AND contype = 'p' LIMIT 1));
+EXCEPTION WHEN OTHERS THEN NULL;
+END$$;
+
+ALTER TABLE "platform_settings" ADD COLUMN IF NOT EXISTS "id" SERIAL;
+ALTER TABLE "platform_settings" ADD CONSTRAINT "platform_settings_pkey" PRIMARY KEY ("id");
+ALTER TABLE "platform_settings" ADD CONSTRAINT IF NOT EXISTS "platform_settings_key_key" UNIQUE ("key");
+
+-- landing_content: existing PK is `section`
+DO $$
+BEGIN
+  EXECUTE format('ALTER TABLE "landing_content" DROP CONSTRAINT IF EXISTS %I',
+    (SELECT conname FROM pg_constraint WHERE conrelid = '"landing_content"'::regclass AND contype = 'p' LIMIT 1));
+EXCEPTION WHEN OTHERS THEN NULL;
+END$$;
+
+ALTER TABLE "landing_content" ADD COLUMN IF NOT EXISTS "id" SERIAL;
+ALTER TABLE "landing_content" ADD CONSTRAINT "landing_content_pkey" PRIMARY KEY ("id");
+ALTER TABLE "landing_content" ADD CONSTRAINT IF NOT EXISTS "landing_content_section_key" UNIQUE ("section");
+
+-- invoice_brain_templates: existing PK is `fingerprint`
+DO $$
+BEGIN
+  EXECUTE format('ALTER TABLE "invoice_brain_templates" DROP CONSTRAINT IF EXISTS %I',
+    (SELECT conname FROM pg_constraint WHERE conrelid = '"invoice_brain_templates"'::regclass AND contype = 'p' LIMIT 1));
+EXCEPTION WHEN OTHERS THEN NULL;
+END$$;
+
+ALTER TABLE "invoice_brain_templates" ADD COLUMN IF NOT EXISTS "id" SERIAL;
+ALTER TABLE "invoice_brain_templates" ADD CONSTRAINT "invoice_brain_templates_pkey" PRIMARY KEY ("id");
+ALTER TABLE "invoice_brain_templates" ADD CONSTRAINT IF NOT EXISTS "invoice_brain_templates_fingerprint_key" UNIQUE ("fingerprint");
+
+-- invoice_brain_header_maps: existing PK is `headerFingerprint`
+DO $$
+BEGIN
+  EXECUTE format('ALTER TABLE "invoice_brain_header_maps" DROP CONSTRAINT IF EXISTS %I',
+    (SELECT conname FROM pg_constraint WHERE conrelid = '"invoice_brain_header_maps"'::regclass AND contype = 'p' LIMIT 1));
+EXCEPTION WHEN OTHERS THEN NULL;
+END$$;
+
+ALTER TABLE "invoice_brain_header_maps" ADD COLUMN IF NOT EXISTS "id" SERIAL;
+ALTER TABLE "invoice_brain_header_maps" ADD CONSTRAINT "invoice_brain_header_maps_pkey" PRIMARY KEY ("id");
+ALTER TABLE "invoice_brain_header_maps" ADD CONSTRAINT IF NOT EXISTS "invoice_brain_header_maps_headerFingerprint_key" UNIQUE ("headerFingerprint");
 
 COMMIT;

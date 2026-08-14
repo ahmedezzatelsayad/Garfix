@@ -65,7 +65,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: RouteP
         data: {
           isReconciled: true,
           reconciledWith: data.matchType,
-          reconciledId: data.journalEntryId,
+          reconciledId: String(data.journalEntryId),
         },
       });
     }
