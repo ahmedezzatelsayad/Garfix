@@ -32,12 +32,15 @@ const {
 } = await import("@/lib/permissions");
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 1. Permission catalog (15 permissions defined) (8)
+// 1. Permission catalog (17 permissions defined) (8)
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe("Permission catalog", () => {
-  it("has 16 permissions defined", () => {
-    expect(PERMISSION_CATALOG).toHaveLength(16);
+  // NOTE: count was 16 when this test was written; bumped to 17 when
+  // `e_invoicing_submit` was added for ZATCA e-invoicing (commit 354bb301).
+  // Update this count (and ALL_PERMISSION_KEYS below) when adding/removing permissions.
+  it("has 17 permissions defined", () => {
+    expect(PERMISSION_CATALOG).toHaveLength(17);
   });
 
   it("all permission keys are strings", () => {
@@ -56,8 +59,8 @@ describe("Permission catalog", () => {
     for (const p of PERMISSION_CATALOG) expect(p.icon).toBeTruthy();
   });
 
-  it("ALL_PERMISSION_KEYS has 16 entries", () => {
-    expect(ALL_PERMISSION_KEYS).toHaveLength(16);
+  it("ALL_PERMISSION_KEYS has 17 entries", () => {
+    expect(ALL_PERMISSION_KEYS).toHaveLength(17);
   });
 
   it("ALL_PERMISSION_KEYS matches catalog keys", () => {
@@ -102,7 +105,7 @@ describe("Locked permissions", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe("Role presets", () => {
-  it("admin has all 16 permissions set to 1", () => {
+  it("admin has all permissions set to 1", () => {
     const adminPerms = ROLE_DEFAULTS.admin;
     const allGranted = ALL_PERMISSION_KEYS.every((k) => adminPerms[k] === 1);
     expect(allGranted).toBe(true);

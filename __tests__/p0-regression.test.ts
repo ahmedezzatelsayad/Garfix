@@ -142,12 +142,29 @@ describe('P1-3: TOTP replay protection', () => {
 // ─── Test 7: RLS migration exists and has policies ──────────────────────
 
 describe('P0-1: RLS policies exist', () => {
-  it('migration SQL should enable RLS on business tables', () => {
+  // The first migration whose name contains "rls" (20260725110000_enable_postgres_rls)
+  // only contains the policy comment block — the actual `ENABLE ROW LEVEL SECURITY`
+  // SQL lives in 20260812000000_p0_company_slug_and_rls. Pick the migration that
+  // actually defines the `enable_rls_for_table` function and calls it.
+  function findRlsMigration(): string {
     const fs = require('fs');
     const migrationFiles = fs.readdirSync('prisma/migrations').sort();
-    const rlsMigration = migrationFiles.find(f => f.includes('rls'));
+    // Prefer the p0_company_slug_and_rls migration; fall back to any migration
+    // whose SQL actually contains the `enable_rls_for_table` helper.
+    const preferred = migrationFiles.find(f => f.includes('p0_company_slug_and_rls'));
+    if (preferred) return preferred;
+    for (const f of migrationFiles) {
+      const sql = fs.readFileSync(`prisma/migrations/${f}/migration.sql`, 'utf-8');
+      if (sql.includes('enable_rls_for_table')) return f;
+    }
+    return migrationFiles.find(f => f.includes('rls'))!;
+  }
+
+  it('migration SQL should enable RLS on business tables', () => {
+    const fs = require('fs');
+    const rlsMigration = findRlsMigration();
     expect(rlsMigration).toBeDefined();
-    
+
     const sql = fs.readFileSync(`prisma/migrations/${rlsMigration}/migration.sql`, 'utf-8');
     expect(sql).toContain('ENABLE ROW LEVEL SECURITY');
     expect(sql).toContain('FORCE ROW LEVEL SECURITY');
@@ -157,8 +174,7 @@ describe('P0-1: RLS policies exist', () => {
 
   it('RLS should cover journal_entries', () => {
     const fs = require('fs');
-    const migrationFiles = fs.readdirSync('prisma/migrations').sort();
-    const rlsMigration = migrationFiles.find(f => f.includes('rls'));
+    const rlsMigration = findRlsMigration();
     const sql = fs.readFileSync(`prisma/migrations/${rlsMigration}/migration.sql`, 'utf-8');
     expect(sql).toContain("enable_rls_for_table('journal_entries')");
     expect(sql).toContain("enable_rls_for_table('invoices')");
