@@ -163,63 +163,81 @@ END $$;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'quantity' AND data_type = 'text') THEN
+    ALTER TABLE "inventory_items" ALTER COLUMN "quantity" DROP DEFAULT;
     ALTER TABLE "inventory_items" ALTER COLUMN "quantity" TYPE DECIMAL(65,30) USING "quantity"::numeric;
+    ALTER TABLE "inventory_items" ALTER COLUMN "quantity" SET DEFAULT 0;
   END IF;
 END $$;
 
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'inventory_items' AND column_name = 'reorderLevel' AND data_type = 'text') THEN
+    ALTER TABLE "inventory_items" ALTER COLUMN "reorderLevel" DROP DEFAULT;
     ALTER TABLE "inventory_items" ALTER COLUMN "reorderLevel" TYPE DECIMAL(65,30) USING "reorderLevel"::numeric;
+    ALTER TABLE "inventory_items" ALTER COLUMN "reorderLevel" SET DEFAULT 0;
   END IF;
 END $$;
 
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'installment_schedules' AND column_name = 'amount' AND data_type = 'text') THEN
+    ALTER TABLE "installment_schedules" ALTER COLUMN "amount" DROP DEFAULT;
     ALTER TABLE "installment_schedules" ALTER COLUMN "amount" TYPE DECIMAL(65,30) USING "amount"::numeric;
+    ALTER TABLE "installment_schedules" ALTER COLUMN "amount" SET DEFAULT 0;
   END IF;
 END $$;
 
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profit_distributions' AND column_name = 'totalProfit' AND data_type = 'text') THEN
+    ALTER TABLE "profit_distributions" ALTER COLUMN "totalProfit" DROP DEFAULT;
     ALTER TABLE "profit_distributions" ALTER COLUMN "totalProfit" TYPE DECIMAL(65,30) USING "totalProfit"::numeric;
+    ALTER TABLE "profit_distributions" ALTER COLUMN "totalProfit" SET DEFAULT 0;
   END IF;
 END $$;
 
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profit_distribution_entries' AND column_name = 'shareRatio' AND data_type = 'text') THEN
+    ALTER TABLE "profit_distribution_entries" ALTER COLUMN "shareRatio" DROP DEFAULT;
     ALTER TABLE "profit_distribution_entries" ALTER COLUMN "shareRatio" TYPE DECIMAL(65,30) USING "shareRatio"::numeric;
+    ALTER TABLE "profit_distribution_entries" ALTER COLUMN "shareRatio" SET DEFAULT 0;
   END IF;
 END $$;
 
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profit_distribution_entries' AND column_name = 'amount' AND data_type = 'text') THEN
+    ALTER TABLE "profit_distribution_entries" ALTER COLUMN "amount" DROP DEFAULT;
     ALTER TABLE "profit_distribution_entries" ALTER COLUMN "amount" TYPE DECIMAL(65,30) USING "amount"::numeric;
+    ALTER TABLE "profit_distribution_entries" ALTER COLUMN "amount" SET DEFAULT 0;
   END IF;
 END $$;
 
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'budget_lines' AND column_name = 'plannedAmount' AND data_type = 'text') THEN
+    ALTER TABLE "budget_lines" ALTER COLUMN "plannedAmount" DROP DEFAULT;
     ALTER TABLE "budget_lines" ALTER COLUMN "plannedAmount" TYPE DECIMAL(65,30) USING "plannedAmount"::numeric;
+    ALTER TABLE "budget_lines" ALTER COLUMN "plannedAmount" SET DEFAULT 0;
   END IF;
 END $$;
 
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'budget_lines' AND column_name = 'actualAmount' AND data_type = 'text') THEN
+    ALTER TABLE "budget_lines" ALTER COLUMN "actualAmount" DROP DEFAULT;
     ALTER TABLE "budget_lines" ALTER COLUMN "actualAmount" TYPE DECIMAL(65,30) USING "actualAmount"::numeric;
+    ALTER TABLE "budget_lines" ALTER COLUMN "actualAmount" SET DEFAULT 0;
   END IF;
 END $$;
 
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'hr_performance' AND column_name = 'rating' AND data_type = 'text') THEN
+    ALTER TABLE "hr_performance" ALTER COLUMN "rating" DROP DEFAULT;
     ALTER TABLE "hr_performance" ALTER COLUMN "rating" TYPE DECIMAL(65,30) USING "rating"::numeric;
+    ALTER TABLE "hr_performance" ALTER COLUMN "rating" SET DEFAULT 0;
   END IF;
 END $$;
 
