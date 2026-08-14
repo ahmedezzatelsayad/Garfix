@@ -154,7 +154,7 @@ test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
     await page.waitForTimeout(200);
 
     // Verify focus is now inside the dialog before starting the Tab loop.
-    let focusInside = await page.evaluate(() => {
+    const focusInside = await page.evaluate(() => {
       const dialog = document.querySelector('[role="dialog"]');
       const active = document.activeElement;
       if (!dialog || !active) return false;

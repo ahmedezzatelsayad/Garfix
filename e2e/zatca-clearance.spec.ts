@@ -247,13 +247,3 @@ test.describe("ZATCA clearance — TPD-01 real E2E", () => {
   });
 });
 
-/** Inline helper to fetch the CSRF token — kept local to avoid widening the
- *  _helpers surface for a single use case. */
-async function getCsrf(page: import("@playwright/test").Page): Promise<string> {
-  const cookies = await page.context().cookies();
-  const existing = cookies.find((c) => c.name === "inv_csrf");
-  if (existing?.value) return existing.value;
-  const response = await page.request.get("/api/auth/csrf");
-  const json = (await response.json()) as { csrfToken: string };
-  return json.csrfToken;
-}
