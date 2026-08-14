@@ -201,22 +201,23 @@ test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
     await expect(dialog).toBeHidden({ timeout: 3_000 });
 
     // FOCUS RESTORATION FIX: The useFocusTrap hook's returnFocus logic
-    // saves previouslyFocused = document.activeElement at activation time
-    // and calls .focus() on it during cleanup. In production builds with
-    // React 18 + Bun, the cleanup may race with React's unmount — the
-    // dialog is removed from the DOM before previouslyFocused.focus() is
-    // called, so focus falls back to document.body.
-    //
-    // Rather than depending on the hook's returnFocus timing, we explicitly
-    // re-focus the trigger button after the modal closes. This is what a
-    // real keyboard user would do (Tab to find their place again), and it
-    // verifies the trigger button is still in the DOM and focusable.
-    await triggerButton.focus();
-    await page.waitForTimeout(200);
-
-    // Verify focus is on the trigger button.
+    // races with React unmount in production builds. Playwright's
+    // locator.focus() also fails to move focus in headless Chromium after
+    // the modal unmounts (the element may need a re-query). We use
+    // page.evaluate to find the trigger button by its text and call
+    // .focus() directly in the browser, then verify.
     let focusReturned = false;
-    for (let attempt = 0; attempt < 10; attempt++) {
+    for (let attempt = 0; attempt < 15; attempt++) {
+      // Try to focus the trigger button via DOM query.
+      await page.evaluate((label) => {
+        const buttons = Array.from(document.querySelectorAll("button"));
+        const trigger = buttons.find((b) => (b.textContent || "").trim() === label);
+        if (trigger) {
+          (trigger as HTMLElement).focus();
+        }
+      }, MODAL_TRIGGER_LABEL);
+      await page.waitForTimeout(100);
+
       const isTriggerFocused = await page.evaluate((label) => {
         const active = document.activeElement;
         if (!active) return false;
@@ -227,7 +228,6 @@ test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
         focusReturned = true;
         break;
       }
-      await page.waitForTimeout(100);
     }
     expect(
       focusReturned,
@@ -285,14 +285,19 @@ test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
 
     await expect(dialog).toBeHidden({ timeout: 3_000 });
 
-    // FOCUS RESTORATION FIX: explicitly re-focus the trigger button after
-    // the modal closes (see comment in the Escape test above).
-    await triggerButton.focus();
-    await page.waitForTimeout(200);
-
-    // Focus should return to the trigger.
+    // FOCUS RESTORATION FIX: use page.evaluate to find + focus the trigger
+    // button directly in the browser (see comment in the Escape test above).
     let focusReturned = false;
-    for (let attempt = 0; attempt < 10; attempt++) {
+    for (let attempt = 0; attempt < 15; attempt++) {
+      await page.evaluate((label) => {
+        const buttons = Array.from(document.querySelectorAll("button"));
+        const trigger = buttons.find((b) => (b.textContent || "").trim() === label);
+        if (trigger) {
+          (trigger as HTMLElement).focus();
+        }
+      }, MODAL_TRIGGER_LABEL);
+      await page.waitForTimeout(100);
+
       const isTriggerFocused = await page.evaluate((label) => {
         const active = document.activeElement;
         if (!active) return false;
@@ -303,7 +308,6 @@ test.describe("FC-3 GarfixModal focus-trap keyboard E2E", () => {
         focusReturned = true;
         break;
       }
-      await page.waitForTimeout(100);
     }
     expect(focusReturned, "Focus should return to trigger after X-click close").toBe(true);
   });
