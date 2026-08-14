@@ -168,7 +168,17 @@ END$$;
 
 ALTER TABLE "platform_settings" ADD COLUMN IF NOT EXISTS "id" SERIAL;
 ALTER TABLE "platform_settings" ADD CONSTRAINT "platform_settings_pkey" PRIMARY KEY ("id");
-ALTER TABLE "platform_settings" ADD CONSTRAINT IF NOT EXISTS "platform_settings_key_key" UNIQUE ("key");
+-- Add UNIQUE constraint on `key` only if it doesn't already exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'platform_settings_key_key'
+      AND conrelid = '"platform_settings"'::regclass
+  ) THEN
+    ALTER TABLE "platform_settings" ADD CONSTRAINT "platform_settings_key_key" UNIQUE ("key");
+  END IF;
+END$$;
 
 -- landing_content: existing PK is `section`
 DO $$
@@ -180,7 +190,16 @@ END$$;
 
 ALTER TABLE "landing_content" ADD COLUMN IF NOT EXISTS "id" SERIAL;
 ALTER TABLE "landing_content" ADD CONSTRAINT "landing_content_pkey" PRIMARY KEY ("id");
-ALTER TABLE "landing_content" ADD CONSTRAINT IF NOT EXISTS "landing_content_section_key" UNIQUE ("section");
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'landing_content_section_key'
+      AND conrelid = '"landing_content"'::regclass
+  ) THEN
+    ALTER TABLE "landing_content" ADD CONSTRAINT "landing_content_section_key" UNIQUE ("section");
+  END IF;
+END$$;
 
 -- invoice_brain_templates: existing PK is `fingerprint`
 DO $$
@@ -192,7 +211,16 @@ END$$;
 
 ALTER TABLE "invoice_brain_templates" ADD COLUMN IF NOT EXISTS "id" SERIAL;
 ALTER TABLE "invoice_brain_templates" ADD CONSTRAINT "invoice_brain_templates_pkey" PRIMARY KEY ("id");
-ALTER TABLE "invoice_brain_templates" ADD CONSTRAINT IF NOT EXISTS "invoice_brain_templates_fingerprint_key" UNIQUE ("fingerprint");
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'invoice_brain_templates_fingerprint_key'
+      AND conrelid = '"invoice_brain_templates"'::regclass
+  ) THEN
+    ALTER TABLE "invoice_brain_templates" ADD CONSTRAINT "invoice_brain_templates_fingerprint_key" UNIQUE ("fingerprint");
+  END IF;
+END$$;
 
 -- invoice_brain_header_maps: existing PK is `headerFingerprint`
 DO $$
@@ -204,6 +232,15 @@ END$$;
 
 ALTER TABLE "invoice_brain_header_maps" ADD COLUMN IF NOT EXISTS "id" SERIAL;
 ALTER TABLE "invoice_brain_header_maps" ADD CONSTRAINT "invoice_brain_header_maps_pkey" PRIMARY KEY ("id");
-ALTER TABLE "invoice_brain_header_maps" ADD CONSTRAINT IF NOT EXISTS "invoice_brain_header_maps_headerFingerprint_key" UNIQUE ("headerFingerprint");
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'invoice_brain_header_maps_headerFingerprint_key'
+      AND conrelid = '"invoice_brain_header_maps"'::regclass
+  ) THEN
+    ALTER TABLE "invoice_brain_header_maps" ADD CONSTRAINT "invoice_brain_header_maps_headerFingerprint_key" UNIQUE ("headerFingerprint");
+  END IF;
+END$$;
 
 COMMIT;
