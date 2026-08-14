@@ -170,6 +170,41 @@ jobs:
           VALKEY_URL: redis://localhost:6379
           REDIS_URL: redis://localhost:6379
 
+      - name: Install Chrome dependencies
+        # PERF FIX: treosh/lighthouse-ci-action@v12 bundles its own Chrome
+        # but that Chrome fails to launch on ubuntu-24.04 runners with
+        #   LH:ChromeLauncher:error connect ECONNREFUSED 127.0.0.1:42527
+        #   ERROR:dbus/bus.cc:405] Failed to connect to the bus
+        #   Unable to connect to Chrome
+        # The root cause is missing shared libs (libdbus, libnss3, libgbm,
+        # etc.) that the bundled Chrome needs but ubuntu-24.04 minimal
+        # runner image no longer pre-installs. Install them explicitly,
+        # then install the full google-chrome-stable (which the action
+        # prefers when CHROME_PATH is set). The chromeFlags in
+        # .github/lighthouserc.json (--no-sandbox, --disable-dev-shm-usage)
+        # handle the rest of the sandbox issues.
+        run: |
+          echo "─── Installing Chrome + missing libs ──"
+          # Install system libs the bundled Chrome needs (libnss3, libgbm,
+          # libdbus, libatk, libdrm, libxkbcommon, libxcomposite, libxdamage,
+          # libxfixes, libxrandr, libasound2).
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libnss3 libdbus-1-3 libatk1.0-0 libatk-bridge2.0-0 \
+            libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+            libxfixes3 libxrandr2 libgbm1 libasound2t64 libpango-1.0-0 \
+            libcairo2 fonts-liberation
+          # Install full Google Chrome stable (preferred over bundled Chromium).
+          if ! command -v google-chrome-stable >/dev/null 2>&1; then
+            wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            sudo dpkg -i /tmp/chrome.deb 2>/dev/null || sudo apt-get install -fy
+          fi
+          # Verify
+          google-chrome-stable --version
+          # Export CHROME_PATH so the Lighthouse action uses system Chrome
+          # (which has all deps installed) instead of the bundled one.
+          echo "CHROME_PATH=$(which google-chrome-stable)" >> $GITHUB_ENV
+
       - name: Run Lighthouse CI
         id: lhci
         # PERF FIX: removed `continue-on-error: true` — that was a band-aid
@@ -177,6 +212,10 @@ jobs:
         # and the standalone server, Lighthouse now receives real HTML and
         # should produce real scores. If it fails, we want to know.
         uses: treosh/lighthouse-ci-action@v12
+        env:
+          # Tell Lighthouse to use the system Chrome (with all deps installed)
+          # instead of the bundled one (which fails to launch on ubuntu-24.04).
+          CHROME_PATH: ${{ env.CHROME_PATH }}
         with:
           urls: |
             http://localhost:3000
