@@ -103,10 +103,23 @@ export function uniqueClientName(): string {
   return `E2E Client ${uniqueSuffix()}`;
 }
 
-/** A unique webhook URL (points to localhost so delivery will fail-fast,
- *  which is what we want for the "failed with retry" branch). */
+/** A unique webhook URL.
+ *
+ *  SSRF FIX: Previously this returned `http://localhost:9999/...` which is
+ *  blocked by `validateBaseUrl()` (loopback host + non-HTTPS protocol). The
+ *  webhook registration route would return 400/500 instead of 201, breaking
+ *  the "register endpoint → trigger event → delivery row created" test.
+ *
+ *  Now we use a unique subdomain of `example.com` (a real domain reserved
+ *  by RFC 2606 for documentation/testing — no real server will respond).
+ *  The E2E test only verifies that:
+ *    1. The endpoint is registered in the DB (encrypted secret stored).
+ *    2. The event dispatch creates a WebhookDelivery row with status="pending".
+ *  The actual HTTP delivery happens in `processPendingDeliveries()` which
+ *  is NOT running in the test environment — so no real network call is made
+ *  to example.com during the test. */
 export function uniqueWebhookUrl(): string {
-  return `http://localhost:9999/webhook/${uniqueSuffix()}`;
+  return `https://example.com/webhook/${uniqueSuffix()}`;
 }
 
 /** A unique role id for RBAC tests — lowercase alphanumeric + underscores. */

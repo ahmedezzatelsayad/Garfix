@@ -10,6 +10,7 @@ import { withErrorHandler, parseJsonBody, apiError, apiOk, validateBody } from "
 import { registerWebhook } from "@/lib/webhooks";
 import { logAudit } from "@/lib/audit";
 import { dbTyped as db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import { z } from "zod";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 
@@ -87,11 +88,37 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const validation = validateBody(RegisterEndpointSchema, body);
   if (!validation.ok) return validation.response;
 
-  const endpointId = await registerWebhook({
-    companySlug,
-    url: validation.data.url,
-    events: validation.data.events,
-  });
+  // SSRF FIX: registerWebhook() throws when validateBaseUrl() rejects the URL
+  // (e.g. file://, http://, localhost, private IPs). Without this try/catch
+  // the error propagates to withErrorHandler which returns a generic 500 —
+  // but the client expects a 400 with a meaningful Arabic error message so
+  // it can surface the validation problem to the user.
+  let endpointId: string;
+  try {
+    endpointId = await registerWebhook({
+      companySlug,
+      url: validation.data.url,
+      events: validation.data.events,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // Match the SSRF error message format (mentions "غير صالح" or "غير آمن"
+    // or "HTTPS" — these are the validateBaseUrl error strings).
+    const isValidationError =
+      msg.includes("غير صالح") ||
+      msg.includes("غير آمن") ||
+      msg.includes("HTTPS") ||
+      msg.includes("داخلية") ||
+      msg.includes("محلية") ||
+      msg.includes("URL");
+    if (isValidationError) {
+      return apiError(msg, 400);
+    }
+    // Unknown error — log and return 500 (preserves previous behavior for
+    // genuine server errors like DB connection failures).
+    logger.error("[webhooks] failed to register endpoint", { err: msg });
+    return apiError("فشل في تسجيل نقطة الـ webhook", 500);
+  }
 
   await logAudit({
     userEmail: user.email,

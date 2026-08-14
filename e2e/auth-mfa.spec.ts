@@ -78,13 +78,18 @@ test.describe("MFA login flow — TPD-01 real E2E", () => {
     await cleanupTestData({ userIds: [mfaUserUid] });
   });
 
-  test("password-only login returns mfaRequired:true (200, no session)", async ({
+  test("password-only login returns 401 (SEC-06 anti-enumeration, no session)", async ({
     page,
   }) => {
+    // SEC-06 FIX (Audit v2 · Phase 2): The login route NO LONGER returns
+    // `{ mfaRequired: true }` on a correct password without MFA code — that
+    // leaked credential validity and enabled MFA brute-force. Now EVERY
+    // authentication failure (wrong password / user not found / MFA missing /
+    // MFA wrong) returns the SAME generic 401 error. This test was updated
+    // to assert the new anti-enumeration behavior.
+    //
     // Navigate to the real login page so the React form hydrates.
     await page.goto("/login");
-    // Assert the form is actually present — this FAILS if the page is blank
-    // (the old facade test silently passed on a blank page).
     await expect(page.locator("#email")).toBeVisible();
     await expect(page.locator("#password")).toBeVisible();
 
@@ -100,16 +105,19 @@ test.describe("MFA login flow — TPD-01 real E2E", () => {
       page.click('button[type="submit"]'),
     ]);
 
-    expect(loginResponse.status()).toBe(200);
+    // SEC-06: password-only attempt on an MFA-enabled account must return 401
+    // (NOT 200 with mfaRequired: true — that was the old vulnerable behavior).
+    expect(loginResponse.status()).toBe(401);
     const body = await loginResponse.json();
-    // SPECIFIC value assertion — not `expect(typeof body.mfaRequired).toBe("boolean")`.
-    expect(body.mfaRequired).toBe(true);
-    expect(body.email).toBe(ADMIN_EMAIL);
-    // A password-only attempt must NOT receive a user object — that would
-    // mean MFA was bypassed.
+    // The generic Arabic error message must be returned — same as wrong password.
+    expect(body.error).toBeTruthy();
+    // A password-only attempt must NOT receive a user object or mfaRequired
+    // flag (those would leak credential validity to an attacker).
     expect(body.user).toBeUndefined();
+    expect(body.mfaRequired).toBeUndefined();
+    expect(body.ok).toBeUndefined();
 
-    // And no session cookie should have been issued yet.
+    // And no session cookie should have been issued (MFA was not completed).
     const cookies = await page.context().cookies();
     const sessionCookie = cookies.find((c) => c.name === "inv_token");
     expect(sessionCookie).toBeUndefined();
@@ -118,12 +126,19 @@ test.describe("MFA login flow — TPD-01 real E2E", () => {
   test("TOTP code completes login and issues session cookie", async ({
     page,
   }) => {
-    // Step 1: password attempt → mfaRequired
+    // SEC-06 FIX (Audit v2 · Phase 2): The first call (password-only) now
+    // returns 401 instead of 200 with `mfaRequired: true`. The test was
+    // updated to expect 401 on the first attempt and 200 on the second
+    // attempt (with the correct TOTP code).
+    //
+    // Step 1: password attempt → 401 (anti-enumeration, same as wrong password)
     const first = await page.request.post("/api/auth/login", {
       data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
     });
-    expect(first.status()).toBe(200);
-    expect((await first.json()).mfaRequired).toBe(true);
+    expect(first.status()).toBe(401);
+    const firstBody = await first.json();
+    expect(firstBody.error).toBeTruthy();
+    expect(firstBody.mfaRequired).toBeUndefined();
 
     // Step 2: compute a real TOTP from the enrolled secret and resubmit.
     const code = generateTOTP(MFA_BASE32_SECRET);

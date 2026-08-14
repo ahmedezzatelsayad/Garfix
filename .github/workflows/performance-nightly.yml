@@ -126,6 +126,7 @@ jobs:
 
       - name: Run Lighthouse CI
         id: lhci
+        continue-on-error: true  # Nightly audit is informational — does NOT block merges (see workflow header comment)
         uses: treosh/lighthouse-ci-action@v12
         with:
           urls: |
@@ -145,8 +146,13 @@ jobs:
           echo "Check the uploaded artifacts for detailed HTML report."
           echo ""
           if [ "${{ steps.lhci.outcome }}" = "failure" ]; then
-            echo "❌ Budget breach detected — review per-route scores in the artifact."
-            echo "This is informational; it does NOT block merges."
+            echo "⚠️  Lighthouse audit failed (informational — does NOT block merges)."
+            echo "Common causes:"
+            echo "  - App started in degraded mode (instrumentation nodeRequire fails under Bun)"
+            echo "  - NO_FCP error (page never painted — usually a SSR runtime error)"
+            echo "  - Budget breach (review per-route scores in the artifact)"
+            echo ""
+            echo "Review the workflow logs for the actual error."
           else
             echo "✅ Lighthouse budget passed."
           fi
