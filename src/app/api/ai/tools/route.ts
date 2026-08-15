@@ -594,20 +594,32 @@ async function executeIntent(
         if (!existing) {
           return { ok: false, summary: "الفاتورة غير موجودة" };
         }
-        const newPaid = existing.total;
-        const invoice = await db.invoice.update({
-          where: { id: invoiceId },
-          data: { paid: newPaid, status: "paid", version: { increment: 1 } },
+        // DATA-014 FIX: Previously this overwrote `paid` with `total`,
+        // losing any partial payments already recorded. Now we use atomic
+        // increment to add the remaining amount, and filter by deletedAt:null
+        // and status to prevent updating soft-deleted or already-paid invoices.
+        const currentPaid = num(existing.paid, 3);
+        const total = num(existing.total, 3);
+        const remaining = total - currentPaid;
+        if (remaining <= 0) {
+          return { ok: false, summary: "الفاتورة مدفوعة بالفعل" };
+        }
+        const result = await db.invoice.updateMany({
+          where: { id: invoiceId, deletedAt: null, status: { not: "paid" } },
+          data: { paid: { increment: remaining.toFixed(3) }, status: "paid", version: { increment: 1 } },
         });
+        if (result.count === 0) {
+          return { ok: false, summary: "تعذر تحديث الفاتورة — قد تكون محذوفة أو مدفوعة" };
+        }
         await logAudit({
           userEmail: user.email, userUid: user.uid,
           action: "ai_executed_mark_paid", entity: "invoice", entityId: invoiceId,
-          companySlug, details: { amount: newPaid, source: "ai_assistant" },
+          companySlug, details: { amount: remaining.toFixed(3), source: "ai_assistant" },
         });
         return {
           ok: true,
-          summary: `✅ تم تعليم الفاتورة ${existing.invoiceNumber} كمكتملة الدفع (${num(newPaid, 3)})`,
-          data: { id: invoice.id, status: invoice.status },
+          summary: `✅ تم تعليم الفاتورة ${existing.invoiceNumber} كمكتملة الدفع (${num(remaining, 3)})`,
+          data: { id: invoiceId, status: "paid" },
         };
       }
 
@@ -966,12 +978,29 @@ ${overdueInvoices.slice(0, 15).map((i) => {
           });
           undoSummary = `✅ تم التراجع: تم إلغاء وحذف الفاتورة #${lastLog.entityId}`;
         } else if (lastLog.action === "ai_executed_mark_paid" && lastLog.entityId) {
-          // Revert payment status
-          await db.invoice.update({
-            where: { id: Number(lastLog.entityId) },
-            data: { paid: "0", status: "sent", version: { increment: 1 } },
-          });
-          undoSummary = `✅ تم التراجع: تم إلغاء تسجيل الدفع للفاتورة #${lastLog.entityId}`;
+          // DATA-015 FIX: Previously this zeroed out `paid` unconditionally,
+          // destroying payment history. Now we reverse the specific payment
+          // amount from the audit log details, using atomic decrement.
+          // This preserves partial payments that existed before the AI action.
+          const details = lastLog.details as Record<string, unknown> | null;
+          const aiPaymentAmount = details?.amount as string | undefined;
+          if (aiPaymentAmount) {
+            const result = await db.invoice.updateMany({
+              where: { id: Number(lastLog.entityId), deletedAt: null },
+              data: {
+                paid: { decrement: aiPaymentAmount },
+                status: "sent",
+                version: { increment: 1 },
+              },
+            });
+            if (result.count === 0) {
+              undoSummary = "⚠️ تعذر التراجع — الفاتورة محذوفة أو غير موجودة";
+            } else {
+              undoSummary = `✅ تم التراجع: تم إلغاء تسجيل الدفع (${aiPaymentAmount}) للفاتورة #${lastLog.entityId}`;
+            }
+          } else {
+            undoSummary = "⚠️ تعذر التراجع — بيانات الإجراء الأصلي غير مكتملة";
+          }
         } else if (lastLog.action === "ai_executed_adjust_inventory" && lastLog.entityId) {
           // Revert inventory adjustment (reverse the delta)
           const details = lastLog.details as Record<string, unknown> | null;

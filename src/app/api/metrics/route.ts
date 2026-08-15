@@ -16,7 +16,30 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+  // SEC-004 FIX: Enforce METRICS_TOKEN auth as documented in .env.example.
+  // Previously this endpoint was unauthenticated — returning placeholder
+  // metrics to anyone. When real metrics are wired in, this would leak
+  // operational data (request counts, AI costs, DB query volume).
+  const metricsToken = process.env.METRICS_TOKEN;
+  if (!metricsToken) {
+    // Fail-closed: if METRICS_TOKEN is not set, return 503
+    return new NextResponse("Service Unavailable: METRICS_TOKEN not configured", {
+      status: 503,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+  const authHeader = req.headers.get("authorization");
+  const providedToken = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : req.headers.get("x-metrics-token");
+  if (providedToken !== metricsToken) {
+    return new NextResponse("Unauthorized", {
+      status: 401,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+
   const lines: string[] = [
     "# HELP garfix_request_count_total Total HTTP requests",
     "# TYPE garfix_request_count_total counter",

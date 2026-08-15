@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   // invalid signatures. In development, allow unsigned for sandbox testing.
   const isDev = process.env.NODE_ENV === "development" || process.env.GARFIX_PREVIEW_MODE === "1";
   if (!isDev) {
-    if (signature === null) {
+    if (!signature) {
       logger.warn("[webhooks] rejected unsigned webhook (production mode)", { endpoint: req.url });
       return NextResponse.json({ error: "Signature required" }, { status: 401 });
     }

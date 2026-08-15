@@ -11,7 +11,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { resolveAuth } from "@/lib/auth";
+import { resolveAuth, assertCompanyAccess } from "@/lib/auth";
+import { requireFounder } from "@/lib/middleware";
 import {
   recordCorrection,
   predictFromPatterns,
@@ -98,6 +99,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "جسم الطلب غير صالح - JSON مطلوب" },
         { status: 400 }
+      );
+    }
+
+    // SEC-001 FIX: Validate company access before any ML operation.
+    // Without this, an authenticated user from Tenant A could pass
+    // companySlug="tenant-B" in the body and read/poison Tenant B's
+    // ML patterns (cross-tenant data exfiltration + integrity violation).
+    const requestCompanySlug = (body as { companySlug?: string }).companySlug;
+    if (requestCompanySlug && session.user && !assertCompanyAccess(session.user, requestCompanySlug)) {
+      return NextResponse.json(
+        { error: "ليس لديك صلاحية للوصول إلى هذه الشركة" },
+        { status: 403 }
       );
     }
 
@@ -410,13 +423,20 @@ export async function PUT(request: NextRequest) {
   const rl = await rateLimitResponse(request, "put:ai-ml-learning", LIMITS.API_WRITE);
   if (rl) return rl;
 
-  try {
-    const _authResult = await resolveAuth(request);
-    // Allow initialization without auth for system calls
-    // In production, you'd want to validate an API key or system token
-    // Note: We allow unauthenticated access for system initialization
-    // This is intentional for startup scripts and cron jobs
+  // SEC-002 FIX: Require founder auth for all PUT actions.
+  // Previously this endpoint allowed unauthenticated access for "system
+  // initialization" — but the CSRF cookie is session-independent, so any
+  // client could obtain one and wipe ALL tenants' ML caches (platform-wide
+  // DoS) or clear a specific tenant's cache (sabotage).
+  const founderCheck = await requireFounder(request);
+  if ("error" in founderCheck) {
+    return NextResponse.json(
+      { error: "هذه العملية متاحة للمؤسس فقط" },
+      { status: 403 }
+    );
+  }
 
+  try {
     const body = await request.json().catch(() => ({}));
 
     if (body.action === "initialize") {

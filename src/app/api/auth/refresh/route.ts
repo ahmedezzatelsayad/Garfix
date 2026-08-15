@@ -111,8 +111,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // which is exactly what we want for rotation.
   // SEC-H4 FIX (Cycle 3, re-applied): pass `req` so the new access token's
   // JTI is registered in SessionRegistry with IP + User-Agent context.
+  // SEC-006 FIX: Previously `req` was missing — when SESSION_REGISTRY_ENFORCED=true,
+  // the JTI was NOT registered, causing the next request's isSessionValid() to
+  // return false → 401 "Session revoked" → user logged out on every silent refresh.
   const response = NextResponse.json({ ok: true });
-  await issueSession(response, sessionUser);
+  await issueSession(response, sessionUser, req);
   return response;
 });
 
