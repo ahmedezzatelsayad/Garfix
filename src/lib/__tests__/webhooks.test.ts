@@ -542,6 +542,69 @@ describe("Webhooks Module", () => {
       const expected = crypto.createHmac("sha256", secret).update(payload).digest("hex");
       expect(verifyWebhookSignature(payload, expected, secret)).toBe(false);
     });
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CANONICALIZATION TESTS — raw body signing vs re-serialized JSON
+    // ═══════════════════════════════════════════════════════════════════════
+    // These tests prove that the HMAC signature is computed over the exact
+    // byte sequence sent over the wire, NOT over the semantic JSON object.
+    // If a receiver re-serializes the parsed JSON with different key ordering,
+    // the signature MUST fail — because the bytes differ even though the
+    // JSON semantics are identical.
+
+    it("CANONICALIZATION: same JSON semantics, different key order → signature FAILS", () => {
+      // Two JSON strings with identical semantics but different key order.
+      const bodyA = '{"event":"invoice.created","data":{"id":1,"amount":100}}';
+      const bodyB = '{"data":{"amount":100,"id":1},"event":"invoice.created"}';
+
+      // Sanity: both parse to the same object
+      const objA = JSON.parse(bodyA);
+      const objB = JSON.parse(bodyB);
+      expect(objA).toEqual(objB); // deep equality — same semantics
+
+      // But the strings are different
+      expect(bodyA).not.toBe(bodyB);
+
+      // Sign bodyA (what GarfiX sends)
+      const sigA = crypto.createHmac("sha256", secret).update(bodyA).digest("hex");
+
+      // Verify with bodyA (raw body) → PASS
+      expect(verifyWebhookSignature(bodyA, `sha256=${sigA}`, secret)).toBe(true);
+
+      // Verify with bodyB (re-serialized with different key order) → FAIL
+      // This proves the signature is over raw bytes, not object semantics.
+      expect(verifyWebhookSignature(bodyB, `sha256=${sigA}`, secret)).toBe(false);
+    });
+
+    it("CANONICALIZATION: raw body string matches sent body → signature PASSES", () => {
+      // Simulate the exact flow in processPendingDeliveries:
+      //   1. payload = JSON.parse(delivery.payload)
+      //   2. bodyString = JSON.stringify(payload)
+      //   3. signature = HMAC(bodyString)
+      //   4. fetch(url, { body: bodyString })
+      //   5. Receiver reads raw body and verifies
+      const payloadObj = { event: "payment.completed", data: { invoiceId: 42, amount: 250.75 } };
+      const bodyString = JSON.stringify(payloadObj);
+
+      // Sign the bodyString (what the sender does)
+      const signature = crypto.createHmac("sha256", secret).update(bodyString).digest("hex");
+
+      // Receiver reads the raw request body (same bytes) and verifies
+      expect(verifyWebhookSignature(bodyString, `sha256=${signature}`, secret)).toBe(true);
+    });
+
+    it("CANONICALIZATION: receiver re-serializes parsed JSON → signature FAILS", () => {
+      // Simulate an INCORRECT receiver that parses the body and re-serializes:
+      //   const body = JSON.stringify(req.body); // ← WRONG
+      //   verifyWebhookSignature(body, sig, secret); // ← fails
+      const payloadObj = { event: "payment.completed", data: { invoiceId: 42, amount: 250.75 } };
+      const sentBody = JSON.stringify(payloadObj);
+      const signature = crypto.createHmac("sha256", secret).update(sentBody).digest("hex");
+
+      // If key order happens to match, it passes. But if we change the order:
+      const wrongOrder = JSON.stringify({ data: { amount: 250.75, invoiceId: 42 }, event: "payment.completed" });
+      expect(verifyWebhookSignature(wrongOrder, `sha256=${signature}`, secret)).toBe(false);
+    });
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

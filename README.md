@@ -452,22 +452,24 @@ flowchart LR
 
 ## E-Invoicing Coverage
 
-| Country | Authority | Status | Auth Method | Submit Method | Notes |
-|---------|-----------|--------|-------------|----------------|-------|
-| 🇪🇬 Egypt | ETA | ✅ Live | JWT API token | `submitEgyptEtaInvoice()` | Production-ready |
-| 🇧🇭 Bahrain | NBR | ✅ Live | API key | `submitBahrainNbrInvoice()` | Production-ready |
-| 🇴🇲 Oman | OTA | ✅ Live | OAuth2 client credentials | `submitOmanTaxInvoice()` | Production-ready |
-| 🇶🇦 Qatar | GTA | ✅ Not required | — | Returns `submissionStatus: "not_required"` | No mandatory e-invoicing |
-| 🇸🇦 Saudi Arabia | ZATCA | 🟡 Stub | CSID certificates | `ok:false` — requires `/api/e-invoicing/zatca/onboard` cert onboarding | Clearance + reporting flow not yet implemented |
-| 🇦🇪 UAE | FTA (Peppol) | 🟡 Stub | Peppol Access Point | `ok:false` — requires AP contract | Peppol submission not yet implemented |
-| 🇰🇼 Kuwait | KITA | 🟡 Stub | OAuth2 | `ok:false` — MOCI portal not yet published | Awaiting government API availability |
+> **Important:** The presence of an adapter ≠ production-ready integration. Each adapter has a different implementation status. The table below is verified against `src/lib/e-invoicing/router.ts` and per-country adapter source files.
 
-**Status definitions:**
-- ✅ **Live** — submission function implemented and callable; returns `ok:true` on success
-- 🟡 **Stub** — route exists but returns `ok:false` with clear error message; real submission requires external prerequisites (cert onboarding, AP contract, or government API availability)
-- ✅ **Not required** — country has no mandatory e-invoicing requirement
+| Country | Authority | Adapter File | Router Behavior | Submit Function | Production Status |
+|---------|-----------|-------------|-----------------|-----------------|-------------------|
+| 🇪🇬 Egypt | ETA | `egypt-eta.ts` | Calls `submitEgyptEtaInvoice()` | ✅ Implemented (JWT token, retry with backoff) | **Live** — callable, returns `ok:true` on success |
+| 🇧🇭 Bahrain | NBR | `bahrain-nbr.ts` | Calls `submitBahrainNbrInvoice()` | ✅ Implemented (API key, retry with backoff) | **Live** — callable, returns `ok:true` on success |
+| 🇴🇲 Oman | OTA | `oman-tax.ts` | Calls `submitOmanTaxInvoice()` | ✅ Implemented (OAuth2, retry with backoff) | **Live** — callable, returns `ok:true` on success |
+| 🇶🇦 Qatar | GTA | (none — handled by router default) | Returns `ok:true, submissionStatus:"not_required"` | — | **Not required** — no mandatory e-invoicing |
+| 🇸🇦 Saudi Arabia | ZATCA | `zatca.ts` | Returns `ok:false` (stub via router) | 🟡 `submitZatcaInvoice()` exists but uses **simulation endpoints** (`gw-fatoora.zatca.gov.sa/e-invoicing/simulation/v2`) and **placeholder** ECDSA signatures | **Stub** — requires real CSID certificates + production endpoint |
+| 🇦🇪 UAE | FTA (Peppol) | `uae-fta.ts` | Returns `ok:false` (stub via router) | 🟡 `submitUaeFtaInvoice()` exists but uses **placeholder PKI signatures** | **Stub** — requires Peppol Access Point contract + real PKI |
+| 🇰🇼 Kuwait | KITA | `kuwait.ts` | Returns `ok:false` (stub via router) | 🟡 `submitKuwaitInvoice()` exists but MOCI portal API **not yet published** | **Stub** — awaiting government API availability |
 
-**Confidence: High** — verified in `src/lib/e-invoicing/router.ts` (P1 audit fix: previously returned fake `submissionId` with `ok:true`; now returns honest `ok:false`).
+**Key distinction:**
+- **Live** = `submitXxxInvoice()` is called by the router, makes a real HTTP request to the government API, and returns `ok:true` on success
+- **Stub** = the router returns `ok:false` with a clear error message. A `submitXxxInvoice()` function EXISTS in the adapter file, but it uses simulation endpoints, placeholder signatures, or awaits government API availability. It is callable from dedicated API routes (`/api/e-invoicing/zatca/submit`, `/api/e-invoicing/peppol/submit`, `/api/e-invoicing/submit`) but is NOT production-ready.
+- **Not required** = no mandatory e-invoicing in this country; router returns `ok:true` with `submissionStatus:"not_required"`
+
+**Confidence: High** — verified by reading each adapter file and the router's `submitEInvoice()` switch-case logic. The P1 audit fix (commit in router.ts) explicitly changed the router from returning fake `submissionId` with `ok:true` to returning honest `ok:false` for stubbed countries.
 
 ---
 
@@ -563,7 +565,7 @@ k6 run scripts/k6/top10-routes.js
 
 ### Confirmed
 - **No `LICENSE` file** — README states Proprietary but no LICENSE file exists in the repository
-- **Vercel deployment currently unsupported / not validated** — the Edge middleware imports Node-only modules (`node:crypto`, `node:fs`, `node:http`, etc.) that Vercel's Edge Runtime rejects. Use VPS/Docker deployment instead (AWS EC2, Hetzner, Oracle Cloud — see `CHEAP-DEPLOYMENT.md`)
+- **Vercel deployment not currently supported/validated for production** — the Edge middleware imports Node-only modules that may be rejected by Vercel's Edge Runtime. The project has not been tested on Vercel; use VPS/Docker deployment instead (AWS EC2, Hetzner, Oracle Cloud — see `CHEAP-DEPLOYMENT.md`)
 - **ZATCA/UAE/Kuwait e-invoicing** — submission is stubbed pending government API availability
 - **S3 uploads** — simplified SigV4 (not `@aws-sdk/s3-client`); falls back to local disk
 - **In-process queue tier** — single-instance only, not production-safe without Valkey
