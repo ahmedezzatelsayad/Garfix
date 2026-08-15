@@ -7,17 +7,17 @@
 [![Security Scan](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/security.yml/badge.svg)](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/security.yml)
 [![Performance](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/performance.yml/badge.svg)](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/performance.yml)
 
-**Version:** 12.1.0 · **Runtime:** Next.js 16 (App Router) + Bun 1.3.14 + Node.js 22 · **Database:** PostgreSQL 17 · **License:** Proprietary (no LICENSE file present in repository)
+**Version:** 12.1.0 · **Runtime:** Next.js 16 (App Router) + Bun 1.3.14 + Node.js 22 · **Database:** PostgreSQL 17 · **License:** Proprietary (no LICENSE file present in repository — see Known Limitations)
 
 ---
 
 ## Overview
 
-GarfiX is an enterprise-grade ERP designed for Gulf and MENA markets. It combines double-entry accounting, multi-country e-invoicing compliance, AI-assisted invoice extraction, and multi-tenant SaaS billing in a single deployable Next.js application. The codebase is Arabic-first (RTL UI, Arabic labels, Hijri calendar support) with 254 API routes across 18 business domains.
+GarfiX is an enterprise-grade ERP designed for Gulf and MENA markets. It combines double-entry accounting, multi-country e-invoicing compliance, AI-assisted invoice extraction, and multi-tenant SaaS billing in a single deployable Next.js application. The codebase is Arabic-first (RTL UI, Arabic labels, Hijri calendar support) with 257 API routes across 18 business domains.
 
 ### Key Highlights
 
-- **254 API routes** across accounting, AI, auth, e-invoicing, HR, inventory, and platform admin
+- **257 API routes** across accounting, AI, auth, e-invoicing, HR, inventory, and platform admin
 - **106 Prisma models** with PostgreSQL Row-Level Security (RLS) for tenant isolation
 - **48 migrations** — schema is PostgreSQL-only (SQLite was removed; `db:push` is not used in production)
 - **6-stage AI cost-optimization cascade** (Cache → Pattern → Rule → Memory → Budget → LLM) with per-tenant budget gates
@@ -25,8 +25,23 @@ GarfiX is an enterprise-grade ERP designed for Gulf and MENA markets. It combine
 - **14 external integrations** (Stripe, MyFatoorah, Paymob, WhatsApp, Twilio, SendGrid, AWS S3, Meta Ads, + 7 e-invoicing adapters)
 - **3-tier queue fallback** (BullMQ + Valkey → pg-boss + PostgreSQL → in-process) with transactional outbox relay
 - **Transactional outbox pattern** for at-least-once event delivery with dead-letter handling
-- **12 Playwright E2E specs** (~30 test blocks) + ~1,735 unit/integration test files
+- **12 Playwright E2E specs** (~30 test blocks) + 1,736 test files
 - **Setup wizard** (OpenCart-style) for zero-config first-boot installation without `.env` editing
+
+### Verified Metrics
+
+| Metric | Value | Evidence | Last Verified |
+|--------|------:|----------|---------------|
+| API routes | 257 | `find src/app/api -name 'route.ts' \| wc -l` | 2026-08-15 |
+| OpenAPI paths | 257 | `docs/api/openapi.yaml` (generated, validated 1:1 with route files) | 2026-08-15 |
+| Prisma models | 106 | `grep -c '^model ' prisma/schema.prisma` | 2026-08-15 |
+| Migrations | 48 | `ls -d prisma/migrations/*/ \| wc -l` | 2026-08-15 |
+| Test files | 1,736 | `find . -name '*.test.ts' -not -path './node_modules/*'` | 2026-08-15 |
+| E2E specs | 12 | `find e2e -name '*.spec.ts' \| wc -l` | 2026-08-15 |
+| CI/CD workflows | 8 | `ls .github/workflows/*.yml` | 2026-08-15 |
+| src/lib files | 1,948 | `find src/lib -name '*.ts' \| wc -l` | 2026-08-15 |
+| npm dependencies | 63 + 17 dev | `package.json` dependencies + devDependencies | 2026-08-15 |
+| E-invoicing countries | 7 | `src/lib/e-invoicing/router.ts` authority map | 2026-08-15 |
 
 ---
 
@@ -41,7 +56,7 @@ graph TB
     subgraph "Next.js 16 App Router"
         MW[Edge Middleware<br/>CSRF + Security Headers]
         Pages[Pages & Layouts]
-        API[254 API Routes]
+        API[257 API Routes]
     end
 
     subgraph "Business Logic — src/lib/"
@@ -87,7 +102,7 @@ graph TB
 | Layer | Technology | Notes |
 |-------|-----------|-------|
 | **Presentation** | Next.js 16 App Router + React 19 | RSC with client-side hydration; `output: "standalone"` for Docker |
-| **API** | 254 Route Handlers | Node.js runtime (pinned via `export const runtime = "nodejs"`) |
+| **API** | 257 Route Handlers | Node.js runtime (pinned via `export const runtime = "nodejs"`) |
 | **Middleware** | Edge-safe (no Prisma/JWT/Redis) | CSRF double-submit + CSP nonce + security headers only |
 | **Business Logic** | `src/lib/` (1,949 files) | Domain modules: accounting, AI, e-invoicing, integrations |
 | **Database** | PostgreSQL 17 + Prisma 6.11 | 106 models, 48 migrations, RLS via Prisma `$extends` + AsyncLocalStorage |
@@ -178,7 +193,7 @@ sequenceDiagram
 garfix/
 ├── src/
 │   ├── app/                        # Next.js App Router (308 files)
-│   │   ├── api/                    # 254 route.ts files
+│   │   ├── api/                    # 257 route.ts files
 │   │   ├── setup/                  # Setup wizard (6-step installer)
 │   │   ├── founder-panel/          # Founder-only admin (10 pages)
 │   │   └── (dashboard)/            # Authenticated app pages
@@ -331,21 +346,21 @@ bunx prisma studio                              # GUI for database
 
 ## API Overview
 
-254 API routes grouped by domain:
+257 API routes grouped by domain:
 
 | Domain | Routes | Key endpoints |
 |--------|--------|---------------|
-| **accounting/** | 96 | accounts, journal-entries, vouchers, bank-reconciliation, fixed-assets, budgets, fiscal-periods, wps, tax-filing, profit-loss, balance-sheet, trial-balance |
-| **platform-admin/** | 24 | tenants, tickets, ai-providers, feature-flags, audit, integrations |
+| **accounting/** | 92 | accounts, journal-entries, vouchers, bank-reconciliation, fixed-assets, budgets, fiscal-periods, wps, tax-filing, profit-loss, balance-sheet, trial-balance |
+| **platform-admin/** | 22 | tenants, tickets, ai-providers, feature-flags, audit, integrations |
 | **ai/** | 17 | chat, chat/stream, parse-image, parse-file, smart-parse, bulk-import, invoice-brain/extract |
 | **founder-panel/** | 16 | api-key-pool, ai-fabric, ai-config, companies, e-invoicing, mission-control |
-| **auth/** | 11 | login, register, logout, refresh, me, csrf, mfa/status, change-password, forgot-password, reset-password |
+| **auth/** | 10 | login, register, logout, refresh, me, csrf, mfa/status, change-password, forgot-password, reset-password |
 | **e-invoicing/** | 13 | submit, zatca/{onboard,submit,status}, peppol/submit, webhooks/{7 countries} |
 | **hr/** | 14 | employees, salaries, commissions, attendance, leaves, performance, gratuity |
 | **invoices/** | 4 | CRUD + payment + status |
 | **webhooks/** | 5 | endpoints, events, deliveries, whatsapp |
 | **setup/** | 6 | status, test-db, run-migrations, create-founder, save-integrations, complete |
-| **Other** | 48 | clients, catalog, inventory, automation, saas, permissions, health, metrics, storage, etc. |
+| **Other** | 53 | clients, catalog, inventory, automation, saas, permissions, health, metrics, storage, etc. |
 
 ---
 
@@ -364,7 +379,7 @@ bunx prisma studio                              # GUI for database
 | **MFA** | TOTP RFC 6238, 128-bit recovery codes, replay protection, rate limiting | `src/lib/mfa.ts` |
 | **Encryption at rest** | AES-256-GCM, scrypt key derivation (N=16384), per-deployment salt | `src/lib/cryptoVault.ts` |
 | **Rate limiting** | Valkey-backed sliding window, 10 limit tiers, spoofing-resistant IP | `src/lib/rateLimit.ts` |
-| **Webhook security** | HMAC-SHA256 (timing-safe), SSRF validation, 10s timeout | `src/lib/webhooks.ts` |
+| **Webhook security** | HMAC-SHA256 (timing-safe), signs raw body string (not re-serialized JSON), SSRF validation, 10s timeout. Receivers MUST verify the raw request body — see `verifyWebhookSignature()` JSDoc in `src/lib/webhooks.ts` | `src/lib/webhooks.ts` |
 | **Anti-enumeration** | Identical 401 for all login failures (SEC-06) | `src/app/api/auth/login/route.ts` |
 | **Tenant isolation** | PostgreSQL RLS via Prisma `$extends` + AsyncLocalStorage | `src/lib/db.ts`, `src/lib/tenant-context.ts` |
 | **Audit logging** | All mutations logged + tamper-evident hash chain + PII redaction | `src/lib/audit.ts` |
@@ -437,17 +452,22 @@ flowchart LR
 
 ## E-Invoicing Coverage
 
-| Country | Authority | Status | Auth method |
-|---------|-----------|--------|-------------|
-| 🇪🇬 Egypt | ETA | ✅ Live submission | JWT API token |
-| 🇧🇭 Bahrain | NBR | ✅ Live submission | API key |
-| 🇴🇲 Oman | OTA | ✅ Live submission | OAuth2 |
-| 🇸🇦 Saudi Arabia | ZATCA | 🟡 Stub (requires cert onboarding) | CSID certificates |
-| 🇦🇪 UAE | FTA (Peppol) | 🟡 Stub (requires AP contract) | Peppol Access Point |
-| 🇰🇼 Kuwait | KITA | 🟡 Stub (MOCI portal not published) | OAuth2 |
-| 🇶🇦 Qatar | GTA | ✅ Not required | — |
+| Country | Authority | Status | Auth Method | Submit Method | Notes |
+|---------|-----------|--------|-------------|----------------|-------|
+| 🇪🇬 Egypt | ETA | ✅ Live | JWT API token | `submitEgyptEtaInvoice()` | Production-ready |
+| 🇧🇭 Bahrain | NBR | ✅ Live | API key | `submitBahrainNbrInvoice()` | Production-ready |
+| 🇴🇲 Oman | OTA | ✅ Live | OAuth2 client credentials | `submitOmanTaxInvoice()` | Production-ready |
+| 🇶🇦 Qatar | GTA | ✅ Not required | — | Returns `submissionStatus: "not_required"` | No mandatory e-invoicing |
+| 🇸🇦 Saudi Arabia | ZATCA | 🟡 Stub | CSID certificates | `ok:false` — requires `/api/e-invoicing/zatca/onboard` cert onboarding | Clearance + reporting flow not yet implemented |
+| 🇦🇪 UAE | FTA (Peppol) | 🟡 Stub | Peppol Access Point | `ok:false` — requires AP contract | Peppol submission not yet implemented |
+| 🇰🇼 Kuwait | KITA | 🟡 Stub | OAuth2 | `ok:false` — MOCI portal not yet published | Awaiting government API availability |
 
-**Confidence: High** — verified in `src/lib/e-invoicing/router.ts` and per-country adapter files.
+**Status definitions:**
+- ✅ **Live** — submission function implemented and callable; returns `ok:true` on success
+- 🟡 **Stub** — route exists but returns `ok:false` with clear error message; real submission requires external prerequisites (cert onboarding, AP contract, or government API availability)
+- ✅ **Not required** — country has no mandatory e-invoicing requirement
+
+**Confidence: High** — verified in `src/lib/e-invoicing/router.ts` (P1 audit fix: previously returned fake `submissionId` with `ok:true`; now returns honest `ok:false`).
 
 ---
 
@@ -504,7 +524,7 @@ See `AWS-REPLIT-DEPLOYMENT.md` and `CHEAP-DEPLOYMENT.md` for detailed deployment
 ## Testing
 
 ```bash
-# Unit tests (1,735 files)
+# Unit tests (1,736 test files — not individual test cases)
 bun test --isolate
 
 # E2E tests (12 specs, ~30 test blocks)
@@ -543,7 +563,7 @@ k6 run scripts/k6/top10-routes.js
 
 ### Confirmed
 - **No `LICENSE` file** — README states Proprietary but no LICENSE file exists in the repository
-- **Vercel deployment** — middleware imports Edge-incompatible Node modules; use VPS/Docker instead
+- **Vercel deployment currently unsupported / not validated** — the Edge middleware imports Node-only modules (`node:crypto`, `node:fs`, `node:http`, etc.) that Vercel's Edge Runtime rejects. Use VPS/Docker deployment instead (AWS EC2, Hetzner, Oracle Cloud — see `CHEAP-DEPLOYMENT.md`)
 - **ZATCA/UAE/Kuwait e-invoicing** — submission is stubbed pending government API availability
 - **S3 uploads** — simplified SigV4 (not `@aws-sdk/s3-client`); falls back to local disk
 - **In-process queue tier** — single-instance only, not production-safe without Valkey
@@ -559,6 +579,7 @@ k6 run scripts/k6/top10-routes.js
 
 | Document | Purpose |
 |----------|---------|
+| [docs/api/openapi.yaml](docs/api/openapi.yaml) | OpenAPI 3.1 spec — 257 paths, 397 operations, 48 schemas (generated, validated 1:1 with route files) |
 | [CHEAP-DEPLOYMENT.md](CHEAP-DEPLOYMENT.md) | VPS deployment guide (Oracle, Hetzner, Contabo, Fly.io) |
 | [AWS-REPLIT-DEPLOYMENT.md](AWS-REPLIT-DEPLOYMENT.md) | AWS EC2 + Replit deployment guide |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Full production deployment guide |

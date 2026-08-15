@@ -139,9 +139,16 @@ export async function processPendingDeliveries(): Promise<{
       // in case of future schema softening.
       const secret = decryptSecret(endpoint.secret ?? "");
       const payload = JSON.parse(delivery.payload);
+      // CANONICALIZATION FIX: sign the EXACT body string we send, not a
+      // re-serialized version of the parsed object. JSON.stringify() may
+      // produce different key ordering on re-parse, causing signature
+      // verification failure on the receiver side. By signing the raw
+      // body string, the receiver can verify by reading the raw request
+      // body (not re-serializing the parsed JSON).
+      const bodyString = JSON.stringify(payload);
       const signature = crypto
         .createHmac("sha256", secret)
-        .update(JSON.stringify(payload))
+        .update(bodyString)
         .digest("hex");
 
       // SEC-H5C4 (Cycle 4): re-validate URL at fetch time too — defends against
@@ -173,7 +180,7 @@ export async function processPendingDeliveries(): Promise<{
           "X-Garfix-Event": delivery.event ?? delivery.eventType ?? "",
           "X-Garfix-Delivery": String(delivery.id),
         },
-        body: JSON.stringify(payload),
+        body: bodyString,
         signal: AbortSignal.timeout(10_000),
       });
 
@@ -212,7 +219,30 @@ export async function processPendingDeliveries(): Promise<{
   return { processed: pending.length, succeeded, failed };
 }
 
-/** Verify a webhook signature (for SDK consumers). */
+/**
+ * Verify a webhook signature (for SDK consumers).
+ *
+ * CANONICALIZATION NOTE:
+ * The `payload` parameter must be the RAW request body string exactly as
+ * received — NOT a re-serialized JSON object. GarfiX signs the exact bytes
+ * sent over the wire, so re-serializing with a different key order will
+ * produce a different signature and verification will fail.
+ *
+ * Correct usage (Express):
+ * ```js
+ * app.post('/webhook', (req, res) => {
+ *   const rawBody = req.rawBody; // Express raw body (require express.raw or verify hook)
+ *   const sig = req.headers['x-garfix-signature'];
+ *   const valid = verifyWebhookSignature(rawBody, sig, secret);
+ * });
+ * ```
+ *
+ * Incorrect usage (will fail):
+ * ```js
+ * const body = JSON.stringify(req.body); // re-serialization — key order may differ
+ * verifyWebhookSignature(body, sig, secret); // ❌ may fail
+ * ```
+ */
 export function verifyWebhookSignature(
   payload: string,
   signature: string,

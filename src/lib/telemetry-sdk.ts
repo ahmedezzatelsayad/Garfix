@@ -57,6 +57,9 @@
 import { logger } from "./logger";
 
 let started = false;
+// Module-level SDK reference for graceful shutdown.
+// Set in startTelemetry(), used by shutdownTelemetry().
+let sdkInstance: { shutdown: () => Promise<void> } | null = null;
 
 /**
  * Start the OpenTelemetry SDK. Idempotent — calling twice is a no-op.
@@ -112,6 +115,7 @@ export async function startTelemetry(): Promise<boolean> {
     });
 
     sdk.start();
+    sdkInstance = sdk;
     started = true;
     logger.info("[telemetry] OpenTelemetry SDK started", {
       serviceName,
@@ -156,6 +160,25 @@ export async function startTelemetry(): Promise<boolean> {
  */
 export function isTelemetryStarted(): boolean {
   return started;
+}
+
+/**
+ * Shut down the OTel SDK gracefully (flush pending spans/metrics).
+ * Called by process signal handlers and by the graceful shutdown
+ * handler in instrumentation.ts.
+ */
+export async function shutdownTelemetry(): Promise<void> {
+  if (!sdkInstance) return;
+  try {
+    await sdkInstance.shutdown();
+    started = false;
+    sdkInstance = null;
+    logger.info("[telemetry] SDK shut down cleanly");
+  } catch (err) {
+    logger.error("[telemetry] SDK shutdown error", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 /**

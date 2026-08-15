@@ -1,45 +1,26 @@
 /**
- * src/lib/observability/otel.ts — P5-O1: OpenTelemetry SDK setup
- * P5-O1 FIX (Audit v2 · Phase 5)
+ * src/lib/observability/otel.ts — Consolidated OpenTelemetry entry point.
+ *
+ * Previously this file had a separate, simpler OTel SDK setup that
+ * overlapped with src/lib/telemetry-sdk.ts. The two have been consolidated:
+ * telemetry-sdk.ts is the single source of truth (with BatchSpanProcessor,
+ * shutdown hooks, getTracer/getMeter helpers, and better config).
+ *
+ * This file now re-exports from telemetry-sdk.ts so existing imports
+ * (e.g. `import { initOpenTelemetry } from "@/lib/observability/otel"`)
+ * continue to work without code changes at call sites.
+ *
+ * Migration: prefer importing from "@/lib/telemetry-sdk" directly.
  */
-import { logger } from "@/lib/logger";
+export { startTelemetry as initOpenTelemetry, shutdownTelemetry as shutdownOpenTelemetry, isTelemetryStarted } from "@/lib/telemetry-sdk";
 
-let initialized = false;
-
-export function initOpenTelemetry(): void {
-  if (initialized) return;
-  const enabled = process.env.OTEL_ENABLED === "true" || process.env.NODE_ENV === "production";
-  if (!enabled) {
-    logger.info("[otel] disabled (set OTEL_ENABLED=true)");
-    return;
-  }
-  // Dynamic import to avoid loading OTel deps in dev
-  import("@opentelemetry/sdk-node").then(async ({ NodeSDK }) => {
-    const { getNodeAutoInstrumentations } = await import("@opentelemetry/auto-instrumentations-node");
-    const { OTLPTraceExporter } = await import("@opentelemetry/exporter-trace-otlp-http");
-    const { OTLPMetricExporter } = await import("@opentelemetry/exporter-metrics-otlp-http");
-    const { PeriodicExportingMetricReader } = await import("@opentelemetry/sdk-metrics");
-    const { resourceFromAttributes } = await import("@opentelemetry/resources");
-    const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4318";
-    const sdk = new NodeSDK({
-      resource: resourceFromAttributes({ "service.name": "garfix" }),
-      traceExporter: new OTLPTraceExporter({ url: `${endpoint}/v1/traces` }),
-      metricReader: new PeriodicExportingMetricReader({
-        exporter: new OTLPMetricExporter({ url: `${endpoint}/v1/metrics` }),
-        exportIntervalMillis: 10000,
-      }),
-      instrumentations: [getNodeAutoInstrumentations({
-        "@opentelemetry/instrumentation-fs": { enabled: false },
-      })],
-    });
-    sdk.start();
-    initialized = true;
-    logger.info("[otel] started", { endpoint });
-  }).catch((err) => {
-    logger.warn("[otel] failed to start (deps not installed)", { err: String(err).slice(0, 100) });
-  });
-}
-
-export async function shutdownOpenTelemetry(): Promise<void> {
-  logger.info("[otel] shutdown");
+/**
+ * Graceful shutdown — delegates to telemetry-sdk.ts.
+ * Note: the actual SDK shutdown is registered via process.on("SIGTERM")
+ * inside startTelemetry(). This function is kept for any code that calls
+ * it explicitly (e.g. graceful shutdown handlers in instrumentation.ts).
+ */
+export async function shutdownTelemetry(): Promise<void> {
+  // The SDK shutdown is handled by the SIGTERM/SIGINT hooks registered
+  // in startTelemetry(). This function is a no-op stub for backward compat.
 }
