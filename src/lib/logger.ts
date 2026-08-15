@@ -118,9 +118,11 @@ function writeLog(level: Level, msg: string, meta?: LogMeta): void {
     // Browser: use console methods (process.stdout is undefined here)
     switch (level) {
       case "debug":
+        // eslint-disable-next-line no-console
         console.debug(formatted);
         break;
       case "info":
+        // eslint-disable-next-line no-console
         console.info(formatted);
         break;
       case "warn":

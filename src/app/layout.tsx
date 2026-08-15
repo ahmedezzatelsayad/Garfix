@@ -1,15 +1,33 @@
 import type { Metadata } from "next";
-import { Cairo } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
-const cairo = Cairo({
-  variable: "--font-cairo",
-  subsets: ["arabic", "latin"],
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
-  display: "swap",
-});
+// FONT FIX: Use next/font/google when building on Vercel/CI (has internet
+// access to fonts.gstatic.com). Fall back to a CSS-only variable when
+// building offline (local dev without internet). The font-family is still
+// applied via globals.css + Tailwind config (font-cairo class).
+//
+// To enable the Google Font: set env var GARFIX_USE_GOOGLE_FONT=1 at build
+// time. Otherwise we skip next/font optimization entirely.
+const cairo =
+  process.env.GARFIX_USE_GOOGLE_FONT === "1"
+    ? (() => {
+        // Dynamic import not supported in layout — use require
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { Cairo } = require("next/font/google");
+          return Cairo({
+            variable: "--font-cairo",
+            subsets: ["arabic", "latin"],
+            weight: ["300", "400", "500", "600", "700", "800", "900"],
+            display: "swap",
+          });
+        } catch {
+          return { variable: "--font-cairo", className: "" };
+        }
+      })()
+    : { variable: "--font-cairo", className: "" };
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://garfix.app"),

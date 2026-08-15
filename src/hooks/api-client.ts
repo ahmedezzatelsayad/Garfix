@@ -134,7 +134,7 @@ function handle401(): void {
     // FE-05 FIX (Audit v2 · Phase 1) — VercelDashboard was deleted; the
     // AppShell dashboard view now handles auth via AuthContext + this 401
     // handler uniformly across all deployment targets.
-    const publicPaths = ["/", "/login", "/signup", "/help", "/status", "/privacy", "/terms", "/cookies", "/contact", "/partners", "/refund", "/api-docs"];
+    const publicPaths = ["/", "/login", "/signup", "/help", "/status", "/privacy", "/terms", "/cookies", "/contact", "/partners", "/refund", "/api-docs", "/setup"];
     if (publicPaths.includes(path)) return;
   }
   isRedirectingToLogin = true;

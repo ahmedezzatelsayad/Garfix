@@ -103,6 +103,16 @@ export async function register(): Promise<void> {
     return;
   }
 
+  // ── Standalone server short-circuit ────────────────────────────────────
+  // When running `node .next/standalone/server.js` (Next.js standalone output),
+  // NEXT_RUNTIME may be undefined and nodeRequire() fails with
+  // "require is not available". Skip the heavy startup — API routes work
+  // fine without BullMQ/cron/process-handlers for local testing.
+  if (process.env.GARFIX_SKIP_INSTRUMENTATION === "1") {
+    logger.info("[instrumentation] Skipping custom startup (GARFIX_SKIP_INSTRUMENTATION=1)");
+    return;
+  }
+
   // ── Vercel Serverless short-circuit ────────────────────────────────────
   // VERCEL FIX: skip all custom startup on Vercel — the nodeRequire() helper
   // fails with "require is not available" and background tasks (BullMQ,
