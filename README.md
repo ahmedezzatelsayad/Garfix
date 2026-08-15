@@ -1,381 +1,582 @@
-# GarfiX EOS — Production-Ready ERP & Financial SaaS Platform
+# GarfiX EOS
 
-> **Enterprise-grade multi-tenant SaaS ERP/Invoicing platform with AI cost-optimization cascade.**
-> Arabic-first, MENA-focused, production-hardened.
+> Arabic-first, multi-tenant SaaS ERP platform for the MENA region — invoicing, accounting, e-invoicing, AI-powered invoice extraction, and HR in a single Next.js monolith.
 
-**Version:** v1.0-production-95 · **License:** Proprietary · **Score:** 95+/100
+[![CI](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/ci.yml)
+[![E2E Tests](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/e2e.yml/badge.svg)](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/e2e.yml)
+[![Security Scan](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/security.yml/badge.svg)](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/security.yml)
+[![Performance](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/performance.yml/badge.svg)](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/performance.yml)
 
----
-
-## ✅ CI/CD Status — All Workflows Green
-
-| Workflow | Status | Description |
-|----------|--------|-------------|
-| **GarfiX CI v12** | ✅ passing | TypeScript + ESLint + Build (198 pages) |
-| **E2E Tests** | ✅ passing | 30 Playwright E2E tests (28 passed, 2 flaky-but-green) |
-| **GarFiX Security Scan** | ✅ passing | 13 security test files, 356 tests |
-| **GarFiX Performance** | ✅ passing | Bundle size + API load test (p95 < 200ms) |
-| **GarFiX Lighthouse (Nightly)** | ⚠️ informational | Nightly audit, does NOT block merges |
-
-**Recent fixes (commit `278e461f`):**
-- ✅ Fixed founder-panel layout (cookie name mismatch + server redirect failing in Bun)
-- ✅ Fixed idempotency replay (validation ordering bug)
-- ✅ Fixed RBAC permissions (added `view_invoices`, restricted `delete_invoice` for employees)
-- ✅ Fixed webhook SSRF (returns 400 instead of 500)
-- ✅ Fixed auth-mfa tests (SEC-06 anti-enumeration behavior)
-- ✅ Fixed ZATCA test (page.route interception + absolute URL)
-- ✅ Fixed focus-trap tests (founder login + focus activation timing)
-- ✅ Improved useFocusTrap hook (rAF-based returnFocus with re-query fallback)
+**Version:** 12.1.0 · **Runtime:** Next.js 16 (App Router) + Bun 1.3.14 + Node.js 22 · **Database:** PostgreSQL 17 · **License:** Proprietary (no LICENSE file present in repository)
 
 ---
 
-## 📊 Audit Status — ALL 88 FINDINGS CLOSED
+## Overview
 
-| Severity | Count | Status |
-|----------|-------|--------|
-| P0 (Blockers) | 14 | ✅ All Closed |
-| P1 (Critical) | 35 | ✅ All Closed |
-| P2 (Important) | 24 | ✅ All Closed |
-| P3 (Polish) | 12 | ✅ All Closed |
-| **Total** | **88** | **100% Closed** |
+GarfiX is an enterprise-grade ERP designed for Gulf and MENA markets. It combines double-entry accounting, multi-country e-invoicing compliance, AI-assisted invoice extraction, and multi-tenant SaaS billing in a single deployable Next.js application. The codebase is Arabic-first (RTL UI, Arabic labels, Hijri calendar support) with 254 API routes across 18 business domains.
 
-**Tag:** `v1.0-production-95` · **14 PRs merged** (#59–#72)
+### Key Highlights
 
----
-
-## 🏗️ Architecture
-
-**4-layer modular enterprise monolith:**
-
-```
-Presentation (24 pages × 3 viewports, WCAG 2.1 AAA)
-       ↓
-API Layer (250 routes, JWT+RBAC+CSRF+RLS+Rate Limit+Audit)
-       ↓
-Business Logic (9 modules: Accounting, AI Fabric, E-Invoicing, Inventory, HR, Billing, Reports, Automation, Bulk Input)
-       ↓
-Infrastructure (PostgreSQL 17 + Prisma 106 models, Valkey 8 + BullMQ, AES-256 Crypto Vault, S3 Storage)
-```
-
-### Multi-Tenancy (ALS + Prisma Extension + PostgreSQL RLS)
-- **222 routes**: automatic tenant scoping via AsyncLocalStorage + Prisma `$extends`
-- **28 routes**: exempt (public/inbound webhooks/health/docs)
-- **Strict RLS policies** (no IS NULL bypass) + `platform_admin_bypass` for founder/admin
-- **Re-entrancy guard** for nested transactions (T0-A atomicity verified)
-
-### AI Provider Cascade (6-stage cost optimization)
-```
-Cache → Pattern → Rule → Memory → Budget → AI (DeepSeek → Gemini → OpenRouter → OpenAI → Regex fallback)
-```
-
-### Security (Defense in Depth)
-- JWT rotation + blacklist (fail-closed on Valkey outage)
-- **SEC-06 anti-enumeration**: login returns identical 401 for wrong password / user not found / MFA missing / MFA wrong (no credential validity leakage)
-- AES-256-GCM crypto vault (per-deployment salt, scrypt key derivation)
-- TOTP MFA (128-bit recovery codes, constant-time comparison, replay protection)
-- Nonce-based CSP, HSTS, COOP/COEP
-- SSRF protection (DNS-rebinding resistant `fetchSafe()`)
-- Audit logging on all mutations + CSV exports
+- **254 API routes** across accounting, AI, auth, e-invoicing, HR, inventory, and platform admin
+- **106 Prisma models** with PostgreSQL Row-Level Security (RLS) for tenant isolation
+- **48 migrations** — schema is PostgreSQL-only (SQLite was removed; `db:push` is not used in production)
+- **6-stage AI cost-optimization cascade** (Cache → Pattern → Rule → Memory → Budget → LLM) with per-tenant budget gates
+- **7 e-invoicing authorities** (SA ZATCA, EG ETA, AE FTA, BH NBR, OM OTA, KW, QA) — 4 with live submission, 3 stubbed pending government API availability
+- **14 external integrations** (Stripe, MyFatoorah, Paymob, WhatsApp, Twilio, SendGrid, AWS S3, Meta Ads, + 7 e-invoicing adapters)
+- **3-tier queue fallback** (BullMQ + Valkey → pg-boss + PostgreSQL → in-process) with transactional outbox relay
+- **Transactional outbox pattern** for at-least-once event delivery with dead-letter handling
+- **12 Playwright E2E specs** (~30 test blocks) + ~1,735 unit/integration test files
+- **Setup wizard** (OpenCart-style) for zero-config first-boot installation without `.env` editing
 
 ---
 
-## 🚀 Quick Start — Two Installation Paths
+## Architecture
 
-### Path A: Setup Wizard (No `.env` file needed — like OpenCart/Laravel)
+```mermaid
+graph TB
+    subgraph "Client"
+        Browser[Browser — React 19 RSC]
+    end
 
-GarfiX ships with a **web-based setup wizard** that runs on first boot, BEFORE any
-environment variables are configured. This is the recommended path for self-hosted
-deployments (VPS, Docker, on-prem) where you want a GUI installer.
+    subgraph "Next.js 16 App Router"
+        MW[Edge Middleware<br/>CSRF + Security Headers]
+        Pages[Pages & Layouts]
+        API[254 API Routes]
+    end
+
+    subgraph "Business Logic — src/lib/"
+        Auth[Auth + JWT + MFA]
+        RBAC[RBAC + Permissions]
+        Tenant[Tenant Context — ALS]
+        Acct[Accounting Engine<br/>Double-Entry + RLS]
+        AIFab[AI Fabric<br/>6-Stage Cascade]
+        EInv[E-Invoicing<br/>7 Countries]
+        Webhook[Webhook System]
+    end
+
+    subgraph "Infrastructure"
+        DB[(PostgreSQL 17<br/>106 models + RLS)]
+        Valkey[(Valkey 8<br/>Cache + Queues + Rate Limit)]
+        Outbox[Transactional Outbox]
+        Breakers[Circuit Breakers<br/>12 services]
+    end
+
+    subgraph "External Services"
+        LLM[DeepSeek / Gemini / OpenRouter]
+        Pay[Stripe / MyFatoorah / Paymob]
+        Gov[ZATCA / ETA / FTA / NBR]
+        Storage[S3 / Local Disk]
+    end
+
+    Browser --> MW --> Pages
+    MW --> API
+    API --> Auth & RBAC & Tenant
+    API --> Acct & AIFab & EInv & Webhook
+    Acct --> DB
+    AIFab --> LLM
+    AIFab --> Valkey
+    EInv --> Gov
+    Webhook --> Pay
+    Tenant -->|RLS| DB
+    API --> Outbox --> Valkey
+    API --> Breakers
+```
+
+### Runtime Architecture
+
+| Layer | Technology | Notes |
+|-------|-----------|-------|
+| **Presentation** | Next.js 16 App Router + React 19 | RSC with client-side hydration; `output: "standalone"` for Docker |
+| **API** | 254 Route Handlers | Node.js runtime (pinned via `export const runtime = "nodejs"`) |
+| **Middleware** | Edge-safe (no Prisma/JWT/Redis) | CSRF double-submit + CSP nonce + security headers only |
+| **Business Logic** | `src/lib/` (1,949 files) | Domain modules: accounting, AI, e-invoicing, integrations |
+| **Database** | PostgreSQL 17 + Prisma 6.11 | 106 models, 48 migrations, RLS via Prisma `$extends` + AsyncLocalStorage |
+| **Cache/Queue** | Valkey 8 (Redis-compatible) | BullMQ queues, L1+L2 cache with pub/sub invalidation, rate limiting |
+| **Instrumentation** | `src/instrumentation.ts` | Two-tier startup: blocking DB init + background workers (BullMQ, outbox relay, crons) |
+
+### Multi-Tenancy
+
+Tenant isolation is enforced at the PostgreSQL level via Row-Level Security (RLS):
+
+1. **Tenant resolution:** JWT claim `companies[]` → selected `companySlug` per request
+2. **Context propagation:** `AsyncLocalStorage` (`src/lib/tenant-context.ts`) carries the slug through the request lifecycle
+3. **Query interception:** Prisma `$extends` interceptor (`src/lib/db.ts`) wraps every query in a `$transaction` that calls `set_config('app.current_company_slug', slug, true)` before execution
+4. **Platform admin bypass:** Founder/admin queries set `app.is_platform='on'` to bypass RLS policies
+5. **Re-entrancy guard:** `markInTransaction()` prevents nested `$transaction` wrapping (preserves outer atomicity)
+
+**Confidence: High** — verified in `src/lib/db.ts` (Layer 2: `tenantRls` interceptor), `src/lib/tenant-context.ts`, and migration `20260813130000_p1_rls_strict_policies`.
+
+### Authentication & Authorization
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant M as Middleware (Edge)
+    participant A as /api/auth/login
+    participant DB as Database
+    participant V as Valkey
+
+    U->>M: POST /api/auth/login {email, password}
+    M->>M: CSRF check (exempt for login)
+    M->>A: Forward request
+    A->>DB: Verify password (bcrypt, auto-rehash)
+    A->>DB: Check MFA enabled?
+    alt MFA enabled
+        A-->>U: 401 (generic — SEC-06 anti-enumeration)
+        U->>A: POST /api/auth/login {email, password, mfaCode}
+        A->>V: Validate TOTP + rate limit + replay check
+    end
+    A->>DB: Register session (SessionRegistry + JTI)
+    A-->>U: 200 + Set-Cookie (inv_token + inv_refresh + inv_csrf)
+```
+
+**Authentication:**
+- JWT HS256 (algorithm pinned) with access (30min) + refresh (30d) token split
+- HttpOnly + SameSite cookies; `inv_token` (access), `inv_refresh` (refresh), `inv_csrf` (CSRF, JS-readable)
+- Refresh-token rotation on every silent refresh
+- Token versioning (`tv` claim) invalidates all sessions on password reset / logout-all
+- Dual revocation: Valkey blacklist (`token:blacklist:<jti>`) + DB `SessionRegistry` (forensic IP/UA tracking)
+- MFA: TOTP RFC 6238 (30s, 6 digits, ±1 window) + 10 recovery codes (128-bit each, SHA-256 hashed, AES-256-GCM encrypted)
+- **SEC-06 anti-enumeration:** login returns identical 401 for wrong password / user not found / MFA missing / MFA wrong
+
+**Authorization (RBAC):**
+- 16 permissions in `PERMISSION_CATALOG` (`view_invoices`, `create_invoice`, `delete_invoice`, `finance_access`, `e_invoicing_submit`, etc.)
+- 4 built-in roles: `viewer` (read-only), `employee` (no delete), `editor` (full CRUD + export), `admin` (all + locked perms)
+- 5 locked permissions (`reports_access`, `settings_access`, `finance_access`, `employee_management`, `e_invoicing_submit`) — admin/founder only
+- `computeEffectivePermissions()` merges role baseline + per-user overrides (non-locked only)
+- Founder identified by `isFounderEmail()` (email match), not role value — protects against role-value changes
+
+**Confidence: High** — verified in `src/lib/auth.ts`, `src/lib/mfa.ts`, `src/lib/permissions.ts`, `src/lib/middleware.ts`.
+
+---
+
+## Technology Stack
+
+| Category | Technology | Version | Evidence |
+|----------|-----------|---------|----------|
+| **Runtime** | Bun | 1.3.14 | `package.json` engines, `Dockerfile` |
+| **Framework** | Next.js | ^16.1.1 | `package.json`, `next.config.ts` |
+| **UI** | React | ^19.0.0 | `package.json` |
+| **Language** | TypeScript | ^5 | `tsconfig.json` (strict mode) |
+| **Database** | PostgreSQL | 17 | `prisma/schema.prisma` provider, `docker-compose.prod.yml` |
+| **ORM** | Prisma | 6.11.1 | `package.json`, `prisma/schema.prisma` |
+| **Cache/Queue** | Valkey | 8.1 | `docker-compose.prod.yml`, `src/lib/valkey.ts` |
+| **Queue lib** | BullMQ | ^6.0.10 | `package.json`, `src/lib/queues.ts` |
+| **Auth** | jsonwebtoken + bcryptjs | — | `src/lib/auth.ts` |
+| **Validation** | Zod | ^4.0.2 | `package.json`, API route schemas |
+| **UI components** | shadcn/ui (new-york) + Radix UI | 27 packages | `components.json`, `package.json` |
+| **CSS** | Tailwind CSS | ^4 | `package.json` |
+| **E2E testing** | Playwright | ^1.61.1 | `package.json`, `playwright.e2e.config.ts` |
+| **AI SDK** | z-ai-web-dev-sdk | ^0.0.18 | `package.json`, `src/lib/aiProvider.ts` |
+| **OCR** | tesseract.js | ^7.0.0 | `package.json`, `src/lib/invoice-brain/ocrAdapter.ts` |
+
+---
+
+## Repository Structure
+
+```
+garfix/
+├── src/
+│   ├── app/                        # Next.js App Router (308 files)
+│   │   ├── api/                    # 254 route.ts files
+│   │   ├── setup/                  # Setup wizard (6-step installer)
+│   │   ├── founder-panel/          # Founder-only admin (10 pages)
+│   │   └── (dashboard)/            # Authenticated app pages
+│   ├── lib/                        # Business logic (1,949 files)
+│   │   ├── ai/                     # AI provider routing + key pool (24 files)
+│   │   ├── ai-fabric/              # 6-stage cascade gateway (37 files)
+│   │   ├── accounting/             # Double-entry journal engine (39 files)
+│   │   ├── e-invoicing/            # 7-country e-invoicing adapters (25 files)
+│   │   ├── integrations/           # 14 external integrations (23 files)
+│   │   ├── invoice-brain/          # OCR + pattern extraction (22 files)
+│   │   ├── circuit-breaker/        # 12 per-service breakers
+│   │   ├── accessibility/          # WCAG 2.1 AAA focus traps
+│   │   ├── setup/                  # Setup wizard config helpers
+│   │   ├── auth.ts                 # JWT + session + refresh rotation
+│   │   ├── mfa.ts                  # TOTP + recovery codes
+│   │   ├── permissions.ts          # RBAC catalog + role defaults
+│   │   ├── cryptoVault.ts          # AES-256-GCM encryption at rest
+│   │   ├── ssrf.ts                 # DNS-rebinding-resistant fetchSafe
+│   │   ├── db.ts                   # Prisma client + RLS extension
+│   │   ├── queues.ts               # 3-tier queue (BullMQ → pg-boss → in-process)
+│   │   ├── cache.ts                # L1+L2 cache with pub/sub invalidation
+│   │   ├── outbox.ts               # Transactional outbox relay
+│   │   └── valkey.ts               # Valkey/Redis client
+│   ├── components/                 # React components (109 files)
+│   │   ├── ui/                     # shadcn/ui (40+ components)
+│   │   ├── garfix-ds/              # Design system (GarfixModal, GarfixButton, etc.)
+│   │   └── garfix/                 # Custom components (DataTable, ErrorBoundary, etc.)
+│   ├── modules/                    # 18 business module views (80 files)
+│   ├── hooks/                      # React Query hooks + useAccessibility (26 files)
+│   ├── context/                    # AuthContext + BrandContext
+│   └── instrumentation.ts          # Server startup (Tier1 blocking + Tier2 background)
+├── prisma/
+│   ├── schema.prisma               # 106 models, 3,057 lines
+│   ├── migrations/                 # 48 migrations
+│   └── seed.ts                     # Demo data seeder
+├── e2e/                            # 12 Playwright E2E specs
+├── scripts/                        # 127 files (seeds, benchmarks, chaos drills, k6)
+├── docs/                           # 65 files (architecture, ADRs, audit reports)
+├── .github/workflows/              # 8 CI/CD workflows
+├── Dockerfile                      # 3-stage build (bun → node:22-alpine)
+├── docker-compose.prod.yml         # Self-contained prod stack (postgres + valkey + app)
+├── next.config.ts                  # standalone output, serverExternalPackages
+└── .env.example                    # 331 lines — full env var reference
+```
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| **Bun** | ≥ 1.3.14 | Package manager + runtime |
+| **PostgreSQL** | ≥ 17 | Primary database |
+| **Valkey** | ≥ 8.1 | Cache + queues + rate limiting (optional for dev) |
+
+### Path A: Setup Wizard (no `.env` needed)
 
 ```bash
 git clone https://github.com/ahmedezzatelsayad/Garfix.git
 cd Garfix
 bun install
-bunx prisma generate      # generates the Prisma Client (no DB needed yet)
+bunx prisma generate
 bun run build
 bun run start
 ```
 
-Then open **http://localhost:3000** — the middleware detects that setup is not
-complete and redirects you to `/setup`. The wizard walks you through:
+Open `http://localhost:3000` — the middleware redirects to `/setup` (6-step wizard):
+1. Welcome
+2. Database configuration (tests connection live)
+3. Run migrations
+4. Create founder account + company
+5. Optional integrations (Stripe, OpenRouter, WhatsApp, Redis, SMTP)
+6. Complete (writes `.env` + `.setup-complete` marker, disables wizard)
 
-1. **Welcome + system requirements check**
-2. **Database configuration** (host, port, db, user, password) — tests the
-   connection live before proceeding
-3. **Run migrations** (calls `/api/setup/run-migrations`)
-4. **Create founder account + company** (email, password, company name, currency)
-5. **Optional integrations** (Stripe, OpenRouter, WhatsApp, Redis, SMTP — all
-   optional, can be skipped and configured later)
-6. **Confirmation + auto-disable installer** — writes a `.setup-complete`
-   marker file so the wizard can't be re-run
-
-The wizard writes all configuration to a `.env` file on disk (or `/data/.setup-complete`
-in Docker) and creates the founder + company in the database. After completion,
-the app restarts with the new config and the wizard is disabled.
-
-> **Security**: the `/api/setup/*` endpoints return `410 Gone` once the marker
-> file exists, so the wizard cannot be re-run to overwrite the founder account.
-
-### Path B: Manual `.env` configuration (for CI/CD, Kubernetes, Vercel)
-
-For automated deployments where you provision env vars via secrets manager,
-Kubernetes ConfigMap, or Vercel project settings:
+### Path B: Manual `.env` configuration
 
 ```bash
 git clone https://github.com/ahmedezzatelsayad/Garfix.git
 cd Garfix
 bun install
 cp .env.example .env
-# Edit .env: DATABASE_URL, VALKEY_URL, JWT_SECRET, JWT_REFRESH_SECRET,
-#            PAYMENTS_ENC_KEY, VAULT_SALT, FOUNDER_EMAIL, SETUP_COMPLETE=true
+# Edit .env: DATABASE_URL, JWT_SECRET, JWT_REFRESH_SECRET, PAYMENTS_ENC_KEY, FOUNDER_EMAIL
 bunx prisma migrate deploy
 bunx prisma generate
 bun run dev
 ```
 
-> **Note**: when `SETUP_COMPLETE=true` is set, the middleware skips the wizard
-> redirect and serves the app directly. Use this path for production deploys
-> where env vars are provisioned out-of-band.
+---
 
-### Production (Docker)
+## Environment Variables
+
+> Full reference in `.env.example` (331 lines). Only required vars listed here.
+
+| Variable | Required | Purpose | Safe Example |
+|----------|----------|---------|--------------|
+| `DATABASE_URL` | ✅ | PostgreSQL connection string | `postgresql://user:pass@host:5432/db?schema=public` |
+| `DATABASE_DIRECT_URL` | ✅ | Direct connection (for migrations) | Same as `DATABASE_URL` |
+| `JWT_SECRET` | ✅ | HS256 signing (≥32 chars) | `openssl rand -hex 64` |
+| `JWT_REFRESH_SECRET` | ✅ | Refresh token signing (≥32 chars, different) | `openssl rand -hex 64` |
+| `PAYMENTS_ENC_KEY` | ✅ | AES-256-GCM vault key (≥32 chars) | `openssl rand -base64 32` |
+| `FOUNDER_EMAIL` | ✅ | Platform founder email | `founder@example.com` |
+| `VALKEY_URL` | Production | Valkey/Redis for queues + cache + rate limit | `valkey://localhost:6379` |
+| `VAULT_SALT` | Recommended | Per-deployment salt for scrypt | `openssl rand -hex 32` |
+| `APP_URL` | Production | Public URL for callbacks/links | `https://garfix.app` |
+| `SETUP_COMPLETE` | Optional | Skip setup wizard (set after manual setup) | `true` |
+| `NODE_ENV` | Production | Runtime environment | `production` |
+| `TRUSTED_PROXIES` | Optional | Comma-separated proxy IPs for rate limiting | `10.0.0.1,10.0.0.2` |
+| `BCRYPT_ROUNDS` | Optional | Bcrypt cost factor (default 12) | `12` |
+| `MAX_SESSIONS_PER_USER` | Optional | Concurrent session limit (default 5) | `5` |
+| `DEEPSEEK_API_KEY` | Optional | DeepSeek AI provider key | `sk-...` |
+| `GARFIX_USE_GOOGLE_FONT` | Optional | Enable Cairo font (requires internet at build) | `1` |
+| `GARFIX_SKIP_INSTRUMENTATION` | Optional | Skip BullMQ/cron startup (standalone server) | `1` |
+
+---
+
+## Development
 
 ```bash
-bun run build
-docker compose -f docker-compose.prod.yml up -d
-# Or: bun run start (after build)
+# Install dependencies
+bun install
+
+# Start dev server (hot reload)
+bun run dev
+
+# Type check
+bunx tsc --noEmit
+
+# Lint
+bunx eslint .
+
+# Run unit tests
+bun test --isolate
+
+# Run E2E tests (requires running app + DB)
+bunx playwright test
+
+# Run a single E2E spec
+bunx playwright test e2e/invoice-create.spec.ts
+
+# Database operations
+bunx prisma migrate dev --name my_migration    # Create migration
+bunx prisma migrate deploy                     # Apply in production
+bunx prisma generate                           # Regenerate client
+bunx prisma studio                              # GUI for database
 ```
 
 ---
 
-## 📋 Quality Gates
+## API Overview
 
-| Gate | Command | Target | Status |
-|------|---------|--------|--------|
-| G1 TypeScript | `bunx tsc --noEmit` | 0 errors | ✅ |
-| G2 ESLint | `bunx eslint .` | 0 new errors (CI gate) | ✅ |
-| G3 Build | `bun run build` | 198 pages | ✅ |
-| G4 Security | `bun test --isolate` (13 files) | 356 pass / 0 fail | ✅ |
-| G5 Playwright | `bunx playwright test` | 30 E2E tests (28 pass + 2 green) | ✅ |
-| k6 Load | `k6 run scripts/k6/top10-routes.js` | p95 < 200ms | ✅ |
-| axe-core | `node scripts/axe-core-scan.mjs` | WCAG AAA | ✅ |
-| PAT Clean | `grep -c "github_pat" .git/config` | 0 | ✅ |
+254 API routes grouped by domain:
 
----
-
-## 🔧 Key Environment Variables
-
-> **See `.env.example` for the full list.** The setup wizard (Path A) writes
-> these automatically; Path B requires manual setup.
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | ✅ | PostgreSQL connection string |
-| `DATABASE_DIRECT_URL` | ✅ | Direct connection (for migrations) |
-| `JWT_SECRET` | ✅ | ≥32 chars, HS256 signing |
-| `JWT_REFRESH_SECRET` | ✅ | ≥32 chars, different from JWT_SECRET |
-| `PAYMENTS_ENC_KEY` | ✅ | ≥32 chars, AES-256 vault key |
-| `VAULT_SALT` | Recommended | Per-deployment salt (default: `garfix-vault-salt`) |
-| `FOUNDER_EMAIL` | ✅ | Platform founder email (used by isFounderEmail) |
-| `VALKEY_URL` | ✅ | Valkey/Redis connection |
-| `SETUP_COMPLETE` | Optional | `true` to skip the setup wizard (12-factor deploys) |
-| `VALKEY_FAIL_MODE` | Optional | `closed` (default, prod) or `open` (dev) |
-| `S3_PUBLIC_ACL` | Optional | `true` for public S3 (default: private) |
-| `OTEL_ENABLED` | Optional | `true` to enable OpenTelemetry |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | Optional | OTLP collector URL |
+| Domain | Routes | Key endpoints |
+|--------|--------|---------------|
+| **accounting/** | 96 | accounts, journal-entries, vouchers, bank-reconciliation, fixed-assets, budgets, fiscal-periods, wps, tax-filing, profit-loss, balance-sheet, trial-balance |
+| **platform-admin/** | 24 | tenants, tickets, ai-providers, feature-flags, audit, integrations |
+| **ai/** | 17 | chat, chat/stream, parse-image, parse-file, smart-parse, bulk-import, invoice-brain/extract |
+| **founder-panel/** | 16 | api-key-pool, ai-fabric, ai-config, companies, e-invoicing, mission-control |
+| **auth/** | 11 | login, register, logout, refresh, me, csrf, mfa/status, change-password, forgot-password, reset-password |
+| **e-invoicing/** | 13 | submit, zatca/{onboard,submit,status}, peppol/submit, webhooks/{7 countries} |
+| **hr/** | 14 | employees, salaries, commissions, attendance, leaves, performance, gratuity |
+| **invoices/** | 4 | CRUD + payment + status |
+| **webhooks/** | 5 | endpoints, events, deliveries, whatsapp |
+| **setup/** | 6 | status, test-db, run-migrations, create-founder, save-integrations, complete |
+| **Other** | 48 | clients, catalog, inventory, automation, saas, permissions, health, metrics, storage, etc. |
 
 ---
 
-## 🧪 Testing
+## Security
+
+### Verified Controls
+
+| Control | Implementation | Evidence |
+|---------|---------------|----------|
+| **CSRF** | Double-submit cookie (`inv_csrf`) + header (`x-csrf-token`), SameSite=strict | `middleware.ts` |
+| **CSP** | Per-request nonce, no `unsafe-eval` in production | `middleware.ts` |
+| **SSRF** | `validateBaseUrl()` + `fetchSafe()` with DNS pinning (13 CIDR ranges blocked) | `src/lib/ssrf.ts` |
+| **SQL injection** | Prisma parameterized queries + RLS policies | `src/lib/db.ts` |
+| **XSS** | CSP nonce + React auto-escaping | `middleware.ts` |
+| **Auth** | JWT HS256 (algorithm pinned), refresh rotation, JTI blacklisting | `src/lib/auth.ts` |
+| **MFA** | TOTP RFC 6238, 128-bit recovery codes, replay protection, rate limiting | `src/lib/mfa.ts` |
+| **Encryption at rest** | AES-256-GCM, scrypt key derivation (N=16384), per-deployment salt | `src/lib/cryptoVault.ts` |
+| **Rate limiting** | Valkey-backed sliding window, 10 limit tiers, spoofing-resistant IP | `src/lib/rateLimit.ts` |
+| **Webhook security** | HMAC-SHA256 (timing-safe), SSRF validation, 10s timeout | `src/lib/webhooks.ts` |
+| **Anti-enumeration** | Identical 401 for all login failures (SEC-06) | `src/app/api/auth/login/route.ts` |
+| **Tenant isolation** | PostgreSQL RLS via Prisma `$extends` + AsyncLocalStorage | `src/lib/db.ts`, `src/lib/tenant-context.ts` |
+| **Audit logging** | All mutations logged + tamper-evident hash chain + PII redaction | `src/lib/audit.ts` |
+| **Input validation** | Zod schemas on all API routes + 1 MiB body size limit | `src/lib/api.ts` |
+| **Security headers** | HSTS, X-Frame-Options: DENY, COOP/COEP, X-Content-Type-Options | `middleware.ts` |
+
+### Known Security Considerations
+
+- **In-memory rate-limit fallback** does not protect multi-instance deployments without `VALKEY_URL` — verify it is set in all production deploys
+- **S3 uploads** use simplified SigV4 via plain `fetch` (not `@aws-sdk/s3-client`) — falls back to local disk on failure
+- **Kuwait/ZATCA/UAE e-invoicing submission** is stubbed (returns `ok:false`) — real submissions require cert onboarding
+
+---
+
+## AI System
+
+### 6-Stage Cost Optimization Cascade
+
+```mermaid
+flowchart LR
+    Request[AI Request] --> Cache{1. Cache<br/>hit?}
+    Cache -->|Yes| Return1[Return cached]
+    Cache -->|No| Pattern{2. Pattern<br/>match?}
+    Pattern -->|Yes| Return2[Return pattern result]
+    Pattern -->|No| Rule{3. Rule<br/>candidate?}
+    Rule -->|Yes| Return3[Return rule result]
+    Rule -->|No| Memory{4. Memory<br/>entry?}
+    Memory -->|Yes| Return4[Return memory]
+    Memory -->|No| Budget{5. Budget<br/>gate}
+    Budget -->|Blocked| Return5[Budget blocked]
+    Budget -->|OK| AI[6. AI Runtime<br/>LLM call]
+    AI --> Log[Log to AIRequestLog]
+    Log --> CacheWrite[Write back to cache]
+```
+
+| Stage | Source | Resolution |
+|-------|--------|------------|
+| 1. Cache | `AIFabricCacheEntry` table | Hash(companySlug + normalizedInput), 1h TTL |
+| 2. Pattern | Invoice-brain pattern engine | Layout fingerprint → template lookup |
+| 3. Rule | `RuleCandidate` table (status="promoted") | Auto-promoted business rules |
+| 4. Memory | `AIMemoryEntry` table | Previous AI decisions by inputHash |
+| 5. Budget | `BudgetConfig` per tenant | Monthly spend gate (hard_stop / budget_exceeded) |
+| 6. AI | LLM provider call | DeepSeek → Gemini → OpenRouter → OpenAI → z-ai fallback |
+
+**Supported AI providers:** DeepSeek (default), Gemini, OpenRouter, Anthropic, OpenAI, z-ai (sandbox), Custom (OpenAI-compatible).
+
+**Key features:** provider fallback chain with circuit breakers, per-key RPM rate limiting via Valkey, encrypted API key pool (AES-256-GCM), cost tracking per request (`AIRequestLog`), cross-company intelligence (privacy-preserving pattern sharing).
+
+**Confidence: High** — verified in `src/lib/ai-fabric/gateway.ts`, `src/lib/aiProvider.ts`, `src/lib/ai/`.
+
+---
+
+## Background Jobs & Queues
+
+### 3-Tier Queue Architecture
+
+| Tier | Backend | Trigger | Production-safe |
+|------|---------|---------|-----------------|
+| 1 | BullMQ + Valkey | `VALKEY_URL` set | ✅ Multi-instance |
+| 2 | pg-boss + PostgreSQL | `DATABASE_URL` set, no Valkey | ✅ Same DB |
+| 3 | In-process | Neither set | ❌ Single-instance only |
+
+**7 queues:** `ai-jobs`, `email-jobs`, `whatsapp-jobs`, `sms-jobs`, `backup-jobs`, `scheduler-jobs`, `events-jobs` (outbox relay target).
+
+**Transactional Outbox:** DB writes + event publishes are atomic via `appendToOutbox(tx, event)` inside a `$transaction`. A background relay (`startOutboxRelay`) processes pending events every 1s with at-least-once delivery and dead-letter handling after 10 failures.
+
+**Confidence: High** — verified in `src/lib/queues.ts`, `src/lib/outbox.ts`.
+
+---
+
+## E-Invoicing Coverage
+
+| Country | Authority | Status | Auth method |
+|---------|-----------|--------|-------------|
+| 🇪🇬 Egypt | ETA | ✅ Live submission | JWT API token |
+| 🇧🇭 Bahrain | NBR | ✅ Live submission | API key |
+| 🇴🇲 Oman | OTA | ✅ Live submission | OAuth2 |
+| 🇸🇦 Saudi Arabia | ZATCA | 🟡 Stub (requires cert onboarding) | CSID certificates |
+| 🇦🇪 UAE | FTA (Peppol) | 🟡 Stub (requires AP contract) | Peppol Access Point |
+| 🇰🇼 Kuwait | KITA | 🟡 Stub (MOCI portal not published) | OAuth2 |
+| 🇶🇦 Qatar | GTA | ✅ Not required | — |
+
+**Confidence: High** — verified in `src/lib/e-invoicing/router.ts` and per-country adapter files.
+
+---
+
+## Docker & Deployment
+
+### Docker (3-stage build)
 
 ```bash
-# Unit tests (108 production files, excludes founder-validation)
+# Build
+docker build -t garfix .
+
+# Run with docker-compose (includes PostgreSQL + Valkey)
+cp .env.example .env
+# Edit .env with real values
+docker compose -f docker-compose.prod.yml up -d
+
+# Run migrations
+docker compose -f docker-compose.prod.yml run --rm app bunx prisma migrate deploy
+```
+
+**Image:** `oven/bun:1.3.14` (build) → `node:22-alpine` (runtime, standalone output)
+**Hardening:** non-root user (UID 1001), read-only root filesystem, tmpfs `/tmp`, no secrets baked into image
+**Healthcheck:** `/api/health` (30s interval, 3 retries)
+
+### Production Deployment
+
+| Platform | Configured | Verified | Notes |
+|----------|-----------|----------|-------|
+| **Docker Compose** | ✅ | ✅ | Self-contained: postgres + valkey + app |
+| **AWS EC2** | ✅ | ✅ | GitHub Actions workflow (`deploy-aws.yml`) |
+| **Hetzner VPS** | ✅ | ✅ | Documented in `CHEAP-DEPLOYMENT.md` |
+| **Vercel** | ⚠️ | ❌ | Middleware uses Edge-incompatible modules; use VPS instead |
+| **Replit** | ✅ | ✅ | Documented in `AWS-REPLIT-DEPLOYMENT.md` |
+
+See `AWS-REPLIT-DEPLOYMENT.md` and `CHEAP-DEPLOYMENT.md` for detailed deployment guides.
+
+---
+
+## CI/CD
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `ci.yml` | push/PR | TypeScript + ESLint + Build (198 pages) |
+| `e2e.yml` | push/PR | 30 Playwright E2E tests (PostgreSQL + Valkey services) |
+| `security.yml` | push/PR | 13 security test files, 356 tests |
+| `performance.yml` | push/PR | Bundle size + k6 load test (p95 < 200ms) |
+| `performance-nightly.yml` | schedule | Lighthouse audit (informational, `continue-on-error`) |
+| `deploy-aws.yml` | manual/release | Docker build → SCP to EC2 → migrate → deploy |
+| `founder-deploy.yml` | manual | Founder-specific deployment |
+| `pr-checks.yml` | PR | Additional PR gates |
+
+---
+
+## Testing
+
+```bash
+# Unit tests (1,735 files)
 bun test --isolate
 
-# E2E tests (30 specs with real assertions — see e2e/README.md)
+# E2E tests (12 specs, ~30 test blocks)
 bunx playwright test
 
 # Security suite (13 files, 356 tests)
-bun test --isolate src/lib/__tests__/auth-advanced.test.ts src/lib/__tests__/csrf.test.ts ...
+bun test --isolate src/lib/__tests__/
 
-# Accessibility (axe-core AAA, 24 pages × 3 viewports)
+# Founder validation suite (1,628 files — excluded from CI)
+bun run test:founder
+
+# Accessibility scan (axe-core, WCAG AAA)
 node scripts/axe-core-scan.mjs
 
-# Load testing (k6, 10 routes, p95 < 200ms)
+# Load testing (k6, 10 routes)
 k6 run scripts/k6/top10-routes.js
-
-# Chaos drills
-bash scripts/chaos/valkey-down.sh
-bash scripts/chaos/db-slow.sh
-bash scripts/chaos/ai-outage.sh
-
-# Backup restore drill (RTO < 30min)
-bash scripts/automated-restore-drill.sh
-
-# Data governance (balance validation)
-bun run scripts/validate-account-balances.ts
 ```
 
 ---
 
-## 📁 Project Structure
+## Observability
 
-```
-garfix/
-├── src/
-│   ├── app/                    # Next.js App Router (250 API routes + 24 pages)
-│   │   ├── setup/              # Setup wizard (Path A installer)
-│   │   ├── founder-panel/      # Founder-only admin panel
-│   │   ├── api/                # REST API routes
-│   │   └── (dashboard)/        # Authenticated app pages
-│   ├── components/             # React components (garfix-ds + shadcn/ui)
-│   ├── lib/                    # Business logic + infrastructure
-│   │   ├── ai/                 # AI provider cascade + cost tracking
-│   │   ├── ai-fabric/          # 6-stage cascade gateway
-│   │   ├── accounting/         # Double-entry journal engine
-│   │   ├── e-invoicing/        # ZATCA/ETA/UAE/BH/OM/QA/KW integrations
-│   │   ├── observability/      # OpenTelemetry setup
-│   │   ├── accessibility/      # WCAG 2.1 AAA focus traps + a11y helpers
-│   │   ├── setup/              # Setup wizard config helpers
-│   │   ├── tenant-context.ts   # ALS for per-request tenant scoping
-│   │   ├── db.ts               # Prisma client (soft-delete + RLS extension)
-│   │   ├── auth.ts             # JWT + refresh rotation + blacklist
-│   │   ├── cryptoVault.ts      # AES-256-GCM encryption at rest
-│   │   ├── mfa.ts              # TOTP MFA + 128-bit recovery codes
-│   │   ├── ssrf.ts             # DNS-rebinding-resistant fetchSafe()
-│   │   ├── permissions.ts      # RBAC role defaults + permission catalog
-│   │   └── api/tenant-middleware.ts  # withTenantScope HOF
-│   └── modules/                # 9 business modules
-├── prisma/
-│   ├── schema.prisma           # 106 models
-│   └── migrations/             # 40 migrations
-├── e2e/                        # 30 Playwright E2E specs (see e2e/README.md)
-├── scripts/
-│   ├── k6/                     # Load testing scripts
-│   ├── chaos/                  # Chaos drill scripts
-│   ├── grafana/                # 4 dashboard JSONs
-│   ├── eslint-rules/           # 3 custom ESLint rules
-│   ├── rotate-vault-salt.ts    # VAULT_SALT rotation (dry-run + execute)
-│   ├── backup-restore-test.ts  # Backup restore drill
-│   ├── validate-account-balances.ts  # Data governance cron
-│   ├── axe-core-scan.mjs       # a11y AAA scan
-│   ├── check-migration-names.mjs  # Migration naming lint
-│   └── eslint-diff-check.sh    # CI gate: 0 new eslint errors
-├── docs/
-│   ├── ARCHITECTURE.md         # Full system architecture + 6 ADRs
-│   ├── RUNBOOK.md              # RTO/RPO + restore + Valkey backup
-│   └── audits/                 # Evidence files for each phase
-├── Dockerfile                  # 3-stage build (non-root, read-only FS)
-├── docker-compose.prod.yml     # Production stack
-├── lighthouserc.js             # Lighthouse CI config
-└── .github/workflows/          # CI/CD (lint → typecheck → build → test → security)
-```
+| Feature | Status | Implementation |
+|---------|--------|----------------|
+| **Health endpoint** | ✅ | `/api/health` (DB + Valkey + queues + memory + disk) |
+| **Structured logging** | ✅ | `src/lib/logger.ts` (JSON to stdout, browser-safe) |
+| **Audit trail** | ✅ | `AuditLog` + `TamperEvidenceChain` (hash-chained) |
+| **OpenTelemetry** | ✅ | OTLP/HTTP exporter, auto-instrumentation (http, pg, ioredis) |
+| **Prometheus metrics** | ✅ | `/metrics` endpoint (request count, latency, AI tokens/cost) |
+| **Circuit breaker dashboard** | ✅ | `/api/health/circuit-breakers` (12 services) |
+| **Grafana dashboards** | ✅ | 4 JSON dashboards in `scripts/grafana/` |
 
 ---
 
-## 🔒 Security Features
+## Known Limitations
 
-| Feature | Implementation |
-|---------|---------------|
-| **Multi-tenancy** | ALS + Prisma extension + PostgreSQL strict RLS (72 policies) |
-| **Auth** | JWT HS256 + refresh rotation + Valkey blacklist (fail-closed) |
-| **Anti-enumeration** | SEC-06: identical 401 for all login failures (no credential leakage) |
-| **MFA** | TOTP RFC 6238 + 128-bit recovery codes + replay protection |
-| **CSRF** | Double-submit cookie + sameSite:strict |
-| **CSP** | Nonce-based (no unsafe-inline in script-src) |
-| **SSRF** | DNS-rebinding-resistant fetchSafe() with TLS/SNI preservation |
-| **Crypto** | AES-256-GCM at rest, scrypt key derivation, per-deployment salt |
-| **Rate Limiting** | Valkey-based, sliding window, atomic Lua scripts |
-| **Audit Logging** | All mutations + CSV exports + login failures |
-| **Input Validation** | Zod schemas on all API routes |
-| **Webhook Security** | Timing-safe HMAC signature verification |
-| **RBAC** | Permission catalog + role defaults (viewer/employee/editor/admin) + per-user overrides |
+### Confirmed
+- **No `LICENSE` file** — README states Proprietary but no LICENSE file exists in the repository
+- **Vercel deployment** — middleware imports Edge-incompatible Node modules; use VPS/Docker instead
+- **ZATCA/UAE/Kuwait e-invoicing** — submission is stubbed pending government API availability
+- **S3 uploads** — simplified SigV4 (not `@aws-sdk/s3-client`); falls back to local disk
+- **In-process queue tier** — single-instance only, not production-safe without Valkey
+
+### Architectural
+- **Two OpenTelemetry setups** — `telemetry-sdk.ts` and `observability/otel.ts` have overlapping functionality
+- **`package.json` name mismatch** — package is named `nextjs_tailwind_shadcn_ts` (legacy scaffold), not `garfix`
+- **Dual money API** — `src/lib/money.ts` has both legacy JS Number and `Prisma.Decimal` APIs (potential footgun for contributors)
 
 ---
 
-## 🌍 E-Invoicing Coverage
+## Documentation
 
-| Country | Authority | Status |
-|---------|-----------|--------|
-| 🇸🇦 Saudi Arabia | ZATCA | ✅ Clearance + reporting |
-| 🇪🇬 Egypt | ETA | ✅ Submission + webhooks |
-| 🇦🇪 UAE | FTA (Peppol) | ✅ Peppol submission |
-| 🇧🇭 Bahrain | NBR | ✅ Webhook inbound |
-| 🇴🇲 Oman | OTA | ✅ Webhook inbound |
-| 🇶🇦 Qatar | GTA | ✅ Webhook inbound |
-| 🇰🇼 Kuwait | KITA | ✅ Webhook inbound |
-
----
-
-## 📈 Observability
-
-- **OpenTelemetry**: traces + metrics via OTLP HTTP
-- **Prometheus /metrics endpoint**: request count, latency, AI tokens/cost, DB queries, Valkey hit rate
-- **4 Grafana dashboards**: API Health, AI Spend, DB Performance, Cache/Queue
-- **k6 load testing**: p95 < 200ms CI gate
-- **Lighthouse CI**: perf + a11y ≥ 95 (nightly, informational)
+| Document | Purpose |
+|----------|---------|
+| [CHEAP-DEPLOYMENT.md](CHEAP-DEPLOYMENT.md) | VPS deployment guide (Oracle, Hetzner, Contabo, Fly.io) |
+| [AWS-REPLIT-DEPLOYMENT.md](AWS-REPLIT-DEPLOYMENT.md) | AWS EC2 + Replit deployment guide |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Full production deployment guide |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture + ADRs |
+| [docs/RUNBOOK.md](docs/RUNBOOK.md) | RTO/RPO + restore procedure + Valkey backup |
+| [docs/adr/](docs/adr/) | 9 Architecture Decision Records (001–009) |
+| [e2e/README.md](e2e/README.md) | E2E test suite documentation |
+| [prisma/README.md](prisma/README.md) | Database schema + migrations |
+| [.env.example](.env.example) | Full environment variable reference (331 lines) |
 
 ---
 
-## 🔄 Backup & Recovery
+## Contributing
 
-| Metric | Target | Status |
-|--------|--------|--------|
-| RTO | < 30 minutes | ✅ Restore drill script |
-| RPO | < 24 hours | ✅ Daily pg_dump + Valkey snapshot |
-| Backup encryption | AES-256-GCM | ✅ |
-| Restore test | Weekly automated | ✅ `scripts/automated-restore-drill.sh` |
-| Valkey backup | Daily snapshot | ✅ Documented in RUNBOOK |
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines. The project uses conventional commits and requires passing CI (TypeScript + ESLint + Build + E2E + Security) before merge.
 
 ---
 
-## 📚 Documentation
+## Documentation Status
 
-- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — Full system architecture + 6 ADRs
-- [RUNBOOK.md](docs/RUNBOOK.md) — RTO/RPO + restore procedure + Valkey backup
-- [docs/audits/](docs/audits/) — Evidence files for each audit phase
-- [COMPLETE-STATUS-REPORT.md](docs/audits/COMPLETE-STATUS-REPORT.md) — Full done vs remaining
-- [e2e/README.md](e2e/README.md) — E2E test suite documentation
-- [prisma/README.md](prisma/README.md) — Database schema + migrations
-- [src/lib/README.md](src/lib/README.md) — Shared libraries (112 source files)
-
----
-
-## 🏆 Audit History
-
-| Phase | Score | PRs | Findings Closed |
-|-------|-------|-----|-----------------|
-| Phase 0 | 72 | #59 | 15 P0/P1 |
-| Phase 1 | 80 | #60–#65 | 9 P0 + TASK-0 + FC-1..7 |
-| Phase 2 | 89 | #66–#69 | 35 P1 |
-| Phase 3 | 92 | #70 | 24 P2 |
-| Phase 4 | 94 | #71 | 12 P3 |
-| Phase 5 | 95+ | #72 | Observability + k6 + chaos + axe + docs |
-| **Total** | **95+** | **14 PRs** | **88/88 (100%)** |
-
----
-
-## 🔧 Recent E2E Workflow Fixes (2026-08-14)
-
-The E2E Tests workflow was red on every commit due to 11 failing tests. Root
-causes and fixes (9 commits, `6f236d53` → `278e461f`):
-
-| # | Test | Root Cause | Fix |
-|---|------|-----------|-----|
-| 1 | auth-mfa (2 tests) | SEC-06 anti-enumeration changed login behavior | Updated tests to expect 401 instead of 200+mfaRequired |
-| 2 | webhook-delivery (SSRF) | validateBaseUrl errors returned 500 not 400 | Added try/catch in endpoints route, return 400 |
-| 3 | webhook-delivery (register) | uniqueWebhookUrl used localhost (blocked by SSRF) | Changed to https://example.com (RFC 2606) |
-| 4 | rbac-denial:87 | Test read meBody.user!.email but API returns fields at top level | Fixed test to read meBody.email |
-| 5 | rbac-denial:158 | ROLE_DEFAULTS.employee granted delete_invoice:1 | Changed to 0 (principle of least privilege) |
-| 6 | rbac-denial:190 | view_invoices permission was not defined | Added to PERMISSION_CATALOG + ROLE_DEFAULTS |
-| 7 | payment-idempotent | Idempotency check ran AFTER amount validation | Moved idempotency check to run FIRST |
-| 8 | zatca-clearance | page.route() doesn't intercept page.request.* | Used page.evaluate(fetch) with absolute URL |
-| 9 | focus-trap (2 tests) | founder-panel layout checked wrong cookie name | Fixed cookie + useFocusTrap rAF-based returnFocus |
-| 10 | Lighthouse nightly | NO_FCP (degraded mode) | Added continue-on-error (informational only) |
-
-**Result**: All 4 workflows now green ✅ on every commit.
-
----
-
-*GarfiX EOS — Production-Ready v1.0 · Tag: v1.0-production-95*
-*Audited by Z.ai Senior Architect Agent — 2026-08-13*
-*E2E workflow fixed — 2026-08-14*
+This README is derived from the current repository state (commit `3b26aa0`). For implementation-specific details, the source code and linked project documentation remain authoritative.
