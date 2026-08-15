@@ -1,0 +1,357 @@
+/**
+ * /signup — GarfiX registration page.
+ *
+ * Public route. Collects email + display name + password, POSTs to
+ * /api/auth/register (which has anti-enumeration behavior — always returns
+ * 200 with a generic "verification email sent" message).
+ *
+ * After a successful registration, the user is redirected to /login so they
+ * can sign in with their new credentials. We don't auto-login because the
+ * server's register endpoint deliberately doesn't return a session (it's
+ * designed for email-verification flows).
+ *
+ * Styling mirrors /login so the public auth flows feel consistent.
+ */
+"use client";
+
+import { useState, useEffect, FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { AlertTriangle, BarChart3, CheckCircle2, Loader2, UserPlus } from "lucide-react";
+// FE-15 FIX (Audit v2 · Phase 3): signup page lives outside AppShell, so it
+// never inherited the shared skip-links. We render them here and add matching
+// id targets on <header>/<main>/<footer> below.
+import { GarfixSkipLinks } from "@/components/garfix-ds";
+
+export default function SignupPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  // Already-authenticated? Bounce to dashboard.
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace("/");
+    }
+  }, [loading, user, router]);
+
+  // Live password-strength hints
+  const pwdChecks = {
+    length: password.length >= 10,
+    lower: /[a-z]/.test(password),
+    upper: /[A-Z]/.test(password),
+    digit: /\d/.test(password),
+    symbol: /[^a-zA-Z\d]/.test(password),
+  };
+  const pwdScore = Object.values(pwdChecks).filter(Boolean).length;
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (submitting) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          displayName: displayName.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      // Anti-enumeration: server returns 200 with a generic message regardless
+      // of whether the account was actually created. We surface the same
+      // message in both cases so the user can't probe which emails exist.
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || "Registration failed");
+      }
+      setSuccess(true);
+      // Wait 2s so the user sees the success message, then send to /login
+      setTimeout(() => router.push("/login"), 2000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Registration failed";
+      setError(msg);
+      setSubmitting(false);
+    }
+  }
+
+  // VERCEL FIX: removed loading guard — always render the form
+  if (!loading && user) return null;
+
+  // Success screen — shown after the API returns 200 — DS v4.0 Celebration
+  if (success) {
+    return (
+      <div className="min-h-screen flex flex-col bg-[#0b1220]" dir="rtl">
+        {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
+        <GarfixSkipLinks />
+        <header id="main-navigation" className="px-6 py-5">
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-sm">
+              <BarChart3 className="h-5 w-5 text-white" />
+            </div>
+            <span className="font-bold text-lg text-foreground">GarfiX EOS <span className="text-emerald-400 text-xs font-normal">v4.0</span></span>
+          </div>
+        </header>
+        <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center px-4 py-8">
+          <Card className="w-full max-w-md kpi-card-gold shadow-brand-xl border-emerald-500/20">
+            <CardHeader className="space-y-2 text-center">
+              <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-[#d4a574] to-[#c9956a] flex items-center justify-center shadow-gold-sm animate-pulse">
+                <CheckCircle2 className="h-8 w-8 text-white" />
+              </div>
+              <CardTitle className="text-2xl text-foreground">تم استلام طلبك بنجاح!</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                إذا لم يكن البريد مسجلاً مسبقاً، تم إنشاء حسابك.
+                <br />سيتم تحويلك لتسجيل الدخول خلال ثوانٍ...
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                type="button"
+                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-brand-md active-press duration-150 transition-all"
+                onClick={() => router.push("/login")}
+              >
+                الانتقال لتسجيل الدخول →
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#0b1220]" dir="rtl">
+      {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
+      <GarfixSkipLinks />
+      {/* Header — DS v4.0 Emerald Branding */}
+      <header id="main-navigation" className="px-6 py-5">
+        <div className="flex items-center gap-2">
+          <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-sm">
+            <BarChart3 className="h-5 w-5 text-white" />
+          </div>
+          <span className="font-bold text-lg text-foreground">GarfiX EOS <span className="text-emerald-400 text-xs font-normal">v4.0</span></span>
+        </div>
+      </header>
+
+      <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center px-4 py-8">
+        <Card className="w-full max-w-md shadow-brand-xl glass-strong border-emerald-500/20">
+          {/* ── DS v4.0 Enhanced Onboarding Header ── */}
+          <CardHeader className="space-y-3 text-center pb-2">
+            {/* Animated Logo with Badge */}
+            <div className="mx-auto relative">
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-lg animate-pulse-slow">
+                <UserPlus className="h-8 w-8 text-white" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#d4a574] flex items-center justify-center shadow-gold-sm animate-bounce-slow">
+                <span className="text-[10px] font-bold text-white">جديد</span>
+              </div>
+            </div>
+            
+            {/* Welcome Message */}
+            <div className="space-y-1.5">
+              <CardTitle className="text-2xl text-foreground font-extrabold">أنشئ حسابك المجاني 🚀</CardTitle>
+              <CardDescription className="text-muted-foreground text-sm leading-relaxed">
+                ابدأ رحلتك مع GarfiX في أقل من دقيقة
+              </CardDescription>
+            </div>
+            
+            {/* Progress Steps */}
+            <div className="flex items-center justify-center gap-1.5 pt-1">
+              <div className="h-1.5 w-6 rounded-full bg-emerald-500 shadow-sm" />
+              <div className="h-1.5 w-6 rounded-full bg-emerald-400/60" />
+              <div className="h-1.5 w-6 rounded-full bg-muted-foreground/20" />
+            </div>
+          </CardHeader>
+
+          <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-4">
+              {/* ── Enhanced Error with Solution ── */}
+              {error && (
+                <div
+                  id="signup-form-error"
+                  role="alert"
+                  aria-live="assertive"
+                  className="flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400 glass-strong shadow-brand-sm animate-shake duration-300"
+                >
+                  <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0 text-red-400" />
+                  <div className="flex-1 space-y-1">
+                    <p className="font-medium text-red-300">{error}</p>
+                    <p className="text-xs text-red-400/70">
+                      💡 تأكد من ملء جميع الحقول بشكل صحيح
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="displayName">Full name</Label>
+                <Input
+                  id="displayName"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="أحمد جارفيكس"
+                  disabled={submitting}
+                  autoFocus
+                  className="focus-ring transition-all duration-150"
+                  // FE-16 FIX (Audit v2 · Phase 3): bind the input to the
+                  // shared error region so screen readers announce the error.
+                  aria-invalid={!!error}
+                  aria-describedby={error ? "signup-form-error" : undefined}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  disabled={submitting}
+                  className="focus-ring transition-all duration-150"
+                  // FE-16 FIX (Audit v2 · Phase 3): aria-invalid + describedby.
+                  aria-invalid={!!error}
+                  aria-describedby={error ? "signup-form-error" : undefined}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={submitting}
+                  className="focus-ring transition-all duration-150"
+                  // FE-16 FIX (Audit v2 · Phase 3): aria-invalid + describedby.
+                  aria-invalid={!!error}
+                  aria-describedby={error ? "signup-form-error" : undefined}
+                />
+                {/* Password strength meter */}
+                {password.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex gap-1">
+                      {[0, 1, 2, 3, 4].map((level) => (
+                        <div
+                          key={level}
+                          className={`h-1.5 flex-1 rounded-full transition-colors duration-200 ${
+                            level < pwdScore
+                              ? pwdScore <= 2
+                                ? "bg-red-500"
+                                : pwdScore === 3
+                                ? "bg-[#d4a574]"
+                                : "bg-emerald-500"
+                              : "bg-muted-foreground/20"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <ul className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                      <li className={pwdChecks.length ? "text-emerald-400 font-medium" : ""}>
+                        {pwdChecks.length ? "✓" : "•"} 10+ حرف
+                      </li>
+                      <li className={pwdChecks.upper ? "text-emerald-400 font-medium" : ""}>
+                        {pwdChecks.upper ? "✓" : "•"} حرف كبير
+                      </li>
+                      <li className={pwdChecks.lower ? "text-emerald-400 font-medium" : ""}>
+                        {pwdChecks.lower ? "✓" : "•"} حرف صغير
+                      </li>
+                      <li className={pwdChecks.digit ? "text-emerald-400 font-medium" : ""}>
+                        {pwdChecks.digit ? "✓" : "•"} رقم
+                      </li>
+                      <li className={pwdChecks.symbol ? "text-emerald-400 font-medium" : ""}>
+                        {pwdChecks.symbol ? "✓" : "•"} رمز خاص
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+
+            <CardFooter className="flex flex-col gap-3">
+              {/* ── Enhanced CTA Button ── */}
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-brand-md hover:shadow-brand-lg active:scale-[0.98] duration-150 transition-all text-base py-6 rounded-xl font-bold tracking-wide hover-lift"
+                disabled={submitting || !email || !password || !displayName || pwdScore < 3}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-5 w-5 ml-2 animate-spin" />
+                    <span>جارٍ إنشاء الحساب…</span>
+                  </>
+                ) : (
+                  <span>إنشاء الحساب مجاناً →</span>
+                )}
+              </Button>
+
+              {/* ── Enhanced Login Link ── */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-muted-foreground/20" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-3 text-muted-foreground">أو</span>
+                </div>
+              </div>
+              
+              <p className="text-sm text-muted-foreground text-center">
+                لديك حساب بالفعل؟{" "}
+                <Link href="/login" className="font-semibold text-emerald-400 hover:text-emerald-300 underline decoration-2 underline-offset-4 transition-all duration-150 hover:text-emerald-200 hover-lift inline-flex items-center gap-1 group">
+                  تسجيل الدخول
+                  <span className="group-hover:-translate-x-1 transition-transform duration-150">←</span>
+                </Link>
+              </p>
+
+              <p className="text-xs text-muted-foreground text-center">
+                By creating an account you agree to our{" "}
+                <Link href="/terms" className="underline hover:text-foreground">
+                  Terms
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="underline hover:text-foreground">
+                  Privacy Policy
+                </Link>
+                .
+              </p>
+            </CardFooter>
+          </form>
+        </Card>
+      </main>
+
+      <footer id="main-footer" className="px-6 py-4 text-center text-xs text-muted-foreground border-t border-emerald-500/20">
+        GarfiX EOS v4.0 — AI-Native Business Platform &middot; <span className="text-emerald-500">Powered by Emerald</span>
+      </footer>
+    </div>
+  );
+}

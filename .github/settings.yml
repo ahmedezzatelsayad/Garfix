@@ -1,0 +1,22 @@
+# Phase 12 P3: Branch protection rules (Probot Settings).
+# This file configures branch protection when the Probot Settings app is installed.
+repository:
+  delete_branch_on_merge: true
+
+branches:
+  - name: main
+    protection:
+      required_status_checks:
+        contexts:
+          - "quick-lint"
+          - "quick-typecheck"
+          - "quick-build"
+          - "lint"
+          - "typecheck"
+          - "build"
+          - "unit-tests"
+      enforce_admins: false
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+        dismiss_stale_reviews: true
+      restrictions: null

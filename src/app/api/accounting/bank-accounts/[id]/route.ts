@@ -1,0 +1,177 @@
+/**
+ * /api/accounting/bank-accounts/[id]
+ * GET — get single bank account
+ * PATCH — update bank account
+ * DELETE — soft-delete (set isActive=false)
+ */
+import { NextRequest } from "next/server";
+import { dbTyped as db } from "@/lib/db";
+import { requirePermission, requirePermissionForCompany } from "@/lib/middleware";
+import { assertCompanyAccess } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
+import { num } from "@/lib/money";
+import { z } from "zod";
+import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
+import { entityIdOptional } from "@/lib/validation";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
+
+const UpdateSchema = z.object({
+  companySlug: z.string().min(1),
+  bankName: z.string().optional(),
+  accountName: z.string().optional(),
+  accountNumber: z.string().optional(),
+  iban: z.string().optional(),
+  branchCode: z.string().optional(),
+  currency: z.string().optional(),
+  accountType: z.enum(["checking", "savings", "cash_vault"]).optional(),
+  glAccountId: entityIdOptional,
+  isActive: z.boolean().optional(),
+});
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  return withErrorHandler(async () => {
+    const { id } = await params;
+    // IDOR mitigation: split auth+perm from company-access; 404 on wrong-tenant
+    const access = await requirePermission(req, "finance_access");
+    if ("error" in access) return access.error;
+    const user = access.user;
+    const account = await db.bankAccount.findUnique({
+      where: { id },
+      include: {
+        bankTransactions: {
+          where: { isReconciled: false },
+          orderBy: { date: "desc" },
+          take: 20,
+        },
+      },
+    });
+    if (!account || !assertCompanyAccess(user, account.companySlug)) {
+      return apiError("Bank account not found", 404);
+    }
+
+    return apiOk({
+      ...account,
+      balance: num(account.balance, 3).toFixed(3),
+      bankTransactions: account.bankTransactions.map((t) => ({
+        ...t,
+        amount: num(t.amount, 3).toFixed(3),
+      })),
+    });
+  })();
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  // P5-H2: Rate limit PATCH /api/accounting-bank-accounts-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:accounting-bank-accounts-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
+  return withErrorHandler(async () => {
+    const { id } = await params;
+    const body = await parseJsonBody(req);
+    const parsed = UpdateSchema.safeParse(body);
+    if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
+    const data = parsed.data;
+
+    const access = await requirePermissionForCompany(req, "finance_access", data.companySlug);
+    if ("error" in access) return access.error;
+    const user = access.user;
+
+    const existing = await db.bankAccount.findFirst({ where: { id, companySlug: data.companySlug } });
+    if (!existing) return apiError("Bank account not found", 404);
+
+    // Validate GL account if updating
+    if (data.glAccountId) {
+      const glAccount = await db.account.findFirst({ where: { id: data.glAccountId, companySlug: data.companySlug } });
+      if (!glAccount) {
+        return apiError("GL account does not belong to this company", 400);
+      }
+      if (glAccount.type !== "asset") {
+        return apiError("Bank account must be linked to an asset-type GL account", 400);
+      }
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (data.bankName) updateData.bankName = data.bankName;
+    if (data.accountName) updateData.accountName = data.accountName;
+    if (data.accountNumber) updateData.accountNumber = data.accountNumber;
+    if (data.iban !== undefined) updateData.iban = data.iban || null;
+    if (data.branchCode !== undefined) updateData.branchCode = data.branchCode || null;
+    if (data.currency) updateData.currency = data.currency;
+    if (data.accountType) updateData.accountType = data.accountType;
+    if (data.glAccountId !== undefined) updateData.glAccountId = data.glAccountId || null;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    const account = await db.bankAccount.update({
+      where: { id },
+      data: updateData,
+      include: { glAccount: true },
+    });
+
+    await logAudit({
+      userEmail: user.email,
+      userUid: user.uid,
+      action: "update",
+      entity: "bank_account",
+      entityId: id,
+      companySlug: data.companySlug,
+      details: { updatedFields: Object.keys(updateData) },
+    });
+
+    return apiOk({
+      ...account,
+      balance: num(account.balance, 3).toFixed(3),
+    });
+  })();
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  // P5-H2: Rate limit DELETE /api/accounting-bank-accounts-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "delete:accounting-bank-accounts-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
+  return withErrorHandler(async () => {
+    const { id } = await params;
+
+    const sp = req.nextUrl.searchParams;
+    const companySlug = sp.get("companySlug");
+    if (!companySlug) return apiError("companySlug query parameter required", 400);
+
+    const access = await requirePermissionForCompany(req, "finance_access", companySlug);
+    if ("error" in access) return access.error;
+    const user = access.user;
+
+    const existing = await db.bankAccount.findFirst({ where: { id, companySlug } });
+    if (!existing) return apiError("Bank account not found", 404);
+
+    // Soft delete: set isActive = false
+    const account = await db.bankAccount.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    await logAudit({
+      userEmail: user.email,
+      userUid: user.uid,
+      action: "delete",
+      entity: "bank_account",
+      entityId: id,
+      companySlug,
+      details: { bankName: existing.bankName, accountName: existing.accountName },
+    });
+
+    return apiOk({
+      ...account,
+      balance: num(account.balance, 3).toFixed(3),
+      message: "Bank account deactivated successfully",
+    });
+  })();
+}

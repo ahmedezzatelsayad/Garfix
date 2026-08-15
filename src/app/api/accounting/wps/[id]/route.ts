@@ -1,0 +1,124 @@
+/**
+ * /api/accounting/wps/[id]
+ * GET — download WPS file content
+ * PATCH — update WPS file status (submit/accept/reject)
+ */
+import { NextRequest } from "next/server";
+import { dbTyped as db } from "@/lib/db";
+import { requirePermissionForCompany } from "@/lib/middleware";
+import { logAudit } from "@/lib/audit";
+import { num } from "@/lib/money";
+import { z } from "zod";
+import { apiError, withErrorHandler, parseJsonBody, apiOk } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
+
+const PatchSchema = z.object({
+  companySlug: z.string().min(1),
+  status: z.enum(["submitted", "accepted", "rejected"]),
+  rejectionReason: z.string().optional(),
+});
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  return withErrorHandler(async () => {
+    const { id } = await params;
+    // Note (P2): Prisma accessor for model `WPSFile` is `db.wPSFile`.
+    // WPSFile.id is Int @default(autoincrement()) — parseInt is correct here.
+    const wpsFile = await db.wPSFile.findUnique({
+      where: { id: parseInt(id, 10) },
+    });
+
+    if (!wpsFile) return apiError("WPS file not found", 404);
+
+    // SEC-C7 (Cycle 4): close IDOR — GET was missing the requirePermissionForCompany
+    // guard that PATCH already enforced. WPS files contain government-compliance
+    // salary data and must be tenant-scoped.
+    const access = await requirePermissionForCompany(req, "finance_access", wpsFile.companySlug);
+    if ("error" in access) return access.error;
+
+    // Return the full file content for download
+    return apiOk({
+      ...wpsFile,
+      totalAmount: num(wpsFile.totalAmount, 3).toFixed(3),
+    });
+  })();
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  // P5-H2: Rate limit PATCH /api/accounting-wps-id — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "patch:accounting-wps-id", LIMITS.API_WRITE);
+  if (rl) return rl;
+
+  return withErrorHandler(async () => {
+    const { id } = await params;
+    const wpsId = parseInt(id, 10);
+    const body = await parseJsonBody(req);
+    const parsed = PatchSchema.safeParse(body);
+    if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
+    const data = parsed.data;
+
+    const access = await requirePermissionForCompany(req, "finance_access", data.companySlug);
+    if ("error" in access) return access.error;
+    const user = access.user;
+
+    const existing = await db.wPSFile.findUnique({
+      where: { id: wpsId },
+    });
+    if (!existing) return apiError("WPS file not found", 404);
+    if (existing.companySlug !== data.companySlug) return apiError("WPS file does not belong to this company", 403);
+
+    // Validate status transitions
+    if (data.status === "submitted" && existing.status !== "draft") {
+      return apiError("Only draft WPS files can be submitted", 400);
+    }
+    if (data.status === "accepted" && existing.status !== "submitted") {
+      return apiError("Only submitted WPS files can be accepted", 400);
+    }
+    if (data.status === "rejected" && existing.status !== "submitted") {
+      return apiError("Only submitted WPS files can be rejected", 400);
+    }
+    if (data.status === "rejected" && !data.rejectionReason) {
+      return apiError("Rejection reason is required when rejecting a WPS file", 400);
+    }
+
+    const updateData: Record<string, unknown> = {};
+    updateData.status = data.status;
+
+    if (data.status === "submitted") {
+      updateData.submittedAt = new Date();
+    }
+    if (data.status === "rejected") {
+      updateData.rejectionReason = data.rejectionReason;
+    }
+
+    const wpsFile = await db.wPSFile.update({
+      where: { id: wpsId },
+      data: updateData,
+    });
+
+    await logAudit({
+      userEmail: user.email,
+      userUid: user.uid,
+      action: data.status === "submitted" ? "submit_wps" : data.status === "accepted" ? "accept_wps" : "reject_wps",
+      entity: "wps_file",
+      entityId: wpsId,
+      companySlug: data.companySlug,
+      details: {
+        status: data.status,
+        rejectionReason: data.rejectionReason,
+        country: existing.country,
+        month: existing.month,
+      },
+    });
+
+    return apiOk({
+      ...wpsFile,
+      totalAmount: num(wpsFile.totalAmount, 3).toFixed(3),
+    });
+  })();
+}

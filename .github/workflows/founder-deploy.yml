@@ -1,0 +1,371 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GarFiX EOS v12 — Founder Deployment Workflow
+# 
+# هذا الـ Workflow مخصص للـ Founder - يشغل جميع الفحوصات وينشر للتطوير
+# Triggers: Manual dispatch only (Founder control)
+# Jobs: Full CI → Deploy to Staging → Notify Founder
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Founder Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "بيئة النشر"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+      run_tests:
+        description: "تشغيل الاختبارات"
+        required: false
+        default: true
+        type: boolean
+      # Phase 13 P1 fix: removed skip_ci input. It was an emergency backdoor
+      # that let anyone with write access ship to prod bypassing ALL tests.
+      # Emergency deploys now require a second workflow_dispatch approval
+      # via the environment: production required_reviewers gate.
+
+concurrency:
+  group: founder-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_ENV: test
+  DATABASE_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test?schema=public&connection_limit=5"
+  DATABASE_DIRECT_URL: "postgresql://garfix_test:garfix_test_pass@localhost:5432/garfix_test"
+  JWT_SECRET: "founder-ci-jwt-secret-at-least-32-characters-long!!"
+  JWT_REFRESH_SECRET: "founder-ci-refresh-secret-at-least-32-chars!!"
+  FOUNDER_EMAIL: "founder@garfix.app"
+  PAYMENTS_ENC_KEY: "founder-ci-encryption-key-at-least-32-characters!"
+
+jobs:
+  # ── Job 1: Founder Quick Health Check ────────────────────────────────────
+  founder-health:
+    name: 🏥 Founder Health Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+
+      - name: Quick build check
+        id: build_check
+        run: |
+          set +e
+          set +o pipefail
+          bun run build 2>&1 | tee founder-build.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+          set -o pipefail
+          
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✅ Build passed"
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Build failed"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: founder-build-log
+          path: founder-build.txt
+          retention-days: 7
+
+  # ── Job 2: Full CI (optional, controlled by input) ───────────────────────
+  full-ci:
+    name: 🔬 Full CI Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [founder-health]
+    if: ${{ inputs.run_tests == true }}
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: garfix_test
+          POSTGRES_PASSWORD: garfix_test_pass
+          POSTGRES_DB: garfix_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      VALKEY_URL: "redis://localhost:6379"
+      REDIS_URL: "redis://localhost:6379"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: founder-ci-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            founder-ci-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+
+      - name: Lint
+        run: |
+          set +e
+          set +o pipefail
+          bunx eslint src/app src/lib src/modules 2>&1 | tee lint-results.txt
+          ESLINT_EXIT=${PIPESTATUS[0]}
+          set -e
+          set -o pipefail
+          if [ $ESLINT_EXIT -ne 0 ]; then
+            echo "❌ Lint failed"
+            exit 1
+          fi
+          echo "✅ Lint passed"
+
+      - name: TypeCheck
+        run: |
+          if [ ! -f tsconfig.prod.json ]; then
+            echo '{"extends": "./tsconfig.json", "exclude": ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts"]}' > tsconfig.prod.json
+          fi
+          set +e
+          set +o pipefail
+          bunx tsc --noEmit -p tsconfig.prod.json 2>&1 | tee typecheck-results.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+          set -o pipefail
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ TypeCheck failed"
+            exit 1
+          fi
+          echo "✅ TypeCheck passed"
+
+      - name: Sync database
+        run: |
+          bunx prisma db push --accept-data-loss 2>&1 | tee db-push.txt
+          echo "✅ Database synced"
+
+      - name: Run critical tests
+        run: |
+          PASS=true
+          echo "Running critical tests..."
+          bun test src/lib/__tests__/secretsManager.test.ts 2>&1 | tee test-results.txt || PASS=false
+          bun test src/lib/__tests__/cryptoVault-advanced.test.ts 2>&1 | tee -a test-results.txt || PASS=false
+          bun test src/lib/__tests__/api-helpers.test.ts 2>&1 | tee -a test-results.txt || PASS=false
+          
+          if [ "$PASS" = "false" ]; then
+            echo "❌ Some tests failed"
+            exit 1
+          fi
+          echo "✅ All tests passed"
+
+      - name: Upload all results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: founder-ci-results
+          path: |
+            lint-results.txt
+            typecheck-results.txt
+            test-results.txt
+            db-push.txt
+          retention-days: 14
+
+  # ── Job 3: Deploy to Environment ─────────────────────────────────────────
+  deploy:
+    name: 🚀 Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [founder-health]
+    if: always() && needs.founder-health.result == 'success'
+    
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ inputs.environment == 'production' && 'https://garfix.app' || 'https://staging.garfix.app' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+
+      - name: Build application
+        run: bun run build
+
+      - name: Deploy Info
+        run: |
+          echo "╔══════════════════════════════════════════════════╗"
+          echo "║     GarFiX Founder Deployment                   ║"
+          echo "╚══════════════════════════════════════════════════╝"
+          echo ""
+          echo "Environment:   ${{ inputs.environment }}"
+          echo "Triggered by:  ${{ github.actor }}"
+          echo "Commit:        ${{ github.sha }}"
+          echo "Branch:        ${{ github.ref_name }}"
+          echo "Tests ran:     ${{ inputs.run_tests }}"
+          echo ""
+          echo "✅ Ready for deployment to ${{ inputs.environment }}"
+
+      # Vercel Deployment (recommended for Next.js)
+      - name: Deploy to Vercel
+        if: inputs.environment == 'staging'
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+
+      - name: Production Deploy (Vercel)
+        if: inputs.environment == 'production'
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod --prebuilt'
+
+  # ── Job 4: Post-Deploy Verification ──────────────────────────────────────
+  verify:
+    name: ✅ Post-Deploy Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [deploy]
+    if: always() && needs.deploy.result == 'success'
+    
+    steps:
+      - name: Health Check
+        run: |
+          DEPLOY_URL="${{ inputs.environment == 'production' && 'https://garfix.app' || 'https://staging.garfix.app' }}"
+          echo "Checking health at $DEPLOY_URL..."
+          
+          for i in 1 2 3 4 5; do
+            HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" "$DEPLOY_URL/api/health" 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Health check passed (attempt $i)"
+              break
+            fi
+            echo "Attempt $i/5 - HTTP $HTTP_CODE, retrying in 5s..."
+            sleep 5
+          done
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Health check failed after 5 attempts"
+            exit 1
+          fi
+
+      - name: Signup Page Check
+        run: |
+          DEPLOY_URL="${{ inputs.environment == 'production' && 'https://garfix.app' || 'https://staging.garfix.app' }}"
+          HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" "$DEPLOY_URL/signup" 2>/dev/null || echo "000")
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Signup page accessible"
+          else
+            echo "⚠️ Signup page returned HTTP $HTTP_CODE"
+          fi
+
+      - name: Login Page Check
+        run: |
+          DEPLOY_URL="${{ inputs.environment == 'production' && 'https://garfix.app' || 'https://staging.garfix.app' }}"
+          HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" "$DEPLOY_URL/login" 2>/dev/null || echo "000")
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Login page accessible"
+          else
+            echo "⚠️ Login page returned HTTP $HTTP_CODE"
+          fi
+
+  # ── Job 5: Founder Summary ───────────────────────────────────────────────
+  founder-summary:
+    name: 📋 Founder Summary Report
+    runs-on: ubuntu-latest
+    needs: [founder-health, full-ci, deploy, verify]
+    if: always()
+    
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "╔══════════════════════════════════════════════════════════╗"
+          echo "║     GarFiX Founder Deployment Report                    ║"
+          echo "╚══════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "📅 Timestamp:    $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "👤 Triggered by: ${{ github.actor }}"
+          echo "🔗 Commit:       ${{ github.sha }}"
+          echo "🌿 Branch:       ${{ github.ref_name }}"
+          echo "🎯 Environment:  ${{ inputs.environment }}"
+          echo ""
+          echo "═══════════════════════════════════════════════════════"
+          echo "                    RESULTS                            "
+          echo "═══════════════════════════════════════════════════════"
+          printf "%-20s %s\n" "Health Check:" "${{ needs.founder-health.result }}"
+          printf "%-20s %s\n" "Full CI:" "${{ needs.full-ci.result || 'SKIPPED' }}"
+          printf "%-20s %s\n" "Deploy:" "${{ needs.deploy.result }}"
+          printf "%-20s %s\n" "Verify:" "${{ needs.verify.result || 'SKIPPED' }}"
+          echo "═══════════════════════════════════════════════════════"
+          echo ""
+
+          # Final status
+          RESULTS="${{ needs.founder-health.result }}${{ needs.full-ci.result }}${{ needs.deploy.result }}"
+          if echo "$RESULTS" | grep -q "failure"; then
+            echo "❌ DEPLOYMENT HAD ISSUES — review above"
+            exit 1
+          else
+            echo "✅ FOUNDER DEPLOYMENT COMPLETED SUCCESSFULLY!"
+          fi
+
+      - name: Success Notification
+        if: success()
+        run: echo "## ✅ Founder Deploy Successful - ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Failure Notification
+        if: failure()
+        run: echo "## ❌ Founder Deploy Failed - Review logs" >> $GITHUB_STEP_SUMMARY

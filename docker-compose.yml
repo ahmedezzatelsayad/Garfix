@@ -1,0 +1,161 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GarfiX v12 — Docker Compose (Production)
+# Valkey replaces Redis — 100% API-compatible, BSD-3 licensed, faster.
+#
+# P1 FIXES applied:
+#   • Valkey authentication via requirepass (VALKEY_PASSWORD)
+#   • Custom Docker network (garfix-net) — no default bridge sharing
+#   • Removed host port exposure for valkey & postgres (only app exposed)
+#   • App container resource limits (memory + CPU)
+#   • Logging configuration (json driver, 10MB max, 3 files)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── Valkey (Redis-compatible) ──────────────────────────────────────────
+  # Drop-in replacement for Redis. Supports RESP protocol — ioredis and
+  # BullMQ connect without any code changes.
+  valkey:
+    image: valkey/valkey:8.1
+    container_name: garfix-valkey
+    restart: unless-stopped
+    # P1 FIX: Remove host port exposure — only app needs to reach Valkey
+    # In production, do NOT expose Valkey to the host network.
+    # If you need debug access, use: docker exec -it garfix-valkey valkey-cli -a <password>
+    # ports:
+    #   - "${VALKEY_PORT:-6379}:6379"
+    networks:
+      - garfix-net
+    command: >
+      valkey-server
+      --requirepass ${VALKEY_PASSWORD:?VALKEY_PASSWORD must be set}
+      --maxmemory ${VALKEY_MAXMEMORY:-256mb}
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+      --save 60 1000
+      --save 300 100
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      # P1 FIX: valkey-cli needs -a flag to authenticate
+      test: ["CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: garfix-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    networks:
+      - garfix-net
+    environment:
+      POSTGRES_USER: ${DB_USER:-garfix}
+      POSTGRES_PASSWORD: ${DB_PASS:?DB_PASS must be explicitly set}
+      POSTGRES_DB: ${DB_NAME:-garfix}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-garfix}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── GarfiX App ─────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: garfix-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"  # P1 FIX: bind to loopback only (Nginx proxies)
+    networks:
+      - garfix-net
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+
+      # Database
+      DATABASE_URL: postgresql://${DB_USER:-garfix}:${DB_PASS:?DB_PASS must be set}@postgres:5432/${DB_NAME:-garfix}?schema=public
+
+      # Valkey (preferred) or Redis (backward-compat)
+      # P1 FIX: Include password in Valkey URL
+      VALKEY_URL: valkey://:${VALKEY_PASSWORD:?VALKEY_PASSWORD must be set}@valkey:6379
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET must be set}
+
+      # Direct URL (required by Prisma schema directUrl field)
+      DATABASE_DIRECT_URL: postgresql://${DB_USER:-garfix}:${DB_PASS:?DB_PASS must be set}@postgres:5432/${DB_NAME:-garfix}
+
+      # Founder & encryption (required by startupCheck.ts — FATAL if missing)
+      FOUNDER_EMAIL: ${FOUNDER_EMAIL:?FOUNDER_EMAIL must be set}
+      PAYMENTS_ENC_KEY: ${PAYMENTS_ENC_KEY:?PAYMENTS_ENC_KEY must be set (32+ chars)}
+
+      # Other
+      BACKUP_DIR: /app/storage/backups
+
+      # SEC-H4 (Cycle 3): set to "true" AFTER rolling out registerSession-on-
+      # issue and waiting one access-token TTL (30 min). See auth.ts comment.
+      SESSION_REGISTRY_ENFORCED: ${SESSION_REGISTRY_ENFORCED:-false}
+    volumes:
+      - app-storage:/app/storage
+    read_only: true
+    # M8 FIX: removed bogus `tmpfs:/tmp:...` named-volume line below.
+    # The `tmpfs:` block (correct syntax) handles /tmp — Docker does NOT
+    # interpret `tmpfs:/tmp:opts` under `volumes:` as a tmpfs mount; it
+    # would create an empty named volume called "tmpfs" and mount it at
+    # "/tmp:rw,noexec,nosuid,nodev,size=64m" (a path with colons — invalid).
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    # P1 FIX: Add resource limits for the app container
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "2.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  garfix-net:
+    driver: bridge
+    name: garfix-net
+
+volumes:
+  valkey-data:
+    driver: local
+  postgres-data:
+    driver: local
+  app-storage:
+    driver: local

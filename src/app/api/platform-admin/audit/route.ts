@@ -1,0 +1,25 @@
+/**
+ * /api/platform-admin/audit
+ * GET — list admin audit logs (founder only)
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { dbTyped as db } from "@/lib/db";
+import { requireFounder } from "@/lib/middleware";
+import { withErrorHandler, parseJsonField } from "@/lib/api";
+
+export const GET = withErrorHandler(async (req: NextRequest) => {
+  const founderAccess = await requireFounder(req);
+  if (founderAccess instanceof NextResponse) return founderAccess;
+  const sp = req.nextUrl.searchParams;
+  const limit = Math.min(parseInt(sp.get("limit") || "100"), 500);
+  const logs = await db.adminAuditLog.findMany({ orderBy: { createdAt: "desc" }, take: limit });
+  return NextResponse.json({
+    logs: logs.map((l) => ({
+      ...l,
+      // AdminAuditLog has no `changes` column — the closest is `details`
+      // (JSON-encoded string). We expose it under the `changes` key to
+      // preserve the API contract.
+      changes: l.details ? parseJsonField(l.details, null) : null,
+    })),
+  });
+});

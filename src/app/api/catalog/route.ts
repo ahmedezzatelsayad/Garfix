@@ -1,0 +1,109 @@
+/**
+ * /api/catalog
+ * GET  — list products
+ * POST — create product
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { dbTyped as db } from "@/lib/db";
+import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
+import { requirePermissionForCompany, hasPermission } from "@/lib/middleware";
+import { logAudit } from "@/lib/audit";
+import { num } from "@/lib/money";
+import { z } from "zod";
+import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { parseCursorParams, buildCursorResponse, buildCursorPrismaQuery } from "@/lib/cursor-pagination-server";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
+
+const CreateSchema = z.object({
+  companySlug: z.string().min(1),
+  code: z.string().optional(),
+  name: z.string().min(1, "اسم المنتج مطلوب"),
+  aliases: z.array(z.string()).default([]),
+  purchasePrice: z.union([z.number(), z.string()]).optional(),
+  sellingPrice: z.union([z.number(), z.string()]).optional(),
+  wholesalePrice: z.union([z.number(), z.string()]).optional(),
+});
+
+export const GET = withErrorHandler(async (req: NextRequest) => {
+  const result = await resolveAuth(req);
+  if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = result.user;
+
+  // Authorization: enforce view_catalog permission for reading product catalog
+  if (!hasPermission(user, "view_catalog")) {
+    return NextResponse.json({ error: "ليس لديك صلاحية: view_catalog" }, { status: 403 });
+  }
+
+  const { companySlug, search, cursor, limit } = parseCursorParams(req);
+
+  if (companySlug && !assertCompanyAccess(user, companySlug)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const where: Record<string, unknown> = {};
+  if (companySlug) where.companySlug = companySlug;
+  else if (!hasUnrestrictedScope(user)) where.companySlug = { in: user.companies };
+  if (search) where.OR = [{ name: { contains: search } }, { code: { contains: search } }];
+
+  const pagination = buildCursorPrismaQuery(cursor, limit, "createdAt", "desc");
+  // Include the ProductAlias relation so we can flatten aliases into a string[]
+  // on the response. Previously the code did `parseJsonField(p.code, [])` which
+  // tried to parse the product CODE ("SKU-123") as JSON — always returned [].
+  // ProductCatalog.id is a String (cuid) — override cursor to use the string id.
+  const allProducts = await db.productCatalog.findMany({
+    where,
+    take: pagination.take,
+    skip: pagination.skip,
+    cursor: cursor ? { id: cursor } : undefined,
+    orderBy: pagination.orderBy,
+    include: { productAliases: { select: { alias: true } } },
+  });
+
+  const { items: productItems, nextCursor } = buildCursorResponse(allProducts, limit);
+  const products = productItems as typeof allProducts;
+
+  return NextResponse.json({
+    products: products.map((p) => ({
+      ...p,
+      aliases: Array.isArray(p.productAliases) ? p.productAliases.map((pa: { alias: string }) => pa.alias) : [],
+      purchasePrice: p.purchasePrice ? num(p.purchasePrice, 3) : null,
+      sellingPrice: p.sellingPrice ? num(p.sellingPrice, 3) : null,
+      wholesalePrice: p.wholesalePrice ? num(p.wholesalePrice, 3) : null,
+    })),
+    nextCursor,
+  });
+});
+
+export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/catalog — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:catalog", LIMITS.API_WRITE);
+  if (rl) return rl;
+
+  const body = await parseJsonBody(req);
+  const parsed = CreateSchema.safeParse(body);
+  if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
+  const data = parsed.data;
+
+  // Enforce permission + company access (catalog management is admin/manager only)
+  const access = await requirePermissionForCompany(req, "settings_access", data.companySlug);
+  if ("error" in access) return access.error;
+  const user = access.user;
+
+  const product = await db.productCatalog.create({
+    data: {
+      companySlug: data.companySlug,
+      code: data.code || null,
+      name: data.name,
+      sku: data.code || "",
+      // Note (P2): ProductCatalog.companyId is `String?` (cuid FK) — drop the legacy numeric 0.
+      // companyId: 0,
+      purchasePrice: data.purchasePrice !== undefined ? num(data.purchasePrice, 3).toFixed(3) : "0",
+      sellingPrice: data.sellingPrice !== undefined ? num(data.sellingPrice, 3).toFixed(3) : "0",
+      wholesalePrice: data.wholesalePrice !== undefined ? num(data.wholesalePrice, 3).toFixed(3) : "0",
+    },
+  });
+  await logAudit({
+    userEmail: user.email, userUid: user.uid,
+    action: "create", entity: "product", entityId: product.id, companySlug: data.companySlug,
+  });
+  return NextResponse.json({ ok: true, product });
+});

@@ -1,0 +1,69 @@
+/**
+ * /api/hr/leaves
+ * GET / POST — leave requests
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { dbTyped as db } from "@/lib/db";
+import { resolveAuth, assertCompanyAccess, hasUnrestrictedScope } from "@/lib/auth";
+import { requirePermissionForCompany } from "@/lib/middleware";
+import { logAudit } from "@/lib/audit";
+import { z } from "zod";
+import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
+import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
+
+const CreateSchema = z.object({
+  companySlug: z.string().min(1),
+  employeeId: z.string().min(1),
+  type: z.enum(["annual", "sick", "unpaid", "maternity", "other"]).default("annual"),
+  startDate: z.string().min(1),
+  endDate: z.string().min(1),
+  days: z.number().int().default(1),
+  reason: z.string().optional(),
+  status: z.enum(["pending", "approved", "rejected"]).default("pending"),
+});
+
+export const GET = withErrorHandler(async (req: NextRequest) => {
+  const result = await resolveAuth(req);
+  if (!result.ok || !result.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const sp = req.nextUrl.searchParams;
+  const companySlug = sp.get("companySlug") || undefined;
+  if (companySlug && !assertCompanyAccess(result.user, companySlug)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  const where: Record<string, unknown> = {};
+  // companySlug filter (added P3)
+  if (companySlug) where.companySlug = companySlug;
+  else if (!hasUnrestrictedScope(result.user)) where.companySlug = { in: result.user.companies };
+  const records = await db.hRLeaveRequest.findMany({ where, orderBy: { createdAt: "desc" }, take: 200 });
+  return NextResponse.json({ leaves: records });
+});
+
+export const POST = withErrorHandler(async (req: NextRequest) => {
+  // P5-H2: Rate limit POST /api/hr-leaves — 30/min/IP (API_WRITE).
+  const rl = await rateLimitResponse(req, "post:hr-leaves", LIMITS.API_WRITE);
+  if (rl) return rl;
+
+  const body = await parseJsonBody(req);
+  const parsed = CreateSchema.safeParse(body);
+  if (!parsed.success) return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
+  const data = parsed.data;
+
+  // Enforce permission + company access
+  const access = await requirePermissionForCompany(req, "employee_management", data.companySlug);
+  if ("error" in access) return access.error;
+  const user = access.user;
+
+  const l = await db.hRLeaveRequest.create({
+    data: {
+      employeeId: data.employeeId, companySlug: data.companySlug, type: data.type,
+      startDate: new Date(data.startDate), endDate: new Date(data.endDate),
+      days: data.days, reason: data.reason || null,
+      status: data.status, approvedBy: user.email,
+    },
+  });
+  await logAudit({
+    userEmail: user.email, userUid: user.uid,
+    action: "create", entity: "leave", entityId: l.id, companySlug: data.companySlug,
+  });
+  return NextResponse.json({ ok: true, leave: l });
+});

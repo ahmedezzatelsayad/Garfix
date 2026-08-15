@@ -1,0 +1,502 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GarFiX v1.4 — Security Scan Pipeline
+# Runs on push to main + weekly schedule + manual trigger
+# Jobs: dependency audit, CodeQL (with SARIF), secret scan, license check
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: GarFiX Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"  # Every Monday at 06:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Job 1: Dependency Audit ─────────────────────────────────────────────
+  dependency-audit:
+    name: Dependency Vulnerability Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run Bun audit
+        run: |
+          echo "─── Bun Package Audit ──"
+          # bun audit exits non-zero if vulnerabilities found — capture exit code
+          set +e
+          bun audit 2>&1 | tee audit-results.txt
+          AUDIT_EXIT=$?
+          set -e
+          echo "Audit exit code: $AUDIT_EXIT"
+
+      - name: Check for critical or high vulnerabilities
+        run: |
+          echo "─── Checking for critical / high vulnerabilities ───"
+          # CI-001 FIX (Cycle 2): fail on HIGH as well as CRITICAL.
+          #   The previous threshold only failed on CRITICAL, which let
+          #   HIGH-severity issues (e.g. the Next.js SSRF advisory
+          #   GHSA-89xv-2m56-2m9x) merge into main. HIGH-severity issues
+          #   in a production ERP SaaS handling 6,000 invoices are
+          #   blockers, not warnings. MODERATE remains a warning.
+
+          # WON'T-FIX LIST: packages with documented justifications
+          # Each entry must have a CVE ID, severity, and justification.
+          WONFIX_PACKAGES="brace-expansion"
+          # brace-expansion GHSA-mh99-v99m-4gvg (HIGH): DoS via unbounded expansion.
+          #   Only exploitable with user-controlled input passed to brace-expansion.
+          #   In GarfiX, brace-expansion is used by ESLint/minimatch for file globbing
+          #   during development/CI — no user input reaches it. The v5.x line has a
+          #   different API that breaks minimatch v3, so we cannot override to v5.0.8.
+          #   Accepted as wontfix with this justification.
+
+          # Filter out wontfix packages from audit results
+          # bun audit format: "pkgname  <version>\n  dep › dep › pkgname\n  high: pkgname: ..."
+          FILTERED_RESULTS=$(cat audit-results.txt)
+          for pkg in $WONFIX_PACKAGES; do
+            # Remove the package header line, dependency chain lines, and CVE lines
+            FILTERED_RESULTS=$(echo "$FILTERED_RESULTS" | grep -v -i "^${pkg}  " | grep -v "${pkg}$" | grep -v -i ": ${pkg}:")
+          done
+
+          if echo "$FILTERED_RESULTS" | grep -qiE "critical"; then
+            echo "❌ CRITICAL vulnerabilities found — review audit-results.txt"
+            echo "Failing the pipeline to prevent shipping critically vulnerable code."
+            exit 1
+          fi
+
+          if echo "$FILTERED_RESULTS" | grep -qiE "high:"; then
+            HIGH_COUNT=$(echo "$FILTERED_RESULTS" | grep -oiE "high:" | wc -l)
+            echo "❌ $HIGH_COUNT HIGH severity vulnerability(ies) found — review audit-results.txt"
+            echo "High severity issues are now blockers (Cycle 2 hardening). Fix or pin an override."
+            echo ""
+            echo "If this is a wontfix package, add it to WONFIX_PACKAGES in .github/workflows/security.yml"
+            echo "with a documented justification (CVE ID, severity, why it's not exploitable)."
+            exit 1
+          else
+            echo "✅ No high vulnerabilities detected (excluding wontfix packages)"
+          fi
+
+          # Check for moderate — informational only (still a warning, not a blocker).
+          if echo "$FILTERED_RESULTS" | grep -qiE "moderate:"; then
+            MOD_COUNT=$(echo "$FILTERED_RESULTS" | grep -oiE "moderate:" | wc -l)
+            echo "ℹ️ $MOD_COUNT MODERATE severity vulnerability(ies) found — review when convenient"
+          fi
+
+          echo ""
+          echo "✅ No CRITICAL or HIGH vulnerabilities detected — pipeline continues"
+          echo ""
+          echo "─── Wontfix packages (excluded from above check) ───"
+          for pkg in $WONFIX_PACKAGES; do
+            echo "  • $pkg (see justification in security.yml)"
+          done
+
+      - name: Check for outdated dependencies
+        run: |
+          echo "─── Outdated Dependencies Check ──"
+          # bun outdated exits non-zero if outdated packages found — informational only
+          set +e
+          bun outdated 2>&1 | tee outdated-results.txt || true
+          set -e
+          echo ""
+          echo "Review outdated-results.txt for potential updates"
+
+      - name: Upload audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-results
+          path: |
+            audit-results.txt
+            outdated-results.txt
+          retention-days: 30
+
+  # ── Job 2: CodeQL Analysis ─────────────────────────────────────────────
+  # P1 HARDENING: CodeQL is a Security Gate — must NOT use continue-on-error.
+  #   v3 action with explicit init/analyze + cache + diagnostics.
+  #   If this job fails, the Security Scan pipeline fails — that is intentional.
+  codeql:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["javascript-typescript"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history helps CodeQL build better call graph
+
+      - name: Setup Bun (for deterministic build)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Cache Bun store
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-codeql-${{ hashFiles('bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-codeql-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Initialize CodeQL
+        id: init
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+          config: |
+            paths-ignore:
+              - '**/__tests__/**'
+              - '**/*.test.ts'
+              - '**/*.spec.ts'
+              - 'node_modules/**'
+              - '.next/**'
+              - 'coverage/**'
+              - 'scripts/**'
+              - 'e2e/**'
+              - 'examples/**'
+              - 'seed/**'
+            paths:
+              - 'src'
+          # NOTE: 'debugging' is not a valid input for init@v3 — use 'debug' (boolean)
+          # to enable verbose logs. Left disabled for normal runs.
+          # debug: true
+
+      - name: Build application (explicit, no autobuild)
+        run: bun run build
+        env:
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Perform CodeQL Analysis
+        id: analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+          upload: true
+          wait-for-processing: true  # Surface SARIF processing errors in CI log
+        # GHAS LIMITATION: CodeQL Action uploads SARIF to GitHub's code-scanning
+        # API, which requires GitHub Advanced Security (GHAS) on PRIVATE repos.
+        # This repo is private and does not have GHAS purchased, so the upload
+        # fails with "Code scanning is not enabled for this repository".
+        #
+        # This is a BILLING limitation, not a code defect. CodeQL still runs
+        # the full query suite locally and writes SARIF to the runner — we
+        # preserve that artifact so engineers can review findings offline.
+        # The `continue-on-error` here is scoped to the SARIF UPLOAD step only,
+        # NOT to the analysis itself. If CodeQL queries fail to RUN, that still
+        # fails the job.
+        ## continue-on-error removed (Phase 12 P2 fix)
+
+      - name: Upload CodeQL SARIF as artifact (offline review)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeql-sarif-results
+          path: |
+            /home/runner/work/_temp/codeql_databases/*/results/*.sarif
+            /home/runner/work/_temp/codeql-failed-run.sarif
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: CodeQL diagnostics
+        if: always()
+        run: |
+          echo "─── CodeQL Run Diagnostics ───"
+          echo "Init status:      ${{ steps.init.outcome }}"
+          echo "Analyze status:   ${{ steps.analyze.outcome }}"
+          echo "Language:         ${{ matrix.language }}"
+          echo ""
+          echo "If 'Analyze status' is failure with"
+          echo "'Code scanning is not enabled', this is a GHAS billing"
+          echo "limitation on private repos — not a code defect."
+          echo "CodeQL still ran locally; download the codeql-sarif-results"
+          echo "artifact to review findings offline."
+
+  # ── Job 3: Secret Scanning ─────────────────────────────────────────────
+  secret-scan:
+    name: Secret & Credential Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for thorough scan
+
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@v3.96.0
+        with:
+          extra_args: --only-verified
+        # Phase 13 P1 fix: removed continue-on-error. Verified secrets MUST
+        # fail the pipeline. False positives are handled via TruffleHog's
+        # --only-verified flag (only reports verified, exploitable secrets).
+
+      - name: Gitleaks Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Phase 13 P1 fix: removed continue-on-error. Committed secrets must
+        # fail the pipeline. Use .gitleaksignore for known false positives.
+
+      - name: Upload secret scan results
+        if: always()
+        run: |
+          echo "─── Secret Scan Summary ───"
+          echo "TruffleHog and Gitleaks both ran with continue-on-error."
+          echo "Review the scan output above for any detected secrets."
+          echo "If verified secrets are found, take immediate action to rotate them."
+
+  # ── Job 4: License Compliance ──────────────────────────────────────────
+  license-check:
+    name: License Compliance Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check licenses
+        run: |
+          echo "─── License Compliance Check ──"
+          # List all dependency licenses
+          bun pm ls 2>/dev/null | head -50 > license-report.txt || true
+          echo "" >> license-report.txt
+          echo "Checking for problematic licenses (GPL, AGPL, SSPL)..." >> license-report.txt
+          # Scan for problematic licenses in node_modules
+          PROBLEMATIC=0
+          if [ -d "node_modules" ]; then
+            for pkg in node_modules/*/; do
+              if [ -f "$pkg/LICENSE" ] || [ -f "$pkg/license" ]; then
+                LICENSE=$(cat "$pkg/LICENSE" "$pkg/license" 2>/dev/null | head -5)
+                if echo "$LICENSE" | grep -qiE "(affero general public|gnu general public|server side public|SSPL)"; then
+                  echo "❌ Copyleft license found: $(basename $pkg)"
+                  echo "Copyleft license found: $(basename $pkg)" >> license-report.txt
+                  PROBLEMATIC=1
+                fi
+              fi
+            done
+          fi
+          if [ "$PROBLEMATIC" -eq 0 ]; then
+            echo "✅ No problematic copyleft licenses found"
+            echo "No problematic copyleft licenses found" >> license-report.txt
+          else
+            echo "❌ Copyleft licenses found — review before distribution"
+            echo "Copyleft licenses found — review before distribution" >> license-report.txt
+            exit 1
+          fi
+
+      - name: Upload license report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-compliance-report
+          path: license-report.txt
+          retention-days: 30
+
+  # ── Job 5: Container Image Vulnerability Scan ───────────────────────────
+  # CONT-001 FIX (Cycle 3): scan the production Docker image for known
+  # vulnerabilities using Trivy. Fails on CRITICAL or HIGH findings so
+  # vulnerable images can't be deployed.
+  #
+  # P1 HARDENING: Trivy is a Security Gate — no permanent continue-on-error.
+  #   * Pinned to a known-good action version (0.28.0) for reproducibility.
+  #   * Explicit docker/setup-buildx + GHA cache to reduce flakiness.
+  #   * SARIF uploaded regardless of scan result so findings are always visible.
+  #   * If runner itself fails (network/disk), the failure surfaces honestly.
+  container-scan:
+    name: Container Image Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      security-events: write
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Free disk space for Trivy scan
+        run: |
+          echo "─── Disk space before cleanup ───"
+          df -h /
+          echo ""
+          # Remove unnecessary pre-installed software to reclaim ~20-30 GB
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL \
+            /opt/hostedtoolcache/Java_Temurin-Hotspot \
+            /opt/hostedtoolcache/Ruby /opt/hostedtoolcache/Python \
+            /opt/hostedtoolcache/node 2>/dev/null || true
+          sudo apt-get clean -y 2>/dev/null || true
+          echo "─── Disk space after cleanup ───"
+          df -h /
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          # Pinned BuildKit image for reproducible builds.
+          # NOTE: inline YAML comments after driver-opts values are passed
+          # literally to docker buildx, causing 'invalid reference format'.
+          # Keep comments on their own line.
+          driver-opts: |
+            image=moby/buildkit:v0.15.2
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile', 'bun.lockb', 'package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Build image for scanning
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: garfix-scan:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      - name: Move Docker cache (avoid cache grow unbounded)
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Run Trivy vulnerability scanner
+        id: trivy
+        # NOTE: v0.28.0 → v0.34.0 of trivy-action depend on setup-trivy@v0.2.1
+        # which was DELETED upstream (likely part of the 2026-03 supply-chain
+        # attack response). Use v0.36.0 — the post-incident release that pins
+        # setup-trivy by commit hash (3fb12ec...) instead of tag.
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: garfix-scan:latest
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: "1"
+          severity: "CRITICAL,HIGH"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          timeout: "10m"
+          # Wontfix list — see .trivyignore for documented justifications.
+          # Each CVE in that file has a comment explaining why it's accepted.
+          trivyignores: .trivyignore
+        env:
+          # Skip Trivy version check to avoid downloading the new version
+          # and save disk space on the runner (previous runs ran out of disk).
+          TRIVY_SKIP_VERSION_CHECK: "true"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: always() && hashFiles('trivy-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: "trivy-container-scan"
+        # GHAS LIMITATION: Same as CodeQL — upload-sarif requires GitHub
+        # Phase 12 P2 fix: removed continue-on-error. Trivy SARIF upload
+        # failure should surface — if the upload fails, engineers need to
+        # know (the artifact is still uploaded in the next step as backup).
+        # The SARIF upload to GitHub Security tab requires GHAS (not available
+        # on private repos without a license), but the upload step itself
+        # should not silently fail.
+
+      - name: Upload Trivy scan results as artifact
+        if: always() && hashFiles('trivy-results.sarif') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-container-scan-results
+          path: trivy-results.sarif
+          retention-days: 30
+
+      - name: Trivy diagnostics
+        if: always()
+        run: |
+          echo "─── Trivy Scan Diagnostics ───"
+          echo "Build status:  ${{ steps.build.outcome }}"
+          echo "Trivy status:  ${{ steps.trivy.outcome }}"
+          echo ""
+          if [ "${{ steps.trivy.outcome }}" = "failure" ]; then
+            echo "Trivy reported HIGH/CRITICAL vulnerabilities OR failed to run."
+            echo "Review trivy-results.sarif artifact for details."
+            echo ""
+            echo "If this is a runner-side failure (network/disk), re-run the job."
+            echo "If this is a real CVE finding, patch the base image or pin the"
+            echo "affected package before merging."
+          fi
+
+  # ── Job 6: Security Summary ────────────────────────────────────────────
+  security-summary:
+    name: Security Scan Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-audit, codeql, secret-scan, license-check, container-scan]
+    if: always()
+
+    steps:
+      - name: Security Scan Status
+        run: |
+          echo "╔══════════════════════════════════════════════════╗"
+          echo "║      GarFiX v1.4 Security Scan Summary          ║"
+          echo "╚══════════════════════════════════════════════════╝"
+          echo ""
+          echo "Dependency Audit:  ${{ needs.dependency-audit.result }}"
+          echo "CodeQL Analysis:   ${{ needs.codeql.result }}"
+          echo "Secret Scan:       ${{ needs.secret-scan.result }}"
+          echo "License Check:     ${{ needs.license-check.result }}"
+          echo "Container Scan:    ${{ needs.container-scan.result }}"
+          echo ""
+
+          # Fail if any security check failed
+          RESULTS="${{ needs.dependency-audit.result }}${{ needs.codeql.result }}${{ needs.secret-scan.result }}${{ needs.license-check.result }}${{ needs.container-scan.result }}"
+          if echo "$RESULTS" | grep -q "failure"; then
+            echo "❌ Security scan FAILED — review findings"
+            exit 1
+          else
+            echo "✅ Security scan completed"
+          fi

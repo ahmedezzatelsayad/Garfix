@@ -1,0 +1,7 @@
+# Phase 10 P3 fix: Caddyfile was listening on :81 with no domain, no TLS.
+# Production uses Nginx (see deploy/nginx/garfix.conf). This Caddyfile is
+# for LOCAL DEVELOPMENT ONLY — do not use in production.
+# To use: replace localhost with your dev domain.
+localhost {
+  reverse_proxy localhost:3000
+}

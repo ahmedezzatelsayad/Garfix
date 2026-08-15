@@ -1,0 +1,429 @@
+/**
+ * accountant-collab.ts — Phase 12: Accountant Collaboration
+ *
+ * Features:
+ *  - External accountant access management (read_only, limited_edit, full_edit)
+ *  - Excel export data generation (trial_balance, general_ledger, journal_entries, full_package)
+ *  - Accounting-specific audit logging (separate from general AuditLog)
+ *  - Accounting audit trail queries
+ */
+
+import { dbTyped as db } from "@/lib/db";
+import { num } from "@/lib/money";
+import { logger } from "@/lib/logger";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export type AccountantAccessLevel = "read_only" | "limited_edit" | "full_edit";
+
+export interface AccountantAccessResult {
+  id: number;
+  companySlug: string;
+  accountantEmail: string;
+  accessLevel: AccountantAccessLevel;
+  permissionsGranted: string[];
+  createdAt: Date;
+}
+
+export type ExportType = "trial_balance" | "general_ledger" | "journal_entries" | "full_package";
+
+export interface ExportResult {
+  fileName: string;
+  data: Record<string, unknown>;
+}
+
+// ─── Permission Mapping ──────────────────────────────────────────────────────
+
+const ACCESS_LEVEL_PERMISSIONS: Record<AccountantAccessLevel, string[]> = {
+  read_only: ["finance_access"], // view only — the route checks permission but the role won't allow mutations
+  limited_edit: ["finance_access", "create_journal_entry"], // can create JEs but not post
+  full_edit: ["finance_access", "create_journal_entry", "post_journal_entry", "create_invoice", "create_voucher"],
+};
+
+// ─── 1. createExternalAccountantAccess ────────────────────────────────────────
+
+export async function createExternalAccountantAccess(
+  companySlug: string,
+  accountantEmail: string,
+  accessLevel: AccountantAccessLevel,
+): Promise<AccountantAccessResult> {
+  const permissions = ACCESS_LEVEL_PERMISSIONS[accessLevel];
+
+  // Create a role for this accountant scoped to this company.
+  // The role name encodes the company + email so it's unique.
+  const roleName = `ext_accountant_${companySlug}_${accountantEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
+
+  // Upsert RolePermission entries for each permission key
+  for (const permKey of permissions) {
+    await db.rolePermission.upsert({
+      where: {
+        role_permissionKey: {
+          role: roleName,
+          permissionKey: permKey,
+        },
+      },
+      update: { permissions: permKey },
+      create: {
+        role: roleName,
+        permissionKey: permKey,
+        companySlug,
+        permissions: permKey,
+        isActive: true,
+      },
+    });
+  }
+
+  // Also ensure the accountant user has this company in their companies list.
+  // P3.2 (Cycle 5): omit passwordHash — only `companies` is read.
+  const user = await db.appUser.findUnique({
+    where: { email: accountantEmail },
+    omit: { passwordHash: true },
+  });
+  if (user) {
+    const companies: string[] = JSON.parse(user.companies || "[]");
+    if (!companies.includes(companySlug)) {
+      companies.push(companySlug);
+      await db.appUser.update({
+        where: { email: accountantEmail },
+        data: { companies: JSON.stringify(companies) },
+      });
+    }
+  }
+
+  logger.info("[accountant-collab] access granted", { companySlug, accountantEmail, accessLevel, roleName });
+
+  return {
+    id: 0, // no dedicated table — role permissions serve as the record
+    companySlug,
+    accountantEmail,
+    accessLevel,
+    permissionsGranted: permissions,
+    createdAt: new Date(),
+  };
+}
+
+// ─── 2. exportToAccountantExcel ───────────────────────────────────────────────
+
+export async function exportToAccountantExcel(
+  companySlug: string,
+  periodFrom: string,
+  periodTo: string,
+  exportType: ExportType,
+): Promise<ExportResult> {
+  const company = await db.company.findUnique({
+    where: { slug: companySlug },
+    select: { name: true, currency: true },
+  });
+  if (!company) throw new Error("Company not found");
+
+  const fileNameSuffix = `${companySlug}_${periodFrom}_${periodTo}_${exportType}`;
+
+  const companyData = { name: company.name, nameAr: null as string | null, currency: company.currency };
+
+  if (exportType === "trial_balance" || exportType === "full_package") {
+    const tbData = await generateTrialBalanceData(companySlug, periodFrom, periodTo, companyData);
+    if (exportType === "trial_balance") {
+      return { fileName: `ميزان_مراجعة_${fileNameSuffix}.xlsx`, data: tbData };
+    }
+    // full_package includes all — we'll accumulate
+    const allData: Record<string, unknown> = { trialBalance: tbData };
+
+    const glData = await generateGeneralLedgerData(companySlug, periodFrom, periodTo, companyData);
+    allData.generalLedger = glData;
+
+    const jeData = await generateJournalEntriesData(companySlug, periodFrom, periodTo, companyData);
+    allData.journalEntries = jeData;
+
+    return { fileName: `حزمة_كاملة_${fileNameSuffix}.xlsx`, data: allData };
+  }
+
+  if (exportType === "general_ledger") {
+    const glData = await generateGeneralLedgerData(companySlug, periodFrom, periodTo, companyData);
+    return { fileName: `دفتر_الأستاذ_${fileNameSuffix}.xlsx`, data: glData };
+  }
+
+  if (exportType === "journal_entries") {
+    const jeData = await generateJournalEntriesData(companySlug, periodFrom, periodTo, companyData);
+    return { fileName: `قيود_يومية_${fileNameSuffix}.xlsx`, data: jeData };
+  }
+
+  throw new Error(`Unknown export type: ${exportType}`);
+}
+
+async function generateTrialBalanceData(
+  companySlug: string,
+  periodFrom: string,
+  periodTo: string,
+  company: { name: string; nameAr: string | null; currency: string },
+): Promise<Record<string, unknown>> {
+  const accounts = await db.account.findMany({
+    where: { companySlug, isActive: true },
+    include: {
+      journalEntryLines: {
+        include: { journalEntry: { select: { status: true, date: true } } },
+      },
+    },
+    orderBy: { code: "asc" },
+  });
+
+  const rows: Record<string, unknown>[] = [];
+  let grandDebit = 0;
+  let grandCredit = 0;
+
+  for (const acc of accounts) {
+    let totalDebit = 0;
+    let totalCredit = 0;
+    for (const line of acc.journalEntryLines) {
+      if (line.journalEntry.status !== "posted" && line.journalEntry.status !== "reversed") continue;
+      if (line.journalEntry.date < new Date(periodFrom) || line.journalEntry.date > new Date(periodTo)) continue;
+      const multiplier = line.journalEntry.status === "reversed" ? -1 : 1;
+      totalDebit += num(line.debit, 3) * multiplier;
+      totalCredit += num(line.credit, 3) * multiplier;
+    }
+    grandDebit += totalDebit;
+    grandCredit += totalCredit;
+
+    rows.push({
+      "رمز الحساب": acc.code,
+      "اسم الحساب": acc.nameAr,
+      "نوع الحساب": acc.type,
+      "مدين": num(totalDebit, 3).toFixed(3),
+      "دائن": num(totalCredit, 3).toFixed(3),
+      "الرصيد": num(totalDebit - totalCredit, 3).toFixed(3),
+    });
+  }
+
+  return {
+    headers: ["رمز الحساب", "اسم الحساب", "نوع الحساب", "مدين", "دائن", "الرصيد"],
+    companyName: company.nameAr || company.name,
+    currency: company.currency,
+    periodFrom,
+    periodTo,
+    title: "ميزان المراجعة",
+    rows,
+    totals: {
+      "مدين": num(grandDebit, 3).toFixed(3),
+      "دائن": num(grandCredit, 3).toFixed(3),
+      "الرصيد": num(grandDebit - grandCredit, 3).toFixed(3),
+    },
+  };
+}
+
+async function generateGeneralLedgerData(
+  companySlug: string,
+  periodFrom: string,
+  periodTo: string,
+  company: { name: string; nameAr: string | null; currency: string },
+): Promise<Record<string, unknown>> {
+  const accounts = await db.account.findMany({
+    where: { companySlug, isActive: true },
+    orderBy: { code: "asc" },
+  });
+
+  // Phase 6 P1 fix: batch-fetch ALL journal entry lines for ALL accounts in
+  // ONE query (was N+1 — 50-200 accounts × 1 findMany each). Now we fetch
+  // all lines where accountId is in the account list, then group in JS.
+  const accountIds = accounts.map((a) => a.id);
+  const allLines = await db.journalEntryLine.findMany({
+    where: {
+      accountId: { in: accountIds },
+      journalEntry: {
+        companySlug,
+        status: { in: ["posted", "reversed"] },
+        date: { gte: new Date(periodFrom), lte: new Date(periodTo) },
+      },
+    },
+    include: { journalEntry: { select: { date: true, description: true, reference: true, status: true } } },
+    orderBy: { journalEntry: { date: "asc" } },
+  });
+
+  // Group lines by accountId for per-account processing
+  const linesByAccount = new Map<string, typeof allLines>();
+  for (const line of allLines) {
+    const arr = linesByAccount.get(line.accountId) || [];
+    arr.push(line);
+    linesByAccount.set(line.accountId, arr);
+  }
+
+  const ledgerEntries: Record<string, unknown>[] = [];
+  for (const acc of accounts) {
+    const lines = linesByAccount.get(acc.id) || [];
+    let runningBalance = 0;
+    const isDebitNormal = acc.type === "asset" || acc.type === "expense";
+
+    for (const line of lines) {
+      const multiplier = line.journalEntry.status === "reversed" ? -1 : 1;
+      const debit = num(line.debit, 3) * multiplier;
+      const credit = num(line.credit, 3) * multiplier;
+      runningBalance += isDebitNormal ? debit - credit : credit - debit;
+
+      ledgerEntries.push({
+        "رمز الحساب": acc.code,
+        "اسم الحساب": acc.nameAr,
+        "التاريخ": line.journalEntry.date,
+        "المرجع": line.journalEntry.reference || "",
+        "البيان": line.journalEntry.description || "",
+        "مدين": debit.toFixed(3),
+        "دائن": credit.toFixed(3),
+        "الرصيد": num(runningBalance, 3).toFixed(3),
+      });
+    }
+  }
+
+  return {
+    headers: ["رمز الحساب", "اسم الحساب", "التاريخ", "المرجع", "البيان", "مدين", "دائن", "الرصيد"],
+    companyName: company.nameAr || company.name,
+    currency: company.currency,
+    periodFrom,
+    periodTo,
+    title: "دفتر الأستاذ العام",
+    rows: ledgerEntries,
+  };
+}
+
+async function generateJournalEntriesData(
+  companySlug: string,
+  periodFrom: string,
+  periodTo: string,
+  company: { name: string; nameAr: string | null; currency: string },
+): Promise<Record<string, unknown>> {
+  const entries = await db.journalEntry.findMany({
+    where: {
+      companySlug,
+      date: { gte: periodFrom, lte: periodTo },
+      status: { in: ["posted", "reversed", "draft"] },
+    },
+    include: { lines: { include: { account: { select: { code: true, nameAr: true } } } } },
+    orderBy: { date: "asc" },
+  });
+
+  const rows: Record<string, unknown>[] = [];
+  for (const entry of entries) {
+    for (const line of entry.lines) {
+      rows.push({
+        "رقم القيد": entry.id,
+        "التاريخ": entry.date,
+        "البيان": entry.description || "",
+        "المرجع": entry.reference || "",
+        "الحالة": entry.status,
+        "رمز الحساب": line.account?.code ?? "",
+        "اسم الحساب": line.account?.nameAr ?? "",
+        "مدين": num(line.debit, 3).toFixed(3),
+        "دائن": num(line.credit, 3).toFixed(3),
+        "وصف السطر": line.description || "",
+      });
+    }
+  }
+
+  return {
+    headers: [
+      "رقم القيد", "التاريخ", "البيان", "المرجع", "الحالة",
+      "رمز الحساب", "اسم الحساب", "مدين", "دائن", "وصف السطر",
+    ],
+    companyName: company.nameAr || company.name,
+    currency: company.currency,
+    periodFrom,
+    periodTo,
+    title: "قيود اليومية",
+    rows,
+  };
+}
+
+// ─── 3. logAccountingChange ───────────────────────────────────────────────────
+
+export async function logAccountingChange(
+  companySlug: string,
+  userEmail: string,
+  action: string,
+  entity: string,
+  entityId: string | number | null | undefined,
+  beforeState: Record<string, unknown> | null,
+  afterState: Record<string, unknown> | null,
+  reason: string | null,
+): Promise<{ id: number; companySlug: string; userEmail: string; action: string; entity: string; entityId: string | null; createdAt: Date }> {
+  // AccountingAuditLog has a single `details` JSON column. Pack
+  // userEmail/beforeState/afterState/reason into it so the audit trail
+  // can still surface them when reading back.
+  const details = JSON.stringify({
+    userEmail,
+    beforeState,
+    afterState,
+    reason,
+  });
+
+  const entry = await db.accountingAuditLog.create({
+    data: {
+      companySlug,
+      action,
+      entity,
+      entityId: entityId != null ? String(entityId) : null,
+      performedBy: userEmail,
+      details,
+    },
+  });
+
+  logger.info("[accounting-audit] change logged", { companySlug, userEmail, action, entity, entityId });
+
+  return {
+    id: entry.id,
+    companySlug: entry.companySlug,
+    userEmail,
+    action: entry.action,
+    entity: entry.entity,
+    entityId: entry.entityId,
+    createdAt: entry.createdAt,
+  };
+}
+
+// ─── 4. getAccountingAuditTrail ───────────────────────────────────────────────
+
+export interface AuditTrailFilter {
+  entity?: string;
+  entityId?: number;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export async function getAccountingAuditTrail(
+  companySlug: string,
+  filters?: AuditTrailFilter,
+): Promise<Record<string, unknown>[]> {
+  const where: Record<string, unknown> = { companySlug };
+
+  if (filters?.entity) where.entity = filters.entity;
+  if (filters?.entityId) where.entityId = filters.entityId;
+  if (filters?.fromDate || filters?.toDate) {
+    const dateFilter: Record<string, unknown> = {};
+    if (filters.fromDate) dateFilter.gte = new Date(filters.fromDate);
+    if (filters.toDate) dateFilter.lte = new Date(filters.toDate);
+    where.createdAt = dateFilter;
+  }
+
+  const logs = await db.accountingAuditLog.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: 500,
+  });
+
+  return logs.map((log) => {
+    // Unpack the packed details JSON. Older rows may not have all fields.
+    let parsed: Record<string, unknown> = {};
+    try {
+      parsed = log.details ? (JSON.parse(log.details) as Record<string, unknown>) : {};
+    } catch {
+      parsed = {};
+    }
+    return {
+      id: log.id,
+      companySlug: log.companySlug,
+      userEmail: (parsed.userEmail as string | undefined) ?? log.performedBy ?? null,
+      action: log.action,
+      entity: log.entity,
+      entityId: log.entityId,
+      beforeState: (parsed.beforeState as Record<string, unknown> | null | undefined) ?? null,
+      afterState: (parsed.afterState as Record<string, unknown> | null | undefined) ?? null,
+      reason: (parsed.reason as string | null | undefined) ?? null,
+      createdAt: log.createdAt,
+    };
+  });
+}
