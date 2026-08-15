@@ -35,7 +35,7 @@ const mockLogger = {
   error: mock(() => {}), debug: mock(() => {}),
 };
 
-mock.module("@/lib/db", () => ({ db: mockDb }));
+mock.module("@/lib/db", () => ({ db: mockDb, dbTyped: mockDb }));
 mock.module("@/lib/logger", () => ({ logger: mockLogger }));
 mock.module("@/lib/ai-fabric/budget-engine", () => ({
   checkBudgetGate: mock(() => Promise.resolve(true)),

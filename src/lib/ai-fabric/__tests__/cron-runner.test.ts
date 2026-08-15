@@ -28,7 +28,7 @@ const mockDb = {
   featureFlag: { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
 };
 
-jest.mock("@/lib/db", () => ({ db: mockDb }));
+jest.mock("@/lib/db", () => ({ db: mockDb, dbTyped: mockDb }));
 jest.mock("@/lib/logger", () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } }));
 
 // Shared mock references for module-level mocks

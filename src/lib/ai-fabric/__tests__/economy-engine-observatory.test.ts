@@ -35,7 +35,7 @@ const mockLogger = {
   error: mock(() => {}), debug: mock(() => {}),
 };
 
-mock.module("@/lib/db", () => ({ db: mockDb }));
+mock.module("@/lib/db", () => ({ db: mockDb, dbTyped: mockDb }));
 mock.module("@/lib/logger", () => ({ logger: mockLogger }));
 
 import { getEconomyStatus, shouldUseEconomyMode } from "@/lib/ai-fabric/ai-economy-engine";

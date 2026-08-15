@@ -175,7 +175,11 @@ model Company {
 
   // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
   nameEn                String?
-  currencyDecimalPlaces Int
+  // P5-M7: DB has DEFAULT 0 (see migration 20260814150000_p10_final_schema_reconciliation),
+  // but schema declared `Int` with no default — this caused Prisma's generated
+  // client to require `currencyDecimalPlaces` on every `company.create()` call,
+  // breaking ai-fabric tests' `createCompany()` helper. Aligning schema with DB.
+  currencyDecimalPlaces Int    @default(0)
 
   // Phase 4 P3: CompanyMembership relation (replaces JSON companies column)
   memberships CompanyMembership[]

@@ -35,7 +35,7 @@ const mockLogger = {
   error: mock(() => {}), debug: mock(() => {}),
 };
 
-mock.module("@/lib/db", () => ({ db: mockDb }));
+mock.module("@/lib/db", () => ({ db: mockDb, dbTyped: mockDb }));
 mock.module("@/lib/logger", () => ({ logger: mockLogger }));
 
 import { recordObservation, promoteCandidates, getLearningStatus, MIN_SAMPLES, MIN_CONFIDENCE } from "@/lib/ai-fabric/learning-engine";

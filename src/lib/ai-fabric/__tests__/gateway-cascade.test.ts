@@ -34,7 +34,7 @@ const mockDb = {
   client: { findMany: jest.fn() },
 };
 
-jest.mock("@/lib/db", () => ({ db: mockDb }));
+jest.mock("@/lib/db", () => ({ db: mockDb, dbTyped: mockDb }));
 jest.mock("@/lib/logger", () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } }));
 
 // Shared mock store instance for invoice-brain patternStore
