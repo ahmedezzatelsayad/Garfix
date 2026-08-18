@@ -1,11 +1,1 @@
-{
-  "buildCommand": "npx prisma generate && next build --webpack",
-  "installCommand": "npm install --legacy-peer-deps",
-  "framework": "nextjs",
-  "regions": ["iad1"],
-  "functions": {
-    "src/app/api/**/route.ts": {
-      "maxDuration": 10
-    }
-  }
-}
+{}
