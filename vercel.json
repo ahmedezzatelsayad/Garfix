@@ -8,8 +8,5 @@
       "maxDuration": 10
     }
   },
-  "includeFiles": [
-    "node_modules/.prisma/client/**",
-    "node_modules/@prisma/engines/**"
-  ]
+  "includeFiles": "node_modules/.prisma/client/**"
 }
