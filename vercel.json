@@ -1,22 +1,15 @@
 {
-  "buildCommand": "bunx prisma generate && next build --webpack",
-  "installCommand": "bun install",
+  "buildCommand": "npx prisma generate && next build --webpack",
+  "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["iad1"],
   "functions": {
     "src/app/api/**/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 10
     }
   },
-  "includeFiles": "node_modules/.prisma/client/**",
-  "crons": [
-    {
-      "path": "/api/internal/cron/session-sweep",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/internal/cron/outbox-purge",
-      "schedule": "30 * * * *"
-    }
+  "includeFiles": [
+    "node_modules/.prisma/client/**",
+    "node_modules/@prisma/engines/**"
   ]
 }
