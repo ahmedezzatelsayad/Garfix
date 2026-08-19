@@ -200,18 +200,21 @@ export function verifyRefreshToken(token: string): { uid: string; tv: number } |
 export async function isTokenBlacklisted(jti: string): Promise<boolean> {
   const client = await getValkeyClient();
   if (!client) {
-    // SEC-04: Fail-CLOSED — if no Valkey, assume token is blacklisted
-    // This forces re-authentication during outages (safer than accepting)
-    const failMode = process.env.VALKEY_FAIL_MODE || "closed";
-    if (failMode === "open") return false; // Legacy/dev behavior
+    // VERCEL FIX: On Vercel without Valkey, default to fail-OPEN so auth works.
+    // Without a Valkey/Redis store, there is no blacklist to check — rejecting
+    // all tokens would make the entire app unusable. The env var VALKEY_FAIL_MODE
+    // can still override this to "closed" if a Valkey instance is later added.
+    const isVercelNoValkey = process.env.VERCEL === "1" && !process.env.VALKEY_URL && !process.env.REDIS_URL;
+    const failMode = process.env.VALKEY_FAIL_MODE || (isVercelNoValkey ? "open" : "closed");
+    if (failMode === "open") return false;
     console.warn("[auth] Valkey unavailable — fail-closed (rejecting token)");
     return true;
   }
   try {
     return (await client.exists(`token:blacklist:${jti}`)) > 0;
   } catch (err) {
-    // SEC-04: Fail-CLOSED on Valkey errors too
-    const failMode = process.env.VALKEY_FAIL_MODE || "closed";
+    const isVercelNoValkey = process.env.VERCEL === "1" && !process.env.VALKEY_URL && !process.env.REDIS_URL;
+    const failMode = process.env.VALKEY_FAIL_MODE || (isVercelNoValkey ? "open" : "closed");
     if (failMode === "open") return false;
     console.warn("[auth] Valkey blacklist check failed — fail-closed", {
       err: err instanceof Error ? err.message : String(err),
@@ -231,7 +234,15 @@ export async function isTokenBlacklisted(jti: string): Promise<boolean> {
 export async function blacklistToken(jti: string, remainingTtlSeconds: number): Promise<void> {
   const client = await getValkeyClient();
   if (!client || remainingTtlSeconds <= 0) {
-    // SEC-04: If Valkey is down, we can't blacklist — throw so caller knows
+    // VERCEL FIX: On Vercel without Valkey, silently skip blacklisting.
+    // Without a Valkey store, token revocation via blacklist is not possible.
+    // This is acceptable because token version checking (tv field) still
+    // provides a DB-backed revocation mechanism for password changes/logouts.
+    const isVercelNoValkey = process.env.VERCEL === "1" && !process.env.VALKEY_URL && !process.env.REDIS_URL;
+    if (isVercelNoValkey) {
+      console.warn("[auth] Valkey unavailable on Vercel — skipping token blacklist (revocation via tokenVersion still active)");
+      return;
+    }
     throw new Error("Cannot blacklist token: Valkey unavailable");
   }
   try {
@@ -318,7 +329,12 @@ export async function issueSession(
   // resolveAuth() can validate it for revocation, concurrent-session
   // limits, and forensic IP/UA tracking. Best-effort: failures are logged
   // but do NOT break login.
-  const enforced = process.env.SESSION_REGISTRY_ENFORCED !== "false";
+  // VERCEL FIX: On Vercel without Valkey, default SESSION_REGISTRY_ENFORCED
+  // to false. The session registry depends on Valkey for caching; without it,
+  // every request does a DB lookup which works but is slower. Setting this to
+  // false on Vercel avoids unnecessary errors and simplifies the auth flow.
+  const isVercelNoValkey = process.env.VERCEL === "1" && !process.env.VALKEY_URL && !process.env.REDIS_URL;
+  const enforced = process.env.SESSION_REGISTRY_ENFORCED !== "false" && !isVercelNoValkey;
   if (enforced && req) {
     try {
       // Decode the JTI we just signed — signToken mints a fresh UUID
@@ -415,7 +431,9 @@ export async function resolveAuth(req: NextRequest): Promise<AuthResult> {
     if (payload) {
       // SEC-H4: verify the JTI is still registered. Skip when env disabled
       // OR when the token has no JTI (older tokens issued before SEC-H4).
-      const enforced = process.env.SESSION_REGISTRY_ENFORCED !== "false";
+      // VERCEL FIX: On Vercel without Valkey, skip session registry check.
+      const _isVercelNoValkey = process.env.VERCEL === "1" && !process.env.VALKEY_URL && !process.env.REDIS_URL;
+      const enforced = process.env.SESSION_REGISTRY_ENFORCED !== "false" && !_isVercelNoValkey;
       if (enforced && payload.jti) {
         try {
           const { isSessionValid } = await import("./passwordPolicy");

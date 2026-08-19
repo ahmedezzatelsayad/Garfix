@@ -194,12 +194,19 @@ export function middleware(req: NextRequest): NextResponse {
   // can configure the app before anyone uses it. If SETUP_COMPLETE=true,
   // we redirect /setup → / so the wizard can't be re-run.
   //
+  // VERCEL FIX: On Vercel, if SETUP_COMPLETE is not set but DATABASE_URL is,
+  // assume setup is already done (migrations run externally). This prevents
+  // the setup wizard from blocking all traffic on Vercel deployments where
+  // env vars are configured via the Vercel dashboard rather than the wizard.
+  //
   // Allow these paths regardless of setup state:
   //   - /api/setup/*          (wizard APIs)
   //   - /_next, /favicon.ico  (static assets)
-  //   - /login                (so the founder can log in after setup)
-  const isSetupDone = process.env.SETUP_COMPLETE === "true";
-  const SETUP_ALLOW_PATHS = ["/login", "/api/auth/login", "/api/setup"];
+  //   - /login, /signup       (so users can log in / register)
+  //   - /api/auth/*           (auth endpoints must work for login/refresh)
+  const isVercelWithDb = process.env.VERCEL === "1" && !!process.env.DATABASE_URL;
+  const isSetupDone = process.env.SETUP_COMPLETE === "true" || isVercelWithDb;
+  const SETUP_ALLOW_PATHS = ["/login", "/signup", "/api/auth", "/api/setup"];
   const isSetupAllowedPath =
     pathname === "/setup" ||
     SETUP_ALLOW_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
