@@ -284,12 +284,12 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
             onKeyDown={onKeyDown}
             placeholder="ابحث عن صفحة، إجراء، فاتورة أو عميل… (مثال: فوا)"
-            className="flex-1 bg-transparent border-none outline-none focus-ring text-[#f5f5fa] text-[15px] font-[inherit] [direction:rtl] placeholder:text-[#6b7280]"
+            className="flex-1 bg-transparent border-none outline-none focus-ring text-[#f5f5fa] text-[15px] font-[inherit] [direction:rtl] placeholder:text-muted-foreground"
           />
           <button
             onClick={onClose}
             title="إغلاق (Esc)"
-            className="bg-white/[0.06] border-none text-[#9ca3af] cursor-pointer rounded-md p-1 flex items-center hover:bg-white/[0.12] hover-lift duration-120 transition-all"
+            className="bg-white/[0.06] border-none text-muted-foreground cursor-pointer rounded-md p-1 flex items-center hover:bg-white/[0.12] hover-lift duration-120 transition-all"
           >
             <X size={14} />
           </button>
@@ -301,7 +301,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
           className="overflow-y-auto flex-1 p-[6px] garfix-scroll"
         >
           {loading && (
-            <div className="p-5 text-center text-[13px] text-[#9ca3af]">
+            <div className="p-5 text-center text-[13px] text-muted-foreground">
               جارٍ البحث…
             </div>
           )}
@@ -309,13 +309,13 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
           {!loading && isEmpty && (
             <div className="py-8 px-5 text-center">
               <Search size={32} className="text-emerald-500/40 mb-3 mx-auto" />
-              <div className="text-[13px] text-[#9ca3af] leading-relaxed">
+              <div className="text-[13px] text-muted-foreground leading-relaxed">
                 {query.trim().length === 0
                   ? "👋 ابدأ بالكتابة للبحث أو اختر من القائمة أدناه"
                   : "😕 عذراً، لا توجد نتائج مطابقة لبحثك"}
               </div>
               {query.trim().length > 0 && (
-                <p className="text-[11px] text-[#6b7280] mt-2">جرب كلمات مفتاحية مختلفة</p>
+                <p className="text-[11px] text-muted-foreground mt-2">جرب كلمات مفتاحية مختلفة</p>
               )}
             </div>
           )}
@@ -343,13 +343,13 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                       onMouseEnter={() => setSelectedIndex(idx)}
                       className={`w-full flex items-center gap-[10px] py-[9px] px-3 rounded-[10px] ${isSelected ? "bg-emerald-500/20" : "bg-transparent hover:bg-white/[0.04]"} border-none font-[inherit] text-[13px] cursor-pointer text-right hover-lift duration-120 transition-all ${isSelected ? "text-[#f5f5fa]" : "text-[#cbd5e1]"}`}
                     >
-                      <Icon size={15} className={`shrink-0 ${isSelected ? "text-emerald-400" : "text-[#6b7280]"}`} />
+                      <Icon size={15} className={`shrink-0 ${isSelected ? "text-emerald-400" : "text-muted-foreground"}`} />
                       <div className="flex-1 min-w-0">
                         <div className={`font-semibold truncate ${r.section === "invoices" ? "[direction:ltr] text-left font-mono" : "text-right font-[inherit]"}`}>
                           {r.label}
                         </div>
                         {r.sublabel && (
-                          <div className="text-[11px] text-[#9ca3af] truncate">
+                          <div className="text-[11px] text-muted-foreground truncate">
                             {r.sublabel}
                           </div>
                         )}
@@ -367,7 +367,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
         {/* Footer hint */}
         <div
-          className="py-2 px-[14px] border-t border-white/[0.06] bg-background/50 flex items-center justify-between text-[10px] text-[#6b7280] gap-2 flex-wrap"
+          className="py-2 px-[14px] border-t border-white/[0.06] bg-background/50 flex items-center justify-between text-[10px] text-muted-foreground gap-2 flex-wrap"
         >
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1">

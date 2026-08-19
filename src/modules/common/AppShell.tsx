@@ -330,7 +330,7 @@ function AppShellContent(_props: Record<string, unknown>) {
           On desktop (md+) the sidebar is a fixed rail on the right (RTL) so the main
           content needs margin-end: 260px to not sit under it.
         */}
-        <div className="flex flex-1 flex-col min-w-0 sm:me-[200px] md:me-[260px] garfix-scroll transition-all duration-300">
+        <div className="flex flex-1 flex-col min-w-0 sm:ms-[200px] md:ms-[260px] garfix-scroll transition-all duration-300">
           <Topbar
             user={user}
             activeCompany={activeCompany}

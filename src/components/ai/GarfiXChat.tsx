@@ -148,7 +148,7 @@ export function GarfiXChat({
 
   return (
     <div 
-      className={`flex flex-col h-full bg-[#0b1220] border border-emerald-500/20 rounded-2xl shadow-brand-xl glass-strong overflow-hidden ${className || ''}`}
+      className={`flex flex-col h-full bg-background border border-emerald-500/20 rounded-2xl shadow-brand-xl glass-strong overflow-hidden ${className || ''}`}
       dir={language === 'ar' ? 'rtl' : 'ltr'}
     >
       {/* Header with Brain Status - DS v4.0 Emerald-Gold Gradient */}
@@ -221,7 +221,7 @@ export function GarfiXChat({
               className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                 msg.role === 'user'
                   ? 'bg-mutedmerald-600/90 text-white rounded-tr-none glass'
-                  : 'ai-card bg-[#111827] border border-[#d4a574]/30 border-r-[3px] border-r-[#d4a574] rounded-tl-none shadow-sm'
+                  : 'ai-card bg-card border border-[#d4a574]/30 border-r-[3px] border-r-[#d4a574] rounded-tl-none shadow-sm'
               }`}
             >
               <div className="whitespace-pre-wrap">{msg.content}</div>
@@ -286,7 +286,7 @@ export function GarfiXChat({
         {isLoading && !isThinking && (
           <div className="flex gap-3">
             <BrainIcon />
-            <div className="px-4 py-3 rounded-2xl rounded-tl-none ai-card bg-[#111827] border border-white/[0.08]">
+            <div className="px-4 py-3 rounded-2xl rounded-tl-none ai-card bg-card border border-border/50">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <LoadingIcon />
                 <span className="text-sm">جارٍ الكتابة...</span>
@@ -326,7 +326,7 @@ export function GarfiXChat({
             placeholder={placeholder}
             rows={1}
             disabled={isLoading}
-            className="flex-1 px-4 py-3 rounded-xl border border-white/[0.1] bg-[#0b1220] resize-none focus-ring focus:border-emerald-500 disabled:opacity-50 text-sm text-white placeholder:text-muted-foreground/60"
+            className="flex-1 px-4 py-3 rounded-xl border border-white/[0.1] bg-background resize-none focus-ring focus:border-emerald-500 disabled:opacity-50 text-sm text-white placeholder:text-muted-foreground/60"
             style={{ minHeight: '48px', maxHeight: '120px' }}
           />
           
@@ -349,7 +349,7 @@ export function GarfiXChat({
                   setInputValue(hint);
                   inputRef.current?.focus();
                 }}
-                className="px-3 py-1.5 text-xs rounded-full ai-suggestion bg-white/[0.05] hover:bg-[#d4a574]/15 transition-colors text-muted-foreground hover:text-[#d4a574] border border-white/[0.08] hover:border-[#d4a574]/30 hover-lift duration-120"
+                className="px-3 py-1.5 text-xs rounded-full ai-suggestion bg-white/[0.05] hover:bg-[#d4a574]/15 transition-colors text-muted-foreground hover:text-[#d4a574] border border-border/50 hover:border-[#d4a574]/30 hover-lift duration-120"
               >
                 {hint}
               </button>

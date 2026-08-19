@@ -104,9 +104,9 @@ const colorConfig: Record<StatColor, {
   },
   gray: {
     iconBg: "bg-gray-500/10",
-    iconText: "text-gray-500",
-    trendUp: "text-gray-500",
-    trendDown: "text-gray-500",
+    iconText: "text-muted-foreground",
+    trendUp: "text-muted-foreground",
+    trendDown: "text-muted-foreground",
     value: "text-foreground",
   },
 };

@@ -112,7 +112,7 @@ export function BackupsTab() {
 
       {confirmingTrigger && (
         <div
-          className="fixed inset-0 bg-mutedackgroundlack/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-popover/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
           onClick={() => !triggering && setConfirmingTrigger(false)}
         >
           <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full p-5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] max-w-[440px]"

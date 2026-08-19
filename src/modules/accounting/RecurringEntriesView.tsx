@@ -233,10 +233,10 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-2xl font-bold text-foreground">
             القيود الدورية
           </h2>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             إدارة وتشغيل القيود المحاسبية المتكررة تلقائياً
           </p>
         </div>
@@ -278,9 +278,9 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
       </div>
 
       {/* Filters & Search */}
-      <div className="flex flex-col md:flex-row gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+      <div className="flex flex-col md:flex-row gap-4 p-4 bg-card rounded-xl shadow-sm border border-border">
         <div className="flex-1 relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <input
             type="text"
             placeholder="بحث بالعنوان..."
@@ -288,9 +288,9 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
             onChange={(e) => setSearchQuery(e.target.value)}
             className={cn(
               "w-full pr-10 pl-4 py-2 rounded-lg",
-              "border border-gray-200 dark:border-gray-600",
+              "border border-border",
               "bg-white dark:bg-gray-700",
-              "text-gray-900 dark:text-white",
+              "text-foreground",
               "focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             )}
           />
@@ -302,9 +302,9 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
             onChange={(e) => setStatusFilter(e.target.value as "active" | "all" | "paused")}
             className={cn(
               "px-4 py-2 rounded-lg",
-              "border border-gray-200 dark:border-gray-600",
+              "border border-border",
               "bg-white dark:bg-gray-700",
-              "text-gray-900 dark:text-white",
+              "text-foreground",
               "focus:ring-2 focus:ring-emerald-500"
             )}
           >
@@ -361,15 +361,15 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin" />
-            <span className="mr-3 text-gray-500">جاري التحميل...</span>
+            <span className="mr-3 text-muted-foreground">جاري التحميل...</span>
           </div>
         ) : entries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-            <FileText className="w-16 h-16 mb-4 text-gray-300" />
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <FileText className="w-16 h-16 mb-4 text-muted-foreground" />
             <p className="text-lg font-medium">لا توجد قيود دورية</p>
             <p className="text-sm mt-1">ابدأ بإنشاء قيد دوري جديد</p>
             <button
@@ -382,7 +382,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900/50">
+              <thead className="bg-muted">
                 <tr>
                   <th className="px-4 py-3 text-right">
                     <input
@@ -392,25 +392,25 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                       className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                     />
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     العنوان
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden sm:table-cell">
                     التكرار
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                     التشغيل التالي
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
                     آخر تشغيل
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
                     مرات الترحيل
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     الحالة
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     إجراءات
                   </th>
                 </tr>
@@ -420,7 +420,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                   <tr
                     key={entry.id}
                     className={cn(
-                      "hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors",
+                      "hover:bg-muted dark:hover:bg-gray-700/50 transition-colors",
                       selectedIds.has(entry.id) && "bg-mutedmerald-50 dark:bg-mutedmerald-900/20"
                     )}
                   >
@@ -433,11 +433,11 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                       />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900 dark:text-white">
+                      <div className="font-medium text-foreground">
                         {entry.title}
                       </div>
                       {entry.description && (
-                        <div className="text-xs text-gray-500 truncate max-w-[200px]">
+                        <div className="text-xs text-muted-foreground truncate max-w-[200px]">
                           {entry.description}
                         </div>
                       )}
@@ -453,12 +453,12 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                       </span>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
-                      <span className="text-sm text-gray-600 dark:text-gray-300">
+                      <span className="text-sm text-muted-foreground">
                         {formatDate(entry.nextRunDate)}
                       </span>
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell">
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-muted-foreground">
                         {formatDate(entry.lastRunDate)}
                       </span>
                     </td>
@@ -467,7 +467,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                         "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
                         entry.totalPosted > 10 
                           ? "bg-mutedmerald-100 text-emerald-800 dark:bg-mutedmerald-900/30 dark:text-emerald-400"
-                          : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                          : "bg-muted text-foreground"
                       )}>
                         {entry.totalPosted}
                       </span>
@@ -484,7 +484,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                       ) : (
                         <span className={cn(
                           "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
-                          "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                          "bg-muted text-foreground"
                         )}>
                           <Pause className="w-3 h-3 ml-1" />
                           متوقف
@@ -557,8 +557,8 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
 
         {/* Pagination */}
         {!loading && entries.length > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-700">
-            <div className="text-sm text-gray-500">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+            <div className="text-sm text-muted-foreground">
               عرض {(pagination.page - 1) * pagination.pageSize + 1} -{" "}
               {Math.min(pagination.page * pagination.pageSize, pagination.totalItems)} من{" "}
               {pagination.totalItems}
@@ -569,14 +569,14 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                 disabled={pagination.page <= 1}
                 className={cn(
                   "px-3 py-1 rounded-lg text-sm font-medium transition-colors",
-                  "border border-gray-200 dark:border-gray-600",
-                  "hover:bg-gray-100 dark:hover:bg-gray-700",
+                  "border border-border",
+                  "hover:bg-muted dark:hover:bg-gray-700",
                   "disabled:opacity-50 disabled:cursor-not-allowed"
                 )}
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
-              <span className="px-3 py-1 text-sm text-gray-600 dark:text-gray-400">
+              <span className="px-3 py-1 text-sm text-muted-foreground">
                 {pagination.page} / {pagination.totalPages}
               </span>
               <button
@@ -584,8 +584,8 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                 disabled={pagination.page >= pagination.totalPages}
                 className={cn(
                   "px-3 py-1 rounded-lg text-sm font-medium transition-colors",
-                  "border border-gray-200 dark:border-gray-600",
-                  "hover:bg-gray-100 dark:hover:bg-gray-700",
+                  "border border-border",
+                  "hover:bg-muted dark:hover:bg-gray-700",
                   "disabled:opacity-50 disabled:cursor-not-allowed"
                 )}
               >
@@ -735,18 +735,18 @@ function RecurringEntryModal({
   const totalCredit = lines.reduce((s, l) => s + Number(l.credit || 0), 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-mutedackgroundlack/50">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-popover/50">
+      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h3 className="text-xl font-bold text-foreground">
             {isEdit ? "تعديل القيد الدوري" : "قيد دوري جديد"}
           </h3>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-muted dark:hover:bg-gray-700 transition-colors"
           >
-            <XCircle className="w-5 h-5 text-gray-500" />
+            <XCircle className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
@@ -755,7 +755,7 @@ function RecurringEntryModal({
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 العنوان *
               </label>
               <input
@@ -764,8 +764,8 @@ function RecurringEntryModal({
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 className={cn(
                   "w-full px-4 py-2 rounded-lg border",
-                  errors.title ? "border-red-500" : "border-gray-200 dark:border-gray-600",
-                  "bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
+                  errors.title ? "border-red-500" : "border-border",
+                  "bg-white dark:bg-gray-700 text-foreground",
                   "focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 )}
                 placeholder="مثال: إيجار شهري"
@@ -774,7 +774,7 @@ function RecurringEntryModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 الوصف
               </label>
               <input
@@ -782,8 +782,8 @@ function RecurringEntryModal({
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className={cn(
-                  "w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600",
-                  "bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
+                  "w-full px-4 py-2 rounded-lg border border-border",
+                  "bg-white dark:bg-gray-700 text-foreground",
                   "focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 )}
                 placeholder="وصف اختياري..."
@@ -791,7 +791,7 @@ function RecurringEntryModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 التكرار *
               </label>
               <div className="flex gap-2">
@@ -799,8 +799,8 @@ function RecurringEntryModal({
                   value={formData.frequency}
                   onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
                   className={cn(
-                    "flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600",
-                    "bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
+                    "flex-1 px-4 py-2 rounded-lg border border-border",
+                    "bg-white dark:bg-gray-700 text-foreground",
                     "focus:ring-2 focus:ring-emerald-500"
                   )}
                 >
@@ -817,8 +817,8 @@ function RecurringEntryModal({
                   value={formData.intervalValue}
                   onChange={(e) => setFormData({ ...formData, intervalValue: parseInt(e.target.value) || 1 })}
                   className={cn(
-                    "w-24 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600",
-                    "bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
+                    "w-24 px-4 py-2 rounded-lg border border-border",
+                    "bg-white dark:bg-gray-700 text-foreground",
                     "focus:ring-2 focus:ring-emerald-500 text-center"
                   )}
                 />
@@ -826,7 +826,7 @@ function RecurringEntryModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 تاريخ البدء *
               </label>
               <input
@@ -835,8 +835,8 @@ function RecurringEntryModal({
                 onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                 className={cn(
                   "w-full px-4 py-2 rounded-lg border",
-                  errors.startDate ? "border-red-500" : "border-gray-200 dark:border-gray-600",
-                  "bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
+                  errors.startDate ? "border-red-500" : "border-border",
+                  "bg-white dark:bg-gray-700 text-foreground",
                   "focus:ring-2 focus:ring-emerald-500"
                 )}
               />
@@ -844,7 +844,7 @@ function RecurringEntryModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 تاريخ الانتهاء
               </label>
               <input
@@ -852,12 +852,12 @@ function RecurringEntryModal({
                 value={formData.endDate}
                 onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                 className={cn(
-                  "w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600",
-                  "bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
+                  "w-full px-4 py-2 rounded-lg border border-border",
+                  "bg-white dark:bg-gray-700 text-foreground",
                   "focus:ring-2 focus:ring-emerald-500"
                 )}
               />
-              <p className="mt-1 text-xs text-gray-500">اتركه فارغاً للتكرار إلى ما لا نهاية</p>
+              <p className="mt-1 text-xs text-muted-foreground">اتركه فارغاً للتكرار إلى ما لا نهاية</p>
             </div>
           </div>
 
@@ -870,7 +870,7 @@ function RecurringEntryModal({
                 onChange={(e) => setFormData({ ...formData, autoPost: e.target.checked })}
                 className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">ترحيل تلقائي</span>
+              <span className="text-sm text-foreground">ترحيل تلقائي</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -879,14 +879,14 @@ function RecurringEntryModal({
                 onChange={(e) => setFormData({ ...formData, requireApproval: e.target.checked })}
                 className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">يتطلب موافقة</span>
+              <span className="text-sm text-foreground">يتطلب موافقة</span>
             </label>
           </div>
 
           {/* Line Items */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 بنود القيد *
               </label>
               <button
@@ -898,14 +898,14 @@ function RecurringEntryModal({
               </button>
             </div>
 
-            <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
+            <div className="border border-border rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-900/50">
+                <thead className="bg-muted">
                   <tr>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">الحساب</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 w-28">مدين</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 w-28">دائن</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 hidden sm:table-cell">وصف</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground">الحساب</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground w-28">مدين</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground w-28">دائن</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground hidden sm:table-cell">وصف</th>
                     <th className="px-3 py-2 w-10"></th>
                   </tr>
                 </thead>
@@ -918,8 +918,8 @@ function RecurringEntryModal({
                           onChange={(e) => updateLine(index, "accountId", e.target.value)}
                           className={cn(
                             "w-full px-2 py-1.5 rounded border text-sm",
-                            !line.accountId && errors.lines ? "border-red-500" : "border-gray-200 dark:border-gray-600",
-                            "bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            !line.accountId && errors.lines ? "border-red-500" : "border-border",
+                            "bg-white dark:bg-gray-700 text-foreground"
                           )}
                         >
                           <option value="">اختر حساب...</option>
@@ -938,8 +938,8 @@ function RecurringEntryModal({
                           onChange={(e) => updateLine(index, "debit", e.target.value)}
                           className={cn(
                             "w-full px-2 py-1.5 rounded border text-sm text-left",
-                            "border-gray-200 dark:border-gray-600",
-                            "bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            "border-border",
+                            "bg-white dark:bg-gray-700 text-foreground"
                           )}
                           placeholder="0.00"
                         />
@@ -952,8 +952,8 @@ function RecurringEntryModal({
                           onChange={(e) => updateLine(index, "credit", e.target.value)}
                           className={cn(
                             "w-full px-2 py-1.5 rounded border text-sm text-left",
-                            "border-gray-200 dark:border-gray-600",
-                            "bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            "border-border",
+                            "bg-white dark:bg-gray-700 text-foreground"
                           )}
                           placeholder="0.00"
                         />
@@ -965,8 +965,8 @@ function RecurringEntryModal({
                           onChange={(e) => updateLine(index, "description", e.target.value)}
                           className={cn(
                             "w-full px-2 py-1.5 rounded border text-sm",
-                            "border-gray-200 dark:border-gray-600",
-                            "bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            "border-border",
+                            "bg-white dark:bg-gray-700 text-foreground"
                           )}
                           placeholder="وصف..."
                         />
@@ -985,9 +985,9 @@ function RecurringEntryModal({
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-gray-50 dark:bg-gray-900/50 font-medium">
+                <tfoot className="bg-muted font-medium">
                   <tr>
-                    <td className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400">المجموع</td>
+                    <td className="px-3 py-2 text-sm text-muted-foreground">المجموع</td>
                     <td className={cn(
                       "px-3 py-2 text-sm text-left",
                       totalDebit !== totalCredit && "text-red-600"
@@ -1017,11 +1017,11 @@ function RecurringEntryModal({
         </form>
 
         {/* Modal Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted dark:hover:bg-gray-700 transition-colors"
           >
             إلغاء
           </button>

@@ -87,7 +87,7 @@ export function IntegrationsTab() {
                       {it.credentialsLastUpdatedAt && <> • آخر تحديث: {new Date(it.credentialsLastUpdatedAt).toLocaleString("ar-EG")}</>}
                     </>
                   ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400 text-[10px] font-bold">○ غير مُهيّأ</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold">○ غير مُهيّأ</span>
                   )}
                   {!it.isRegistered && <span className="text-red-500 mr-2"> • غير مسجّل</span>}
                 </div>

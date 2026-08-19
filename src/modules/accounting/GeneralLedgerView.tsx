@@ -188,11 +188,11 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
             <BookOpen className="w-8 h-8 text-emerald-600" />
             الأستاذ العام
           </h2>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             عرض تفصيلي لحركات الحساب مع الرصيد الجاري
           </p>
         </div>
@@ -238,15 +238,15 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+      <div className="bg-card rounded-xl shadow-sm border border-border p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Account Selector */}
           <div className="lg:col-span-1 relative">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               الحساب
             </label>
             <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 value={
@@ -262,17 +262,17 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
                 placeholder="ابحث عن حساب..."
                 className={cn(
                   "w-full pr-10 pl-4 py-2 rounded-lg",
-                  "border border-gray-200 dark:border-gray-600",
+                  "border border-border",
                   "bg-white dark:bg-gray-700",
-                  "text-gray-900 dark:text-white",
+                  "text-foreground",
                   "focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 )}
               />
               
               {showAccountDropdown && (
-                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
                   {filteredAccounts.length === 0 ? (
-                    <div className="px-4 py-3 text-gray-500 text-sm">لا توجد حسابات</div>
+                    <div className="px-4 py-3 text-muted-foreground text-sm">لا توجد حسابات</div>
                   ) : (
                     filteredAccounts.map((acc) => (
                       <button
@@ -288,10 +288,10 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
                         )}
                       >
                         <span className="font-medium">{acc.code}</span>
-                        <span className="mr-2 text-gray-600 dark:text-gray-400">
+                        <span className="mr-2 text-muted-foreground">
                           {acc.nameAr || acc.name}
                         </span>
-                        <span className="text-xs text-gray-400 mr-2">({acc.type})</span>
+                        <span className="text-xs text-muted-foreground mr-2">({acc.type})</span>
                       </button>
                     ))
                   )}
@@ -302,7 +302,7 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
 
           {/* From Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               من تاريخ
             </label>
             <input
@@ -311,8 +311,8 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
               onChange={(e) => setFromDate(e.target.value)}
               className={cn(
                 "w-full px-4 py-2 rounded-lg",
-                "border border-gray-200 dark:border-gray-600",
-                "bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
+                "border border-border",
+                "bg-white dark:bg-gray-700 text-foreground",
                 "focus:ring-2 focus:ring-emerald-500"
               )}
             />
@@ -320,7 +320,7 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
 
           {/* To Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               إلى تاريخ
             </label>
             <input
@@ -329,8 +329,8 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
               onChange={(e) => setToDate(e.target.value)}
               className={cn(
                 "w-full px-4 py-2 rounded-lg",
-                "border border-gray-200 dark:border-gray-600",
-                "bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
+                "border border-border",
+                "bg-white dark:bg-gray-700 text-foreground",
                 "focus:ring-2 focus:ring-emerald-500"
               )}
             />
@@ -357,15 +357,15 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
 
       {/* Ledger Content */}
       {ledgerData && ledgerData.account ? (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden print:shadow-none print:border-0">
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden print:shadow-none print:border-0">
           {/* Account Header */}
-          <div className="px-6 py-4 bg-gradient-to-l from-emerald-50 to-white dark:from-emerald-900/20 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <div className="px-6 py-4 bg-gradient-to-l from-emerald-50 to-white dark:from-emerald-900/20 dark:to-card border-b border-border">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h3 className="text-xl font-bold text-foreground">
                   {ledgerData.account.nameAr || ledgerData.account.name}
                 </h3>
-                <p className="text-gray-500 dark:text-gray-400">
+                <p className="text-muted-foreground">
                   رمز الحساب: <span className="font-mono font-medium">{ledgerData.account.code}</span>
                   {" | "}
                   نوع الحساب:{" "}
@@ -385,7 +385,7 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
                   "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
                   showSummary 
                     ? "bg-mutedmerald-100 text-emerald-700 dark:bg-mutedmerald-900/30 dark:text-emerald-400"
-                    : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                    : "bg-muted text-gray-700 dark:bg-gray-700 dark:text-muted-foreground"
                 )}
               >
                 <Eye className="w-4 h-4" />
@@ -396,18 +396,18 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
             {/* Summary Cards */}
             {showSummary && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <div className="text-xs text-gray-500 mb-1">رصيد افتتاحي</div>
+                <div className="p-3 bg-card rounded-lg border border-border">
+                  <div className="text-xs text-muted-foreground mb-1">رصيد افتتاحي</div>
                   <div className={cn(
                     "font-bold",
-                    ledgerData.openingBalance.net >= 0 ? "text-gray-900 dark:text-white" : "text-red-600"
+                    ledgerData.openingBalance.net >= 0 ? "text-foreground" : "text-red-600"
                   )}>
                     {formatCurrency(ledgerData.openingBalance.net)}
                   </div>
                 </div>
                 
-                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                <div className="p-3 bg-card rounded-lg border border-border">
+                  <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                     <TrendingUp className="w-3 h-3 text-emerald-600" />
                     إجمالي مدين
                   </div>
@@ -416,8 +416,8 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
                   </div>
                 </div>
                 
-                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                <div className="p-3 bg-card rounded-lg border border-border">
+                  <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                     <TrendingDown className="w-3 h-3 text-red-600" />
                     إجمالي دائن
                   </div>
@@ -426,11 +426,11 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
                   </div>
                 </div>
                 
-                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <div className="text-xs text-gray-500 mb-1">رصيد اختتامي</div>
+                <div className="p-3 bg-card rounded-lg border border-border">
+                  <div className="text-xs text-muted-foreground mb-1">رصيد اختتامي</div>
                   <div className={cn(
                     "font-bold",
-                    ledgerData.closingBalance.net >= 0 ? "text-gray-900 dark:text-white" : "text-red-600"
+                    ledgerData.closingBalance.net >= 0 ? "text-foreground" : "text-red-600"
                   )}>
                     {formatCurrency(ledgerData.closingBalance.net)}
                   </div>
@@ -443,31 +443,31 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin" />
-              <span className="mr-3 text-gray-500">جاري التحميل...</span>
+              <span className="mr-3 text-muted-foreground">جاري التحميل...</span>
             </div>
           ) : (
             <>
               {/* Table */}
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0">
+                  <thead className="bg-muted sticky top-0">
                     <tr>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         التاريخ
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         المرجع
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden sm:table-cell">
                         البيان
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         مدين
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         دائن
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         الرصيد
                       </th>
                     </tr>
@@ -475,18 +475,18 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                     {/* Opening Balance Row */}
                     <tr className="bg-gray-50/50 dark:bg-gray-900/30 font-medium">
-                      <td colSpan={3} className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                      <td colSpan={3} className="px-4 py-3 text-muted-foreground">
                         رصيد افتتاحي
                       </td>
-                      <td className="px-4 py-3 text-left text-gray-600 dark:text-gray-400">
+                      <td className="px-4 py-3 text-left text-muted-foreground">
                         {formatCurrency(ledgerData.openingBalance.debit)}
                       </td>
-                      <td className="px-4 py-3 text-left text-gray-600 dark:text-gray-400">
+                      <td className="px-4 py-3 text-left text-muted-foreground">
                         {formatCurrency(ledgerData.openingBalance.credit)}
                       </td>
                       <td className={cn(
                         "px-4 py-3 text-left font-bold",
-                        ledgerData.openingBalance.net >= 0 ? "text-gray-900 dark:text-white" : "text-red-600"
+                        ledgerData.openingBalance.net >= 0 ? "text-foreground" : "text-red-600"
                       )}>
                         {formatCurrency(ledgerData.openingBalance.net)}
                       </td>
@@ -496,13 +496,13 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
                     {ledgerData.entries.map((entry) => (
                       <tr
                         key={entry.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
+                        className="hover:bg-muted dark:hover:bg-gray-700/50 transition-colors cursor-pointer group"
                         onClick={() => {
                           // Navigate to source document - would open a modal or navigate
                           toast.info(`قيد رقم: ${entry.journalEntryNumber}`);
                         }}
                       >
-                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white whitespace-nowrap">
+                        <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
                           {formatDate(entry.date)}
                         </td>
                         <td className="px-4 py-3 text-sm">
@@ -510,18 +510,18 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
                             {entry.journalEntryNumber}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hidden sm:table-cell max-w-[300px] truncate">
+                        <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell max-w-[300px] truncate">
                           {entry.description || entry.reference || "—"}
                         </td>
-                        <td className="px-4 py-3 text-left text-sm text-gray-900 dark:text-white">
+                        <td className="px-4 py-3 text-left text-sm text-foreground">
                           {entry.debit > 0 ? formatCurrency(entry.debit) : ""}
                         </td>
-                        <td className="px-4 py-3 text-left text-sm text-gray-900 dark:text-white">
+                        <td className="px-4 py-3 text-left text-sm text-foreground">
                           {entry.credit > 0 ? formatCurrency(entry.credit) : ""}
                         </td>
                         <td className={cn(
                           "px-4 py-3 text-left text-sm font-medium",
-                          entry.balance >= 0 ? "text-gray-900 dark:text-white" : "text-red-600"
+                          entry.balance >= 0 ? "text-foreground" : "text-red-600"
                         )}>
                           {formatCurrency(entry.balance)}
                         </td>
@@ -554,8 +554,8 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
 
               {/* Pagination */}
               {ledgerData.pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="text-sm text-gray-500">
+                <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+                  <div className="text-sm text-muted-foreground">
                     عرض {(ledgerData.pagination.page - 1) * ledgerData.pagination.pageSize + 1} -{" "}
                     {Math.min(
                       ledgerData.pagination.page * ledgerData.pagination.pageSize,
@@ -574,14 +574,14 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
                       disabled={ledgerData.pagination.page <= 1}
                       className={cn(
                         "px-3 py-1 rounded-lg text-sm font-medium transition-colors",
-                        "border border-gray-200 dark:border-gray-600",
-                        "hover:bg-gray-100 dark:hover:bg-gray-700",
+                        "border border-border",
+                        "hover:bg-muted dark:hover:bg-gray-700",
                         "disabled:opacity-50 disabled:cursor-not-allowed"
                       )}
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
-                    <span className="px-3 py-1 text-sm text-gray-600 dark:text-gray-400">
+                    <span className="px-3 py-1 text-sm text-muted-foreground">
                       {ledgerData.pagination.page} / {ledgerData.pagination.totalPages}
                     </span>
                     <button
@@ -594,8 +594,8 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
                       disabled={ledgerData.pagination.page >= ledgerData.pagination.totalPages}
                       className={cn(
                         "px-3 py-1 rounded-lg text-sm font-medium transition-colors",
-                        "border border-gray-200 dark:border-gray-600",
-                        "hover:bg-gray-100 dark:hover:bg-gray-700",
+                        "border border-border",
+                        "hover:bg-muted dark:hover:bg-gray-700",
                         "disabled:opacity-50 disabled:cursor-not-allowed"
                       )}
                     >
@@ -609,10 +609,10 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
         </div>
       ) : (
         /* Empty State */
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-12 text-center">
-          <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">الأستاذ العام</h3>
-          <p className="text-gray-500 mt-2">
+        <div className="bg-card rounded-xl shadow-sm border border-border p-12 text-center">
+          <BookOpen className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-lg font-medium text-foreground">الأستاذ العام</h3>
+          <p className="text-muted-foreground mt-2">
             اختر حساباً لعرض حركاته التفصيلية مع الرصيد الجاري
           </p>
         </div>

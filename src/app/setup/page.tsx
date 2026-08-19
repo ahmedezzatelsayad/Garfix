@@ -315,7 +315,7 @@ export default function SetupWizard() {
               <CardDescription>Enter your PostgreSQL connection details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="col-span-2">
                   <Label htmlFor="db-host">Host</Label>
                   <Input id="db-host" value={dbConfig.host} onChange={(e) => setDbConfig({ ...dbConfig, host: e.target.value })} placeholder="localhost or db.example.com" />
@@ -329,7 +329,7 @@ export default function SetupWizard() {
                 <Label htmlFor="db-name">Database Name</Label>
                 <Input id="db-name" value={dbConfig.database} onChange={(e) => setDbConfig({ ...dbConfig, database: e.target.value })} placeholder="garfix" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="db-user">Username</Label>
                   <Input id="db-user" value={dbConfig.user} onChange={(e) => setDbConfig({ ...dbConfig, user: e.target.value })} placeholder="garfix" />
@@ -417,7 +417,7 @@ export default function SetupWizard() {
               <CardDescription>This account will have full admin privileges</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="f-name">Founder Name</Label>
                   <Input id="f-name" value={founderConfig.founderName} onChange={(e) => setFounderConfig({ ...founderConfig, founderName: e.target.value })} placeholder="Ahmed Ezzat" />
@@ -427,7 +427,7 @@ export default function SetupWizard() {
                   <Input id="f-email" type="email" value={founderConfig.founderEmail} onChange={(e) => setFounderConfig({ ...founderConfig, founderEmail: e.target.value })} placeholder="founder@example.com" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="f-pass">Password <span className="text-xs text-muted-foreground">(min 10 chars)</span></Label>
                   <Input id="f-pass" type="password" value={founderConfig.founderPassword} onChange={(e) => setFounderConfig({ ...founderConfig, founderPassword: e.target.value })} />
@@ -439,7 +439,7 @@ export default function SetupWizard() {
               </div>
               <div className="border-t pt-4">
                 <p className="text-sm font-medium mb-3">Company Details</p>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="c-name">Company Name</Label>
                     <Input id="c-name" value={founderConfig.companyName} onChange={(e) => setFounderConfig({ ...founderConfig, companyName: e.target.value })} placeholder="GarfiX Trading Co." />
@@ -449,7 +449,7 @@ export default function SetupWizard() {
                     <Input id="c-slug" value={founderConfig.companySlug} onChange={(e) => setFounderConfig({ ...founderConfig, companySlug: slugify(e.target.value) })} placeholder="garfix-trading" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   <div>
                     <Label htmlFor="c-cur">Currency</Label>
                     <Input id="c-cur" value={founderConfig.companyCurrency} onChange={(e) => setFounderConfig({ ...founderConfig, companyCurrency: e.target.value.toUpperCase() })} placeholder="KWD" maxLength={3} />
@@ -489,7 +489,7 @@ export default function SetupWizard() {
                 <p className="text-xs text-muted-foreground mt-1">Used for AI-powered invoice parsing, chat assistant, and benchmarking.</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="i-stripe">Stripe Secret Key</Label>
                   <Input id="i-stripe" type="password" value={integrations.STRIPE_SECRET_KEY} onChange={(e) => setIntegrations({ ...integrations, STRIPE_SECRET_KEY: e.target.value })} placeholder="sk_live_..." />
@@ -500,7 +500,7 @@ export default function SetupWizard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="i-wa-num">WhatsApp Business Number</Label>
                   <Input id="i-wa-num" value={integrations.WHATSAPP_BUSINESS_NUMBER} onChange={(e) => setIntegrations({ ...integrations, WHATSAPP_BUSINESS_NUMBER: e.target.value })} placeholder="+965..." />
@@ -511,7 +511,7 @@ export default function SetupWizard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="i-redis">Redis/Valkey URL</Label>
                   <Input id="i-redis" value={integrations.REDIS_URL} onChange={(e) => setIntegrations({ ...integrations, REDIS_URL: e.target.value })} placeholder="redis://localhost:6379" />

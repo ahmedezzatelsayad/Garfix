@@ -80,7 +80,7 @@ const costTrendConfig: ChartConfig = {
 export function RevenueCostChart({ data }: { data: DailyPnLPoint[] }) {
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-sm text-gray-400">
+      <div className="flex items-center justify-center h-48 text-sm text-muted-foreground">
         No snapshot data for chart
       </div>
     );
@@ -105,7 +105,7 @@ export function RevenueCostChart({ data }: { data: DailyPnLPoint[] }) {
 export function CascadeBreakdownChart({ data }: { data: CascadeSlice[] }) {
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-sm text-gray-400">
+      <div className="flex items-center justify-center h-48 text-sm text-muted-foreground">
         No cascade data
       </div>
     );
@@ -144,7 +144,7 @@ export function CascadeBreakdownChart({ data }: { data: CascadeSlice[] }) {
 export function CostTrendChart({ data }: { data: CostTrendPoint[] }) {
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-sm text-gray-400">
+      <div className="flex items-center justify-center h-48 text-sm text-muted-foreground">
         No cost trend data
       </div>
     );

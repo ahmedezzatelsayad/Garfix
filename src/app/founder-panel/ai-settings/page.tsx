@@ -364,7 +364,7 @@ export default function AISettingsPage() {
   
   return (
     <GarfixPageTransition enterAnimation="slideUp">
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8" dir="rtl" lang="ar">
+      <div className="min-h-screen bg-muted dark:bg-background py-8" dir="rtl" lang="ar">
         <GarfixContainer>
           {/* Header */}
           <GarfixPageHeader
@@ -390,7 +390,7 @@ export default function AISettingsPage() {
           
           {/* Tabs */}
           <div className="mt-6">
-            <div className="flex gap-1 p-1 bg-white dark:bg-gray-900 rounded-xl shadow-sm w-fit border border-gray-200 dark:border-gray-800">
+            <div className="flex gap-1 p-1 bg-card rounded-xl shadow-sm w-fit border border-border dark:border-border">
               {[
                 { value: 'config', label: '⚙️ الإعدادات الأساسية' },
                 { value: 'features', label: '🔧 الميزات' },
@@ -405,7 +405,7 @@ export default function AISettingsPage() {
                     'px-4 py-2 rounded-lg text-sm font-medium transition-all',
                     activeTab === tab.value
                       ? 'bg-mutedmerald-500 text-white shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                      : 'text-muted-foreground hover:text-gray-900 dark:hover:text-white'
                   )}
                 >
                   {tab.label}
@@ -419,14 +419,14 @@ export default function AISettingsPage() {
                 {/* API Key Configuration */}
                 <FadeUp delay={0}>
                   <MotionCard className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                       <span>🔑</span>
                       مفتاح Google Gemini API
                     </h3>
                     
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label className="block text-sm font-medium text-foreground mb-1">
                           مفتاح API
                         </label>
                         <div className="relative">
@@ -444,24 +444,24 @@ export default function AISettingsPage() {
                           <button
                             type="button"
                             onClick={() => setShowApiKey(!showApiKey)}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                           >
                             {showApiKey ? '🙈' : '👁️'}
                           </button>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           المفتاح الحالي: {config?.primaryProvider?.hasApiKey ? '✅ مفعل' : '❌ غير موجود'}
                         </p>
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label className="block text-sm font-medium text-foreground mb-1">
                           النموذج (Model)
                         </label>
                         <select
                           value={selectedModel}
                           onChange={(e) => setSelectedModel(e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-card text-foreground"
                         >
                           <option value="gemini-2.0-flash">Gemini 2.0 Flash ⚡ (سريع)</option>
                           <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
@@ -471,7 +471,7 @@ export default function AISettingsPage() {
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label className="block text-sm font-medium text-foreground mb-1">
                           درجة الحرارة (Temperature): {temperature}
                         </label>
                         <input
@@ -483,13 +483,13 @@ export default function AISettingsPage() {
                           onChange={(e) => setTemperature(parseFloat(e.target.value))}
                           className="w-full accent-emerald-500"
                         />
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
                           <span>دقيق (0)</span>
                           <span>إبداعي (2)</span>
                         </div>
                       </div>
                       
-                      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="pt-4 border-t border-border">
                         <GarfixButton
                           variant="outline"
                           size="sm"
@@ -508,7 +508,7 @@ export default function AISettingsPage() {
                 {/* System Prompt */}
                 <FadeUp delay={80}>
                   <MotionCard className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                       <span>📝</span>
                       التعليمات الخاصة (System Prompt)
                     </h3>
@@ -520,17 +520,17 @@ export default function AISettingsPage() {
                           onChange={(e) => setSystemPrompt(e.target.value)}
                           placeholder="اكتب تعليمات خاصة للـ AI هنا...&#10;&#10;مثال:&#10;أنت مساعد ذكي لمنصة GarfiX EOS.&#10;رد دائماً باللغة العربية.&#10;كن ودوداً ومحترفاً."
                           rows={10}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm resize-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-card text-foreground text-sm resize-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                           maxLength={5000}
                         />
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           {systemPrompt.length} / 5000 حرف
                         </p>
                       </div>
                       
                       {/* Quick Templates */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-foreground mb-2">
                           قوالب سريعة:
                         </label>
                         <div className="flex flex-wrap gap-2">
@@ -542,7 +542,7 @@ export default function AISettingsPage() {
                             <button
                               key={template.label}
                               onClick={() => setSystemPrompt(template.prompt)}
-                              className="px-3 py-1.5 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-mutedmerald-100 dark:hover:bg-mutedmerald-900 transition-colors"
+                              className="px-3 py-1.5 text-xs rounded-full bg-muted text-foreground hover:bg-mutedmerald-100 dark:hover:bg-mutedmerald-900 transition-colors"
                             >
                               {template.label}
                             </button>
@@ -559,7 +559,7 @@ export default function AISettingsPage() {
             <GarfixTabPanel tabId="features" activeTab={activeTab} className="mt-6">
               <FadeUp>
                 <MotionCard className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
                     <span>🔧</span>
                     تفعيل / تعطيل ميزات AI
                   </h3>
@@ -597,16 +597,16 @@ export default function AISettingsPage() {
                           'flex items-center justify-between p-4 rounded-xl border transition-all',
                           features[feature.key]
                             ? 'border-emerald-200 bg-mutedmerald-50/50 dark:border-emerald-800 dark:bg-mutedmerald-950/20'
-                            : 'border-gray-200 dark:border-gray-700'
+                            : 'border-border'
                         )}
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-2xl">{feature.icon}</span>
                           <div>
-                            <h4 className="font-medium text-gray-900 dark:text-white">
+                            <h4 className="font-medium text-foreground">
                               {feature.title}
                             </h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                            <p className="text-sm text-muted-foreground">
                               {feature.description}
                             </p>
                           </div>
@@ -649,15 +649,15 @@ export default function AISettingsPage() {
                   <>
                     <ScaleIn delay={0}>
                       <MotionCard className="p-5">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">التوكنات المستخدمة</p>
-                        <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">
+                        <p className="text-sm text-muted-foreground">التوكنات المستخدمة</p>
+                        <p className="text-3xl font-bold text-foreground mt-1">
                           <GarfixAnimatedCounter
                             value={usageData.overview.totalTokensUsed}
                             abbreviate
                             autoStart
                           />
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           من {usageData.overview.monthlyQuota.toLocaleString()} شهرياً
                         </p>
                       </MotionCard>
@@ -665,24 +665,24 @@ export default function AISettingsPage() {
                     
                     <ScaleIn delay={60}>
                       <MotionCard className="p-5">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">عدد الطلبات</p>
+                        <p className="text-sm text-muted-foreground">عدد الطلبات</p>
                         <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1">
                           <GarfixAnimatedCounter
                             value={usageData.overview.totalRequests}
                             autoStart
                           />
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">هذا الشهر</p>
+                        <p className="text-xs text-muted-foreground mt-1">هذا الشهر</p>
                       </MotionCard>
                     </ScaleIn>
                     
                     <ScaleIn delay={120}>
                       <MotionCard className="p-5">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">التكلفة التقديرية</p>
+                        <p className="text-sm text-muted-foreground">التكلفة التقديرية</p>
                         <p className="text-3xl font-bold text-[#d4a574] mt-1">
                           ${usageData.overview.estimatedCostUSD.toFixed(2)}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">شهرياً (USD)</p>
+                        <p className="text-xs text-muted-foreground mt-1">شهرياً (USD)</p>
                       </MotionCard>
                     </ScaleIn>
                   </>
@@ -692,7 +692,7 @@ export default function AISettingsPage() {
                     <FadeUp>
                       <MotionCard className="p-6">
                         <div className="flex items-center justify-between mb-4">
-                          <h3 className="font-semibold text-gray-900 dark:text-white">
+                          <h3 className="font-semibold text-foreground">
                             استخدام الحصة الشهرية
                           </h3>
                           <GarfixBadge
@@ -721,7 +721,7 @@ export default function AISettingsPage() {
                           }
                         />
                         
-                        <div className="flex justify-between mt-2 text-sm text-gray-500">
+                        <div className="flex justify-between mt-2 text-sm text-muted-foreground">
                           <span>{usageData.overview.totalTokensUsed.toLocaleString()} مستخدم</span>
                           <span>{usageData.overview.remainingTokens.toLocaleString()} متبقي</span>
                         </div>
@@ -733,7 +733,7 @@ export default function AISettingsPage() {
                   <div className="col-span-1">
                     <FadeUp delay={180}>
                       <MotionCard className="p-6">
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
+                        <h3 className="font-semibold text-foreground mb-3">
                           💡 التوصيات
                         </h3>
                         <div className="space-y-2">
@@ -766,33 +766,33 @@ export default function AISettingsPage() {
             <GarfixTabPanel tabId="test" activeTab={activeTab} className="mt-6">
               <FadeUp>
                 <MotionCard className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
                     <span>🧪</span>
                     اختبار اتصال Google Gemini
                   </h3>
                   
                   <div className="space-y-4">
-                    <p className="text-gray-600 dark:text-gray-400">
+                    <p className="text-muted-foreground">
                       اختبر اتصالك بـ Google Gemini API للتأكد من أن المفتاح يعمل بشكل صحيح.
                     </p>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted rounded-xl">
                       <div>
-                        <p className="text-sm text-gray-500">الموفر</p>
+                        <p className="text-sm text-muted-foreground">الموفر</p>
                         <p className="font-medium">Google Gemini</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">النموذج</p>
+                        <p className="text-sm text-muted-foreground">النموذج</p>
                         <p className="font-medium">{selectedModel}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">حالة المفتاح</p>
+                        <p className="text-sm text-muted-foreground">حالة المفتاح</p>
                         <p className="font-medium">
                           {config?.primaryProvider?.hasApiKey ? '✅ موجود' : '❌ غير موجود'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">آخر تحديث</p>
+                        <p className="text-sm text-muted-foreground">آخر تحديث</p>
                         <p className="font-medium">
                           {config?.updatedAt 
                             ? new Date(config.updatedAt).toLocaleDateString('ar-EG')
@@ -830,7 +830,7 @@ export default function AISettingsPage() {
                             {testResult.success ? 'نجح الاتصال!' : 'فشل الاتصال'}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <p className="text-sm text-muted-foreground">
                           زمن الاستجابة: {testResult.latencyMs}ms
                         </p>
                         {testResult.error && (
@@ -878,7 +878,7 @@ export default function AISettingsPage() {
                   >
                     {testResult.success ? 'الاتصال ناجح!' : 'فشل الاتصال'}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <p className="text-muted-foreground">
                     زمن الاستجابة: {testResult.latencyMs}ms
                   </p>
                   {testResult.error && (

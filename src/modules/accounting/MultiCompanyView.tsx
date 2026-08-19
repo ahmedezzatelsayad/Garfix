@@ -54,7 +54,7 @@ const STATUS_BADGES: Record<string, string> = {
   settled: "bg-mutedmerald-500/15 text-emerald-500",
   pending: "bg-cardmber-500/15 text-amber-500",
   disputed: "bg-red-500/15 text-red-500",
-  cancelled: "bg-gray-400/15 text-gray-400",
+  cancelled: "bg-muted text-muted-foreground",
 };
 const STATUS_LABELS: Record<string, string> = { settled: "مسوى", pending: "معلّق", disputed: "مختلف", cancelled: "ملغى" };
 
@@ -198,7 +198,7 @@ function ConsolidationView({ companies, result, setResult, activeCompany }: {
                     <td className={tdStyle}><span className={cn("py-0.5 px-2 rounded-[8px] text-[10px] font-bold", l.section === "assets" ? "bg-mutedmerald-500/15 text-emerald-500" : l.section === "liabilities" ? "bg-red-500/15 text-red-500" : l.section === "revenue" ? "bg-cardmber-500/15 text-amber-500" : "bg-mutedmerald-700/15 text-emerald-700")}>{l.section === "assets" ? "أصول" : l.section === "liabilities" ? "خصوم" : l.section === "revenue" ? "إيرادات" : "مصروفات"}</span></td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(l.companyA)}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(l.companyB)}</td>
-                    <td className={cn(tdStyle, "[direction:ltr] text-end", l.adjustments !== 0 ? "text-amber-500" : "text-gray-400")}>{fmt(l.adjustments)}</td>
+                    <td className={cn(tdStyle, "[direction:ltr] text-end", l.adjustments !== 0 ? "text-amber-500" : "text-muted-foreground")}>{fmt(l.adjustments)}</td>
                     <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-emerald-700")}>{fmt(l.consolidated)}</td>
                   </tr>
                 ))}</tbody>

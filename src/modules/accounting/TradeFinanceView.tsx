@@ -153,7 +153,7 @@ export function TradeFinanceView() {
           return (
             <button key={t.key} onClick={() => switchTab(t.key)} className={cn(
               "py-2 px-4 rounded-[10px] border border-border text-[12px] font-bold cursor-pointer inline-flex items-center gap-1.5",
-              tab === t.key ? "bg-primary text-primary-foreground" : "bg-white dark:bg-gray-900 text-muted-foreground",
+              tab === t.key ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
             )}>
               {Icon && <Icon size={14} />} {t.label}
             </button>
@@ -205,7 +205,7 @@ export function TradeFinanceView() {
 
       {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : tab === "lc" ? (
         showLcForm ? (
-          <div className="bg-white dark:bg-gray-900 rounded-[14px] border border-border p-5 hover-lift duration-120">
+          <div className="bg-card rounded-[14px] border border-border p-5 hover-lift duration-120">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold">اعتماد مستندي جديد</h2>
               <button onClick={() => { setShowLcForm(false); resetLcForm(); }} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
@@ -234,7 +234,7 @@ export function TradeFinanceView() {
             </div>
           </div>
         ) : lcs.length === 0 ? <Empty label="اعتمادات مستندية" /> : (
-          <div className="bg-white dark:bg-gray-900 rounded-[14px] border border-border overflow-hidden hover-lift duration-120">
+          <div className="bg-card rounded-[14px] border border-border overflow-hidden hover-lift duration-120">
             <div className="overflow-x-auto garfix-scroll">
               <table className="w-full border-collapse table-enterprise">
                 <thead><tr className="border-b border-border bg-muted">
@@ -245,7 +245,7 @@ export function TradeFinanceView() {
                 </tr></thead>
                 <tbody>
                   {lcs.map((lc) => {
-                    const st = LC_STATUS_MAP[lc.status] || { label: lc.status, badge: "bg-gray-500/15 text-gray-500" };
+                    const st = LC_STATUS_MAP[lc.status] || { label: lc.status, badge: "bg-muted text-muted-foreground" };
                     return (
                       <tr key={lc.id} className="border-b border-border">
                         <td className={cn(tdStyle, "font-mono font-bold")}>{lc.lcNumber}</td>
@@ -269,7 +269,7 @@ export function TradeFinanceView() {
         )
       ) : (
         showFxForm ? (
-          <div className="bg-white dark:bg-gray-900 rounded-[14px] border border-border p-5 hover-lift duration-120">
+          <div className="bg-card rounded-[14px] border border-border p-5 hover-lift duration-120">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold">حساب تقييم العملات</h2>
               <button onClick={() => { setShowFxForm(false); resetFxForm(); }} className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer"><X size={14} /></button>
@@ -309,7 +309,7 @@ export function TradeFinanceView() {
             </div>
           </div>
         ) : fxEntries.length === 0 ? <Empty label="تقييمات عملات" /> : (
-          <div className="bg-white dark:bg-gray-900 rounded-[14px] border border-border overflow-hidden hover-lift duration-120">
+          <div className="bg-card rounded-[14px] border border-border overflow-hidden hover-lift duration-120">
             {/* Summary cards - DS v4.0: Using kpi-card classes */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 border-b border-border">
               {(() => {

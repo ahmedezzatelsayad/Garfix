@@ -373,7 +373,7 @@ function WorkerCard({
           'rounded-xl border p-4 transition-all duration-200',
           isHovered 
             ? 'border-emerald-300 bg-mutedmerald-50/50 shadow-lg shadow-emerald-100' 
-            : 'border-gray-200 bg-white'
+            : 'border-border bg-white'
         )}
         style={hoverStyle}
       >
@@ -385,7 +385,7 @@ function WorkerCard({
               <h4 className="font-semibold text-gray-900 dark:text-gray-100">
                 {workerInfo.ar}
               </h4>
-              <p className="text-xs text-gray-500">{workerInfo.en}</p>
+              <p className="text-xs text-muted-foreground">{workerInfo.en}</p>
             </div>
           </div>
           <GarfixBadge 
@@ -398,19 +398,19 @@ function WorkerCard({
 
         {/* Metrics */}
         <div className="grid grid-cols-3 gap-3 mt-4">
-          <div className="text-center p-2 rounded-lg bg-gray-50 dark:bg-gray-800">
+          <div className="text-center p-2 rounded-lg bg-muted">
             <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
               {worker.activeJobs}
             </p>
-            <p className="text-xs text-gray-500">نشط</p>
+            <p className="text-xs text-muted-foreground">نشط</p>
           </div>
-          <div className="text-center p-2 rounded-lg bg-gray-50 dark:bg-gray-800">
+          <div className="text-center p-2 rounded-lg bg-muted">
             <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
               {worker.processedToday.toLocaleString('ar-EG')}
             </p>
-            <p className="text-xs text-gray-500">اليوم</p>
+            <p className="text-xs text-muted-foreground">اليوم</p>
           </div>
-          <div className="text-center p-2 rounded-lg bg-gray-50 dark:bg-gray-800">
+          <div className="text-center p-2 rounded-lg bg-muted">
             <p className={cn(
               'text-lg font-bold',
               worker.avgLatencyMs < 300 
@@ -419,14 +419,14 @@ function WorkerCard({
             )}>
               {worker.avgLatencyMs}ms
             </p>
-            <p className="text-xs text-gray-500">متوسط</p>
+            <p className="text-xs text-muted-foreground">متوسط</p>
           </div>
         </div>
 
         {/* Progress Bar */}
         <div className="mt-3">
           <div className="flex justify-between text-xs mb-1">
-            <span className="text-gray-500">الأداء</span>
+            <span className="text-muted-foreground">الأداء</span>
             <span className="font-medium">{healthPercent.toFixed(0)}%</span>
           </div>
           <GarfixProgressBar 
@@ -579,11 +579,11 @@ export function GarfixEnhancedAIDashboard() {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900" dir="rtl" lang="ar">
         
         {/* Header */}
-        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-40">
+        <header className="bg-card border-b border-border dark:border-border sticky top-0 z-40">
           <GarfixContainer>
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center gap-4">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
                   <span className="text-2xl">🤖</span>
                   لوحة تحكم الذكاء الاصطناعي
                 </h1>
@@ -700,14 +700,14 @@ export function GarfixEnhancedAIDashboard() {
 
             {/* Tabs Navigation */}
             <div className="mb-6">
-              <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
+              <div className="flex gap-1 p-1 bg-muted rounded-xl w-fit">
                 <button
                   data-value="overview"
                   className={cn(
                     'px-4 py-2 rounded-lg text-sm font-medium transition-all',
                     activeTab === 'overview'
                       ? 'bg-white dark:bg-gray-700 text-emerald-600 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                      : 'text-muted-foreground hover:text-gray-900'
                   )}
                 >
                   نظرة عامة
@@ -718,7 +718,7 @@ export function GarfixEnhancedAIDashboard() {
                     'px-4 py-2 rounded-lg text-sm font-medium transition-all',
                     activeTab === 'workers'
                       ? 'bg-white dark:bg-gray-700 text-emerald-600 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                      : 'text-muted-foreground hover:text-gray-900'
                   )}
                 >
                   العاملون
@@ -729,7 +729,7 @@ export function GarfixEnhancedAIDashboard() {
                     'px-4 py-2 rounded-lg text-sm font-medium transition-all',
                     activeTab === 'keys'
                       ? 'bg-white dark:bg-gray-700 text-emerald-600 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                      : 'text-muted-foreground hover:text-gray-900'
                   )}
                 >
                   مفاتيح API
@@ -740,7 +740,7 @@ export function GarfixEnhancedAIDashboard() {
                     'px-4 py-2 rounded-lg text-sm font-medium transition-all',
                     activeTab === 'recommendations'
                       ? 'bg-white dark:bg-gray-700 text-emerald-600 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                      : 'text-muted-foreground hover:text-gray-900'
                   )}
                 >
                   التوصيات
@@ -755,7 +755,7 @@ export function GarfixEnhancedAIDashboard() {
                 <GarfixGrid cols={3} gap="lg">
                   {/* Workers Section */}
                   <div className="col-span-2 space-y-4">
-                    <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <h3 className="font-semibold text-foreground flex items-center gap-2">
                       <span>👷</span>
                       أداء العاملين
                     </h3>
@@ -774,7 +774,7 @@ export function GarfixEnhancedAIDashboard() {
                     {/* Queue Status */}
                     {metrics && (
                       <MotionCard className="p-4">
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                        <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
                           <span>📋</span>
                           حالة الطابور
                         </h3>
@@ -801,9 +801,9 @@ export function GarfixEnhancedAIDashboard() {
                             color="red" 
                           />
                           
-                          <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <div className="pt-3 border-t border-border">
                             <div className="flex justify-between text-sm mb-1">
-                              <span className="text-gray-500">وقت الانتظار التقريبي</span>
+                              <span className="text-muted-foreground">وقت الانتظار التقريبي</span>
                               <span className="font-mono font-medium">
                                 {formatTime(metrics.data.queue.estimatedWaitTimeMs)}
                               </span>
@@ -819,7 +819,7 @@ export function GarfixEnhancedAIDashboard() {
                     {/* Alerts */}
                     {metrics && metrics.data.alerts.length > 0 && (
                       <div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                        <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                           <span>🔔</span>
                           التنبيهات
                         </h3>
@@ -892,9 +892,9 @@ export function GarfixEnhancedAIDashboard() {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-4 mt-8">
+        <footer className="bg-card border-t border-border dark:border-border py-4 mt-8">
           <GarfixContainer>
-            <div className="flex items-center justify-between text-sm text-gray-500">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
               <p>GarfiX EOS Platform v4.0 — نظام الذكاء الاصطناعي المتقدم</p>
               <p>
                 آخر تحديث: {metrics?.timestamp 
@@ -929,7 +929,7 @@ function QueueStat({
 
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
+      <span className="text-sm text-muted-foreground">{label}</span>
       <span className={cn('font-bold font-mono', colors[color])}>{value}</span>
     </div>
   );
@@ -941,14 +941,14 @@ function DashboardSkeleton() {
       {/* KPI Skeleton */}
       <div className="grid grid-cols-4 gap-4">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="h-32 bg-gray-200 dark:bg-gray-800 rounded-xl" />
+          <div key={i} className="h-32 bg-muted dark:bg-muted rounded-xl" />
         ))}
       </div>
       
       {/* Content Skeleton */}
       <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 h-96 bg-gray-200 dark:bg-gray-800 rounded-xl" />
-        <div className="h-96 bg-gray-200 dark:bg-gray-800 rounded-xl" />
+        <div className="col-span-2 h-96 bg-muted dark:bg-muted rounded-xl" />
+        <div className="h-96 bg-muted dark:bg-muted rounded-xl" />
       </div>
     </div>
   );

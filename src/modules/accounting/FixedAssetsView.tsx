@@ -170,8 +170,8 @@ function AssetList({ assets, totalCost, totalDep, totalBV }: { assets: Asset[]; 
                   <td className={tdStyle} dir="ltr">{a.acquisitionDate}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(a.acquisitionCost)}</td>
                   <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-red-500")}>{fmt(a.accumulatedDepreciation)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", a.bookValue > 0 ? "text-emerald-500" : "text-gray-400")}>{fmt(a.bookValue)}</td>
-                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", a.status === "active" ? "bg-mutedmerald-500/15 text-emerald-500" : a.status === "disposed" ? "bg-red-500/15 text-red-500" : "bg-gray-400/15 text-gray-400")}>{a.status === "active" ? "نشط" : a.status === "disposed" ? "متخلص" : "معلّق"}</span></td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", a.bookValue > 0 ? "text-emerald-500" : "text-muted-foreground")}>{fmt(a.bookValue)}</td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", a.status === "active" ? "bg-mutedmerald-500/15 text-emerald-500" : a.status === "disposed" ? "bg-red-500/15 text-red-500" : "bg-muted text-muted-foreground")}>{a.status === "active" ? "نشط" : a.status === "disposed" ? "متخلص" : "معلّق"}</span></td>
                 </tr>
               ))}</tbody>
             </table>
@@ -293,7 +293,7 @@ function DepreciationView({ entries, company, onRefresh }: { entries: DepEntry[]
                   <td className={cn(tdStyle, "font-bold")}>{e.assetName}</td>
                   <td className={tdStyle} dir="ltr">{e.period}</td>
                   <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-red-500")}>{fmt(e.depreciationAmount)}</td>
-                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", e.bookValueAfter > 0 ? "text-emerald-500" : "text-gray-400")}>{fmt(e.bookValueAfter)}</td>
+                  <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", e.bookValueAfter > 0 ? "text-emerald-500" : "text-muted-foreground")}>{fmt(e.bookValueAfter)}</td>
                   <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", e.status === "posted" ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500")}>{e.status === "posted" ? "مُرحّل" : "مسودة"}</span></td>
                 </tr>
               ))}</tbody>

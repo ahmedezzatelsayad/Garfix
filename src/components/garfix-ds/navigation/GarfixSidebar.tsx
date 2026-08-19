@@ -268,7 +268,7 @@ export const GarfixMobileNav: React.FC<GarfixMobileNavProps> = ({
       {/* Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-mutedackgroundlack/50 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-40 bg-popover/50 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={onClose}
           aria-hidden="true"
         />

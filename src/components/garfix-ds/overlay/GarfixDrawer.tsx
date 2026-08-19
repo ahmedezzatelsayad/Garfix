@@ -170,7 +170,7 @@ export const GarfixDrawer: React.FC<GarfixDrawerProps> = ({
     <div className="fixed inset-0 z-50">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-mutedackgroundlack/50 backdrop-blur-sm animate-in fade-in duration-200"
+        className="absolute inset-0 bg-popover/50 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={handleBackdropClick}
         aria-hidden="true"
       />

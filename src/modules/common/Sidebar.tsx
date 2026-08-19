@@ -112,7 +112,7 @@ export function Sidebar({
       {mobileOpen && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 bg-mutedackgroundlack/50 z-[199] backdrop-blur-sm md:hidden"
+          className="fixed inset-0 bg-popover/50 z-[199] backdrop-blur-sm md:hidden"
         />
       )}
       {/*

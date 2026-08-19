@@ -232,7 +232,7 @@ function DefaultPageLoader() {
         ))}
       </div>
       
-      <span className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+      <span className="text-sm text-muted-foreground mt-2">
         جاري تحميل المحتوى...
       </span>
     </div>

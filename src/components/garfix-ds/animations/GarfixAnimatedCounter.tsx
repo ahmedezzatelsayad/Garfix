@@ -369,7 +369,7 @@ export function GarfixStatCounter({
   return (
     <div className={cn('garfix-stat-counter flex flex-col gap-1', className)}>
       {label && (
-        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+        <span className="text-xs font-medium text-muted-foreground">
           {label}
         </span>
       )}

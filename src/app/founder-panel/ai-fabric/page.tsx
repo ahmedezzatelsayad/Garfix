@@ -44,12 +44,12 @@ function MetricCard({
   detail: string;
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4">
-      <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+    <div className="bg-white border border-border rounded-lg p-4">
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
         {label}
       </div>
       <div className="text-2xl font-bold text-gray-900 mb-1">{value}</div>
-      <div className="text-xs text-gray-500">{detail}</div>
+      <div className="text-xs text-muted-foreground">{detail}</div>
     </div>
   );
 }
@@ -73,10 +73,10 @@ export default function AIFabricFounderPanel() {
   // Loading state
   if (isLoading && !data) {
     return (
-      <main className="min-h-screen bg-gray-50 p-6 md:p-10 flex items-center justify-center">
+      <main className="min-h-screen bg-muted p-6 md:p-10 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading AI Fabric...</p>
+          <p className="text-muted-foreground">Loading AI Fabric...</p>
         </div>
       </main>
     );
@@ -85,7 +85,7 @@ export default function AIFabricFounderPanel() {
   // Error state
   if (error && !data) {
     return (
-      <main className="min-h-screen bg-gray-50 p-6 md:p-10 flex items-center justify-center">
+      <main className="min-h-screen bg-muted p-6 md:p-10 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-500 mb-4">Error: {error?.message ?? "Unknown error"}</p>
           <button
@@ -105,12 +105,12 @@ export default function AIFabricFounderPanel() {
   const periodEnd = new Date(data.periodEnd).toISOString().slice(0, 10);
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6 md:p-10" dir="ltr">
+    <main className="min-h-screen bg-muted p-6 md:p-10" dir="ltr">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
           AI Fabric — Founder Panel
         </h1>
-        <p className="text-sm text-gray-500 mb-8">
+        <p className="text-sm text-muted-foreground mb-8">
           Period: {periodStart} → {periodEnd} (current month)
         </p>
 
@@ -155,8 +155,8 @@ export default function AIFabricFounderPanel() {
           />
 
           {/* Cascade Breakdown */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+          <div className="bg-white border border-border rounded-lg p-4">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
               Cascade Breakdown
             </div>
             <div className="text-lg font-semibold text-gray-900 mb-3">
@@ -172,7 +172,7 @@ export default function AIFabricFounderPanel() {
           </div>
         </div>
 
-        <p className="text-xs text-gray-400 mt-8">
+        <p className="text-xs text-muted-foreground mt-8">
           Every number sourced from real DB queries. &quot;N/A&quot; = no data available for this period.
         </p>
       </div>

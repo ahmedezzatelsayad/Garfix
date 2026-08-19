@@ -354,7 +354,7 @@ export default function ApiDocsPage() {
         {filtered.map((ep) => {
           const key = `${ep.method}-${ep.path}`;
           const expanded = expandedPaths.has(key);
-          const mc = METHOD_COLORS[ep.method] || { bg: "bg-gray-100", text: "text-gray-600" };
+          const mc = METHOD_COLORS[ep.method] || { bg: "bg-muted", text: "text-muted-foreground" };
 
           return (
             <div

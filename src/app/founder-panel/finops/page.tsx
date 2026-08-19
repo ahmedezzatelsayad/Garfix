@@ -114,15 +114,15 @@ function KPICard({
   color?: string;
 }) {
   return (
-    <Card className="bg-white border-gray-200">
+    <Card className="bg-white border-border">
       <CardHeader className="pb-2">
-        <CardDescription className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <CardDescription className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           {label}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className={`text-2xl font-bold ${color}`}>{value}</div>
-        <p className="text-xs text-gray-500 mt-1">{detail}</p>
+        <p className="text-xs text-muted-foreground mt-1">{detail}</p>
       </CardContent>
     </Card>
   );
@@ -138,10 +138,10 @@ export default function FinOpsDashboard() {
   // Loading state
   if (isLoading && !data) {
     return (
-      <main className="min-h-screen bg-gray-50 p-4 md:p-8 flex items-center justify-center">
+      <main className="min-h-screen bg-muted p-4 md:p-8 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading FinOps Dashboard...</p>
+          <p className="text-muted-foreground">Loading FinOps Dashboard...</p>
         </div>
       </main>
     );
@@ -150,7 +150,7 @@ export default function FinOpsDashboard() {
   // Error state
   if (error && !data) {
     return (
-      <main className="min-h-screen bg-gray-50 p-4 md:p-8 flex items-center justify-center">
+      <main className="min-h-screen bg-muted p-4 md:p-8 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-500 mb-4">Error: {error?.message ?? "Unknown error"}</p>
           <button
@@ -169,13 +169,13 @@ export default function FinOpsDashboard() {
   const hasData = data.totalRequestsMtd > 0 || (data.platformProfit && data.platformProfit.revenueUsd > 0);
 
   return (
-    <main className="min-h-screen bg-gray-50 p-4 md:p-8" dir="ltr">
+    <main className="min-h-screen bg-muted p-4 md:p-8" dir="ltr">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">FinOps Dashboard</h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Period: {data.periodStart.slice(0, 10)} → {data.periodEnd.slice(0, 10)} (current month) · Day{" "}
               {data.daysElapsed}/{data.daysInMonth}
             </p>
@@ -207,27 +207,27 @@ export default function FinOpsDashboard() {
 
           {/* Unit Economics Tab */}
           <TabsContent value="unit-economics">
-            <Card className="bg-white border-gray-200">
+            <Card className="bg-white border-border">
               <CardHeader>
                 <CardTitle>Unit Economics (MTD)</CardTitle>
                 <CardDescription>Cost per unit — lower is better</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-500">Cost per Company</p>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Cost per Company</p>
                     <p className="text-xl font-bold text-gray-900">{fmt(data.costPerCompany)}</p>
-                    <p className="text-xs text-gray-400">total cost ÷ {Object.keys(PLAN_REVENUE_MONTHLY_USD).length} tenants</p>
+                    <p className="text-xs text-muted-foreground">total cost ÷ {Object.keys(PLAN_REVENUE_MONTHLY_USD).length} tenants</p>
                   </div>
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-500">Cost per Invoice</p>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Cost per Invoice</p>
                     <p className="text-xl font-bold text-gray-900">{fmt(data.costPerInvoice)}</p>
-                    <p className="text-xs text-gray-400">AI cost ÷ {data.invoiceCountMtd} invoices</p>
+                    <p className="text-xs text-muted-foreground">AI cost ÷ {data.invoiceCountMtd} invoices</p>
                   </div>
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-500">Cost per AI Call</p>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Cost per AI Call</p>
                     <p className="text-xl font-bold text-gray-900">{fmt(data.costPerAiCall)}</p>
-                    <p className="text-xs text-gray-400">AI cost ÷ LLM calls</p>
+                    <p className="text-xs text-muted-foreground">AI cost ÷ LLM calls</p>
                   </div>
                 </div>
 
@@ -249,7 +249,7 @@ export default function FinOpsDashboard() {
                     <div>
                       <p className="text-xs text-blue-600">Est. Profit</p>
                       <p className={`text-lg font-semibold ${data.estProfitEom >= 0 ? "text-emerald-700" : "text-red-700"}`}>{fmt(data.estProfitEom)}</p>
-                      <p className="text-xs text-gray-500">{fmtPct(data.estProfitPctEom)} margin</p>
+                      <p className="text-xs text-muted-foreground">{fmtPct(data.estProfitPctEom)} margin</p>
                     </div>
                   </div>
                 </div>
@@ -260,7 +260,7 @@ export default function FinOpsDashboard() {
           {/* Charts Tab */}
           <TabsContent value="charts">
             <div className="space-y-6">
-              <Card className="bg-white border-gray-200">
+              <Card className="bg-white border-border">
                 <CardHeader>
                   <CardTitle>Daily P&L (Last 14 Days)</CardTitle>
                   <CardDescription>Revenue vs Costs vs Profit</CardDescription>
@@ -269,13 +269,13 @@ export default function FinOpsDashboard() {
                   {data.pnlChartData.length > 0 ? (
                     <RevenueCostChart data={data.pnlChartData} />
                   ) : (
-                    <p className="text-gray-400 text-center py-8">No snapshot data available</p>
+                    <p className="text-muted-foreground text-center py-8">No snapshot data available</p>
                   )}
                 </CardContent>
               </Card>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="bg-white border-gray-200">
+                <Card className="bg-white border-border">
                   <CardHeader>
                     <CardTitle>Cascade Breakdown</CardTitle>
                     <CardDescription>How requests were resolved</CardDescription>
@@ -284,12 +284,12 @@ export default function FinOpsDashboard() {
                     {data.cascadeChartData.length > 0 ? (
                       <CascadeBreakdownChart data={data.cascadeChartData} />
                     ) : (
-                      <p className="text-gray-400 text-center py-8">No cascade data</p>
+                      <p className="text-muted-foreground text-center py-8">No cascade data</p>
                     )}
                   </CardContent>
                 </Card>
 
-                <Card className="bg-white border-gray-200">
+                <Card className="bg-white border-border">
                   <CardHeader>
                     <CardTitle>AI Cost Trend (7 Days)</CardTitle>
                     <CardDescription>Daily AI cost vs savings from cascade</CardDescription>
@@ -298,7 +298,7 @@ export default function FinOpsDashboard() {
                     {data.costTrendData.length > 0 ? (
                       <CostTrendChart data={data.costTrendData} />
                     ) : (
-                      <p className="text-gray-400 text-center py-8">No trend data</p>
+                      <p className="text-muted-foreground text-center py-8">No trend data</p>
                     )}
                   </CardContent>
                 </Card>
@@ -308,7 +308,7 @@ export default function FinOpsDashboard() {
 
           {/* Breakdown Tab */}
           <TabsContent value="breakdown">
-            <Card className="bg-white border-gray-200">
+            <Card className="bg-white border-border">
               <CardHeader>
                 <CardTitle>Cascade Savings Detail</CardTitle>
               </CardHeader>
@@ -317,15 +317,15 @@ export default function FinOpsDashboard() {
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                       <div>
-                        <p className="text-sm text-gray-500">Total Saved</p>
+                        <p className="text-sm text-muted-foreground">Total Saved</p>
                         <p className="text-xl font-bold text-emerald-600">{fmt(data.platformSavings.savedUsd)}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Savings Rate</p>
+                        <p className="text-sm text-muted-foreground">Savings Rate</p>
                         <p className="text-xl font-bold text-emerald-600">{fmtPct(data.platformSavings.savingsPct)}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Requests Analyzed</p>
+                        <p className="text-sm text-muted-foreground">Requests Analyzed</p>
                         <p className="text-xl font-bold text-gray-900">{data.platformSavings.totalRequests}</p>
                       </div>
                     </div>
@@ -333,14 +333,14 @@ export default function FinOpsDashboard() {
                     <table className="w-full text-sm mt-4">
                       <thead>
                         <tr className="border-b text-left">
-                          <th className="py-2 text-gray-500">Resolver</th>
-                          <th className="py-2 text-gray-500">Count</th>
-                          <th className="py-2 text-gray-500">Percentage</th>
+                          <th className="py-2 text-muted-foreground">Resolver</th>
+                          <th className="py-2 text-muted-foreground">Count</th>
+                          <th className="py-2 text-muted-foreground">Percentage</th>
                         </tr>
                       </thead>
                       <tbody>
                         {data.platformSavings.breakdown.map((b) => (
-                          <tr key={b.resolvedBy} className="border-b border-gray-100">
+                          <tr key={b.resolvedBy} className="border-b border-border">
                             <td className="py-2 font-medium capitalize">{b.resolvedBy}</td>
                             <td className="py-2">{b.count}</td>
                             <td className="py-2">{fmtPct(b.percentage)}</td>
@@ -350,7 +350,7 @@ export default function FinOpsDashboard() {
                     </table>
                   </div>
                 ) : (
-                  <p className="text-gray-400 text-center py-8">No savings data available</p>
+                  <p className="text-muted-foreground text-center py-8">No savings data available</p>
                 )}
               </CardContent>
             </Card>
@@ -358,9 +358,9 @@ export default function FinOpsDashboard() {
         </Tabs>
 
         {/* Footer */}
-        <div className="mt-8 pt-4 border-t border-gray-200 flex justify-between text-xs text-gray-400">
+        <div className="mt-8 pt-4 border-t border-border flex justify-between text-xs text-muted-foreground">
           <span>Data sourced from Prisma queries · N/A = no data for period</span>
-          <button onClick={() => refetch()} className="hover:text-gray-600">↻ Refresh</button>
+          <button onClick={() => refetch()} className="hover:text-muted-foreground">↻ Refresh</button>
         </div>
       </div>
     </main>

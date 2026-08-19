@@ -188,14 +188,14 @@ export default function FounderPanelShell({
         {/* Sidebar */}
         <aside
           className={cn(
-            "fixed top-0 end-0 z-50 h-full bg-sidebar/98 backdrop-blur-xl border-s border-sidebar-border",
+            "fixed top-0 start-0 z-50 h-full bg-sidebar/98 backdrop-blur-xl border-e border-sidebar-border",
             "transition-all duration-300 ease-out",
             "flex flex-col",
             // Width
             collapsed ? "w-[72px]" : "w-[280px]",
             // Mobile
             "lg:translate-x-0",
-            sidebarOpen ? "translate-x-0 start-0" : "translate-x-full lg:translate-x-0"
+            sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
           )}
         >
           {/* Header */}

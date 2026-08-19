@@ -257,7 +257,7 @@ function ZatcaSettings({
             <FileText size={18} className="text-emerald-500" />
             الشهادات
           </h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <CertCard title="CSID" subtitle="شهادة الامتثال" expiry={certStatus.csidExpiry} active={certStatus.hasCsid} />
             <CertCard title="CCD" subtitle="شهادة التوقيع" expiry={certStatus.ccdExpiry} active={certStatus.hasCcd} />
           </div>

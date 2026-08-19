@@ -172,21 +172,21 @@ export function QuickCreateProductDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-mutedackgroundlack/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-popover/50 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Dialog */}
       <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in duration-[220ms]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-l from-[#ECFDF5] to-white">
+        <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-l from-[#ECFDF5] to-white">
           <div className="flex items-center gap-2">
             <Package className="h-5 w-5 text-[#047857]" />
             <h3 className="font-bold text-[16px] text-gray-900">إضافة منتج جديد</h3>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             <X size={20} />
           </button>
@@ -236,7 +236,7 @@ export function QuickCreateProductDialog({
           </div>
 
           {/* Prices Row */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="purchase-price" className="text-[13px] font-medium text-gray-700">
                 سعر الشراء

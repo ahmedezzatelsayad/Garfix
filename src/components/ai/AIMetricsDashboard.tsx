@@ -103,7 +103,7 @@ const HEALTH_COLORS = {
   healthy: { bg: 'bg-mutedmerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-mutedmerald-100 text-emerald-800' },
   degraded: { bg: 'bg-cardmber-50', border: 'border-amber-200', text: 'text-amber-700', badge: 'bg-cardmber-100 text-amber-800' },
   critical: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', badge: 'bg-red-100 text-red-800' },
-  unknown: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', badge: 'bg-gray-100 text-gray-800' }
+  unknown: { bg: 'bg-muted', border: 'border-border', text: 'text-gray-700', badge: 'bg-muted text-gray-800' }
 };
 
 const CIRCUIT_BADGE = {
@@ -349,7 +349,7 @@ function MetricCard({
         </div>
         {(trend || trendValue) && (
           <div className={`flex items-center gap-1 mt-1 text-xs ${
-            trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-600' : 'text-gray-500'
+            trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-600' : 'text-muted-foreground'
           }`}>
             {trend === 'up' && <TrendingUp className="h-3 w-3" />}
             {trend === 'down' && <TrendingDown className="h-3 w-3" />}

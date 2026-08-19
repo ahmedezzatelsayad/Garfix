@@ -177,7 +177,7 @@ export function ReportsView() {
           <Calendar size={16} className="text-primary" />
           نطاق التاريخ
         </h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelStyle}>من تاريخ</label>
             <input

@@ -331,7 +331,7 @@ function PDCList({ pdcs, company, onRefresh }: { pdcs: PDC[]; company: { slug: s
       cleared: { badge: "bg-mutedmerald-500/15 text-emerald-500", label: "محصل" },
       returned: { badge: "bg-red-500/15 text-red-500", label: "مرجع" },
     };
-    return map[status] || { badge: "bg-gray-400/15 text-gray-400", label: status };
+    return map[status] || { badge: "bg-muted text-muted-foreground", label: status };
   };
 
   const totalAmount = pdcs.reduce((s, p) => s + p.amount, 0);

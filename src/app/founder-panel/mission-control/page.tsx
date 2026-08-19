@@ -35,9 +35,9 @@ function MetricCard({
   };
 
   return (
-    <Card className="bg-gray-900 border-gray-800">
+    <Card className="bg-card border-border">
       <CardHeader className="pb-2">
-        <CardTitle className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+        <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           {title}
         </CardTitle>
       </CardHeader>
@@ -46,10 +46,10 @@ function MetricCard({
           <span className={`text-2xl font-mono font-bold ${status ? statusColors[status] : "text-white"}`}>
             {value}
           </span>
-          {unit && <span className="text-sm text-gray-500">{unit}</span>}
+          {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
         </div>
         {(subtitle || trend) && (
-          <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+          <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
             {trend === "up" && <span>↑</span>}
             {trend === "down" && <span>↓</span>}
             {trend === "stable" && <span>→</span>}
@@ -101,10 +101,10 @@ export default function MissionControlPage() {
   // Loading state
   if (isLoading && !data) {
     return (
-      <main className="min-h-screen bg-gray-950 p-4 md:p-8 flex items-center justify-center">
+      <main className="min-h-screen bg-background p-4 md:p-8 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-400 font-mono">Initializing Mission Control...</p>
+          <p className="text-muted-foreground font-mono">Initializing Mission Control...</p>
         </div>
       </main>
     );
@@ -113,11 +113,11 @@ export default function MissionControlPage() {
   // Error state (with retry)
   if (error && !data) {
     return (
-      <main className="min-h-screen bg-gray-950 p-4 md:p-8 flex items-center justify-center">
+      <main className="min-h-screen bg-background p-4 md:p-8 flex items-center justify-center">
         <div className="text-center max-w-md">
           <div className="text-red-400 text-6xl mb-4">⚠</div>
           <h1 className="text-xl font-bold text-white mb-2">Connection Error</h1>
-          <p className="text-gray-400 mb-4">{error?.message ?? "Unknown error"}</p>
+          <p className="text-muted-foreground mb-4">{error?.message ?? "Unknown error"}</p>
           <button
             onClick={() => refetch()}
             className="px-4 py-2 bg-mutedackgroundlue-600 hover:bg-mutedackgroundlue-700 text-white rounded-lg transition-colors"
@@ -131,7 +131,7 @@ export default function MissionControlPage() {
 
   // Main dashboard render
   return (
-    <main className="min-h-screen bg-gray-950 p-4 md:p-8" dir="ltr">
+    <main className="min-h-screen bg-background p-4 md:p-8" dir="ltr">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
@@ -139,20 +139,20 @@ export default function MissionControlPage() {
             <h1 className="text-3xl font-bold text-white font-mono tracking-tight">
               ⚡ Mission Control
             </h1>
-            <p className="text-gray-400 mt-1 text-sm">
+            <p className="text-muted-foreground mt-1 text-sm">
               GarfiX EOS v12.0 — Real-time Platform Health
             </p>
           </div>
           <div className="flex items-center gap-4">
             <StatusBadge status={data?.companiesOnline ?? 0 > 0 ? "online" : "offline"} />
             {lastUpdated && (
-              <span className="text-xs text-gray-500 font-mono">
+              <span className="text-xs text-muted-foreground font-mono">
                 Last updated: {lastUpdated.toLocaleTimeString()}
               </span>
             )}
             <button
               onClick={() => refetch()}
-              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded text-sm transition-colors"
+              className="px-3 py-1.5 bg-muted hover:bg-gray-700 text-muted-foreground rounded text-sm transition-colors"
             >
               ↻ Refresh
             </button>
@@ -256,9 +256,9 @@ export default function MissionControlPage() {
         </div>
 
         {/* Cascade Resolution */}
-        <Card className="bg-gray-900 border-gray-800 mb-6">
+        <Card className="bg-card border-border mb-6">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-400 uppercase tracking-wider">
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Cascade Resolution Distribution (MTD)
             </CardTitle>
           </CardHeader>
@@ -269,26 +269,26 @@ export default function MissionControlPage() {
                   .sort(([, a], [, b]) => b - a)
                   .map(([resolver, pct]) => (
                     <div key={resolver} className="flex items-center gap-3">
-                      <span className="text-xs text-gray-400 w-32 truncate">{resolver}</span>
-                      <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+                      <span className="text-xs text-muted-foreground w-32 truncate">{resolver}</span>
+                      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                         <div
                           className={`h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full [width:${Math.min(pct, 100)}%]`}
                         ></div>
                       </div>
-                      <span className="text-xs font-mono text-gray-300 w-12 text-right">{pct}%</span>
+                      <span className="text-xs font-mono text-muted-foreground w-12 text-right">{pct}%</span>
                     </div>
                   ))
               ) : (
-                <p className="text-gray-500 text-sm">No cascade data available</p>
+                <p className="text-muted-foreground text-sm">No cascade data available</p>
               )}
             </div>
           </CardContent>
         </Card>
 
         {/* Worker Pools Detail */}
-        <Card className="bg-gray-900 border-gray-800">
+        <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-400 uppercase tracking-wider">
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Active Worker Pools
             </CardTitle>
           </CardHeader>
@@ -298,24 +298,24 @@ export default function MissionControlPage() {
                 {Object.entries(data.workerMap).map(([company, count]) => (
                   <div
                     key={company}
-                    className="bg-gray-800 rounded-lg p-3 text-center"
+                    className="bg-muted rounded-lg p-3 text-center"
                   >
                     <div className="text-lg font-mono font-bold text-blue-400">
                       {count}
                     </div>
-                    <div className="text-xs text-gray-500 truncate mt-1">{company}</div>
+                    <div className="text-xs text-muted-foreground truncate mt-1">{company}</div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm">No active worker pools</p>
+              <p className="text-muted-foreground text-sm">No active worker pools</p>
             )}
           </CardContent>
         </Card>
 
         {/* Footer */}
-        <footer className="mt-8 pt-4 border-t border-gray-800 text-center">
-          <p className="text-xs text-gray-600 font-mono">
+        <footer className="mt-8 pt-4 border-t border-border text-center">
+          <p className="text-xs text-muted-foreground font-mono">
             GarfiX EOS v12.0 — Mission Control Dashboard • Auto-refreshes every 10s
           </p>
         </footer>

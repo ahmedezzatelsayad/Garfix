@@ -256,7 +256,7 @@ export function BudgetsView() {
                       approved: { label: "معتمد", badge: "bg-mutedmerald-500/15 text-emerald-500" },
                       revised: { label: "قيد المراجعة", badge: "bg-mutedackgroundlue-500/15 text-blue-500" },
                     };
-                    const st = statusMap[b.status] || { label: b.status, badge: "bg-gray-500/15 text-gray-500" };
+                    const st = statusMap[b.status] || { label: b.status, badge: "bg-muted text-muted-foreground" };
                     return (
                       <tr key={b.id} className="border-b border-border">
                         <td className={cn(tdStyle, "font-mono font-bold")}>{b.accountCode}</td>

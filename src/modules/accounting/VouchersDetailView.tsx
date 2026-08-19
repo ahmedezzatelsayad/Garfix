@@ -404,7 +404,7 @@ export function VouchersDetailView() {
                       const statusMap: Record<string, { label: string; color: string; badge: string }> = {
                         draft: { label: "مسودة", color: "#f59e0b", badge: "bg-cardmber-500/15 text-amber-500" }, approved: { label: "معتمد", color: "#10b981", badge: "bg-mutedmerald-500/15 text-emerald-500" }, cancelled: { label: "ملغى", color: "#ef4444", badge: "bg-red-500/15 text-red-500" },
                       };
-                      const st = statusMap[v.status] || { label: v.status, color: "#999", badge: "bg-gray-400/15 text-gray-400" };
+                      const st = statusMap[v.status] || { label: v.status, color: "#999", badge: "bg-muted text-muted-foreground" };
                       return (
                         <tr key={v.id} className="border-b border-border">
                           {/* DS v4.0: Emerald for debit (receipt), muted for credit (payment) */}
@@ -454,7 +454,7 @@ export function VouchersDetailView() {
               {qLineItems.map((li, idx) => (
                 // P2-B FIX: use localId as key so React doesn't swap input
                 // bindings when items are edited/reordered/duplicated.
-                <div key={li.localId} className="grid grid-cols-4 gap-2 mb-2 items-end">
+                <div key={li.localId} className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2 items-end">
                   <input value={li.description} onChange={(e) => setQLineItems(updateLineItem(qLineItems, idx, "description", e.target.value))} className={inputStyle} placeholder="الوصف" />
                   <input value={li.quantity} onChange={(e) => setQLineItems(updateLineItem(qLineItems, idx, "quantity", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="الكمية" />
                   <input value={li.unitPrice} onChange={(e) => setQLineItems(updateLineItem(qLineItems, idx, "unitPrice", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="سعر الوحدة" />
@@ -512,7 +512,7 @@ export function VouchersDetailView() {
               {poLineItems.map((li, idx) => (
                 // P2-B FIX: use localId as key so React doesn't swap input
                 // bindings when items are edited/reordered/duplicated.
-                <div key={li.localId} className="grid grid-cols-4 gap-2 mb-2 items-end">
+                <div key={li.localId} className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2 items-end">
                   <input value={li.description} onChange={(e) => setPoLineItems(updateLineItem(poLineItems, idx, "description", e.target.value))} className={inputStyle} placeholder="الوصف" />
                   <input value={li.quantity} onChange={(e) => setPoLineItems(updateLineItem(poLineItems, idx, "quantity", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="الكمية" />
                   <input value={li.unitPrice} onChange={(e) => setPoLineItems(updateLineItem(poLineItems, idx, "unitPrice", parseFloat(e.target.value) || 0))} className={inputStyle} type="number" placeholder="سعر الوحدة" />

@@ -288,7 +288,7 @@ function RoleDetailModal({
   const allPerms = { ...role.inheritedPermissions, ...role.permissions };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-mutedackgroundlack/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-popover/50 backdrop-blur-sm p-4">
       <div className="bg-card border border-border rounded-2xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="font-bold text-lg">
@@ -383,7 +383,7 @@ function CreateRoleModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-mutedackgroundlack/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-popover/50 backdrop-blur-sm p-4">
       <div className="bg-card border border-border rounded-2xl shadow-xl max-w-md w-full">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="font-bold text-lg">إنشاء دور جديد</h2>

@@ -282,8 +282,8 @@ export function AccountingView() {
     equity: { label: "حقوق ملكية", color: "#047857", badge: "bg-mutedmerald-600/15 text-emerald-600" },
     revenue: { label: "إيرادات", color: "#3b82f6", badge: "bg-mutedackgroundlue-500/15 text-blue-500" },
     expense: { label: "مصروفات", color: "#f59e0b", badge: "bg-cardmber-500/15 text-amber-500" },
-    contra_revenue: { label: "مقابل إيرادات", color: "#9ca3af", badge: "bg-gray-400/15 text-gray-400" },
-    contra_asset: { label: "مقابل أصول", color: "#9ca3af", badge: "bg-gray-400/15 text-gray-400" },
+    contra_revenue: { label: "مقابل إيرادات", color: "#9ca3af", badge: "bg-muted text-muted-foreground" },
+    contra_asset: { label: "مقابل أصول", color: "#9ca3af", badge: "bg-muted text-muted-foreground" },
   };
 
   const tabs: Array<{ key: Tab; label: string; icon?: React.ComponentType<{ size?: number }> }> = [
@@ -427,7 +427,7 @@ export function AccountingView() {
                           </tr></thead>
                           <tbody>
                             {(pageItems as Account[]).map((a) => {
-                              const t = ACCOUNT_TYPES[a.type] || { label: a.type, color: "#999", badge: "bg-gray-400/15 text-gray-400" };
+                              const t = ACCOUNT_TYPES[a.type] || { label: a.type, color: "#999", badge: "bg-muted text-muted-foreground" };
                               const checked = selectedIds.has(a.id);
                               return (
                                 <tr key={a.id} className={cn("border-b border-border", checked ? "bg-cardccent" : "bg-transparent")}>
@@ -494,7 +494,7 @@ export function AccountingView() {
 
           {/* Reverse confirmation dialog */}
           {reverseConfirm && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-mutedackgroundlack/50 backdrop-blur-sm p-4" onClick={() => reversingId === null && setReverseConfirm(null)}>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-popover/50 backdrop-blur-sm p-4" onClick={() => reversingId === null && setReverseConfirm(null)}>
               <div className="bg-card border border-border rounded-[14px] shadow-xl max-w-md w-full p-5" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-start gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full bg-cardmber-500/15 text-amber-600 flex items-center justify-center shrink-0"><RotateCcw size={18} /></div>
@@ -704,7 +704,7 @@ function DashboardCard({ label, value, color: _color, icon, trend }: { label: st
       <div className="flex-1 min-w-0">
         <div className="text-[11px] text-muted-foreground">{label}</div>
         <div className="text-lg font-extrabold [direction:ltr] text-end truncate">{value}</div>
-        {trend && <div className={cn("text-[10px] font-bold mt-0.5", trend.startsWith("+") ? "text-emerald-500" : trend.startsWith("-") ? "text-red-500" : "text-gray-400")}>{trend} vs السابق</div>}
+        {trend && <div className={cn("text-[10px] font-bold mt-0.5", trend.startsWith("+") ? "text-emerald-500" : trend.startsWith("-") ? "text-red-500" : "text-muted-foreground")}>{trend} vs السابق</div>}
       </div>
     </div>
   );

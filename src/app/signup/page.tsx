@@ -276,7 +276,7 @@ export default function SignupPage() {
                         />
                       ))}
                     </div>
-                    <ul className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                       <li className={pwdChecks.length ? "text-emerald-400 font-medium" : ""}>
                         {pwdChecks.length ? "✓" : "•"} 10+ حرف
                       </li>

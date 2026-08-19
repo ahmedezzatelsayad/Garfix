@@ -106,7 +106,7 @@ function getStatusColor(status: string): string {
     case 'healthy': return 'text-green-600 bg-green-50 border-green-200';
     case 'degraded': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
     case 'critical': return 'text-red-600 bg-red-50 border-red-200';
-    default: return 'text-gray-600 bg-gray-50 border-gray-200';
+    default: return 'text-muted-foreground bg-muted border-border';
   }
 }
 
@@ -126,7 +126,7 @@ function getAlertBg(level: string): string {
     case 'warning': return 'bg-yellow-50 border-yellow-200';
     case 'error': return 'bg-red-50 border-red-200';
     case 'critical': return 'bg-red-100 border-red-300';
-    default: return 'bg-gray-50 border-gray-200';
+    default: return 'bg-muted border-border';
   }
 }
 
@@ -163,7 +163,7 @@ function MetricCard({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-border overflow-hidden">
       <div className={`bg-gradient-to-r ${colors[color]} p-4`}>
         <p className="text-white/80 text-sm font-medium">{title}</p>
         <p className="text-white text-3xl font-bold mt-1">{value}</p>
@@ -172,11 +172,11 @@ function MetricCard({
         )}
       </div>
       {trend && (
-        <div className="px-4 py-2 bg-gray-50 flex items-center justify-between">
-          <span className="text-xs text-gray-500">الاتجاه</span>
+        <div className="px-4 py-2 bg-muted flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">الاتجاه</span>
           <span className={`text-xs font-medium ${
             trend === 'up' ? 'text-green-600' : 
-            trend === 'down' ? 'text-red-600' : 'text-gray-600'
+            trend === 'down' ? 'text-red-600' : 'text-muted-foreground'
           }`}>
             {trend === 'up' ? '⬆️ مرتفع' : trend === 'down' ? '⬇️ منخفض' : '➡️ مستقر'}
           </span>
@@ -211,10 +211,10 @@ function KeyHealthCard({ k }: { k: KeyMetrics }) {
       {/* RPM Usage */}
       <div className="mb-3">
         <div className="flex justify-between text-sm mb-1">
-          <span className="text-gray-600">استخدام RPM</span>
+          <span className="text-muted-foreground">استخدام RPM</span>
           <span className="font-mono font-medium">{k.rpmUsed} / {k.rpmLimit}</span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-muted rounded-full h-2">
           <div 
             className={`h-2 rounded-full transition-all ${
               k.rpmUtilizationPct > 80 ? 'bg-red-500' :
@@ -228,10 +228,10 @@ function KeyHealthCard({ k }: { k: KeyMetrics }) {
       {/* Token Quota */}
       <div className="mb-3">
         <div className="flex justify-between text-sm mb-1">
-          <span className="text-gray-600">الحصة اليومية (Tokens)</span>
+          <span className="text-muted-foreground">الحصة اليومية (Tokens)</span>
           <span className="font-mono text-xs">{formatNumber(k.tokensUsed)} / {formatNumber(k.tokensLimit)}</span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-1.5">
+        <div className="w-full bg-muted rounded-full h-1.5">
           <div 
             className={`h-1.5 rounded-full transition-all ${
               k.tokensUtilizationPct > 90 ? 'bg-red-500' :
@@ -245,15 +245,15 @@ function KeyHealthCard({ k }: { k: KeyMetrics }) {
       {/* Stats Grid */}
       <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 text-center text-xs">
         <div className="bg-white rounded p-2">
-          <p className="text-gray-500">التأخير</p>
+          <p className="text-muted-foreground">التأخير</p>
           <p className="font-mono font-semibold">{formatTime(k.avgLatencyMs)}</p>
         </div>
         <div className="bg-white rounded p-2">
-          <p className="text-gray-500">نجاح</p>
+          <p className="text-muted-foreground">نجاح</p>
           <p className="font-mono font-semibold">{k.successRate}%</p>
         </div>
         <div className="bg-white rounded p-2">
-          <p className="text-gray-500">فشل متتالي</p>
+          <p className="text-muted-foreground">فشل متتالي</p>
           <p className={`font-mono font-semibold ${
             k.consecutiveFailures > 0 ? 'text-red-600' : 'text-green-600'
           }`}>
@@ -280,12 +280,12 @@ function WorkerCard({ worker }: { worker: WorkerMetrics }) {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-lg border border-border p-4 hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3 mb-3">
         <span className="text-2xl">{info.icon}</span>
         <div>
           <h4 className="font-semibold text-gray-900">{info.ar}</h4>
-          <p className="text-xs text-gray-500">{info.en}</p>
+          <p className="text-xs text-muted-foreground">{info.en}</p>
         </div>
       </div>
 
@@ -442,13 +442,13 @@ export default function AIDashboardPage() {
   // Loading state
   if (loading && !data) {
     return (
-      <main className="min-h-screen bg-gray-50 p-4 md:p-8" dir="rtl">
+      <main className="min-h-screen bg-muted p-4 md:p-8" dir="rtl">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto mb-4"></div>
-              <p className="text-gray-500 font-medium">جاري تحميل بيانات الذكاء الاصطناعي...</p>
-              <p className="text-sm text-gray-400 mt-2">AI Metrics Loading...</p>
+              <p className="text-muted-foreground font-medium">جاري تحميل بيانات الذكاء الاصطناعي...</p>
+              <p className="text-sm text-muted-foreground mt-2">AI Metrics Loading...</p>
             </div>
           </div>
         </div>
@@ -459,7 +459,7 @@ export default function AIDashboardPage() {
   // Error state
   if (error && !data) {
     return (
-      <main className="min-h-screen bg-gray-50 p-4 md:p-8" dir="rtl">
+      <main className="min-h-screen bg-muted p-4 md:p-8" dir="rtl">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center bg-red-50 rounded-xl p-8 max-w-md">
@@ -480,7 +480,7 @@ export default function AIDashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-4 md:p-8" dir="rtl">
+    <main className="min-h-screen bg-muted p-4 md:p-8" dir="rtl">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* ── Header ──────────────────────────────────────── */}
@@ -490,7 +490,7 @@ export default function AIDashboardPage() {
               <span className="text-4xl">🤖</span>
               لوحة تحكم الذكاء الاصطناعي
             </h1>
-            <p className="text-gray-500 mt-1">GarfiX AI Enterprise Dashboard</p>
+            <p className="text-muted-foreground mt-1">GarfiX AI Enterprise Dashboard</p>
           </div>
           
           <div className="flex items-center gap-3">
@@ -502,7 +502,7 @@ export default function AIDashboardPage() {
                 onChange={(e) => setAutoRefresh(e.target.checked)}
                 className="rounded text-violet-600"
               />
-              <span className="text-sm text-gray-600">تحديث تلقائي</span>
+              <span className="text-sm text-muted-foreground">تحديث تلقائي</span>
             </label>
             
             {/* Refresh button */}
@@ -518,7 +518,7 @@ export default function AIDashboardPage() {
             {/* Reset button (admin only) */}
             <button
               onClick={handleResetQuotas}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
+              className="px-4 py-2 bg-muted text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
             >
               ↺ إعادة الحصص
             </button>
@@ -527,7 +527,7 @@ export default function AIDashboardPage() {
 
         {/* Last update time */}
         {lastUpdate && (
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-muted-foreground">
             آخر تحديث: {lastUpdate.toLocaleTimeString('ar-EG')} • 
             {autoRefresh && ' تحديث كل 10 ثوانٍ'}
           </p>
@@ -553,22 +553,22 @@ export default function AIDashboardPage() {
               {/* Stats */}
               <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
-                  <p className="text-sm text-gray-600">إجمالي السعة</p>
+                  <p className="text-sm text-muted-foreground">إجمالي السعة</p>
                   <p className="text-2xl font-bold text-gray-900">{data.data.pool.totalRPM}</p>
-                  <p className="text-xs text-gray-500">RPM</p>
+                  <p className="text-xs text-muted-foreground">RPM</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-gray-600">المستخدم</p>
+                  <p className="text-sm text-muted-foreground">المستخدم</p>
                   <p className="text-2xl font-bold text-violet-600">{data.data.pool.usedRPM}</p>
-                  <p className="text-xs text-gray-500">RPM</p>
+                  <p className="text-xs text-muted-foreground">RPM</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-gray-600">المتبقي</p>
+                  <p className="text-sm text-muted-foreground">المتبقي</p>
                   <p className="text-2xl font-bold text-green-600">{data.data.pool.availableRPM}</p>
-                  <p className="text-xs text-gray-500">RPM</p>
+                  <p className="text-xs text-muted-foreground">RPM</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-gray-600">الحالة</p>
+                  <p className="text-sm text-muted-foreground">الحالة</p>
                   <p className={`text-lg font-bold ${
                     data.data.pool.status === 'healthy' ? 'text-green-600' :
                     data.data.pool.status === 'degraded' ? 'text-yellow-600' : 'text-red-600'
@@ -596,7 +596,7 @@ export default function AIDashboardPage() {
               className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
                 activeTab === tab.id
                   ? 'bg-violet-600 text-white shadow-lg'
-                  : 'bg-white text-gray-600 hover:bg-gray-100'
+                  : 'bg-white text-muted-foreground hover:bg-muted'
               }`}
             >
               <span className="ml-1">{tab.icon}</span>
@@ -657,7 +657,7 @@ export default function AIDashboardPage() {
             <div className="grid md:grid-cols-2 gap-6">
               {/* Workers Overview */}
               {data?.data.workers && (
-                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="bg-white rounded-xl border border-border p-6">
                   <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     🤖 أداء العاملين
                   </h3>
@@ -671,7 +671,7 @@ export default function AIDashboardPage() {
 
               {/* Keys Quick View */}
               {data?.data.keys && (
-                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="bg-white rounded-xl border border-border p-6">
                   <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     🔑 حالة المفاتيح
                   </h3>
@@ -693,7 +693,7 @@ export default function AIDashboardPage() {
               <h3 className="font-semibold text-gray-900 text-lg">
                 🔑 تفاصيل مفاتيح Gemini ({data.data.keys.length} مفتاح)
               </h3>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-muted-foreground">
                 الصحيحة: {data.data.keys.filter(k => k.healthy).length} / {data.data.keys.length}
               </span>
             </div>
@@ -720,9 +720,9 @@ export default function AIDashboardPage() {
             </div>
 
             {/* Workers Summary Table */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mt-6">
+            <div className="bg-white rounded-xl border border-border overflow-hidden mt-6">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50">
+                <thead className="bg-muted">
                   <tr>
                     <th className="px-4 py-3 text-right font-medium text-gray-700">العامل</th>
                     <th className="px-4 py-3 text-center font-medium text-gray-700">نشط</th>
@@ -734,7 +734,7 @@ export default function AIDashboardPage() {
                   {data.data.workers.map((worker) => {
                     const info = WORKER_NAMES[worker.type] || { ar: worker.type, icon: '🤖' };
                     return (
-                      <tr key={worker.type} className="hover:bg-gray-50">
+                      <tr key={worker.type} className="hover:bg-muted">
                         <td className="px-4 py-3 font-medium">
                           <span className="ml-2">{info.icon}</span>
                           {info.ar}
@@ -743,7 +743,7 @@ export default function AIDashboardPage() {
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                             worker.activeJobs > 0 
                               ? 'bg-mutedackgroundlue-100 text-blue-800' 
-                              : 'bg-gray-100 text-gray-800'
+                              : 'bg-muted text-gray-800'
                           }`}>
                             {worker.activeJobs}
                           </span>
@@ -797,17 +797,17 @@ export default function AIDashboardPage() {
             </div>
 
             {/* Queue Visualization */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="bg-white rounded-xl border border-border p-6">
               <h3 className="font-semibold text-gray-900 mb-4">📊 تصور الطابور</h3>
               
               <div className="space-y-4">
                 {/* Pending Jobs Bar */}
                 <div>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">وظائف في الانتظار</span>
+                    <span className="text-muted-foreground">وظائف في الانتظار</span>
                     <span className="font-mono font-medium">{data.data.queue.pending}</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-4">
+                  <div className="w-full bg-muted rounded-full h-4">
                     <div 
                       className="bg-yellow-500 h-4 rounded-full transition-all flex items-center justify-center text-xs text-white font-medium"
                       style={{ width: `${Math.min((data.data.queue.pending / 100) * 100, 100)}%` }}
@@ -820,10 +820,10 @@ export default function AIDashboardPage() {
                 {/* Running Jobs Bar */}
                 <div>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">وظائف قيد التشغيل</span>
+                    <span className="text-muted-foreground">وظائف قيد التشغيل</span>
                     <span className="font-mono font-medium">{data.data.queue.running}</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-4">
+                  <div className="w-full bg-muted rounded-full h-4">
                     <div 
                       className="bg-mutedackgroundlue-500 h-4 rounded-full transition-all flex items-center justify-center text-xs text-white font-medium"
                       style={{ width: `${Math.min((data.data.queue.running / 20) * 100, 100)}%` }}
@@ -836,7 +836,7 @@ export default function AIDashboardPage() {
                 {/* Success Rate */}
                 <div>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">معدل النجاح</span>
+                    <span className="text-muted-foreground">معدل النجاح</span>
                     <span className="font-mono font-medium">
                       {data.data.queue.completedToday > 0 
                         ? `${Math.round((data.data.queue.completedToday / (data.data.queue.completedToday + data.data.queue.failedToday)) * 100)}%`
@@ -844,7 +844,7 @@ export default function AIDashboardPage() {
                       }
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-4">
+                  <div className="w-full bg-muted rounded-full h-4">
                     <div 
                       className="bg-green-500 h-4 rounded-full transition-all"
                       style={{ 
@@ -862,7 +862,7 @@ export default function AIDashboardPage() {
 
             {/* Today's Stats */}
             {data?.data.today && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="bg-white rounded-xl border border-border p-6">
                 <h3 className="font-semibold text-gray-900 mb-4">📈 إحصائيات اليوم</h3>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -889,7 +889,7 @@ export default function AIDashboardPage() {
         )}
 
         {/* ── Footer ─────────────────────────────────────── */}
-        <footer className="text-center text-xs text-gray-400 pt-6 border-t">
+        <footer className="text-center text-xs text-muted-foreground pt-6 border-t">
           <p>GarfiX AI Enterprise Dashboard v2.0 • Built with ❤️ for MENA Region</p>
           <p className="mt-1">5 Keys × 15 RPM = 75 RPM Total Capacity • Auto-scaling Enabled</p>
         </footer>

@@ -61,8 +61,8 @@ function receiptStatusMeta(status: string): { icon: React.ReactNode; color: stri
   if (status === "pending")
     return { icon: <Clock size={14} />, color: "text-amber-400", bg: "bg-cardmber-500/15 border-amber-500/30", label: "معلّق" };
   if (status === "cancelled")
-    return { icon: <XCircle size={14} />, color: "text-muted-foreground", bg: "bg-white/[0.06] border-white/[0.08]", label: "ملغى" };
-  return { icon: <Activity size={14} />, color: "text-muted-foreground", bg: "bg-white/[0.06] border-white/[0.08]", label: status };
+    return { icon: <XCircle size={14} />, color: "text-muted-foreground", bg: "bg-white/[0.06] border-border/50", label: "ملغى" };
+  return { icon: <Activity size={14} />, color: "text-muted-foreground", bg: "bg-white/[0.06] border-border/50", label: status };
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ function MiniStat({
     muted: "text-muted-foreground",
   };
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+    <div className="rounded-lg border border-white/[0.06] bg-card/50 p-3">
       <p className="text-[10px] text-muted-foreground mb-1 truncate">{label}</p>
       <p className={cn("text-xl font-bold", colorMap[accent])}>{value}</p>
     </div>
@@ -96,7 +96,7 @@ function ReceiptCard({ receipt }: { receipt: EInvoicingCompanyTimelineReceipt })
   const meta = receiptStatusMeta(receipt.status);
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+    <div className="rounded-xl border border-white/[0.06] bg-card/50 overflow-hidden">
       {/* Header row */}
       <button
         onClick={() => setExpanded((v) => !v)}
@@ -154,7 +154,7 @@ function ReceiptCard({ receipt }: { receipt: EInvoicingCompanyTimelineReceipt })
           )}
 
           {/* Metadata grid */}
-          <div className="grid grid-cols-2 gap-2 mt-3 text-[11px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 text-[11px]">
             <div>
               <p className="text-muted-foreground">UUID الكامل</p>
               <p className="font-mono text-foreground break-all">{receipt.externalUuid || "—"}</p>
@@ -207,7 +207,7 @@ function InvoiceGroupCard({
   eventCount: number;
 }) {
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 hover:bg-white/[0.04] transition-colors">
+    <div className="rounded-lg border border-white/[0.06] bg-card/50 p-3 hover:bg-white/[0.04] transition-colors">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground truncate">
@@ -365,7 +365,7 @@ export default function EInvoicingCompanyTimelinePage() {
                 href={`/api/founder-panel/e-invoicing/${encodeURIComponent(company.slug)}?cursor=${encodeURIComponent(data.pagination.nextCursor || "")}&limit=50`}
                 target="_blank"
                 rel="noopener"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/[0.06] border border-white/[0.08] text-xs text-muted-foreground hover:text-foreground hover:bg-white/[0.1] transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/[0.06] border border-border/50 text-xs text-muted-foreground hover:text-foreground hover:bg-white/[0.1] transition-colors"
               >
                 <ChevronDown size={13} />
                 تحميل المزيد (next cursor: {data.pagination.nextCursor?.slice(11, 19) || "…"})

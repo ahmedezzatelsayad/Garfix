@@ -1017,14 +1017,14 @@ function InvoiceForm({
         </h1>
         <button
           onClick={onClose}
-          className="bg-transparent border border-gray-200 text-gray-400 py-2 px-3 rounded-sm text-[12px] cursor-pointer inline-flex items-center gap-1"
+          className="bg-transparent border border-border text-muted-foreground py-2 px-3 rounded-sm text-[12px] cursor-pointer inline-flex items-center gap-1"
         >
           <X size={14} /> إغلاق
         </button>
       </div>
 
       {/* Form fields */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-5 flex flex-col gap-4 shadow-card">
+      <div className="bg-white rounded-[14px] border border-border p-5 flex flex-col gap-4 shadow-card">
         <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
           <FormField label="رقم الفاتورة">
             <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className={inputStyle} />
@@ -1057,7 +1057,7 @@ function InvoiceForm({
               <option value="cancelled">ملغاة</option>
             </select>
             {editing && (
-              <span className="text-[10px] text-gray-400 mt-1 block">
+              <span className="text-[10px] text-muted-foreground mt-1 block">
                 لتسجيل دفعة (مدفوعة/جزئية) استخدم زر «تسجيل دفعة» في قائمة الإجراءات.
               </span>
             )}
@@ -1066,7 +1066,7 @@ function InvoiceForm({
       </div>
 
       {/* Line items */}
-      <div className="bg-white rounded-[14px] border border-gray-200 p-5 shadow-card">
+      <div className="bg-white rounded-[14px] border border-border p-5 shadow-card">
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-[15px] font-bold">البنود</h3>
           <button
@@ -1109,7 +1109,7 @@ function InvoiceForm({
                 </div>
                 <button
                   onClick={() => removeItem(i)}
-                  className="bg-transparent border border-gray-200 text-destructive rounded-[6px] p-1.5 cursor-pointer flex items-center justify-center"
+                  className="bg-transparent border border-border text-destructive rounded-[6px] p-1.5 cursor-pointer flex items-center justify-center"
                 >
                   <X size={12} />
                 </button>
@@ -1121,7 +1121,7 @@ function InvoiceForm({
 
       {/* Totals + notes */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
-        <div className="bg-white rounded-[14px] border border-gray-200 p-5 shadow-card">
+        <div className="bg-white rounded-[14px] border border-border p-5 shadow-card">
           <h3 className="text-[15px] font-bold mb-3">ملاحظات</h3>
           <textarea
             value={notes}
@@ -1131,7 +1131,7 @@ function InvoiceForm({
             className={cn(inputStyle, "resize-y")}
           />
         </div>
-        <div className="bg-white rounded-[14px] border border-gray-200 p-5 shadow-card">
+        <div className="bg-white rounded-[14px] border border-border p-5 shadow-card">
           <h3 className="text-[15px] font-bold mb-3">الملخّص</h3>
           <div className="flex flex-col gap-2 text-[13px]">
             <Row label="المجموع الفرعي" value={subtotal} />
@@ -1148,7 +1148,7 @@ function InvoiceForm({
               <span>الشحن</span>
               <input type="number" value={shipping} onChange={(e) => setShipping(Number(e.target.value))} className={cn(inputStyle, "w-[100px] py-1 px-2")} dir="ltr" />
             </div>
-            <div className="border-t border-gray-200 mt-1 pt-2">
+            <div className="border-t border-border mt-1 pt-2">
               <Row label="الإجمالي" value={total} strong />
             </div>
           </div>
@@ -1159,7 +1159,7 @@ function InvoiceForm({
       <div className="flex flex-col sm:flex-row gap-2.5 sm:justify-end">
         <button
           onClick={onClose}
-          className="py-2.5 px-5 rounded-[10px] bg-transparent text-gray-400 border border-gray-200 text-[13px] font-bold cursor-pointer w-full sm:w-auto"
+          className="py-2.5 px-5 rounded-[10px] bg-transparent text-muted-foreground border border-border text-[13px] font-bold cursor-pointer w-full sm:w-auto"
         >إلغاء</button>
         <button
           onClick={handleSubmit}
@@ -1203,13 +1203,13 @@ function Row({ label, value, strong }: { label: string; value: number; strong?: 
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[11px] font-semibold text-gray-500 mb-1">{label}</label>
+      <label className="block text-[11px] font-semibold text-muted-foreground mb-1">{label}</label>
       {children}
     </div>
   );
 }
 
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-white border border-gray-200 text-foreground text-[13px] outline-none focus:border-[#7C3AED]/50 focus:ring-1 focus:ring-[#EDE9FE]";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-white border border-border text-foreground text-[13px] outline-none focus:border-[#7C3AED]/50 focus:ring-1 focus:ring-[#EDE9FE]";
 
 // ─── Invoice Preview / Print ───────────────────────────────────────────────
 

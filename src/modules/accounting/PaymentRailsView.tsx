@@ -175,7 +175,7 @@ export function PaymentRailsView() {
                   </tr></thead>
                   <tbody>
                     {methods.map((m) => {
-                      const tp = METHOD_TYPE_MAP[m.type] || { label: m.type, badge: "bg-gray-500/15 text-gray-500" };
+                      const tp = METHOD_TYPE_MAP[m.type] || { label: m.type, badge: "bg-muted text-muted-foreground" };
                       return (
                         <tr key={m.id} className="border-b border-border">
                           <td className={cn(tdStyle, "font-bold")}>{m.name}</td>

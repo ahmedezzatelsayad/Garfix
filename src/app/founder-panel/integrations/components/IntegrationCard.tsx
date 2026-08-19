@@ -146,7 +146,7 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
             </>
           ) : (
             <>
-              <XCircle className="h-5 w-5 text-gray-400" />
+              <XCircle className="h-5 w-5 text-muted-foreground" />
               <span className="text-xs font-medium text-muted-foreground">
                 غير مُهيّأ
               </span>

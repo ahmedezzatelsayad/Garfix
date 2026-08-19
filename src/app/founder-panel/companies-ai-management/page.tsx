@@ -600,7 +600,7 @@ export default function CompaniesPerFeatureAIPage() {
         {/* ══ Architecture Diagram ══ */}
         <GarfixCard className="mb-8 p-6 bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-950 dark:to-blue-950">
           <div className="text-center">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4">
+            <h3 className="text-lg font-bold text-foreground mb-4">
               🏗️ بنية النظام: Per-Feature Isolation
             </h3>
             
@@ -608,25 +608,25 @@ export default function CompaniesPerFeatureAIPage() {
               <div className="bg-mutedackgroundlue-100 dark:bg-mutedackgroundlue-900 px-4 py-2 rounded-lg">
                 <span className="text-xl">💬</span> Chat Token
               </div>
-              <span className="text-gray-400">+</span>
+              <span className="text-muted-foreground">+</span>
               <div className="bg-mutedmerald-100 dark:bg-mutedmerald-900 px-4 py-2 rounded-lg">
                 <span className="text-xl">📄</span> Invoice Token
               </div>
-              <span className="text-gray-400">+</span>
+              <span className="text-muted-foreground">+</span>
               <div className="bg-purple-100 dark:bg-purple-900 px-4 py-2 rounded-lg">
                 <span className="text-xl">🔍</span> Parse Token
               </div>
-              <span className="text-gray-400">+</span>
+              <span className="text-muted-foreground">+</span>
               <div className="bg-[#d4a574]/20 dark:bg-[#d4a574]/20 px-4 py-2 rounded-lg border border-[#d4a574]/30">
                 <span className="text-xl">🧠</span> Memory Token
               </div>
-              <span className="text-gray-400">=</span>
-              <div className="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold">
+              <span className="text-muted-foreground">=</span>
+              <div className="bg-muted text-white px-4 py-2 rounded-lg font-bold">
                 ✅ No Bottleneck!
               </div>
             </div>
             
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-3">
+            <p className="text-xs text-muted-foreground mt-3">
               كل شركة → 4 توكنات منعزلة → 1000 شركة × 4 = 4000 اتصال موزع بدون ضغط
             </p>
           </div>
@@ -634,7 +634,7 @@ export default function CompaniesPerFeatureAIPage() {
 
         {/* ══ AI Providers Comparison ══ */}
         <GarfixCard className="mb-8 p-6">
-          <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4 text-center">
+          <h3 className="text-lg font-bold text-foreground mb-4 text-center">
             🤖 موديلات AI المدعومة
           </h3>
           
@@ -647,7 +647,7 @@ export default function CompaniesPerFeatureAIPage() {
               <div className="text-2xl mb-2">🟢</div>
               <h4 className="font-bold text-emerald-800 dark:text-emerald-300">DeepSeek</h4>
               <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">أسرع + أرخص</p>
-              <ul className="text-xs mt-2 space-y-1 text-gray-600 dark:text-gray-400">
+              <ul className="text-xs mt-2 space-y-1 text-muted-foreground">
                 <li>✅ V3 Chat (رخيص جداً)</li>
                 <li>✅ R1 Reasoning (ذكاء)</li>
                 <li>✅ Free Tier متاح</li>
@@ -658,52 +658,52 @@ export default function CompaniesPerFeatureAIPage() {
             </div>
 
             {/* ── Gemini ── */}
-            <div className="border border-gray-200 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+            <div className="border border-border bg-muted/50 rounded-xl p-4">
               <div className="text-2xl mb-2">🔵</div>
-              <h4 className="font-bold text-gray-800 dark:text-gray-300">Gemini Flash</h4>
-              <p className="text-xs text-gray-500 mt-1">مجاني من Google</p>
-              <ul className="text-xs mt-2 space-y-1 text-gray-600 dark:text-gray-400">
+              <h4 className="font-bold text-foreground">Gemini Flash</h4>
+              <p className="text-xs text-muted-foreground mt-1">مجاني من Google</p>
+              <ul className="text-xs mt-2 space-y-1 text-muted-foreground">
                 <li>✅ 2.0 Flash (سريع)</li>
                 <li>✅ 2.5 Pro (متقدم)</li>
                 <li>❌ مشكلات Region</li>
               </ul>
-              <p className="text-xs mt-2 text-gray-500 font-semibold">
+              <p className="text-xs mt-2 text-muted-foreground font-semibold">
                 المفتاح: AIza...
               </p>
             </div>
 
             {/* ── OpenAI ── */}
-            <div className="border border-gray-200 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+            <div className="border border-border bg-muted/50 rounded-xl p-4">
               <div className="text-2xl mb-2">🟢</div>
-              <h4 className="font-bold text-gray-800 dark:text-gray-300">OpenAI GPT</h4>
-              <p className="text-xs text-gray-500 mt-1">قوي وموثوق</p>
-              <ul className="text-xs mt-2 space-y-1 text-gray-600 dark:text-gray-400">
+              <h4 className="font-bold text-foreground">OpenAI GPT</h4>
+              <p className="text-xs text-muted-foreground mt-1">قوي وموثوق</p>
+              <ul className="text-xs mt-2 space-y-1 text-muted-foreground">
                 <li>✅ GPT-4o Mini (اقتصادي)</li>
                 <li>✅ GPT-4o (قوي)</li>
                 <li>⚠️ غالي شوية</li>
               </ul>
-              <p className="text-xs mt-2 text-gray-500 font-semibold">
+              <p className="text-xs mt-2 text-muted-foreground font-semibold">
                 المفتاح: sk-...
               </p>
             </div>
 
             {/* ── OpenRouter ── */}
-            <div className="border border-gray-200 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+            <div className="border border-border bg-muted/50 rounded-xl p-4">
               <div className="text-2xl mb-2">🟠</div>
-              <h4 className="font-bold text-gray-800 dark:text-gray-300">OpenRouter</h4>
-              <p className="text-xs text-gray-500 mt-1">وصول لكل الموديلات</p>
-              <ul className="text-xs mt-2 space-y-1 text-gray-600 dark:text-gray-400">
+              <h4 className="font-bold text-foreground">OpenRouter</h4>
+              <p className="text-xs text-muted-foreground mt-1">وصول لكل الموديلات</p>
+              <ul className="text-xs mt-2 space-y-1 text-muted-foreground">
                 <li>✅ Llama 3.1</li>
                 <li>✅ Claude Haiku</li>
                 <li>✅ Gemini via Router</li>
               </ul>
-              <p className="text-xs mt-2 text-gray-500 font-semibold">
+              <p className="text-xs mt-2 text-muted-foreground font-semibold">
                 المفتاح: sk-or-...
               </p>
             </div>
           </div>
           
-          <p className="text-xs text-center text-gray-500 mt-4">
+          <p className="text-xs text-center text-muted-foreground mt-4">
             💡 كل Feature في الشركة ممكن يستخدم موديل مختلف حسب الاحتياج
           </p>
         </GarfixCard>
@@ -713,21 +713,21 @@ export default function CompaniesPerFeatureAIPage() {
           <MotionCard>
             <div className="text-center p-4">
               <div className="text-3xl font-bold text-emerald-600">{totalCompanies}</div>
-              <div className="text-sm text-gray-500 mt-1">إجمالي الشركات</div>
+              <div className="text-sm text-muted-foreground mt-1">إجمالي الشركات</div>
             </div>
           </MotionCard>
 
           <MotionCard>
             <div className="text-center p-4">
               <div className="text-3xl font-bold text-blue-600">{companiesWithAnyKey}</div>
-              <div className="text-sm text-gray-500 mt-1">شركات بها AI ⚡</div>
+              <div className="text-sm text-muted-foreground mt-1">شركات بها AI ⚡</div>
             </div>
           </MotionCard>
 
           <MotionCard>
             <div className="text-center p-4">
               <div className="text-3xl font-bold text-purple-600">4</div>
-              <div className="text-sm text-gray-500 mt-1">مفاتيح لكل شركة 🔑</div>
+              <div className="text-sm text-muted-foreground mt-1">مفاتيح لكل شركة 🔑</div>
             </div>
           </MotionCard>
         </GarfixGrid>
@@ -761,7 +761,7 @@ export default function CompaniesPerFeatureAIPage() {
                       <Square className="w-5 h-5 text-muted-foreground" />
                     )}
                   </button>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <span className="text-sm font-medium text-foreground">
                     {selectedCompanyIds.size > 0 
                       ? `محدد: ${selectedCompanyIds.size} من ${filteredCompanies.length}`
                       : "تحديد الشركات"
@@ -805,7 +805,7 @@ export default function CompaniesPerFeatureAIPage() {
           <GarfixCard className="p-12 text-center">
             <div className="text-6xl mb-4">🏢</div>
             <h3 className="text-xl font-semibold text-gray-700 mb-2">لا توجد شركات</h3>
-            <p className="text-gray-500">الشركات التي تسجل ستظهر هنا تلقائياً</p>
+            <p className="text-muted-foreground">الشركات التي تسجل ستظهر هنا تلقائياً</p>
           </GarfixCard>
         ) : (
           <div className="space-y-4">
@@ -824,7 +824,7 @@ export default function CompaniesPerFeatureAIPage() {
                       {/* Checkbox */}
                       <button
                         onClick={() => toggleSelectCompany(company.id)}
-                        className="flex-shrink-0 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ms-2"
+                        className="flex-shrink-0 p-1 rounded hover:bg-muted transition-colors ms-2"
                       >
                         {selectedCompanyIds.has(company.id) ? (
                           <CheckSquare className="w-5 h-5 text-emerald-600" />
@@ -846,7 +846,7 @@ export default function CompaniesPerFeatureAIPage() {
                           <h3 className="font-semibold text-lg text-gray-900">
                             {company.nameAr || company.name}
                           </h3>
-                          <p className="text-sm text-gray-500">{company.plan.toUpperCase()}</p>
+                          <p className="text-sm text-muted-foreground">{company.plan.toUpperCase()}</p>
                           
                           {/* Feature Keys Status */}
                           {company.hasAIConfig && (
@@ -885,9 +885,9 @@ export default function CompaniesPerFeatureAIPage() {
 
         {/* ══ Pagination Controls ══ */}
         {totalPages > 1 && (
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-card rounded-xl border border-border">
             {/* Page Info & Size Selector */}
-            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span>
                 عرض {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredCompanies.length)} من {filteredCompanies.length} شركة
               </span>
@@ -910,7 +910,7 @@ export default function CompaniesPerFeatureAIPage() {
               <button
                 onClick={() => setCurrentPage(1)}
                 disabled={currentPage === 1}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg hover:bg-muted dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 title="الصفحة الأولى"
               >
                 <ChevronsRight className="w-5 h-5 rtl:rotate-0" />
@@ -918,7 +918,7 @@ export default function CompaniesPerFeatureAIPage() {
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg hover:bg-muted dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 title="السابق"
               >
                 <ChevronRight className="w-5 h-5 rtl:rotate-0" />
@@ -945,7 +945,7 @@ export default function CompaniesPerFeatureAIPage() {
                       className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
                         currentPage === pageNum
                           ? 'bg-mutedmerald-500 text-white shadow-md'
-                          : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400'
+                          : 'hover:bg-muted dark:hover:bg-gray-700 text-muted-foreground'
                       }`}
                     >
                       {pageNum}
@@ -957,7 +957,7 @@ export default function CompaniesPerFeatureAIPage() {
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg hover:bg-muted dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 title="التالي"
               >
                 <ChevronLeft className="w-5 h-5 rtl:rotate-0" />
@@ -965,7 +965,7 @@ export default function CompaniesPerFeatureAIPage() {
               <button
                 onClick={() => setCurrentPage(totalPages)}
                 disabled={currentPage === totalPages}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded-lg hover:bg-muted dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 title="الصفحة الأخيرة"
               >
                 <ChevronsLeft className="w-5 h-5 rtl:rotate-0" />
@@ -1012,7 +1012,7 @@ export default function CompaniesPerFeatureAIPage() {
                         <span className="text-3xl">{feature.icon}</span>
                         <div>
                           <h4 className="font-bold text-gray-900">{feature.label}</h4>
-                          <p className="text-xs text-gray-500">{feature.description}</p>
+                          <p className="text-xs text-muted-foreground">{feature.description}</p>
                         </div>
                       </div>
                       
@@ -1047,7 +1047,7 @@ export default function CompaniesPerFeatureAIPage() {
                             });
                           }
                         }}
-                        className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm focus:ring-2 focus:ring-emerald-500 font-medium"
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-white text-sm focus:ring-2 focus:ring-emerald-500 font-medium"
                       >
                         {/* ── 🟢 DeepSeek (Recommended) ── */}
                         <optgroup label="🟢 DeepSeek - ⭐ أنصح به (رخيص + سريع)">
@@ -1087,7 +1087,7 @@ export default function CompaniesPerFeatureAIPage() {
                       </select>
                       
                       {/* Provider Hint */}
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         💡 {(() => {
                           const selectedModel = aiConfig?.[feature.key]?.model || '';
                           if (selectedModel.includes('deepseek')) return 'DeepSeek: أسرع وأرخص - يستخدم مفتاح OpenRouter';
@@ -1109,13 +1109,13 @@ export default function CompaniesPerFeatureAIPage() {
                           value={featureKeys[feature.key]}
                           onChange={(e) => updateFeatureKey(feature.key, e.target.value)}
                           placeholder="أدخل مفتاح API..."
-                          className="w-full px-3 py-2 pr-10 rounded-lg border border-gray-200 bg-white font-mono text-sm"
+                          className="w-full px-3 py-2 pr-10 rounded-lg border border-border bg-white font-mono text-sm"
                           dir="ltr"
                         />
                         <button
                           type="button"
                           onClick={() => setShowKeys(prev => ({ ...prev, [feature.key]: !prev[feature.key] }))}
-                          className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                         >
                           {showKeys[feature.key] ? '🙈' : '👁️'}
                         </button>
@@ -1171,7 +1171,7 @@ export default function CompaniesPerFeatureAIPage() {
                 💾 حفظ جميع الإعدادات (4 Features)
               </GarfixButton>
               
-              <p className="text-xs text-gray-500 text-center mt-2">
+              <p className="text-xs text-muted-foreground text-center mt-2">
                 سيتم حفظ مفاتيح AI لكل Feature بشكل منعزل
               </p>
             </div>

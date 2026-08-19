@@ -168,7 +168,7 @@ export function MatchStatusBadge({
 
       {/* Matched Product Name */}
       {status === "matched" && matchedProductName && (
-        <span className="text-xs text-gray-600 truncate max-w-[120px]" title={matchedProductName}>
+        <span className="text-xs text-muted-foreground truncate max-w-[120px]" title={matchedProductName}>
           → {matchedProductName}
         </span>
       )}

@@ -243,14 +243,14 @@ export function AIAgentsView() {
               </span>
               <span className="ai-badge-premium">مدعوم بالذكاء الاصطناعي</span>
             </h1>
-            <p className="text-[13px] sm:text-sm text-[#9ca3af] mt-2 flex items-center gap-2">
+            <p className="text-[13px] sm:text-sm text-muted-foreground mt-2 flex items-center gap-2">
               <Zap size={14} className="text-[#d4a574]" />
               ثلاثة وكلاء متخصصون — {activeCompany.nameAr || activeCompany.name}
             </p>
           </div>
           
           {/* Status indicator */}
-          <div className="flex items-center gap-2 text-xs text-[#9ca3af] self-start sm:self-auto">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground self-start sm:self-auto">
             <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse shadow-[0_0_8px_#10b9880]" />
             <span>متصل</span>
           </div>
@@ -260,13 +260,13 @@ export function AIAgentsView() {
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* DESIGN NOTE (Collapsible)                                     */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div className="bg-[#111827]/80 backdrop-blur-sm border border-[#374151] rounded-xl p-3 sm:p-4 text-xs leading-relaxed text-[#9ca3af]">
+      <div className="bg-[#111827]/80 backdrop-blur-sm border border-border rounded-xl p-3 sm:p-4 text-xs leading-relaxed text-muted-foreground">
         <div className="flex items-start gap-2">
           <Brain size={14} className="text-[#d4a574] shrink-0 mt-0.5" />
           <div>
-            <strong className="text-[#e5e7eb]">قرار التصميم:</strong> اختيار الوكيل صريح (tab picker) وليس
+            <strong className="text-foreground">قرار التصميم:</strong> اختيار الوكيل صريح (tab picker) وليس
             توجيهًا تلقائيًا. هذا أنسب لأنه يعطي شفافية أكبر ويختصر round-trip المصنّف.
-            <code className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-[#1f2937] text-[#d4a574] mx-1">agentType</code>
+            <code className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-muted text-[#d4a574] mx-1">agentType</code>
           </div>
         </div>
       </div>
@@ -300,7 +300,7 @@ export function AIAgentsView() {
                   "hover-lift active-press cursor-pointer",
                   active
                     ? "ai-card shadow-gold-md border-[#d4a57450]"
-                    : "bg-[#111827] border border-[#374151] hover:border-[#04785740]"
+                    : "bg-card border border-border hover:border-[#04785740]"
                 )}
                 style={{ animationDelay: `${index * 80}ms` }}
               >
@@ -321,18 +321,18 @@ export function AIAgentsView() {
                       "w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 transition-all duration-120",
                       active 
                         ? "bg-gradient-to-br from-[#d4a57420] to-[#04785720] shadow-lg scale-110" 
-                        : "bg-[#1f2937]"
+                        : "bg-muted"
                     )}>
                       {a.icon}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className={cn(
                         "font-bold text-sm truncate transition-colors",
-                        active ? "text-[#e5e7eb]" : "text-[#9ca3af] group-hover:text-[#e5e7eb]"
+                        active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
                       )}>
                         {a.nameAr}
                       </div>
-                      <div className="text-[11px] text-[#6b7280] truncate">{a.name}</div>
+                      <div className="text-[11px] text-muted-foreground truncate">{a.name}</div>
                     </div>
                     
                     {/* Active indicator */}
@@ -342,7 +342,7 @@ export function AIAgentsView() {
                   </div>
                   
                   {/* Description */}
-                  <p className="text-[11px] leading-relaxed text-[#6b7280] line-clamp-2">
+                  <p className="text-[11px] leading-relaxed text-muted-foreground line-clamp-2">
                     {AGENT_DESCRIPTIONS[a.type] || "وكيل متخصص."}
                   </p>
                   
@@ -364,13 +364,13 @@ export function AIAgentsView() {
                       {a.allowedIntents.slice(0, 3).map((intent) => (
                         <code key={intent} className={cn(
                           "font-mono text-[9px] px-1.5 py-0.5 rounded-md",
-                          active ? "bg-[#04785715] text-[#34d399]" : "bg-[#1f2937] text-[#6b7280]"
+                          active ? "bg-[#04785715] text-[#34d399]" : "bg-muted text-muted-foreground"
                         )}>
                           {intent}
                         </code>
                       ))}
                       {a.allowedIntents.length > 3 && (
-                        <span className="text-[9px] text-[#6b7280]">+{a.allowedIntents.length - 3}</span>
+                        <span className="text-[9px] text-muted-foreground">+{a.allowedIntents.length - 3}</span>
                       )}
                     </div>
                   )}
@@ -385,10 +385,10 @@ export function AIAgentsView() {
       {/* QUICK ACTIONS PANEL                                            */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       {currentAgent && QUICK_ACTIONS[selectedAgent] && turns.length === 0 && (
-        <div className="bg-[#111827]/60 backdrop-blur-sm border border-[#374151] rounded-xl p-4">
+        <div className="bg-[#111827]/60 backdrop-blur-sm border border-border rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <Lightbulb size={14} className="text-[#d4a574]" />
-            <span className="text-xs font-bold text-[#9ca3af] uppercase tracking-wider">اقتراحات سريعة</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">اقتراحات سريعة</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {QUICK_ACTIONS[selectedAgent].map((action, idx) => (
@@ -412,7 +412,7 @@ export function AIAgentsView() {
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* CHAT PANEL (Enhanced with AI Card Glassmorphism)               */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 ai-card flex flex-col overflow-hidden min-h-0 !p-0 !bg-[#0b1220]">
+      <div className="flex-1 ai-card flex flex-col overflow-hidden min-h-0 !p-0 !bg-background">
         
         {/* Chat Messages Area */}
         <div
@@ -421,7 +421,7 @@ export function AIAgentsView() {
         >
           {turns.length === 0 ? (
             /* Empty State */
-            <div className="flex-1 flex flex-col items-center justify-center text-[#6b7280] gap-4 py-12">
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-4 py-12">
               <div className="relative">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#04785715] to-[#d4a57410] flex items-center justify-center ai-thinking">
                   <Bot size={40} className="text-[#047857] drop-shadow-glow-emerald" />
@@ -431,26 +431,26 @@ export function AIAgentsView() {
                 <div className="absolute -bottom-1 -left-1 w-2 h-2 rounded-full bg-[#10b981] opacity-60 animate-pulse" style={{ animationDelay: '0.5s' }} />
               </div>
               <div className="text-center">
-                <div className="text-base font-bold text-[#e5e7eb] mb-1">
+                <div className="text-base font-bold text-foreground mb-1">
                   ابدأ محادثة مع {currentAgent?.nameAr || "الوكيل"}
                 </div>
-                <div className="text-[12px] text-[#6b7280]">
+                <div className="text-[12px] text-muted-foreground">
                   اكتب سؤالك في الأسفل واضغط Enter للإرسال
                 </div>
               </div>
               
               {/* Welcome suggestion cards */}
-              <div className="grid grid-cols-2 gap-2 mt-4 w-full max-w-md">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 w-full max-w-md">
                 {QUICK_ACTIONS[selectedAgent]?.slice(0, 2).map((action, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleQuickAction(action.query)}
-                    className="p-3 rounded-xl bg-[#111827] border border-[#374151] hover:border-[#04785740] transition-all duration-120 text-right group"
+                    className="p-3 rounded-xl bg-card border border-border hover:border-[#04785740] transition-all duration-120 text-right group"
                   >
                     <div className="text-[11px] font-bold text-[#d4a574] group-hover:text-[#e8c9a8] mb-1">
                       {action.label}
                     </div>
-                    <div className="text-[10px] text-[#6b7280] line-clamp-2">
+                    <div className="text-[10px] text-muted-foreground line-clamp-2">
                       {action.query}
                     </div>
                   </button>
@@ -474,7 +474,7 @@ export function AIAgentsView() {
                     "shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold transition-all duration-150",
                     t.role === "user"
                       ? "bg-gradient-to-br from-[#047857] to-[#059669] text-white shadow-lg"
-                      : "bg-gradient-to-br from-[#1f2937] to-[#111827] border border-[#374151]"
+                      : "bg-gradient-to-br from-[#1f2937] to-[#111827] border border-border"
                   )}
                 >
                   {t.role === "user" 
@@ -491,10 +491,10 @@ export function AIAgentsView() {
                       t.role === "user"
                         ? "bg-gradient-to-br from-[#047857] to-[#059669] text-white rounded-tr-md shadow-lg shadow-[#04785725]"
                         : cn(
-                            "bg-[#111827] border text-[#e5e7eb]",
+                            "bg-card border text-foreground",
                             t.inScope === false 
                               ? "border-[#d4a57430] bg-gradient-to-br from-[#1f293720] to-[#111827]" 
-                              : "border-[#374151]"
+                              : "border-border"
                           )
                     )}
                   >
@@ -507,13 +507,13 @@ export function AIAgentsView() {
                     )}
                     
                     {/* Message Content */}
-                    <div className={t.role === "assistant" && t.inScope !== false ? "text-[#e5e7eb]" : ""}>
+                    <div className={t.role === "assistant" && t.inScope !== false ? "text-foreground" : ""}>
                       {t.content}
                     </div>
                     
                     {/* Suggested actions for in-scope responses */}
                     {t.role === "assistant" && t.allowedIntents && t.allowedIntents.length > 0 && t.inScope !== false && (
-                      <div className="mt-3 pt-3 border-t border-[#374151] text-[10px] text-[#6b7280] flex flex-wrap items-center gap-1.5">
+                      <div className="mt-3 pt-3 border-t border-border text-[10px] text-muted-foreground flex flex-wrap items-center gap-1.5">
                         <span className="text-[#d4a574]">الإجراءات المقترحة:</span>
                         {t.allowedIntents.map((intent) => (
                           <code key={intent} className="font-mono px-2 py-0.5 rounded-md bg-[#04785715] text-[#34d399]">
@@ -535,7 +535,7 @@ export function AIAgentsView() {
                           />
                         </div>
                       </div>
-                      <span className="text-[10px] text-[#6b7280]">
+                      <span className="text-[10px] text-muted-foreground">
                         ثقة {t.confidence}%
                       </span>
                       
@@ -575,10 +575,10 @@ export function AIAgentsView() {
           {/* Processing/Thinking State */}
           {sending && (
             <div className="self-start flex gap-3 max-w-[92%] animate-fadeIn" style={{ animationDuration: '180ms', animationFillMode: 'both' }}>
-              <div className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center bg-gradient-to-br from-[#1f2937] to-[#111827] border border-[#374151] ai-thinking">
+              <div className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center bg-gradient-to-br from-[#1f2937] to-[#111827] border border-border ai-thinking">
                 <span className="text-base">{currentAgent?.icon || <Bot size={16} />}</span>
               </div>
-              <div className="rounded-2xl rounded-tl-md px-5 py-4 bg-[#111827] border border-[#04785730] flex items-center gap-3 text-sm">
+              <div className="rounded-2xl rounded-tl-md px-5 py-4 bg-card border border-[#04785730] flex items-center gap-3 text-sm">
                 <div className="ai-processing">
                   <div className="ai-processing-dots">
                     <span></span>
@@ -595,7 +595,7 @@ export function AIAgentsView() {
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* INPUT AREA (Styled with Focus Ring & Gold Send Button)         */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="border-t border-[#374151] p-3 sm:p-4 flex items-end gap-3 bg-[#0b1220]/95 backdrop-blur-sm">
+        <div className="border-t border-border p-3 sm:p-4 flex items-end gap-3 bg-[#0b1220]/95 backdrop-blur-sm">
           <div className="flex-1 relative">
             <textarea
               value={input}
@@ -609,10 +609,10 @@ export function AIAgentsView() {
               placeholder={`اكتب رسالة إلى ${currentAgent?.nameAr || "الوكيل"}…`}
               rows={1}
               className={cn(
-                "focus-ring w-full resize-none rounded-xl border bg-[#111827]",
+                "focus-ring w-full resize-none rounded-xl border bg-card",
                 "px-4 py-3 text-sm font-inherit max-h-32",
-                "text-[#e5e7eb] placeholder:text-[#6b7280]",
-                "border-[#374151] focus:border-[#04785770]",
+                "text-foreground placeholder:text-muted-foreground",
+                "border-border focus:border-[#04785770]",
                 "transition-all duration-150",
                 "scrollbar-thin"
               )}
@@ -631,7 +631,7 @@ export function AIAgentsView() {
               "disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none",
               input.trim() && !sending
                 ? "gradient-gold text-[#0b1220] shadow-gold-md hover:shadow-gold-glow hover:scale-105"
-                : "bg-[#1f2937] text-[#6b7280]"
+                : "bg-muted text-muted-foreground"
             )}
           >
             {sending ? (

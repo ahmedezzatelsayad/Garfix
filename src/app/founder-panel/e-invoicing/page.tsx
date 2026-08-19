@@ -50,7 +50,7 @@ function StatCard({
     red: "text-red-400 bg-red-500/10 border-red-500/20",
   };
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+    <div className="rounded-xl border border-border/50 bg-card/50 p-5">
       <div className="flex items-start justify-between">
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground mb-1.5 truncate">{label}</p>
@@ -221,7 +221,7 @@ export default function EInvoicingDashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Country breakdown */}
-        <div className="lg:col-span-1 rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+        <div className="lg:col-span-1 rounded-xl border border-border/50 bg-card/50 p-5">
           <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
             <Globe2 size={16} className="text-emerald-400" />
             التوزيع حسب الدولة
@@ -239,8 +239,8 @@ export default function EInvoicingDashboardPage() {
         </div>
 
         {/* Per-company table */}
-        <div className="lg:col-span-2 rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
-          <div className="p-5 border-b border-white/[0.08] flex items-center justify-between flex-wrap gap-3">
+        <div className="lg:col-span-2 rounded-xl border border-border/50 bg-card/50 overflow-hidden">
+          <div className="p-5 border-b border-border/50 flex items-center justify-between flex-wrap gap-3">
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
               <FileText size={16} className="text-emerald-400" />
               الشركات ({filteredCompanies.length})
@@ -270,7 +270,7 @@ export default function EInvoicingDashboardPage() {
               <Link
                 key={c.id}
                 href={`/founder-panel/e-invoicing/${c.slug}`}
-                className="px-5 py-3 flex items-center gap-3 hover:bg-white/[0.02] transition-colors group"
+                className="px-5 py-3 flex items-center gap-3 hover:bg-card/50 transition-colors group"
               >
                 <span className="text-xl flex-shrink-0">{c.emoji || flagEmoji(c.country)}</span>
                 <div className="flex-1 min-w-0">
@@ -294,8 +294,8 @@ export default function EInvoicingDashboardPage() {
       </div>
 
       {/* Recent receipts */}
-      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
-        <div className="p-5 border-b border-white/[0.08] flex items-center justify-between">
+      <div className="rounded-xl border border-border/50 bg-card/50 overflow-hidden">
+        <div className="p-5 border-b border-border/50 flex items-center justify-between">
           <h2 className="text-sm font-bold text-white flex items-center gap-2">
             <Zap size={16} className="text-emerald-400" />
             آخر الإيصالات الواردة (Webhooks)
@@ -311,7 +311,7 @@ export default function EInvoicingDashboardPage() {
           {data.recentReceipts.map((r) => {
             const meta = receiptStatusMeta(r);
             return (
-              <div key={r.id} className="px-5 py-3 flex items-start gap-3 hover:bg-white/[0.02] transition-colors">
+              <div key={r.id} className="px-5 py-3 flex items-start gap-3 hover:bg-card/50 transition-colors">
                 <span className={cn("mt-0.5 flex-shrink-0", meta.color)}>{meta.icon}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -377,14 +377,14 @@ function WebhookStatsCard() {
   if (isLoading || !data) {
     // Render skeleton placeholder when loading or no data yet
     return (
-      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+      <div className="rounded-xl border border-border/50 bg-card/50 p-5">
         <div className="flex items-center gap-2 mb-4">
           <Activity size={16} className="text-emerald-400" />
           <h2 className="text-sm font-bold text-white">إحصائيات الـ Webhooks (آخر 24 ساعة)</h2>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[1, 2, 3, 4, 5].map((n) => (
-            <div key={n} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 animate-pulse">
+            <div key={n} className="rounded-lg border border-white/[0.06] bg-card/50 p-3 animate-pulse">
               <div className="h-3 bg-white/[0.06] rounded w-2/3 mb-2" />
               <div className="h-6 bg-white/[0.06] rounded w-1/2" />
             </div>
@@ -400,7 +400,7 @@ function WebhookStatsCard() {
   return (
     <div className="space-y-4">
       {/* 24h aggregates */}
-      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+      <div className="rounded-xl border border-border/50 bg-card/50 p-5">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Activity size={16} className="text-emerald-400" />
@@ -430,7 +430,7 @@ function WebhookStatsCard() {
                 <div className="w-full rounded-t-sm bg-gradient-to-t from-emerald-500/40 to-emerald-500/80 transition-all group-hover:from-emerald-400 group-hover:to-emerald-300"
                      style={{ height: `${(h.count / maxHourCount) * 100}%`, minHeight: h.count > 0 ? "4px" : "0" }} />
                 {/* Tooltip */}
-                <div className="absolute bottom-full mb-1 px-1.5 py-0.5 rounded bg-mutedackgroundlack/80 text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <div className="absolute bottom-full mb-1 px-1.5 py-0.5 rounded bg-popover text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                   {h.hour}: {h.count} ({h.accepted}✓ {h.rejected}✗)
                 </div>
               </div>
@@ -446,7 +446,7 @@ function WebhookStatsCard() {
       {/* By country + Top companies */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* By country */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+        <div className="rounded-xl border border-border/50 bg-card/50 p-5">
           <h3 className="text-xs font-bold text-white mb-3 flex items-center gap-2">
             <Globe2 size={13} className="text-emerald-400" />
             حسب الدولة (24 ساعة)
@@ -483,7 +483,7 @@ function WebhookStatsCard() {
         </div>
 
         {/* Top companies */}
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+        <div className="rounded-xl border border-border/50 bg-card/50 p-5">
           <h3 className="text-xs font-bold text-white mb-3 flex items-center gap-2">
             <FileText size={13} className="text-emerald-400" />
             أعلى 5 شركات (آخر 7 أيام)
@@ -524,7 +524,7 @@ function MiniStatCard({ label, value, accent, sub }: {
     muted: "text-foreground",
   };
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+    <div className="rounded-lg border border-white/[0.06] bg-card/50 p-3">
       <p className="text-[10px] text-muted-foreground mb-1 truncate">{label}</p>
       <p className={cn("text-xl font-bold", colorMap[accent])}>{value}</p>
       {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}

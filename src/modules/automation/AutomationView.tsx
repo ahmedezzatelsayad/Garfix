@@ -131,7 +131,7 @@ function fmtDate(s: string): string {
 function getConfidenceColor(confidence: number): string {
   if (confidence >= 85) return "text-emerald-500 bg-mutedmerald-500/10";
   if (confidence >= 70) return "text-amber-500 bg-cardmber-500/10";
-  return "text-gray-400 bg-gray-400/10";
+  return "text-muted-foreground bg-gray-400/10";
 }
 
 function getImpactBadge(impact: string): { label: string; className: string } {
@@ -141,7 +141,7 @@ function getImpactBadge(impact: string): { label: string; className: string } {
     case "medium":
       return { label: "أثر متوسط", className: "bg-cardmber-500/15 text-amber-400 border-amber-500/30" };
     default:
-      return { label: "أثر منخفض", className: "bg-gray-500/15 text-gray-400 border-gray-500/30" };
+      return { label: "أثر منخفض", className: "bg-muted text-muted-foreground border-gray-500/30" };
   }
 }
 
@@ -550,7 +550,7 @@ export function AutomationView() {
                                 نشطة
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold py-0.5 px-2.5 rounded-full bg-gray-500/10 text-gray-400 border border-gray-500/20">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold py-0.5 px-2.5 rounded-full bg-gray-500/10 text-muted-foreground border border-gray-500/20">
                                 متوقفة
                               </span>
                             )}

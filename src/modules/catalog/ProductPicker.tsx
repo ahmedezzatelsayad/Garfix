@@ -214,7 +214,7 @@ export function ProductPicker({
   // ─── Stock Status Helper ─────────────────────────────────────────────
 
   const getStockStatus = (qty?: number) => {
-    if (qty === undefined || qty === null) return { label: "غير معروف", color: "bg-gray-100 text-gray-600" };
+    if (qty === undefined || qty === null) return { label: "غير معروف", color: "bg-muted text-muted-foreground" };
     if (qty <= 0) return { label: "نفذت الكمية", color: "bg-red-100 text-red-700" };
     if (qty < 10) return { label: `متبقي ${qty}`, color: "bg-yellow-100 text-yellow-700" };
     return { label: `متوفر (${qty})`, color: "bg-green-100 text-green-700" };
@@ -226,7 +226,7 @@ export function ProductPicker({
     <div ref={containerRef} className={cn("relative", className)}>
       {/* Input Container */}
       <div className="relative">
-        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         
         <Input
           ref={inputRef}
@@ -254,7 +254,7 @@ export function ProductPicker({
           <button
             type="button"
             onClick={clearSelection}
-            className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
             ✕
           </button>
@@ -263,9 +263,9 @@ export function ProductPicker({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white rounded-lg border border-gray-200 shadow-lg max-h-64 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-white rounded-lg border border-border shadow-lg max-h-64 overflow-y-auto">
           {loading && (
-            <div className="p-3 text-center text-gray-500 text-sm">
+            <div className="p-3 text-center text-muted-foreground text-sm">
               <span className="animate-spin inline-block mr-2">⏳</span>
               جارٍ البحث...
             </div>
@@ -302,20 +302,20 @@ export function ProductPicker({
                   "w-full flex items-center gap-3 px-3 py-2 text-right text-sm transition-colors",
                   isSelected
                     ? "bg-[#ECFDF5] text-[#047857]"
-                    : "hover:bg-gray-50 text-gray-700 hover-lift transition-all duration-120"
+                    : "hover:bg-muted text-gray-700 hover-lift transition-all duration-120"
                 )}
               >
                 {/* Icon */}
                 <Package size={18} className={cn(
                   "flex-shrink-0",
-                  isSelected ? "text-[#047857]" : "text-gray-400"
+                  isSelected ? "text-[#047857]" : "text-muted-foreground"
                 )} />
 
                 {/* Product Info */}
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{option.name}</div>
                   {option.code && (
-                    <div className="text-xs text-gray-500">SKU: {option.code}</div>
+                    <div className="text-xs text-muted-foreground">SKU: {option.code}</div>
                   )}
                 </div>
 

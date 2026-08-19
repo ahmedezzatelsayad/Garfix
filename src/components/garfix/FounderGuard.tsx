@@ -61,7 +61,7 @@ export function FounderGuard({ children }: { children: React.ReactNode }) {
         className="min-h-dvh flex items-center justify-center bg-background text-foreground p-6"
         dir="rtl"
       >
-        <div className="max-w-md w-full text-center space-y-4 glass rounded-2xl p-8 shadow-brand-md border border-white/[0.08]">
+        <div className="max-w-md w-full text-center space-y-4 glass rounded-2xl p-8 shadow-brand-md border border-border/50">
           <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/15 flex items-center justify-center mb-4">
             <Shield size={32} className="text-emerald-500" />
           </div>

@@ -711,7 +711,7 @@ export function PlatformAdminPanel() {
 
 function StatusBadge({ active, activeText, inactiveText }: { active: boolean; activeText?: string; inactiveText?: string }) {
   const label = active ? (activeText || "نشط") : (inactiveText || "موقوف");
-  return <span role="status" aria-label={label} className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${active ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-gray-400/15 text-gray-400"}`}>{label}</span>;
+  return <span role="status" aria-label={label} className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${active ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-muted text-muted-foreground"}`}>{label}</span>;
 }
 
 function TicketStatusBadge({ status }: { status: string }) {

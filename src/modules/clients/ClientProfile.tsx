@@ -521,7 +521,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                       {meta.label}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5 text-[12px]">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[12px]">
                     <div><span className="text-muted-foreground text-[11px]">الإصدار: </span>{fmtDate(inv.issueDate)}</div>
                     <div><span className="text-muted-foreground text-[11px]">الاستحقاق: </span>{fmtDate(inv.dueDate)}</div>
                     <div><span className="text-muted-foreground text-[11px]">الإجمالي: </span><span className="font-semibold" dir="ltr">{fmtMoney(inv.total)}</span></div>

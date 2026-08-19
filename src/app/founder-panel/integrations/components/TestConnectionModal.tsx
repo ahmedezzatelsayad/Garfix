@@ -76,7 +76,7 @@ export const TestConnectionModal: React.FC<TestConnectionModalProps> = ({
               <div className="h-20 w-20 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                 <Loader2 className="h-10 w-10 text-emerald-500 animate-spin" />
               </div>
-              <div className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-lg">
+              <div className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-card flex items-center justify-center shadow-lg">
                 <Activity className="h-4 w-4 text-emerald-500 animate-pulse" />
               </div>
             </div>

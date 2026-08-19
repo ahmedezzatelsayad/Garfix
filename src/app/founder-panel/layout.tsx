@@ -86,28 +86,11 @@ export default function FounderPanelLayout({
   // content (children) until we're sure the user is the founder.
   if (authState !== "founder") {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          background: "#0f172a",
-          color: "#94a3b8",
-          fontSize: "14px",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
+      <div className="flex items-center justify-center min-h-dvh bg-background text-muted-foreground text-sm">
+        <div className="text-center">
           <div
-            style={{
-              width: "32px",
-              height: "32px",
-              border: "3px solid #1e293b",
-              borderTopColor: "#3b82f6",
-              borderRadius: "50%",
-              margin: "0 auto 12px",
-              animation: "spin 0.8s linear infinite",
-            }}
+            className="w-8 h-8 border-[3px] border-border border-t-primary rounded-full mx-auto mb-3"
+            style={{ animation: "spin 0.8s linear infinite" }}
           />
           جاري التحقق من الصلاحيات...
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

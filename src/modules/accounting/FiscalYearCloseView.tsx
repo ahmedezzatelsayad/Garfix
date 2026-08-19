@@ -151,11 +151,11 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
             <Shield className="w-8 h-8 text-emerald-600" />
             إغلاق السنة المالية
           </h2>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             إدارة إغلاق وإعادة فتح السنوات المالية مع سجل التدقيق
           </p>
         </div>
@@ -163,7 +163,7 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
           onClick={() => setShowAuditModal(true)}
           className={cn(
             "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium",
-            "bg-gray-100 hover:bg-gray-200 text-gray-700",
+            "bg-muted hover:bg-muted/80 text-gray-700",
             "dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200",
             "transition-colors duration-200"
           )}
@@ -176,8 +176,8 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
       {/* Year Selector & Status Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Year Selector */}
-        <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+        <div className="lg:col-span-1 bg-card rounded-xl shadow-sm border border-border p-6">
+          <label className="block text-sm font-medium text-foreground mb-3">
             اختر السنة المالية
           </label>
           <div className="flex items-center gap-2">
@@ -185,8 +185,8 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
               onClick={() => setSelectedYear((y) => y - 1)}
               className={cn(
                 "p-2 rounded-lg transition-colors",
-                "hover:bg-gray-100 dark:hover:bg-gray-700",
-                "text-gray-600 dark:text-gray-400"
+                "hover:bg-muted dark:hover:bg-gray-700",
+                "text-muted-foreground"
               )}
             >
               <ChevronRight className="w-5 h-5" />
@@ -196,8 +196,8 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
               className={cn(
                 "flex-1 px-4 py-3 rounded-lg text-center text-lg font-bold",
-                "border border-gray-200 dark:border-gray-600",
-                "bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
+                "border border-border",
+                "bg-white dark:bg-gray-700 text-foreground",
                 "focus:ring-2 focus:ring-emerald-500"
               )}
             >
@@ -212,8 +212,8 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
               disabled={selectedYear >= currentYear}
               className={cn(
                 "p-2 rounded-lg transition-colors",
-                "hover:bg-gray-100 dark:hover:bg-gray-700",
-                "text-gray-600 dark:text-gray-400",
+                "hover:bg-muted dark:hover:bg-gray-700",
+                "text-muted-foreground",
                 "disabled:opacity-50"
               )}
             >
@@ -231,7 +231,7 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
                   "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors",
                   selectedYear === year
                     ? "bg-mutedmerald-100 dark:bg-mutedmerald-900/30 text-emerald-800 dark:text-emerald-400"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-600 dark:text-gray-400"
+                    : "hover:bg-muted dark:hover:bg-gray-700/50 text-muted-foreground"
                 )}
               >
                 <span>{year}</span>
@@ -242,11 +242,11 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
         </div>
 
         {/* Status Card */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+        <div className="lg:col-span-2 bg-card rounded-xl shadow-sm border border-border p-6">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin" />
-              <span className="mr-3 text-gray-500">جاري التحميل...</span>
+              <span className="mr-3 text-muted-foreground">جاري التحميل...</span>
             </div>
           ) : yearStatus ? (
             <div className="space-y-6">
@@ -264,7 +264,7 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
                     <Unlock className="w-10 h-10 text-emerald-500" />
                   )}
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    <h3 className="text-lg font-bold text-foreground">
                       السنة المالية {selectedYear}
                     </h3>
                     <p className={cn(
@@ -311,9 +311,9 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
               {/* Close Details */}
               {yearStatus.closeRecord && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                    <div className="text-sm text-gray-500 mb-1">تاريخ الإغلاق</div>
-                    <div className="font-medium text-gray-900 dark:text-white">
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-sm text-muted-foreground mb-1">تاريخ الإغلاق</div>
+                    <div className="font-medium text-foreground">
                       {new Date(yearStatus.closeRecord.closedAt).toLocaleDateString("ar-EG", {
                         year: "numeric",
                         month: "long",
@@ -324,16 +324,16 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
                     </div>
                   </div>
                   
-                  <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                    <div className="text-sm text-gray-500 mb-1">تم الإغلاق بواسطة</div>
-                    <div className="font-medium text-gray-900 dark:text-white">
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-sm text-muted-foreground mb-1">تم الإغلاق بواسطة</div>
+                    <div className="font-medium text-foreground">
                       {yearStatus.closeRecord.closedBy}
                     </div>
                   </div>
 
-                  <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                    <div className="text-sm text-gray-500 mb-1">الأرباح المحتجزة</div>
-                    <div className="font-medium text-gray-900 dark:text-white">
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-sm text-muted-foreground mb-1">الأرباح المحتجزة</div>
+                    <div className="font-medium text-foreground">
                       {parseFloat(yearStatus.closeRecord.openingRetainedEarnings).toLocaleString("ar-EG", {
                         style: "currency",
                         currency: "SAR",
@@ -342,9 +342,9 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
                   </div>
 
                   {yearStatus.closeRecord.notes && (
-                    <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg md:col-span-2">
-                      <div className="text-sm text-gray-500 mb-1">ملاحظات</div>
-                      <div className="font-medium text-gray-900 dark:text-white">
+                    <div className="p-4 bg-muted rounded-lg md:col-span-2">
+                      <div className="text-sm text-muted-foreground mb-1">ملاحظات</div>
+                      <div className="font-medium text-foreground">
                         {yearStatus.closeRecord.notes}
                       </div>
                     </div>
@@ -472,10 +472,10 @@ function CloseYearModal({
   const [confirmed, setConfirmed] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-mutedackgroundlack/50">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-popover/50">
+      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-red-50 dark:bg-red-900/20">
+        <div className="px-6 py-4 border-b border-border bg-red-50 dark:bg-red-900/20">
           <h3 className="text-xl font-bold text-red-800 dark:text-red-300 flex items-center gap-2">
             <Lock className="w-6 h-6" />
             تأكيد إغلاق السنة المالية {year}
@@ -494,7 +494,7 @@ function CloseYearModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               ملاحظات (اختياري)
             </label>
             <textarea
@@ -502,8 +502,8 @@ function CloseYearModal({
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               className={cn(
-                "w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600",
-                "bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
+                "w-full px-4 py-2 rounded-lg border border-border",
+                "bg-white dark:bg-gray-700 text-foreground",
                 "focus:ring-2 focus:ring-emerald-500 focus:border-transparent",
                 "resize-none"
               )}
@@ -511,14 +511,14 @@ function CloseYearModal({
             />
           </div>
 
-          <label className="flex items-start gap-3 cursor-pointer p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+          <label className="flex items-start gap-3 cursor-pointer p-4 bg-muted rounded-lg border border-border">
             <input
               type="checkbox"
               checked={confirmed}
               onChange={(e) => setConfirmed(e.target.checked)}
               className="mt-1 rounded border-gray-300 text-red-600 focus:ring-red-500"
             />
-            <span className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="text-sm text-foreground">
               أؤكد أنني قمت بمراجعة جميع القيود والحسابات للسنة المالية {year}،
               وأوافق على إغلاقها.
             </span>
@@ -526,12 +526,12 @@ function CloseYearModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted dark:hover:bg-gray-700 transition-colors"
           >
             إلغاء
           </button>
@@ -578,10 +578,10 @@ function ReopenYearModal({
   const [reason, setReason] = useState("");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-mutedackgroundlack/50">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-popover/50">
+      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-yellow-50 dark:bg-yellow-900/20">
+        <div className="px-6 py-4 border-b border-border bg-yellow-50 dark:bg-yellow-900/20">
           <h3 className="text-xl font-bold text-yellow-800 dark:text-yellow-300 flex items-center gap-2">
             <Unlock className="w-6 h-6" />
             إعادة فتح السنة المالية {year}
@@ -599,7 +599,7 @@ function ReopenYearModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               سبب إعادة الفتح *
             </label>
             <textarea
@@ -609,24 +609,24 @@ function ReopenYearModal({
               required
               minLength={5}
               className={cn(
-                "w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600",
-                "bg-white dark:bg-gray-700 text-gray-900 dark:text-white",
+                "w-full px-4 py-2 rounded-lg border border-border",
+                "bg-white dark:bg-gray-700 text-foreground",
                 "focus:ring-2 focus:ring-emerald-500 focus:border-transparent",
                 "resize-none"
               )}
               placeholder="اشرح سبب إعادة فتح السنة المالية..."
             />
-            <p className="mt-1 text-xs text-gray-500">يجب أن يكون السبب 5 أحرف على الأقل</p>
+            <p className="mt-1 text-xs text-muted-foreground">يجب أن يكون السبب 5 أحرف على الأقل</p>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-muted dark:hover:bg-gray-700 transition-colors"
           >
             إلغاء
           </button>
@@ -671,45 +671,45 @@ function AuditLogModal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-mutedackgroundlack/50">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-popover/50">
+      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
             <History className="w-6 h-6 text-emerald-600" />
             سجل تدقيق إغلاق السنوات المالية
           </h3>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-muted dark:hover:bg-gray-700 transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-auto p-6">
           {entries.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-              <FileText className="w-16 h-16 mb-4 text-gray-300" />
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <FileText className="w-16 h-16 mb-4 text-muted-foreground" />
               <p className="text-lg font-medium">لا توجد سجلات</p>
               <p className="text-sm mt-1">لم يتم إغلاق أي سنوات مالية بعد</p>
             </div>
           ) : (
             <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0">
+              <thead className="bg-muted sticky top-0">
                 <tr>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">السنة</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">الحالة</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">تاريخ الإغلاق</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase hidden md:table-cell">بواسطة</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase hidden lg:table-cell">الأرباح المحتجزة</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">السنة</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">الحالة</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase hidden sm:table-cell">تاريخ الإغلاق</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase hidden md:table-cell">بواسطة</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase hidden lg:table-cell">الأرباح المحتجزة</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {entries.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                  <tr key={entry.id} className="hover:bg-muted dark:hover:bg-gray-700/50">
+                    <td className="px-4 py-3 font-medium text-foreground">
                       {entry.year}
                     </td>
                     <td className="px-4 py-3">
@@ -727,13 +727,13 @@ function AuditLogModal({
                         {entry.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hidden sm:table-cell">
+                    <td className="px-4 py-3 text-sm text-muted-foreground hidden sm:table-cell">
                       {new Date(entry.closedAt).toLocaleDateString("ar-EG")}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hidden md:table-cell">
+                    <td className="px-4 py-3 text-sm text-muted-foreground hidden md:table-cell">
                       {entry.closedBy}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 hidden lg:table-cell">
+                    <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
                       {parseFloat(entry.openingRetainedEarnings).toLocaleString("ar-EG")}
                     </td>
                   </tr>
@@ -744,8 +744,8 @@ function AuditLogModal({
         </div>
 
         {/* Footer with Pagination */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="text-sm text-gray-500">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+          <div className="text-sm text-muted-foreground">
             الصفحة {pagination.page} من {pagination.totalPages}
           </div>
           <div className="flex gap-2">
@@ -754,8 +754,8 @@ function AuditLogModal({
               disabled={pagination.page <= 1}
               className={cn(
                 "px-3 py-1 rounded-lg text-sm font-medium transition-colors",
-                "border border-gray-200 dark:border-gray-600",
-                "hover:bg-gray-100 dark:hover:bg-gray-700",
+                "border border-border",
+                "hover:bg-muted dark:hover:bg-gray-700",
                 "disabled:opacity-50"
               )}
             >
@@ -766,8 +766,8 @@ function AuditLogModal({
               disabled={pagination.page >= pagination.totalPages}
               className={cn(
                 "px-3 py-1 rounded-lg text-sm font-medium transition-colors",
-                "border border-gray-200 dark:border-gray-600",
-                "hover:bg-gray-100 dark:hover:bg-gray-700",
+                "border border-border",
+                "hover:bg-muted dark:hover:bg-gray-700",
                 "disabled:opacity-50"
               )}
             >

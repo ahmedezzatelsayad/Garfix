@@ -12,7 +12,7 @@ interface ImportCSVDialogProps {
   onClose: () => void;
 }
 
-const thSm = "text-start py-1.5 px-2 text-[10px] text-gray-500 font-bold";
+const thSm = "text-start py-1.5 px-2 text-[10px] text-muted-foreground font-bold";
 const tdSm = "py-1.5 px-2 text-[12px]";
 
 /** Parse a single CSV line — handles quoted fields with embedded commas. */
@@ -136,7 +136,7 @@ export function ImportCSVDialog({ companySlug, open, onClose }: ImportCSVDialogP
             </div>
             <div className="max-h-[280px] overflow-y-auto border border-emerald-500/20 rounded-[8px] mb-3 garfix-scroll">
               <table className="table-enterprise w-full border-collapse text-[12px]">
-                <thead><tr className="bg-gray-50 sticky top-0">
+                <thead><tr className="bg-muted sticky top-0">
                   <th className={thSm}>الاسم</th><th className={thSm}>البريد</th><th className={thSm}>الهاتف</th><th className={thSm}>الشركة</th>
                 </tr></thead>
                 <tbody>

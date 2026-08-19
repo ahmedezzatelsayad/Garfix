@@ -292,7 +292,7 @@ export function DashboardView() {
 
   if (!loading && companies.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-[#0b1220]" dir="rtl">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-background" dir="rtl">
         <div className="max-w-md w-full text-center space-y-6 animate-fade-in">
           {/* Animated Icon */}
           <div className="mx-auto relative">
@@ -335,7 +335,7 @@ export function DashboardView() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0b1220]" dir="rtl">
+      <div className="min-h-screen flex items-center justify-center bg-background" dir="rtl">
         <div className="text-center space-y-6 animate-fade-in">
           {/* Enhanced Loading Animation */}
           <div className="relative mx-auto w-20 h-20">
@@ -368,7 +368,7 @@ export function DashboardView() {
 
   if (!stats) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-[#0b1220]" dir="rtl">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-background" dir="rtl">
         <div className="max-w-md w-full text-center space-y-6 animate-fade-in">
           <div className="h-20 w-20 mx-auto rounded-2xl bg-red-500/10 flex items-center justify-center border border-red-500/20">
             <AlertCircle size={40} className="text-red-400" />
@@ -413,7 +413,7 @@ export function DashboardView() {
   // ════════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="min-h-screen bg-[#0b1220]" dir="rtl">
+    <div className="min-h-screen bg-background" dir="rtl">
       <div className="max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8 space-y-6">
         
         {/* ════════════════════════════════════════════════════════════════
@@ -1056,7 +1056,7 @@ export function DashboardView() {
               )}
               
               {/* Legend */}
-              <div className="grid grid-cols-2 gap-2 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
                 {pieData.map((item, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs">
                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
@@ -1109,7 +1109,7 @@ export function DashboardView() {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-2 gap-3 animate-fade-in" style={{ animationDelay: '400ms' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in" style={{ animationDelay: '400ms' }}>
               <div className="rounded-xl bg-surface border border-border p-4 text-center hover-lift">
                 <p className="text-2xl font-black text-emerald-400 tabular-nums" dir="ltr">
                   {avgInvoiceValue.toFixed(0)}

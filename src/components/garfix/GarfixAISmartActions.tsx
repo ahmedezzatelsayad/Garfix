@@ -481,7 +481,7 @@ export function AIKpiCard({
                 "w-6 h-6 rounded-full flex items-center justify-center",
                 aiTrend === "up" && "bg-emerald-100 text-emerald-600",
                 aiTrend === "down" && "bg-red-100 text-red-600",
-                aiTrend === "stable" && "bg-gray-100 text-gray-600"
+                aiTrend === "stable" && "bg-muted text-muted-foreground"
               )}>
                 {aiTrend === "up" && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>}
                 {aiTrend === "down" && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>}
