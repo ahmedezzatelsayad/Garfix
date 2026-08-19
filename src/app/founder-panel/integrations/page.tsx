@@ -88,7 +88,7 @@ export default function IntegrationsPage() {
 
   // Enrich data with metadata
   const enrichedIntegrations = useMemo(() => {
-    if (!rawData) return [];
+    if (!rawData || !Array.isArray(rawData)) return [];
     
     return rawData.map((item) => {
       const meta = INTEGRATION_META_FULL.find((m) => m.type === item.type);
@@ -232,7 +232,7 @@ export default function IntegrationsPage() {
   // Loading state
   if (integrationsQuery.isLoading) {
     return (
-      <div className="min-h-screen bg-mutedackgroundackground p-6 md:p-8 flex items-center justify-center">
+      <div className="min-h-screen bg-background p-6 md:p-8 flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="h-12 w-12 rounded-full bg-primary/10 mx-auto flex items-center justify-center">
             <Plug className="h-6 w-6 text-primary animate-pulse" />
@@ -244,7 +244,7 @@ export default function IntegrationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-mutedackgroundackground">
+    <div className="min-h-screen bg-background">
       {/* Page Header */}
       <GarfixPageHeader
         title="إدارة التكاملات"
@@ -270,7 +270,7 @@ export default function IntegrationsPage() {
                 <p className="text-sm text-muted-foreground">إجمالي التكاملات</p>
                 <p className="text-2xl font-bold">{stats.total}</p>
               </div>
-              <div className="h-10 w-10 rounded-lg bg-mutedmerald-500/10 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                 <Plug className="h-5 w-5 text-emerald-500" />
               </div>
             </div>
@@ -282,7 +282,7 @@ export default function IntegrationsPage() {
                 <p className="text-sm text-muted-foreground">مُهيّأة</p>
                 <p className="text-2xl font-bold text-blue-600">{stats.configured}</p>
               </div>
-              <div className="h-10 w-10 rounded-lg bg-mutedackgroundlue-500/10 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
                 <span className="text-lg">✓</span>
               </div>
             </div>
@@ -314,7 +314,7 @@ export default function IntegrationsPage() {
                 placeholder="بحث عن تكامل..."
                 dir="rtl"
                 className={cn(
-                  "w-full pr-10 pl-4 py-2 rounded-lg border bg-mutedackgroundackground",
+                  "w-full pr-10 pl-4 py-2 rounded-lg border bg-background",
                   "text-sm transition-colors",
                   "focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary",
                   "border-border placeholder:text-muted-foreground"
@@ -356,7 +356,7 @@ export default function IntegrationsPage() {
               </div>
 
               {/* Divider */}
-              <div className="w-px h-6 bg-mutedackgroundorder hidden sm:block" />
+              <div className="w-px h-6 bg-border hidden sm:block" />
 
               {/* View Toggle */}
               <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
@@ -364,7 +364,7 @@ export default function IntegrationsPage() {
                   onClick={() => setViewMode("grid")}
                   className={cn(
                     "p-1.5 rounded-md transition-colors",
-                    viewMode === "grid" ? "bg-mutedackgroundackground shadow-sm" : "hover:bg-mutedackgroundackground/50"
+                    viewMode === "grid" ? "bg-background shadow-sm" : "hover:bg-background/50"
                   )}
                   title="عرض شبكي"
                 >
@@ -374,7 +374,7 @@ export default function IntegrationsPage() {
                   onClick={() => setViewMode("list")}
                   className={cn(
                     "p-1.5 rounded-md transition-colors",
-                    viewMode === "list" ? "bg-mutedackgroundackground shadow-sm" : "hover:bg-mutedackgroundackground/50"
+                    viewMode === "list" ? "bg-background shadow-sm" : "hover:bg-background/50"
                   )}
                   title="عرض قائمة"
                 >
@@ -426,7 +426,7 @@ export default function IntegrationsPage() {
                   <span className="text-sm text-muted-foreground">
                     ({integrations.length})
                   </span>
-                  <div className="flex-1 h-px bg-mutedackgroundorder" />
+                  <div className="flex-1 h-px bg-border" />
                 </div>
 
                 {/* Cards Grid */}

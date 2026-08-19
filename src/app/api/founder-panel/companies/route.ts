@@ -13,7 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { dbTyped as db } from "@/lib/db";
-import { resolveAuth } from '@/lib/auth';
+import { requireFounder } from '@/lib/middleware';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
 
@@ -27,21 +27,9 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(request: NextRequest) {
   return withErrorHandler(async () => {
-    // Authenticate and verify founder role
-    const auth = await resolveAuth(request);
-    if (!auth.user) return apiError('Unauthorized', 401);
-    
-    // Verify user is a founder of at least one company
-    const founderMembership = await db.companyMembership.findFirst({
-      where: {
-        userUid: auth.user.uid,
-        role: 'founder',
-      },
-    });
-    
-    if (!founderMembership) {
-      return apiError('Access denied. Founder role required.', 403);
-    }
+    // Authenticate and verify founder role (using isFounderEmail, consistent with all other founder-panel APIs)
+    const auth = await requireFounder(request);
+    if (auth instanceof NextResponse) return auth;
     
     // Parse query params
     const { searchParams } = new URL(request.url);
