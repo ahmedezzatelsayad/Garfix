@@ -184,7 +184,7 @@ export function ReportsView() {
               type="date"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
-              className="focus-ring w-full py-2.5 px-3 rounded-lg border border-border bg-background text-foreground [direction:ltr]"
+              className="focus-ring w-full py-2.5 px-3 rounded-lg border border-border bg-mutedackgroundackground text-foreground [direction:ltr]"
             />
           </div>
           <div>
@@ -193,7 +193,7 @@ export function ReportsView() {
               type="date"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              className="focus-ring w-full py-2.5 px-3 rounded-lg border border-border bg-background text-foreground [direction:ltr]"
+              className="focus-ring w-full py-2.5 px-3 rounded-lg border border-border bg-mutedackgroundackground text-foreground [direction:ltr]"
             />
           </div>
         </div>

@@ -28,7 +28,7 @@ export function FooterPageLayout({
   return (
     <div
       dir="rtl"
-      className="min-h-dvh bg-[#0b1220] text-white"
+      className="min-h-dvh bg-background text-foreground"
     >
       {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
       <GarfixSkipLinks />
@@ -39,13 +39,13 @@ export function FooterPageLayout({
             G
           </div>
           <div>
-            <div className="text-xl font-black tracking-wider text-white">GARFIX</div>
-            <div className="text-[10px] text-emerald-400/60 tracking-[2px]">EOS v4.0</div>
+            <div className="text-xl font-black tracking-wider text-foreground">GARFIX</div>
+            <div className="text-[10px] text-emerald-500 dark:text-emerald-400/60 tracking-[2px]">EOS v4.0</div>
           </div>
         </Link>
         <Link
           href="/"
-          className="flex items-center gap-2 text-white/70 hover:text-emerald-400 text-sm no-underline hover-lift duration-120"
+          className="flex items-center gap-2 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 text-sm no-underline hover-lift duration-120"
         >
           <ArrowRight size={16} />
           العودة للرئيسية
@@ -55,7 +55,7 @@ export function FooterPageLayout({
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <header className="py-16 md:py-20 px-[5%] text-center max-w-[900px] mx-auto">
         {icon && (
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 mb-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 dark:text-emerald-400 mb-6">
             {icon}
           </div>
         )}
@@ -63,12 +63,12 @@ export function FooterPageLayout({
           {title}
         </h1>
         {subtitle && (
-          <p className="text-white/60 text-base md:text-lg max-w-[640px] mx-auto leading-relaxed">
+          <p className="text-muted-foreground text-base md:text-lg max-w-[640px] mx-auto leading-relaxed">
             {subtitle}
           </p>
         )}
         {lastUpdated && (
-          <div className="text-white/30 text-xs mt-4">
+          <div className="text-muted-foreground/50 text-xs mt-4">
             آخر تحديث: {lastUpdated}
           </div>
         )}
@@ -76,7 +76,7 @@ export function FooterPageLayout({
 
       {/* ── Content ─────────────────────────────────────────────────────── */}
       <main id="main-content" tabIndex={-1} className="px-[5%] pb-20 max-w-[900px] mx-auto">
-        <div className="bg-[#111827]/80 border border-white/[0.08] rounded-2xl p-6 md:p-10 shadow-brand-sm backdrop-blur-sm">
+        <div className="bg-card border border-border rounded-2xl p-6 md:p-10 shadow-sm backdrop-blur-sm">
           {children}
         </div>
       </main>

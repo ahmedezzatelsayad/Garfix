@@ -63,7 +63,7 @@ export default function ErrorPage({
 
   return (
     <div
-      className="min-h-dvh flex items-center justify-center bg-[#0b1220] text-foreground p-6"
+      className="min-h-dvh flex items-center justify-center bg-background text-foreground p-6"
       dir="rtl"
     >
       <div className="max-w-md w-full">
@@ -80,7 +80,7 @@ export default function ErrorPage({
               </div>
               {/* Floating badge */}
               <div className="absolute -top-1 -right-1 h-7 w-7 rounded-full bg-red-500 flex items-center justify-center shadow-lg animate-bounce-slow">
-                <span className="text-xs font-bold text-white">!</span>
+                <span className="text-xs font-bold text-foreground">!</span>
               </div>
             </div>
 
@@ -112,7 +112,7 @@ export default function ErrorPage({
               <summary className="cursor-pointer text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors font-mono select-none">
                 تفاصيل تقنية ({error.digest.slice(0, 8)}…)
               </summary>
-              <pre className="mt-2 p-3 rounded-lg bg-[#0b1220] border border-border text-[11px] text-red-400/70 overflow-x-auto" dir="ltr">
+              <pre className="mt-2 p-3 rounded-lg bg-background border border-border text-[11px] text-red-400/70 overflow-x-auto" dir="ltr">
                 {error.stack || error.message}
               </pre>
             </details>
@@ -123,7 +123,7 @@ export default function ErrorPage({
             {/* Primary Action: Retry */}
             <button
               onClick={reset}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white px-6 py-3.5 text-sm font-bold shadow-brand-md hover:shadow-brand-lg active:scale-[0.98] transition-all duration-150 hover-lift"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-foreground px-6 py-3.5 text-sm font-bold shadow-brand-md hover:shadow-brand-lg active:scale-[0.98] transition-all duration-150 hover-lift"
             >
               <RefreshCw className="h-4 w-4" />
               إعادة المحاولة

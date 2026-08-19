@@ -124,8 +124,8 @@ export function EInvoiceSubmitButton({
         disabled={loading}
         className={cn(
           "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-          "bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-          "hover:bg-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed",
+          "bg-mutedmerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+          "hover:bg-mutedmerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed",
         )}
         title={`إرسال الفاتورة لـ ${cfg.label}`}
       >
@@ -162,7 +162,7 @@ export function EInvoiceSubmitButton({
 
       {/* Success result */}
       {result && result.ok && (result.submissionStatus === "cleared" || result.submissionStatus === "reported" || result.submissionStatus === "accepted") && (
-        <div className="rounded-lg p-3 bg-emerald-500/10 border border-emerald-500/30 text-xs space-y-1.5">
+        <div className="rounded-lg p-3 bg-mutedmerald-500/10 border border-emerald-500/30 text-xs space-y-1.5">
           <p className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
             <CheckCircle2 size={13} />
             {result.submissionStatus === "cleared" ? "تم تصديق الفاتورة" : result.submissionStatus === "reported" ? "تم تقرير الفاتورة" : "تم إرسال الفاتورة"}
@@ -226,11 +226,11 @@ export function EInvoiceStatusBadge({ submissionStatus, uuid }: {
   if (submissionStatus === "not_started" || !submissionStatus) return null;
 
   const metaMap: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
-    cleared:   { icon: <CheckCircle2 size={11} />, color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20", label: "مُصدّقة" },
-    reported:  { icon: <FileCheck size={11} />,    color: "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/20", label: "مُبلّغة" },
-    accepted:  { icon: <CheckCircle2 size={11} />, color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20", label: "مقبولة" },
-    submitted: { icon: <Loader2 size={11} className="animate-spin" />, color: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20", label: "مُرسلة" },
-    pending:   { icon: <Loader2 size={11} className="animate-spin" />, color: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20", label: "معلّقة" },
+    cleared:   { icon: <CheckCircle2 size={11} />, color: "bg-mutedmerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20", label: "مُصدّقة" },
+    reported:  { icon: <FileCheck size={11} />,    color: "bg-mutedackgroundlue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/20", label: "مُبلّغة" },
+    accepted:  { icon: <CheckCircle2 size={11} />, color: "bg-mutedmerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20", label: "مقبولة" },
+    submitted: { icon: <Loader2 size={11} className="animate-spin" />, color: "bg-cardmber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20", label: "مُرسلة" },
+    pending:   { icon: <Loader2 size={11} className="animate-spin" />, color: "bg-cardmber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20", label: "معلّقة" },
     rejected:  { icon: <XCircle size={11} />,      color: "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/20", label: "مرفوضة" },
   };
   const meta = metaMap[submissionStatus] || { icon: <AlertCircle size={11} />, color: "bg-muted text-muted-foreground", label: submissionStatus };

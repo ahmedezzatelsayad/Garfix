@@ -77,30 +77,30 @@ export function ProfessionalFooter({ variant = "landing", version = "12" }: Prof
   // Color scheme based on variant - DS v4.0 Emerald Theme
   const colors = isLanding
     ? {
-        bg: "bg-[#0b1220]",
+        bg: "bg-background",
         border: "border-emerald-500/20",
         accentLine: "from-emerald-500 via-emerald-400 to-emerald-600",
-        text: "text-white/60",
-        textHover: "hover:text-emerald-400",
-        heading: "text-emerald-400",
-        muted: "text-white/60",
-        brand: "text-white",
-        inputBg: "bg-white/[0.05]",
-        inputBorder: "border-white/[0.1]",
+        text: "text-muted-foreground",
+        textHover: "hover:text-emerald-600 dark:hover:text-emerald-400",
+        heading: "text-emerald-500 dark:text-emerald-400",
+        muted: "text-muted-foreground",
+        brand: "text-foreground",
+        inputBg: "bg-muted",
+        inputBorder: "border-border",
         buttonBg: "from-emerald-600 to-emerald-700",
         logoBg: "from-emerald-600 to-emerald-700",
       }
     : {
-        bg: "bg-[#111827]",
+        bg: "bg-card",
         border: "border-emerald-500/20",
         accentLine: "from-emerald-500 via-emerald-400 to-emerald-600",
-        text: "text-[var(--muted-foreground)]",
-        textHover: "hover:text-emerald-500",
+        text: "text-muted-foreground",
+        textHover: "hover:text-emerald-600 dark:hover:text-emerald-400",
         heading: "text-emerald-600 dark:text-emerald-400",
-        muted: "text-[var(--muted-foreground)]",
-        brand: "text-[var(--foreground)]",
-        inputBg: "bg-[var(--background)]",
-        inputBorder: "border-[var(--border)]",
+        muted: "text-muted-foreground",
+        brand: "text-foreground",
+        inputBg: "bg-muted",
+        inputBorder: "border-border",
         buttonBg: "from-emerald-600 to-emerald-700",
         logoBg: "from-emerald-600 to-emerald-700",
       };
@@ -138,7 +138,7 @@ export function ProfessionalFooter({ variant = "landing", version = "12" }: Prof
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="بريدك الإلكتروني للنشرة البريدية"
-                className={`flex-1 px-3 py-2 rounded-lg ${colors.inputBg} border ${colors.inputBorder} ${colors.text} text-[12px] outline-none focus-ring focus:border-emerald-500 transition-all duration-150`}
+                className={`flex-1 px-3 py-2 rounded-lg ${colors.inputBg} border ${colors.inputBorder} text-foreground placeholder:text-muted-foreground text-[12px] outline-none focus-ring focus:border-emerald-500 transition-all duration-150`}
                 dir="ltr"
               />
               <button
@@ -191,7 +191,7 @@ export function ProfessionalFooter({ variant = "landing", version = "12" }: Prof
       </div>
 
       {/* ── Bottom Bar ───────────────────────────────────────────────── */}
-      <div className={`border-t ${colors.border} py-5 px-[5%] bg-[#0b1220]/50`}>
+      <div className={`border-t ${colors.border} py-5 px-[5%] bg-muted/50`}>
         <div className="max-w-[1200px] mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className={`text-[11px] ${colors.muted} flex flex-wrap items-center gap-x-2`}>
             <span>&copy; {new Date().getFullYear()} GARFIX v4.0. جميع الحقوق محفوظة.</span>

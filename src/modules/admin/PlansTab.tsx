@@ -95,7 +95,7 @@ export function PlansTab() {
       </div>
 
       {dirty && (
-        <div className="px-3 py-2 bg-amber-500/12 border border-amber-500/30 rounded-lg text-[11px] text-amber-500 font-semibold flex items-center gap-1.5">
+        <div className="px-3 py-2 bg-cardmber-500/12 border border-amber-500/30 rounded-lg text-[11px] text-amber-500 font-semibold flex items-center gap-1.5">
           <AlertTriangle size={14} />
           تغييرات غير محفوظة
         </div>
@@ -104,12 +104,12 @@ export function PlansTab() {
       {Object.entries(plans).map(([key, plan]) => (
         <div className="p-4 bg-[var(--card)] rounded-xl border border-[var(--border)] hover-lift" key={key}>
           <div className="flex items-center gap-2 mb-3">
-            <span className="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white text-[10px] font-extrabold font-mono">
+            <span className="px-2.5 py-0.5 rounded-lg bg-mutedmerald-600 text-white text-[10px] font-extrabold font-mono">
               {key}
             </span>
             <span className="text-[13px] font-bold">{plan.name}</span>
             {plan.highlight && (
-              <span className="px-1.5 py-px rounded-md bg-emerald-500 text-white text-[9px] font-bold">مميزة</span>
+              <span className="px-1.5 py-px rounded-md bg-mutedmerald-500 text-white text-[9px] font-bold">مميزة</span>
             )}
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-2.5">

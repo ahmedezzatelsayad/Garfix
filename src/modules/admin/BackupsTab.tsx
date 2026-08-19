@@ -112,14 +112,14 @@ export function BackupsTab() {
 
       {confirmingTrigger && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-mutedackgroundlack/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
           onClick={() => !triggering && setConfirmingTrigger(false)}
         >
           <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl w-full p-5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] max-w-[440px]"
  onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-3.5">
-              <div className="w-10 h-10 rounded-full bg-emerald-600/15 text-[var(--primary)] flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-mutedmerald-600/15 text-[var(--primary)] flex items-center justify-center shrink-0">
                 <HardDriveDownload size={18} />
               </div>
               <div>

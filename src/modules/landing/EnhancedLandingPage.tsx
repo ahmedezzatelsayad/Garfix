@@ -135,9 +135,9 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0b1220] text-white relative overflow-x-hidden" dir="rtl">
+    <div className="min-h-screen bg-background text-foreground relative overflow-x-hidden" dir="rtl">
       {/* Background gradient */}
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(4,120,87,0.12),transparent_50%)] pointer-events-none" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(4,120,87,0.06),transparent_50%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(4,120,87,0.12),transparent_50%)] pointer-events-none" />
 
       <style>{`
         /* Phase 6 P2: pure CSS animations replacing framer-motion */
@@ -170,12 +170,17 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
         .duration-120 { transition-duration: 120ms; }
         .duration-150 { transition-duration: 150ms; }
 
-        .landing-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(4,120,87,0.12); backdrop-filter: blur(8px); transition: all 120ms ease; }
-        .landing-card:hover { background: rgba(4,120,87,0.08); border-color: rgba(4,120,87,0.25); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(4,120,87,0.15); }
-        .landing-section-title { background: linear-gradient(120deg, #6ee7b7, #059669, #6ee7b7); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-        .pricing-highlight { background: linear-gradient(180deg,rgba(212,165,116,0.2),rgba(212,165,116,0.05)); border: 2px solid #d4a574; }
-        .comparison-garfix { background: rgba(4,120,87,0.08); }
-        .glass { background: rgba(17,24,39,0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(4,120,87,0.15); }
+        .landing-card { background: var(--card); border: 1px solid var(--border); transition: all 120ms ease; }
+        .landing-card:hover { border-color: var(--border); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .dark .landing-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(4,120,87,0.12); backdrop-filter: blur(8px); }
+        .dark .landing-card:hover { background: rgba(4,120,87,0.08); border-color: rgba(4,120,87,0.25); box-shadow: 0 8px 24px rgba(4,120,87,0.15); }
+        .landing-section-title { background: linear-gradient(120deg, #047857, #059669, #047857); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .pricing-highlight { background: linear-gradient(180deg,rgba(212,165,116,0.1),rgba(212,165,116,0.03)); border: 2px solid #d4a574; }
+        .dark .pricing-highlight { background: linear-gradient(180deg,rgba(212,165,116,0.2),rgba(212,165,116,0.05)); border: 2px solid #d4a574; }
+        .comparison-garfix { background: rgba(4,120,87,0.05); }
+        .dark .comparison-garfix { background: rgba(4,120,87,0.08); }
+        .glass { background: color-mix(in srgb, var(--card) 80%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--border); }
+        .dark .glass { background: rgba(17,24,39,0.6); border: 1px solid rgba(4,120,87,0.15); }
 
         @media (prefers-reduced-motion: reduce) {
           .anim-fade-in, .anim-fade-up, .anim-scale-in, .stagger > * { animation: none !important; opacity: 1 !important; transform: none !important; }
@@ -190,13 +195,13 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
           </div>
           <div>
             <div className="text-xl font-black tracking-wider">GARFIX</div>
-            <div className="text-[10px] text-white/50 tracking-[2px]">EOS v{process.env.NEXT_PUBLIC_APP_VERSION || '12'}</div>
+            <div className="text-[10px] text-muted-foreground tracking-[2px]">EOS v{process.env.NEXT_PUBLIC_APP_VERSION || '12'}</div>
           </div>
         </div>
         <div className="flex gap-2.5">
           <button
             onClick={onLogin}
-            className="hover-lift duration-120 bg-transparent text-white/85 border border-white/15 rounded-md px-[22px] py-2.5 text-sm font-bold cursor-pointer transition-all hover:bg-white/5 max-md:min-h-[44px]"
+            className="hover-lift duration-120 bg-transparent text-foreground/85 border border-border rounded-md px-[22px] py-2.5 text-sm font-bold cursor-pointer transition-all hover:bg-muted max-md:min-h-[44px]"
           >تسجيل الدخول</button>
           <button
             onClick={onRegister}
@@ -211,7 +216,7 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
         ref={heroRef}
         className="stagger relative z-[5] py-20 md:py-28 px-[5%] text-center max-w-[1100px] mx-auto"
       >
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-[20px] bg-[rgba(4,120,87,0.15)] border border-[rgba(4,120,87,0.3)] text-[#6ee7b7] text-xs font-bold mb-6">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-[20px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-[#6ee7b7] text-xs font-bold mb-6">
           <Sparkles size={14} />
           منصة ERP متكاملة بمساعد ذكاء اصطناعي — مُحسّنة لـ MENA
         </div>
@@ -222,7 +227,7 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
             GARFIX
           </span>
         </h1>
-        <p className="text-[clamp(16px,2vw,20px)] text-white/70 max-w-[720px] mx-auto mb-9 leading-relaxed">
+        <p className="text-[clamp(16px,2vw,20px)] text-muted-foreground max-w-[720px] mx-auto mb-9 leading-relaxed">
           منصة سحابية متكاملة لإدارة الفواتير والعملاء والموارد البشرية والمحاسبة والمشتريات.
           مدعومة بمساعد ذكاء اصطناعي يحلل بياناتك ويعطيك توصيات عملية لزيادة الأرباح.
         </p>
@@ -236,7 +241,7 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
           </button>
           <button
             onClick={onLogin}
-            className="bg-transparent text-white/85 border border-white/20 rounded-lg px-8 py-4 text-base font-bold cursor-pointer transition-all hover:bg-white/5 max-md:min-h-[44px]"
+            className="bg-transparent text-foreground/85 border border-border rounded-lg px-8 py-4 text-base font-bold cursor-pointer transition-all hover:bg-muted max-md:min-h-[44px]"
           >تسجيل الدخول</button>
         </div>
 
@@ -250,10 +255,10 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
           ].map((s) => (
             <div
               key={s.label}
-              className="p-5 rounded-[14px] bg-white/[0.04] border border-white/[0.08]"
+              className="p-5 rounded-[14px] bg-muted border border-border"
             >
-              <div className="text-[32px] font-black text-[#fbbf24]">{s.n}</div>
-              <div className="text-xs text-white/60 mt-1">{s.label}</div>
+              <div className="text-[32px] font-black text-amber-500 dark:text-[#fbbf24]">{s.n}</div>
+              <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
             </div>
           ))}
         </div>
@@ -268,7 +273,7 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
           <h2 className="text-[clamp(28px,4vw,44px)] font-black mb-3 landing-section-title">
             كل ما تحتاجه لإدارة أعمالك في مكان واحد
           </h2>
-          <p className="text-white/60 text-base max-w-[640px] mx-auto">
+          <p className="text-muted-foreground text-base max-w-[640px] mx-auto">
             من الفاتورة الأولى إلى التقارير المالية الشاملة — GARFIX يغطي كل جوانب عملك
           </p>
         </div>
@@ -282,8 +287,8 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
                   <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center text-white mb-2`}>
                     {f.icon}
                   </div>
-                  <CardTitle className="text-lg font-extrabold text-white">{f.titleAr}</CardTitle>
-                  <CardDescription className="text-white/60 text-[13px] leading-relaxed">{f.desc}</CardDescription>
+                  <CardTitle className="text-lg font-extrabold text-foreground">{f.titleAr}</CardTitle>
+                  <CardDescription className="text-muted-foreground text-[13px] leading-relaxed">{f.desc}</CardDescription>
                 </CardHeader>
               </Card>
             </div>
@@ -312,7 +317,7 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
             >
               <div className="text-[32px] mb-3">{f.icon}</div>
               <h3 className="text-lg font-extrabold mb-2">{f.title}</h3>
-              <p className="text-white/60 text-[13px] leading-relaxed">{f.desc}</p>
+              <p className="text-muted-foreground text-[13px] leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>
@@ -327,18 +332,18 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
           <h2 className="text-[clamp(28px,4vw,44px)] font-black mb-3 landing-section-title">
             باقات تناسب نموّ أعمالك
           </h2>
-          <p className="text-white/60 text-base">
+          <p className="text-muted-foreground text-base">
             ابدأ مجاناً وارتقِ حسب احتياجك — بدون رسوم خفية
           </p>
 
           {/* Billing toggle */}
           <div className="flex items-center justify-center gap-3 mt-6">
-            <span className={cn("text-sm font-bold", billingPeriod === "monthly" ? "text-white" : "text-white/50")}>شهرياً</span>
+            <span className={cn("text-sm font-bold", billingPeriod === "monthly" ? "text-foreground" : "text-muted-foreground")}>شهرياً</span>
             <button
               onClick={() => setBillingPeriod(billingPeriod === "monthly" ? "yearly" : "monthly")}
               className={cn(
                 "w-12 h-6 rounded-full relative cursor-pointer transition-all border-none",
-                billingPeriod === "yearly" ? "bg-[#047857]" : "bg-white/20"
+                billingPeriod === "yearly" ? "bg-[#047857]" : "bg-muted"
               )}
             >
               <div className={cn(
@@ -346,9 +351,9 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
                 billingPeriod === "yearly" ? "start-[7px]" : "start-[2px]"
               )} />
             </button>
-            <span className={cn("text-sm font-bold", billingPeriod === "yearly" ? "text-white" : "text-white/50")}>
+            <span className={cn("text-sm font-bold", billingPeriod === "yearly" ? "text-foreground" : "text-muted-foreground")}>
               سنوياً
-              <Badge variant="secondary" className="ms-2 bg-[#047857]/20 text-[#6ee7b7] border-[#047857]/30 text-[10px]">وفّر ٢ شهر</Badge>
+              <Badge variant="secondary" className="ms-2 bg-emerald-500/15 text-emerald-600 dark:text-[#6ee7b7] border-emerald-500/30 text-[10px]">وفّر ٢ شهر</Badge>
             </span>
           </div>
         </div>
@@ -358,7 +363,7 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
             <div key={tier.key} className="anim-scale-in">
               <Card className={cn(
                 "rounded-[18px] h-full relative",
-                tier.highlight ? "pricing-highlight" : "bg-white/[0.04] border border-white/[0.08]"
+                tier.highlight ? "pricing-highlight" : "bg-muted border border-border"
               )}>
                 {tier.badge && (
                   <div className="absolute -top-3 start-1/2 -translate-x-1/2 bg-[linear-gradient(135deg,#047857,#10b981)] text-white px-3.5 py-1 rounded-[12px] text-[11px] font-extrabold whitespace-nowrap">
@@ -366,15 +371,15 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
                   </div>
                 )}
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-extrabold text-white">{tier.nameAr}</CardTitle>
-                  <CardDescription className="text-white/50 text-[13px]">{tier.name}</CardDescription>
+                  <CardTitle className="text-lg font-extrabold text-foreground">{tier.nameAr}</CardTitle>
+                  <CardDescription className="text-muted-foreground text-[13px]">{tier.name}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-baseline gap-1.5 mb-4">
                     <span className="text-4xl font-black">{getPrice(tier, billingPeriod)}</span>
-                    <span className="text-white/50 text-[13px]">{tier.currency}/{billingPeriod === "yearly" ? "سنوياً" : tier.periodAr}</span>
+                    <span className="text-muted-foreground text-[13px]">{tier.currency}/{billingPeriod === "yearly" ? "سنوياً" : tier.periodAr}</span>
                   </div>
-                  <ul className="list-none p-0 m-0 mb-6 text-[13px] text-white/75">
+                  <ul className="list-none p-0 m-0 mb-6 text-[13px] text-foreground/80">
                     {tier.features.map((f) => (
                       <li key={f} className="py-1.5 flex items-start gap-2">
                         <CheckCircle2 size={14} className="text-[#10b981] shrink-0 mt-0.5" />
@@ -401,14 +406,14 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
 
         {/* Original Plans */}
         <div className="mt-10">
-          <p className="text-center text-white/40 text-[12px] mb-4">← الباقات الأساسية (بالدولار) ←</p>
+          <p className="text-center text-muted-foreground/50 text-[12px] mb-4">← الباقات الأساسية (بالدولار) ←</p>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-[1100px] mx-auto">
             {Object.keys(DEFAULT_PLANS).map((key) => {
               const plan = DEFAULT_PLANS[key];
               return (
-                <div key={key} className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] text-center">
+                <div key={key} className="p-4 rounded-xl bg-muted border border-border text-center">
                   <div className="text-sm font-bold">{plan.name}</div>
-                  <div className="text-xl font-black text-white/70">
+                  <div className="text-xl font-black text-foreground/70">
                     {plan.priceMonthly === 0 ? "مجاناً" : `$${plan.priceMonthly}`}
                   </div>
                 </div>
@@ -426,34 +431,34 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
           <h2 className="text-[clamp(28px,4vw,40px)] font-black mb-3 landing-section-title">
             كيف نختلف عن المنافسين؟
           </h2>
-          <p className="text-white/60 text-base">
+          <p className="text-muted-foreground text-base">
             مقارنة شاملة بين GARFIX وأبرز حلول ERP العالمية
           </p>
         </div>
         <div className="max-w-[1100px] mx-auto overflow-x-auto">
           <table className="w-full border-collapse text-[13px]">
             <thead>
-              <tr className="bg-white/[0.05]">
-                <th className="p-3 text-start text-[#6ee7b7] font-bold">الميزة</th>
-                <th className="p-3 text-center font-extrabold text-white comparison-garfix rounded-t-[8px]">
+              <tr className="bg-muted">
+                <th className="p-3 text-start text-emerald-600 dark:text-[#6ee7b7] font-bold">الميزة</th>
+                <th className="p-3 text-center font-extrabold text-foreground comparison-garfix rounded-t-[8px]">
                   <div className="flex items-center justify-center gap-2">
-                    <div className="w-6 h-6 rounded bg-[linear-gradient(135deg,#047857,#10b981)] flex items-center justify-center text-[12px] font-black">G</div>
+                    <div className="w-6 h-6 rounded bg-[linear-gradient(135deg,#047857,#10b981)] flex items-center justify-center text-white text-[12px] font-black">G</div>
                     GARFIX
                   </div>
                 </th>
-                <th className="p-3 text-center text-white/60 font-bold">Odoo</th>
-                <th className="p-3 text-center text-white/60 font-bold">Zoho</th>
-                <th className="p-3 text-center text-white/60 font-bold">FreshBooks</th>
+                <th className="p-3 text-center text-muted-foreground font-bold">Odoo</th>
+                <th className="p-3 text-center text-muted-foreground font-bold">Zoho</th>
+                <th className="p-3 text-center text-muted-foreground font-bold">FreshBooks</th>
               </tr>
             </thead>
             <tbody>
               {COMPARISON_FEATURES.map((row) => (
-                <tr key={row.featureAr} className="border-b border-white/[0.06]">
-                  <td className="p-3 font-bold text-white/80">{row.featureAr}</td>
-                  <td className="p-3 text-center text-[#6ee7b7] font-bold comparison-garfix">{row.garfix}</td>
-                  <td className="p-3 text-center text-white/50">{row.odoo}</td>
-                  <td className="p-3 text-center text-white/50">{row.zoho}</td>
-                  <td className="p-3 text-center text-white/50">{row.freshbooks}</td>
+                <tr key={row.featureAr} className="border-b border-border">
+                  <td className="p-3 font-bold text-foreground/80">{row.featureAr}</td>
+                  <td className="p-3 text-center text-emerald-600 dark:text-[#6ee7b7] font-bold comparison-garfix">{row.garfix}</td>
+                  <td className="p-3 text-center text-muted-foreground">{row.odoo}</td>
+                  <td className="p-3 text-center text-muted-foreground">{row.zoho}</td>
+                  <td className="p-3 text-center text-muted-foreground">{row.freshbooks}</td>
                 </tr>
               ))}
             </tbody>
@@ -469,7 +474,7 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
           <h2 className="text-[clamp(28px,4vw,40px)] font-black mb-3 landing-section-title">
             يثقون بنا
           </h2>
-          <p className="text-white/60 text-base">
+          <p className="text-muted-foreground text-base">
             آراء عملائنا (بيانات تجريبية — ستُحدّث بآراء عملاء حقيقيين)
           </p>
         </div>
@@ -483,10 +488,10 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
                       <Star key={j} size={14} className="text-[#fbbf24] fill-[#fbbf24]" />
                     ))}
                   </div>
-                  <p className="text-[13px] text-white/80 leading-relaxed mb-4">&ldquo;{t.quote}&rdquo;</p>
+                  <p className="text-[13px] text-foreground/80 leading-relaxed mb-4">&ldquo;{t.quote}&rdquo;</p>
                   <div className="text-[13px] font-bold">{t.name}</div>
-                  <div className="text-[11px] text-white/50">{t.type}</div>
-                  <div className="text-[9px] text-white/30 mt-1">عميل تجريبي</div>
+                  <div className="text-[11px] text-muted-foreground/70">{t.type}</div>
+                  <div className="text-[9px] text-muted-foreground/40 mt-1">عميل تجريبي</div>
                 </CardContent>
               </Card>
             </div>
@@ -508,10 +513,10 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
           <Accordion type="single" collapsible className="flex flex-col gap-3">
             {FAQ_ITEMS.map((faq) => (
               <AccordionItem key={faq.q} value={`faq-${faq.q}`} className="rounded-lg landing-card border-none px-5">
-                <AccordionTrigger className="text-[15px] font-bold text-white outline-none hover:no-underline [&[data-state=open]]:text-[#6ee7b7]">
+                <AccordionTrigger className="text-[15px] font-bold text-foreground outline-none hover:no-underline [&[data-state=open]]:text-emerald-600 dark:[&[data-state=open]]:text-[#6ee7b7]">
                   {faq.q}
                 </AccordionTrigger>
-                <AccordionContent className="text-[13px] text-white/70 leading-relaxed">
+                <AccordionContent className="text-[13px] text-muted-foreground/80 leading-relaxed">
                   {faq.a}
                 </AccordionContent>
               </AccordionItem>
@@ -528,7 +533,7 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
           <h2 className="text-[clamp(28px,4vw,40px)] font-black mb-4 landing-section-title">
             جاهز لتحويل أعمالك؟
           </h2>
-          <p className="text-white/70 text-base mb-8 max-w-[540px] mx-auto">
+          <p className="text-muted-foreground text-base mb-8 max-w-[540px] mx-auto">
             انضم لمئات الشركات التي تدير أعمالها بكفاءة مع GARFIX. ابدأ تجربتك المجانية اليوم — لا حاجة لبطاقة ائتمان.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
@@ -541,7 +546,7 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
             </button>
             <button
               onClick={onLogin}
-              className="bg-transparent text-white/85 border border-white/20 rounded-lg px-8 py-4 text-base font-bold cursor-pointer transition-all hover:bg-white/5 inline-flex items-center gap-2 max-md:min-h-[44px]"
+              className="bg-transparent text-foreground/85 border border-border rounded-lg px-8 py-4 text-base font-bold cursor-pointer transition-all hover:bg-muted inline-flex items-center gap-2 max-md:min-h-[44px]"
             >
               <ArrowRight size={18} className="rotate-180" />
               تسجيل الدخول
@@ -549,7 +554,7 @@ function EnhancedLandingPage({ onLogin, onRegister }: EnhancedLandingPageProps) 
           </div>
 
           {/* PWA Install Hint */}
-          <div className="mt-8 flex items-center justify-center gap-2 text-white/40 text-[12px]">
+          <div className="mt-8 flex items-center justify-center gap-2 text-muted-foreground/50 text-[12px]">
             <Download size={14} />
             <span>تثبيت كتطبيق PWA على الموبايل — يعمل بدون اتصال</span>
           </div>

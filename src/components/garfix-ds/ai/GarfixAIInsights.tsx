@@ -59,17 +59,17 @@ const insightTypeConfig: Record<AIInsight["type"], { icon: React.ElementType; co
   anomaly_detection: {
     icon: AlertTriangle,
     color: "text-amber-500",
-    bg: "bg-amber-500/10",
+    bg: "bg-cardmber-500/10",
   },
   trend_prediction: {
     icon: TrendingUp,
     color: "text-emerald-500",
-    bg: "bg-emerald-500/10",
+    bg: "bg-mutedmerald-500/10",
   },
   optimization_suggestion: {
     icon: Zap,
     color: "text-blue-500",
-    bg: "bg-blue-500/10",
+    bg: "bg-mutedackgroundlue-500/10",
   },
   alert: {
     icon: AlertTriangle,

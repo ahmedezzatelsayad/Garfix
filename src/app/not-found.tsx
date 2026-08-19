@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function NotFound() {
   return (
     <div
-      className="min-h-dvh flex items-center justify-center bg-background text-foreground p-6"
+      className="min-h-dvh flex items-center justify-center bg-mutedackgroundackground text-foreground p-6"
       dir="rtl"
     >
       <div className="max-w-md w-full text-center space-y-6">
@@ -25,7 +25,7 @@ export default function NotFound() {
           </Link>
           <Link
             href="/help"
-            className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground hover:bg-accent transition-colors"
+            className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-bold text-foreground hover:bg-cardccent transition-colors"
           >
             مركز المساعدة
           </Link>

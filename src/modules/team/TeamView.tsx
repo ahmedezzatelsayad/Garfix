@@ -59,7 +59,7 @@ function permSummary(perms: Record<string, number>, role: string, isFounder?: bo
 }
 
 /* DS v4.0 Design System Classes */
-const inputStyle = "w-full py-[9px] px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring max-md:min-h-[44px]"; // focus-ring added per DS v4.0
+const inputStyle = "w-full py-[9px] px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus-ring max-md:min-h-[44px]"; // focus-ring added per DS v4.0
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 const thStyle = "text-start px-3 py-2.5 text-[11px] text-muted-foreground font-semibold";
 const tdStyle = "px-3 py-2.5 align-middle";
@@ -197,7 +197,7 @@ export function TeamView() {
                 {pageMembers.map((m) => {
                   const checked = selectedIds.has(m.uid);
                   return (
-                    <tr key={m.uid} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
+                    <tr key={m.uid} className={cn("border-b border-border", checked ? "bg-cardccent" : "bg-transparent")}>
                       <td className="px-2 py-2.5 text-center">
                         <input type="checkbox" checked={checked} onChange={() => toggleRow(m.uid)} disabled={m.isFounder} className={cn("w-4 h-4", m.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")} aria-label={`تحديد ${m.displayName}`} />
                       </td>
@@ -217,7 +217,7 @@ export function TeamView() {
                       </td>
                       <td className={tdStyle}>
                         <span
-                          className={cn("inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold", m.role === "admin" ? "bg-emerald-500/20 text-emerald-400" : "bg-muted text-muted-foreground")}
+                          className={cn("inline-flex items-center gap-1 py-0.5 px-2.5 rounded-full text-[11px] font-bold", m.role === "admin" ? "bg-mutedmerald-500/20 text-emerald-400" : "bg-muted text-muted-foreground")}
                         >
                           {ROLE_LABEL[m.role] || m.role}
                         </span>
@@ -251,7 +251,7 @@ export function TeamView() {
             {pageMembers.map((m) => {
               const checked = selectedIds.has(m.uid);
               return (
-                <div key={m.uid} className={cn("p-3 flex flex-col gap-3 hover-lift duration-120", checked ? "bg-accent" : "bg-transparent")}>
+                <div key={m.uid} className={cn("p-3 flex flex-col gap-3 hover-lift duration-120", checked ? "bg-cardccent" : "bg-transparent")}>
                   <div className="flex items-center justify-between gap-2">
                     <label className="flex items-center gap-2 min-h-[44px]">
                       <input type="checkbox" checked={checked} onChange={() => toggleRow(m.uid)} disabled={m.isFounder} className={cn("w-4 h-4", m.isFounder ? "cursor-not-allowed opacity-40" : "cursor-pointer")} aria-label={`تحديد ${m.displayName}`} />
@@ -390,7 +390,7 @@ function InviteDialog({
               <div className="text-xs text-muted-foreground flex flex-col gap-1.5">
                 <div>البريد: <span dir="ltr">{result.email}</span></div>
                 <div>كلمة المرور المؤقتة:</div>
-                <div className="[direction:ltr] text-center p-2.5 rounded-sm bg-background border border-dashed border-border font-mono text-sm font-bold tracking-wider">
+                <div className="[direction:ltr] text-center p-2.5 rounded-sm bg-mutedackgroundackground border border-dashed border-border font-mono text-sm font-bold tracking-wider">
                   {result.temporaryPassword}
                 </div>
                 <div className="text-[11px] text-muted-foreground">
@@ -552,7 +552,7 @@ function PermEditor({
   return (
     <div>
       <label className={labelStyle}>الصلاحيات التفصيلية</label>
-      <div className="bg-background border border-border rounded-md p-2.5 flex flex-col gap-2.5">
+      <div className="bg-mutedackgroundackground border border-border rounded-md p-2.5 flex flex-col gap-2.5">
         {Object.entries(groups).map(([group, items]) => (
           <div key={group}>
             <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-1.5">{group}</div>
@@ -599,7 +599,7 @@ function DialogShell({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 bg-black/55 backdrop-blur-[4px] z-[1000] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-mutedackgroundlack/55 backdrop-blur-[4px] z-[1000] flex items-center justify-center p-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}

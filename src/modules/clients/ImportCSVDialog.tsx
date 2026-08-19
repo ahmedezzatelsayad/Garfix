@@ -112,7 +112,7 @@ export function ImportCSVDialog({ companySlug, open, onClose }: ImportCSVDialogP
   if (!open) return null;
 
   return (
-    <div onClick={onClose} className="fixed inset-0 bg-black/55 backdrop-blur-[4px] z-[1000] flex items-center justify-center p-4">
+    <div onClick={onClose} className="fixed inset-0 bg-mutedackgroundlack/55 backdrop-blur-[4px] z-[1000] flex items-center justify-center p-4">
       <div onClick={(e) => e.stopPropagation()} className="w-full md:max-w-[720px] max-h-[90vh] overflow-y-auto bg-card border border-border rounded-[16px] p-5 shadow-brand-xl glass-strong garfix-scroll">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-[16px] font-extrabold flex items-center gap-2">
@@ -122,7 +122,7 @@ export function ImportCSVDialog({ companySlug, open, onClose }: ImportCSVDialogP
             <X size={18} />
           </button>
         </div>
-        <div className="py-2.5 px-3 bg-emerald-500/10 border border-emerald-500/30 rounded-[10px] text-[11px] text-emerald-400 mb-3">
+        <div className="py-2.5 px-3 bg-mutedmerald-500/10 border border-emerald-500/30 rounded-[10px] text-[11px] text-emerald-400 mb-3">
           تنسيق الملف: عمود رأس باسم name,email,phone,company,address — ثم صف لكل عميل.
         </div>
         <input type="file" accept=".csv" onChange={onFile} className="mb-3 font-sans text-[12px]" />
@@ -141,7 +141,7 @@ export function ImportCSVDialog({ companySlug, open, onClose }: ImportCSVDialogP
                 </tr></thead>
                 <tbody>
                   {parsed.slice(0, 100).map((r, i) => (
-                    <tr key={i} className={cn("border-b border-emerald-500/10", i % 2 === 0 ? "bg-emerald-500/5" : "bg-transparent")}>
+                    <tr key={i} className={cn("border-b border-emerald-500/10", i % 2 === 0 ? "bg-mutedmerald-500/5" : "bg-transparent")}>
                       <td className={tdSm}>{r.name}</td>
                       <td className={cn(tdSm, "[direction:ltr] text-end")}>{r.email || "—"}</td>
                       <td className={cn(tdSm, "[direction:ltr] text-end")}>{r.phone || "—"}</td>

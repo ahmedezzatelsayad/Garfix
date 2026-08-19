@@ -93,7 +93,7 @@ export function AINotificationCenter({
           <circle cx="12" cy="17" r="0.5" fill="currentColor"/>
         </svg>
       ),
-      bg: "bg-blue-50 dark:bg-blue-950/30",
+      bg: "bg-backgroundlue-50 dark:bg-backgroundlue-950/30",
       border: "border-blue-200 dark:border-blue-800",
       text: "text-blue-700 dark:text-blue-300",
     },
@@ -105,7 +105,7 @@ export function AINotificationCenter({
           <line x1="12" y1="17" x2="12.01" y2="17"/>
         </svg>
       ),
-      bg: "bg-amber-50 dark:bg-amber-950/30",
+      bg: "bg-cardmber-50 dark:bg-cardmber-950/30",
       border: "border-amber-200 dark:border-amber-800",
       text: "text-amber-700 dark:text-amber-300",
     },
@@ -197,7 +197,7 @@ export function AINotificationCenter({
                 <div
                   key={notification.id}
                   className={cn(
-                    "flex items-start gap-3 px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-accent/30 cursor-pointer",
+                    "flex items-start gap-3 px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-cardccent/30 cursor-pointer",
                     !notification.read && "bg-primary/5"
                   )}
                   onClick={() => onMarkRead?.(notification.id)}
@@ -493,7 +493,7 @@ export function AIMemoryContext({
       {/* Header - Always visible */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors"
+        className="w-full flex items-center justify-between p-4 hover:bg-cardccent/50 transition-colors"
       >
         <div className="flex items-center gap-3">
           <GarfixAIIcon size="sm" />
@@ -573,7 +573,7 @@ export function AIMemoryContext({
                   "size-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[10px]",
                   memory.role === "user"
                     ? "bg-primary text-primary-foreground"
-                    : "bg-gradient-to-br from-primary to-accent text-white"
+                    : "bg-gradient-to-br from-primary to-accent text-foreground"
                 )}>
                   {memory.role === "user" ? "أنت" : "AI"}
                 </div>
@@ -704,11 +704,11 @@ export function AIVoiceInput({
             "focus-ring active-press",
             isListening
               ? [
-                  "bg-red-500 text-white shadow-lg shadow-red-500/30",
+                  "bg-red-500 text-foreground shadow-lg shadow-red-500/30",
                   "animate-pulse-slow"
                 ]
               : [
-                  "gradient-primary text-white shadow-brand-md hover:shadow-brand-lg hover:scale-105",
+                  "gradient-primary text-foreground shadow-brand-md hover:shadow-brand-lg hover:scale-105",
                   "disabled:opacity-50 disabled:cursor-not-allowed"
                 ]
           )}

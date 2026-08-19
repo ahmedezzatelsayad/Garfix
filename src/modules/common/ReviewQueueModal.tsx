@@ -114,7 +114,7 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 z-[340] flex items-center justify-center p-5"
+      className="fixed inset-0 bg-mutedackgroundlack/60 z-[340] flex items-center justify-center p-5"
       onClick={onClose}
     >
       <div
@@ -126,7 +126,7 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
           <div className="flex items-center gap-2">
             <ListChecks size={18} className="text-emerald-400" />
             <h2 className="text-[16px] font-extrabold">{title}</h2>
-            <span className="text-[11px] text-muted-foreground bg-accent px-2 py-0.5 rounded-full">
+            <span className="text-[11px] text-muted-foreground bg-cardccent px-2 py-0.5 rounded-full">
               {items.length} عنصر
             </span>
           </div>
@@ -157,7 +157,7 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
               {items.map((it) => (
                 <li
                   key={it.id}
-                  className="rounded-[10px] border border-border bg-background p-3 flex flex-col gap-2 hover-lift duration-120 transition-shadow"
+                  className="rounded-[10px] border border-border bg-mutedackgroundackground p-3 flex flex-col gap-2 hover-lift duration-120 transition-shadow"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -202,7 +202,7 @@ export function ReviewQueueModal({ companySlug, onClose }: Props) {
                       <button
                         onClick={() => handleConfirm(it)}
                         disabled={confirmingId === it.id || !it.matchedProductId || confirmMutation.isPending}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-500/40 rounded-sm py-1 px-2.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active-press duration-150 transition-colors"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-mutedmerald-600 hover:bg-mutedmerald-700 border border-emerald-500/40 rounded-sm py-1 px-2.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active-press duration-150 transition-colors"
                         title={it.matchedProductId ? "تأكيد التطابق وحفظ الاسم البديل (يتعلم النظام)" : "لا يوجد منتج للتأكيد"}
                       >
                         <Check size={12} />

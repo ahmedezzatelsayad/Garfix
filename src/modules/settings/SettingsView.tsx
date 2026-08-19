@@ -85,7 +85,7 @@ export function SettingsView({ activeCompany, onUpdated }: SettingsViewProps) {
             </h1>
             <p className="text-[13px] text-muted-foreground flex items-center gap-1.5">
               <span>{activeCompany.nameAr || activeCompany.name}</span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-mutedmerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
                 <CheckCircle2 size={10} />
                 نشط
               </span>
@@ -120,7 +120,7 @@ export function SettingsView({ activeCompany, onUpdated }: SettingsViewProps) {
                 "focus-ring",
                 isActive
                   ? "bg-primary text-primary-foreground shadow-brand-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background hover:shadow-brand-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-mutedackgroundackground hover:shadow-brand-xs"
               )}
             >
               <Icon size={16} />

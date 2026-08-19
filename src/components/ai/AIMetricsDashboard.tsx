@@ -100,21 +100,21 @@ interface AIMetricsData {
 
 // ============== Constants ==============
 const HEALTH_COLORS = {
-  healthy: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-800' },
-  degraded: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-800' },
+  healthy: { bg: 'bg-mutedmerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-mutedmerald-100 text-emerald-800' },
+  degraded: { bg: 'bg-cardmber-50', border: 'border-amber-200', text: 'text-amber-700', badge: 'bg-cardmber-100 text-amber-800' },
   critical: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', badge: 'bg-red-100 text-red-800' },
   unknown: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', badge: 'bg-gray-100 text-gray-800' }
 };
 
 const CIRCUIT_BADGE = {
-  closed: { variant: 'default' as const, label: 'Active', className: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100' },
+  closed: { variant: 'default' as const, label: 'Active', className: 'bg-mutedmerald-100 text-emerald-800 hover:bg-mutedmerald-100' },
   open: { variant: 'default' as const, label: 'Isolated', className: 'bg-red-100 text-red-800 hover:bg-red-100' },
-  'half-open': { variant: 'default' as const, label: 'Testing', className: 'bg-amber-100 text-amber-800 hover:bg-amber-100' }
+  'half-open': { variant: 'default' as const, label: 'Testing', className: 'bg-cardmber-100 text-amber-800 hover:bg-cardmber-100' }
 };
 
 const SEVERITY_STYLES = {
-  info: { icon: 'ℹ️', color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
-  warning: { icon: '⚠️', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
+  info: { icon: 'ℹ️', color: 'text-blue-600', bg: 'bg-mutedackgroundlue-50 border-blue-200' },
+  warning: { icon: '⚠️', color: 'text-amber-600', bg: 'bg-cardmber-50 border-amber-200' },
   error: { icon: '❌', color: 'text-red-600', bg: 'bg-red-50 border-red-200' },
   critical: { icon: '🚨', color: 'text-red-700', bg: 'bg-red-100 border-red-300 font-bold' }
 };
@@ -307,8 +307,8 @@ const generateMockMetrics = (): AIMetricsData => ({
 function StatusIndicator({ status, size = 'sm' }: { status: 'healthy' | 'degraded' | 'critical' | 'unknown'; size?: 'sm' | 'md' }) {
   const sizeClasses = size === 'sm' ? 'w-2 h-2' : 'w-3 h-3';
   const colors = {
-    healthy: 'bg-emerald-500',
-    degraded: 'bg-amber-500',
+    healthy: 'bg-mutedmerald-500',
+    degraded: 'bg-cardmber-500',
     critical: 'bg-red-500',
     unknown: 'bg-gray-400'
   };
@@ -655,7 +655,7 @@ export function AIMetricsDashboard() {
         <div className={`p-4 rounded-lg border ${
           unacknowledgedAlerts.some(a => a.severity === 'critical')
             ? 'bg-red-50 border-red-200'
-            : 'bg-amber-50 border-amber-200'
+            : 'bg-cardmber-50 border-amber-200'
         }`}>
           <div className="flex items-center gap-2 mb-2">
             <Bell className="h-4 w-4" />
@@ -825,8 +825,8 @@ export function AIMetricsDashboard() {
                         <div 
                           className={`h-full rounded transition-all sparkline-gold ${
                             key.rpmUsed >= key.rpmLimit * 0.8 ? 'bg-red-500' :
-                            key.rpmUsed >= key.rpmLimit * 0.5 ? 'bg-amber-500' :
-                            'bg-emerald-500'
+                            key.rpmUsed >= key.rpmLimit * 0.5 ? 'bg-cardmber-500' :
+                            'bg-mutedmerald-500'
                           }`}
                           style={{ width: `${(key.rpmUsed / key.rpmLimit) * 100}%` }}
                         />

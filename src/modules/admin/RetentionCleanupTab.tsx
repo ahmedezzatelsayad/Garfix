@@ -132,7 +132,7 @@ export function RetentionCleanupTab() {
         </div>
 
         {!preview.dryRun && deletedTotal > 0 && (
-          <div className="px-3.5 py-2.5 bg-emerald-500/10 rounded-lg text-xs text-emerald-500 font-bold flex items-center gap-1.5">
+          <div className="px-3.5 py-2.5 bg-mutedmerald-500/10 rounded-lg text-xs text-emerald-500 font-bold flex items-center gap-1.5">
             <Check size={14} /> تم تنفيذ التنظيف بنجاح — حُذف {deletedTotal} سجل نهائياً.
           </div>
         )}

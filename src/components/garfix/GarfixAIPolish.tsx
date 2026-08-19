@@ -88,7 +88,7 @@ export function AICelebration({
       className
     )}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-backgroundlack/20 backdrop-blur-sm" />
       
       {/* Content */}
       <div className={cn(
@@ -322,7 +322,7 @@ export function AIOnboardingTour({
       className
     )}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onSkip} />
+      <div className="absolute inset-0 bg-backgroundlack/40 backdrop-blur-sm" onClick={onSkip} />
 
       {/* Tour Card */}
       <div className="relative bg-card rounded-2xl shadow-brand-xl border max-w-md w-full animate-slide-up">

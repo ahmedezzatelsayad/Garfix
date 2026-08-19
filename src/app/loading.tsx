@@ -6,7 +6,7 @@
 export default function Loading() {
   return (
     <div
-      className="min-h-dvh flex items-center justify-center bg-[#0b1220]"
+      className="min-h-dvh flex items-center justify-center bg-background"
       dir="rtl"
     >
       <div className="h-10 w-10 rounded-full border-2 border-emerald-500/20 border-t-emerald-500 animate-spin" />

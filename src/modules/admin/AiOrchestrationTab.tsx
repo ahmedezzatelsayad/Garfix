@@ -90,7 +90,7 @@ export function AiOrchestrationTab() {
   const healthClass = (s: number) => s >= 7 ? "text-emerald-500" : s >= 4 ? "text-amber-500" : "text-red-500";
   const tierBadge = (tier: string) => tier === "free"
     ? { bg: "bg-green-100", fg: "text-green-600", label: "مجاني" }
-    : { bg: "bg-amber-100", fg: "text-amber-600", label: "مدفوع" };
+    : { bg: "bg-cardmber-100", fg: "text-amber-600", label: "مدفوع" };
   const capLabel: Record<string, string> = {
     chat: "محادثة", "invoice-extraction": "استخراج الفواتير", reasoning: "استدلال", vision: "رؤية",
   };
@@ -116,7 +116,7 @@ export function AiOrchestrationTab() {
           className={`inline-flex items-center gap-2 px-4.5 py-2.5 rounded-[10px] border border-[var(--border)] font-inherit text-[13px] font-bold ${
             running
               ? "bg-[var(--muted)] text-[var(--muted-foreground)] cursor-not-allowed opacity-70"
-              : "bg-emerald-600 text-white cursor-pointer active-press"
+              : "bg-mutedmerald-600 text-white cursor-pointer active-press"
           }`}
         >
           {running ? <RefreshCw size={15} className="animate-spin" /> : <Zap size={15} />}

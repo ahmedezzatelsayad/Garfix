@@ -238,7 +238,7 @@ export function GarfixLoadingState({
     return (
       <div
         className={cn(
-          "fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm",
+          "fixed inset-0 z-50 flex items-center justify-center bg-mutedackgroundackground/80 backdrop-blur-sm",
           className
         )}
         role="alert"
@@ -305,7 +305,7 @@ export function GarfixErrorState({
         return {
           icon: AlertTriangle,
           color: "text-amber-500",
-          bgColor: "bg-amber-500/5",
+          bgColor: "bg-cardmber-500/5",
           borderColor: "border-amber-500/20",
           titleColor: "text-amber-600 dark:text-amber-400",
         }
@@ -455,7 +455,7 @@ export function GarfixOfflineState({
       )}
       role="alert"
     >
-      <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-amber-500/10">
+      <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-cardmber-500/10">
         <WifiOff className="size-8 text-amber-500" strokeWidth={1.5} />
       </div>
       
@@ -535,7 +535,7 @@ export function GarfixMaintenanceState({
         {[...Array(5)].map((_, i) => (
           <div
             key={i}
-            className="size-1.5 rounded-full bg-foreground animate-pulse"
+            className="size-1.5 rounded-full bg-cardoreground animate-pulse"
             style={{ animationDelay: `${i * 150}ms` }}
           />
         ))}

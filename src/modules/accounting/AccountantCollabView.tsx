@@ -32,10 +32,10 @@ type ExportType = "trial_balance" | "general_ledger" | "journal_entries" | "full
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2.5 px-3 text-[13px]";
 // DS v4.0: Added focus-ring for form inputs
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 // DS v4.0: Added focus-ring for selects
-const selectStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none cursor-pointer focus-ring";
+const selectStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none cursor-pointer focus-ring";
 
 function Empty({ label }: { label: string }) {
   return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
@@ -339,10 +339,10 @@ export function AccountantCollabView() {
                           {/* DS v4.0: Action badges with emerald theme */}
                           <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", 
                             e.action === "create" ? "bg-[#047857]/15 text-[#047857]" : 
-                            e.action === "update" ? "bg-blue-500/15 text-blue-500" : 
+                            e.action === "update" ? "bg-mutedackgroundlue-500/15 text-blue-500" : 
                             e.action === "delete" ? "bg-red-500/15 text-red-500" : 
                             e.action === "approve" ? "bg-[#d4a574]/15 text-[#d4a574]" :
-                            "bg-amber-500/15 text-amber-500"
+                            "bg-cardmber-500/15 text-amber-500"
                           )}>{e.action === "create" ? "إنشاء" : e.action === "update" ? "تعديل" : e.action === "delete" ? "حذف" : e.action === "approve" ? "اعتماد" : e.action === "reverse" ? "عكس" : e.action}</span>
                         </td>
                         <td className={tdStyle}>{e.entity}{e.entityId ? ` #${e.entityId}` : ""}</td>

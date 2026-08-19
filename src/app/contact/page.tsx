@@ -92,7 +92,7 @@ export default function ContactPage() {
       subtitle="نحن هنا لمساعدتك — تواصل معنا بأي طريقة تناسبك"
       icon={<Mail size={28} />}
     >
-      <div className="space-y-10 text-white/80 text-[15px] leading-[1.9]">
+      <div className="space-y-10 text-foreground/80 text-[15px] leading-[1.9]">
         {/* طرق التواصل */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {CONTACT_METHODS.map((method) => (
@@ -101,15 +101,15 @@ export default function ContactPage() {
               href={method.action}
               target={method.action.startsWith("http") ? "_blank" : undefined}
               rel={method.action.startsWith("http") ? "noopener noreferrer" : undefined}
-              className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 flex gap-4 items-start no-underline hover:bg-white/[0.06] transition-all group"
+              className="bg-muted border border-border rounded-xl p-5 flex gap-4 items-start no-underline hover:bg-emerald-500/5 transition-all group"
             >
-              <div className="w-11 h-11 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 group-hover:bg-emerald-500/30 transition-all">
+              <div className="w-11 h-11 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-500 dark:text-emerald-400 shrink-0 group-hover:bg-emerald-500/30 transition-all">
                 {method.icon}
               </div>
               <div>
-                <div className="font-bold text-white text-sm mb-0.5">{method.title}</div>
-                <div className="text-emerald-400 text-sm font-bold mb-1">{method.detail}</div>
-                <div className="text-white/50 text-[12px]">{method.desc}</div>
+                <div className="font-bold text-foreground text-sm mb-0.5">{method.title}</div>
+                <div className="text-emerald-500 dark:text-emerald-400 text-sm font-bold mb-1">{method.detail}</div>
+                <div className="text-muted-foreground/70 text-[12px]">{method.desc}</div>
               </div>
             </a>
           ))}
@@ -117,10 +117,10 @@ export default function ContactPage() {
 
         {/* ساعات العمل */}
         <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-5 flex items-center gap-4">
-          <Clock size={22} className="text-emerald-400 shrink-0" />
+          <Clock size={22} className="text-emerald-500 dark:text-emerald-400 shrink-0" />
           <div>
-            <div className="font-bold text-white text-sm mb-0.5">ساعات العمل</div>
-            <div className="text-white/60 text-[13px]">
+            <div className="font-bold text-foreground text-sm mb-0.5">ساعات العمل</div>
+            <div className="text-muted-foreground text-[13px]">
               الأحد - الخميس: 9:00 صباحاً - 6:00 مساءً (توقيت الكويت) | الجمعة - السبت: دعم الطوارئ فقط
             </div>
           </div>
@@ -128,7 +128,7 @@ export default function ContactPage() {
 
         {/* نموذج التواصل */}
         <div>
-          <h2 className="text-xl font-extrabold text-white mb-5">أرسل لنا رسالة</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-5">أرسل لنا رسالة</h2>
           {submitted && (
             <div
               // FE-09 FIX (Audit v2 · Phase 2): role="status" so AT announces
@@ -145,7 +145,7 @@ export default function ContactPage() {
               <div>
                 <label
                   htmlFor={nameId}
-                  className="block text-white/70 text-sm font-bold mb-1.5"
+                  className="block text-muted-foreground/90 text-sm font-bold mb-1.5"
                 >الاسم الكامل</label>
                 <input
                   id={nameId}
@@ -153,7 +153,7 @@ export default function ContactPage() {
                   value={formData.name}
                   onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
                   required
-                  className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors"
+                  className="w-full px-4 py-3 rounded-lg bg-muted border border-border text-foreground text-sm outline-none focus-ring focus:border-emerald-500 transition-colors"
                   placeholder="أدخل اسمك"
                   dir="rtl"
                   // FE-16 FIX (Audit v2 · Phase 3): aria-invalid + describedby
@@ -170,7 +170,7 @@ export default function ContactPage() {
               <div>
                 <label
                   htmlFor={emailId}
-                  className="block text-white/70 text-sm font-bold mb-1.5"
+                  className="block text-muted-foreground/90 text-sm font-bold mb-1.5"
                 >البريد الإلكتروني</label>
                 <input
                   id={emailId}
@@ -178,7 +178,7 @@ export default function ContactPage() {
                   value={formData.email}
                   onChange={(e) => setFormData((p) => ({ ...p, email: e.target.value }))}
                   required
-                  className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors"
+                  className="w-full px-4 py-3 rounded-lg bg-muted border border-border text-foreground text-sm outline-none focus-ring focus:border-emerald-500 transition-colors"
                   placeholder="example@email.com"
                   dir="ltr"
                   // FE-16 FIX (Audit v2 · Phase 3): aria-invalid + describedby.
@@ -195,25 +195,25 @@ export default function ContactPage() {
             <div>
               <label
                 htmlFor={subjectId}
-                className="block text-white/70 text-sm font-bold mb-1.5"
+                className="block text-muted-foreground/90 text-sm font-bold mb-1.5"
               >الموضوع</label>
               <select
                 id={subjectId}
                 value={formData.subject}
                 onChange={(e) => setFormData((p) => ({ ...p, subject: e.target.value }))}
                 required
-                className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors appearance-none"
+                className="w-full px-4 py-3 rounded-lg bg-muted border border-border text-foreground text-sm outline-none focus-ring focus:border-emerald-500 transition-colors appearance-none"
                 // FE-16 FIX (Audit v2 · Phase 3): aria-invalid + describedby.
                 aria-invalid={tried && !!fieldErrors.subject}
                 aria-describedby={tried && fieldErrors.subject ? subjectErrId : undefined}
               >
-                <option value="" className="bg-[#1a1035]">اختر الموضوع</option>
-                <option value="support" className="bg-[#1a1035]">دعم فني</option>
-                <option value="billing" className="bg-[#1a1035]">استفسار عن الفوترة</option>
-                <option value="sales" className="bg-[#1a1035]">المبيعات والاشتراكات</option>
-                <option value="partnership" className="bg-[#1a1035]">شراكة تجارية</option>
-                <option value="feedback" className="bg-[#1a1035]">ملاحظات واقتراحات</option>
-                <option value="other" className="bg-[#1a1035]">أخرى</option>
+                <option value="" className="bg-popover">اختر الموضوع</option>
+                <option value="support" className="bg-popover">دعم فني</option>
+                <option value="billing" className="bg-popover">استفسار عن الفوترة</option>
+                <option value="sales" className="bg-popover">المبيعات والاشتراكات</option>
+                <option value="partnership" className="bg-popover">شراكة تجارية</option>
+                <option value="feedback" className="bg-popover">ملاحظات واقتراحات</option>
+                <option value="other" className="bg-popover">أخرى</option>
               </select>
               {tried && fieldErrors.subject && (
                 <p id={subjectErrId} role="alert" className="text-red-400 text-xs mt-1">
@@ -224,7 +224,7 @@ export default function ContactPage() {
             <div>
               <label
                 htmlFor={messageId}
-                className="block text-white/70 text-sm font-bold mb-1.5"
+                className="block text-muted-foreground/90 text-sm font-bold mb-1.5"
               >الرسالة</label>
               <textarea
                 id={messageId}
@@ -232,7 +232,7 @@ export default function ContactPage() {
                 onChange={(e) => setFormData((p) => ({ ...p, message: e.target.value }))}
                 required
                 rows={5}
-                className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors resize-y"
+                className="w-full px-4 py-3 rounded-lg bg-muted border border-border text-foreground text-sm outline-none focus-ring focus:border-emerald-500 transition-colors resize-y"
                 placeholder="اكتب رسالتك هنا..."
                 dir="rtl"
                 // FE-16 FIX (Audit v2 · Phase 3): aria-invalid + describedby.

@@ -132,7 +132,7 @@ export function OnboardingTour() {
   const progress = ((step + 1) / TOUR_STEPS.length) * 100;
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label="جولة تعريفية">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-mutedackgroundlack/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label="جولة تعريفية">
       {/* Skip backdrop click */}
       <div className="absolute inset-0" onClick={handleSkip} />
 
@@ -142,7 +142,7 @@ export function OnboardingTour() {
         style={{ background: "rgba(17, 24, 39, 0.95)", backdropFilter: "blur(16px)" }}
       >
         {/* Progress bar */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-elevated">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-mutedlevated">
           <div
             className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-300"
             style={{ width: `${progress}%` }}

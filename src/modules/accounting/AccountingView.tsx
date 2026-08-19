@@ -277,11 +277,11 @@ export function AccountingView() {
   if (!activeCompany) return <div className="p-8 md:p-12 text-center text-muted-foreground">اختر شركة</div>;
 
   const ACCOUNT_TYPES: Record<string, { label: string; color: string; badge: string }> = {
-    asset: { label: "أصول", color: "#10b981", badge: "bg-emerald-500/15 text-emerald-500" },
+    asset: { label: "أصول", color: "#10b981", badge: "bg-mutedmerald-500/15 text-emerald-500" },
     liability: { label: "خصوم", color: "#ef4444", badge: "bg-red-500/15 text-red-500" },
-    equity: { label: "حقوق ملكية", color: "#047857", badge: "bg-emerald-600/15 text-emerald-600" },
-    revenue: { label: "إيرادات", color: "#3b82f6", badge: "bg-blue-500/15 text-blue-500" },
-    expense: { label: "مصروفات", color: "#f59e0b", badge: "bg-amber-500/15 text-amber-500" },
+    equity: { label: "حقوق ملكية", color: "#047857", badge: "bg-mutedmerald-600/15 text-emerald-600" },
+    revenue: { label: "إيرادات", color: "#3b82f6", badge: "bg-mutedackgroundlue-500/15 text-blue-500" },
+    expense: { label: "مصروفات", color: "#f59e0b", badge: "bg-cardmber-500/15 text-amber-500" },
     contra_revenue: { label: "مقابل إيرادات", color: "#9ca3af", badge: "bg-gray-400/15 text-gray-400" },
     contra_asset: { label: "مقابل أصول", color: "#9ca3af", badge: "bg-gray-400/15 text-gray-400" },
   };
@@ -330,7 +330,7 @@ export function AccountingView() {
                 "py-2.5 px-4 rounded-[10px] text-[13px] font-bold cursor-pointer inline-flex items-center gap-2 transition-colors",
                 active
                   ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-card text-muted-foreground border border-border hover:bg-accent hover:text-accent-foreground",
+                  : "bg-card text-muted-foreground border border-border hover:bg-cardccent hover:text-accent-foreground",
               )}
             >
               <Icon size={16} />
@@ -430,7 +430,7 @@ export function AccountingView() {
                               const t = ACCOUNT_TYPES[a.type] || { label: a.type, color: "#999", badge: "bg-gray-400/15 text-gray-400" };
                               const checked = selectedIds.has(a.id);
                               return (
-                                <tr key={a.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
+                                <tr key={a.id} className={cn("border-b border-border", checked ? "bg-cardccent" : "bg-transparent")}>
                                   <td className={tdCheck(checked)}><input type="checkbox" checked={checked} onChange={() => toggleRow(a.id)} className="cursor-pointer w-4 h-4" aria-label={`تحديد ${a.nameAr}`} /></td>
                                   <td className={cn(tdStyle, "font-mono")}>{a.code}</td>
                                   <td className={cn(tdStyle, "font-bold")}>{a.nameAr}</td>
@@ -455,17 +455,17 @@ export function AccountingView() {
                               const checked = selectedIds.has(e.id);
                               const canReverse = e.status === "posted";
                               return (
-                                <tr key={e.id} className={cn("border-b border-border", checked ? "bg-accent" : "bg-transparent")}>
+                                <tr key={e.id} className={cn("border-b border-border", checked ? "bg-cardccent" : "bg-transparent")}>
                                   <td className={tdCheck(checked)}><input type="checkbox" checked={checked} onChange={() => toggleRow(e.id)} className="cursor-pointer w-4 h-4" aria-label="تحديد قيد" /></td>
                                   <td className={tdStyle}>{e.date}</td>
                                   <td className={cn(tdStyle, "font-bold")}>{e.description || "—"}</td>
                                   <td className={cn(tdStyle, "font-mono")}>{e.reference || "—"}</td>
-                                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", e.status === "posted" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{e.status === "posted" ? "مُرحّل" : e.status === "draft" ? "مسودة" : "معكوس"}</span></td>
+                                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", e.status === "posted" ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500")}>{e.status === "posted" ? "مُرحّل" : e.status === "draft" ? "مسودة" : "معكوس"}</span></td>
                                   <td className={tdStyle}>{e.lines?.length || 0}</td>
                                   <td className={tdStyle}>
                                     <div className="flex items-center gap-1.5">
                                       {tab === "journal" && (
-                                        <button onClick={() => handleReverse(e)} disabled={!canReverse || reversingId === e.id} title={canReverse ? "عكس القيد" : "لا يمكن العكس"} className={cn("inline-flex items-center justify-center w-7 h-7 rounded-md border border-border transition-colors", canReverse ? "hover:bg-amber-500/10 hover:border-amber-500/40 hover:text-amber-600 cursor-pointer" : "opacity-30 cursor-not-allowed")}>
+                                        <button onClick={() => handleReverse(e)} disabled={!canReverse || reversingId === e.id} title={canReverse ? "عكس القيد" : "لا يمكن العكس"} className={cn("inline-flex items-center justify-center w-7 h-7 rounded-md border border-border transition-colors", canReverse ? "hover:bg-cardmber-500/10 hover:border-amber-500/40 hover:text-amber-600 cursor-pointer" : "opacity-30 cursor-not-allowed")}>
                                           <RotateCcw size={13} className={reversingId === e.id ? "animate-spin" : ""} />
                                         </button>
                                       )}
@@ -494,10 +494,10 @@ export function AccountingView() {
 
           {/* Reverse confirmation dialog */}
           {reverseConfirm && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => reversingId === null && setReverseConfirm(null)}>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-mutedackgroundlack/50 backdrop-blur-sm p-4" onClick={() => reversingId === null && setReverseConfirm(null)}>
               <div className="bg-card border border-border rounded-[14px] shadow-xl max-w-md w-full p-5" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-start gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0"><RotateCcw size={18} /></div>
+                  <div className="w-10 h-10 rounded-full bg-cardmber-500/15 text-amber-600 flex items-center justify-center shrink-0"><RotateCcw size={18} /></div>
                   <div className="flex-1">
                     <h3 className="font-bold text-base">عكس القيد #{reverseConfirm.id}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{reverseConfirm.description || "بدون وصف"} • {reverseConfirm.date} • {reverseConfirm.lines?.length || 0} بند</p>
@@ -509,7 +509,7 @@ export function AccountingView() {
                 </div>
                 <div className="flex gap-2 justify-end">
                   <button onClick={() => setReverseConfirm(null)} disabled={reversingId !== null} className="px-4 py-2 rounded-md border border-border bg-transparent text-foreground text-sm font-semibold cursor-pointer disabled:opacity-50">إلغاء</button>
-                  <button onClick={confirmReverse} disabled={reversingId !== null} className="px-4 py-2 rounded-md bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"><RotateCcw size={14} className={reversingId !== null ? "animate-spin" : ""} />{reversingId !== null ? "جارٍ العكس…" : "تأكيد العكس"}</button>
+                  <button onClick={confirmReverse} disabled={reversingId !== null} className="px-4 py-2 rounded-md bg-cardmber-600 hover:bg-cardmber-700 text-white text-sm font-bold cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"><RotateCcw size={14} className={reversingId !== null ? "animate-spin" : ""} />{reversingId !== null ? "جارٍ العكس…" : "تأكيد العكس"}</button>
                 </div>
               </div>
             </div>
@@ -605,7 +605,7 @@ function FinancialDashboardApiView() {
           <label className="text-[11px] font-bold text-muted-foreground">إلى</label>
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={cn(inputStyle, "w-auto")} dir="ltr" />
         </div>
-        <button onClick={loadDashboard} disabled={loading} className="mr-auto py-2 px-4 rounded-sm bg-accent text-accent-foreground border border-border text-[12px] font-bold cursor-pointer disabled:opacity-70">
+        <button onClick={loadDashboard} disabled={loading} className="mr-auto py-2 px-4 rounded-sm bg-cardccent text-accent-foreground border border-border text-[12px] font-bold cursor-pointer disabled:opacity-70">
           {loading ? "جارٍ…" : "تحديث"}
         </button>
       </div>
@@ -678,7 +678,7 @@ function FinancialDashboard({ totalRevenue, totalExpenses, netProfit, totalAsset
             <div className="flex flex-col gap-1.5">
               <div className="text-[13px] font-bold">{currentPeriod.name}</div>
               <div className="text-[12px] text-muted-foreground">{currentPeriod.startDate} ← {currentPeriod.endDate}</div>
-              <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", currentPeriod.status === "open" ? "bg-emerald-500/15 text-emerald-500" : currentPeriod.status === "closed" ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-500")}>{currentPeriod.status === "open" ? "مفتوحة" : currentPeriod.status === "closed" ? "مقفلة" : "مؤقتة"}</span>
+              <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", currentPeriod.status === "open" ? "bg-mutedmerald-500/15 text-emerald-500" : currentPeriod.status === "closed" ? "bg-red-500/15 text-red-500" : "bg-cardmber-500/15 text-amber-500")}>{currentPeriod.status === "open" ? "مفتوحة" : currentPeriod.status === "closed" ? "مقفلة" : "مؤقتة"}</span>
             </div>
           ) : (
             <div className="text-[12px] text-muted-foreground">لا توجد فترة مالية مفتوحة</div>
@@ -758,12 +758,12 @@ function FiscalPeriodsTable({ periods, company, onRefresh }: { periods: FiscalPe
                   <td className={cn(tdStyle, "font-bold flex items-center gap-1.5")}>{statusIcon(p.status)} {p.name}</td>
                   <td className={tdStyle} dir="ltr">{p.startDate}</td>
                   <td className={tdStyle} dir="ltr">{p.endDate}</td>
-                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", p.status === "open" ? "bg-emerald-500/15 text-emerald-500" : p.status === "closed" ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-500")}>{p.status === "open" ? "مفتوحة" : p.status === "closed" ? "مقفلة" : "مؤقتة"}</span></td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", p.status === "open" ? "bg-mutedmerald-500/15 text-emerald-500" : p.status === "closed" ? "bg-red-500/15 text-red-500" : "bg-cardmber-500/15 text-amber-500")}>{p.status === "open" ? "مفتوحة" : p.status === "closed" ? "مقفلة" : "مؤقتة"}</span></td>
                   <td className={tdStyle}>{p.closedAt || "—"}</td>
                   <td className={tdStyle}>
                     <div className="flex items-center gap-1.5">
                       {p.status === "open" && <button onClick={() => handleClose(p)} disabled={closingId === p.id} className="py-1 px-3 rounded-md bg-red-500/10 border border-red-500/30 text-red-600 text-[11px] font-bold cursor-pointer disabled:opacity-50">{closingId === p.id ? "جارٍ…" : "قفل"}</button>}
-                      {p.status === "closed" && <button onClick={() => handleReopen(p)} disabled={openingId === p.id} className="py-1 px-3 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[11px] font-bold cursor-pointer disabled:opacity-50">{openingId === p.id ? "جارٍ…" : "إعادة فتح"}</button>}
+                      {p.status === "closed" && <button onClick={() => handleReopen(p)} disabled={openingId === p.id} className="py-1 px-3 rounded-md bg-mutedmerald-500/10 border border-emerald-500/30 text-emerald-600 text-[11px] font-bold cursor-pointer disabled:opacity-50">{openingId === p.id ? "جارٍ…" : "إعادة فتح"}</button>}
                     </div>
                   </td>
                 </tr>
@@ -1061,7 +1061,7 @@ function TrialBalanceTable({ data, loading }: { data: { accounts?: TrialRow[]; g
               <td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold")}>{(data.grandDebit ?? 0).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
               <td className={cn(tdStyle, "[direction:ltr] text-start font-extrabold")}>{(data.grandCredit ?? 0).toLocaleString("ar-EG", { maximumFractionDigits: 3 })}</td>
               <td className={cn(tdStyle, "font-extrabold")}>
-                <span className={cn("inline-flex items-center gap-1 py-[3px] px-2.5 rounded-lg text-[11px] font-bold", data.isBalanced ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>
+                <span className={cn("inline-flex items-center gap-1 py-[3px] px-2.5 rounded-lg text-[11px] font-bold", data.isBalanced ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>
                   {data.isBalanced ? "متوازن ✓" : "غير متوازن ✗"}
                 </span>
               </td>
@@ -1077,9 +1077,9 @@ function TrialBalanceTable({ data, loading }: { data: { accounts?: TrialRow[]; g
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
 const thCheck = "w-10 text-center py-2.5 px-2 text-[11px] text-muted-foreground font-bold";
-const tdCheck = (checked: boolean): string => `py-2.5 px-2 text-center ${checked ? "bg-accent" : "bg-transparent"}`;
+const tdCheck = (checked: boolean): string => `py-2.5 px-2 text-center ${checked ? "bg-cardccent" : "bg-transparent"}`;
 const iconBtnStyle = "w-7 h-7 rounded-[6px] bg-transparent border border-border text-destructive cursor-pointer flex items-center justify-center";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 const iconBadge = "bg-muted";
 const sectionBadge = "bg-muted";
@@ -1204,7 +1204,7 @@ function FinancialStatements({ company }: { company: { slug: string } }) {
             <div className="flex items-center gap-1.5"><label className="text-[11px] font-bold text-muted-foreground">إلى</label><input type="date" value={to} onChange={(e) => setTo(e.target.value)} className={cn(inputStyle, "w-auto")} dir="ltr" /></div>
           </>
         )}
-        <button onClick={refetch} disabled={loading} className="mr-auto py-2 px-4 rounded-sm bg-accent text-accent-foreground border border-border text-[12px] font-bold cursor-pointer disabled:opacity-70">{loading ? "جارٍ…" : "تحديث"}</button>
+        <button onClick={refetch} disabled={loading} className="mr-auto py-2 px-4 rounded-sm bg-cardccent text-accent-foreground border border-border text-[12px] font-bold cursor-pointer disabled:opacity-70">{loading ? "جارٍ…" : "تحديث"}</button>
         <button onClick={exportCsv} disabled={!data || loading} className="py-2 px-4 rounded-sm bg-primary text-primary-foreground border-none text-[12px] font-bold cursor-pointer disabled:opacity-60 inline-flex items-center gap-1.5"><Download size={14} /> تصدير CSV</button>
       </div>
       {loading ? <div className="p-12 text-center text-muted-foreground">جارٍ التحميل…</div> : !data ? <div className="p-12 text-center text-muted-foreground">لا توجد بيانات</div> :
@@ -1270,7 +1270,7 @@ function BalanceSheetView({ data }: { data: BalanceSheetData }) {
       </div>
       <div className="bg-card rounded-lg border border-border py-3 px-4 flex justify-between items-center gap-2">
         <span className="text-[12px] text-muted-foreground">كما في: {data.asOf}</span>
-        <span className={cn("py-[3px] px-2.5 rounded-lg text-[11px] font-bold", data.isBalanced ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>{data.isBalanced ? "متوازنة ✓" : "غير متوازنة ✗"}</span>
+        <span className={cn("py-[3px] px-2.5 rounded-lg text-[11px] font-bold", data.isBalanced ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>{data.isBalanced ? "متوازنة ✓" : "غير متوازنة ✗"}</span>
       </div>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
         <BalanceSheetSection title="الأصول" accounts={data.assets.accounts} total={data.assets.total} color="#10b981" />
@@ -1440,7 +1440,7 @@ function JournalForm({ company, accounts, onClose, onSaved }: { company: { slug:
         <div>
           <div className="flex justify-between items-center mb-2">
             <label className={cn(labelStyle, "mb-0")}>البنود</label>
-            <button onClick={addLine} className="bg-accent text-accent-foreground border border-border rounded-[6px] py-1 px-2.5 text-[11px] font-bold cursor-pointer inline-flex items-center gap-1"><Plus size={12} /> إضافة</button>
+            <button onClick={addLine} className="bg-cardccent text-accent-foreground border border-border rounded-[6px] py-1 px-2.5 text-[11px] font-bold cursor-pointer inline-flex items-center gap-1"><Plus size={12} /> إضافة</button>
           </div>
           <div className="flex flex-col gap-2">
             {lines.map((l, i) => (
@@ -1452,7 +1452,7 @@ function JournalForm({ company, accounts, onClose, onSaved }: { company: { slug:
               </div>
             ))}
           </div>
-          <div className={cn("flex justify-between mt-3 py-2 px-3 rounded-sm text-[12px] font-bold", isBalanced ? "bg-emerald-500/10" : "bg-red-500/10")}>
+          <div className={cn("flex justify-between mt-3 py-2 px-3 rounded-sm text-[12px] font-bold", isBalanced ? "bg-mutedmerald-500/10" : "bg-red-500/10")}>
             <span>مدين: <span className="[direction:ltr]">{totalDebit.toLocaleString("ar-EG")}</span></span>
             <span>دائن: <span className="[direction:ltr]">{totalCredit.toLocaleString("ar-EG")}</span></span>
             <span className={cn(isBalanced ? "text-emerald-500" : "text-red-500")}>{isBalanced ? "متوازن ✓" : "غير متوازن ✗"}</span>

@@ -54,10 +54,10 @@ const variantStyles: Record<BadgeVariant, string> = {
   default: "bg-muted text-muted-foreground border-border",
   primary: "bg-[#047857] text-white border-transparent",
   secondary: "bg-secondary text-secondary-foreground border-transparent",
-  success: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-transparent",
-  warning: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-transparent",
+  success: "bg-mutedmerald-100 text-emerald-800 dark:bg-mutedmerald-900/30 dark:text-emerald-400 border-transparent",
+  warning: "bg-cardmber-100 text-amber-800 dark:bg-cardmber-900/30 dark:text-amber-400 border-transparent",
   error: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-transparent",
-  info: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-transparent",
+  info: "bg-mutedackgroundlue-100 text-blue-800 dark:bg-mutedackgroundlue-900/30 dark:text-blue-400 border-transparent",
   gold: "bg-[#d4a574] text-[#0b1220] border-transparent", // ⚠️ RESTRICTED
 };
 
@@ -65,10 +65,10 @@ const dotColorStyles: Record<BadgeVariant, string> = {
   default: "bg-muted-foreground",
   primary: "bg-[#047857]",
   secondary: "bg-secondary-foreground",
-  success: "bg-emerald-500",
-  warning: "bg-amber-500",
+  success: "bg-mutedmerald-500",
+  warning: "bg-cardmber-500",
   error: "bg-red-500",
-  info: "bg-blue-500",
+  info: "bg-mutedackgroundlue-500",
   gold: "bg-[#d4a574]", // ⚠️ RESTRICTED
 };
 
@@ -136,7 +136,7 @@ export const GarfixBadge: React.FC<GarfixBadgeProps> = ({
             onRemove?.();
           }}
           className={cn(
-            "ms-1 -me-0.5 rounded-full p-0.5 transition-colors hover:bg-black/10 dark:hover:bg-white/10",
+            "ms-1 -me-0.5 rounded-full p-0.5 transition-colors hover:bg-mutedackgroundlack/10 dark:hover:bg-white/10",
             "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-current"
           )}
           aria-label="إزالة"

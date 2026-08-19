@@ -1,4 +1,4 @@
-// FE-04 FIX (Audit v2 · Phase 1) — text-white/40 → text-white/60 (WCAG AAA
+// FE-04 FIX (Audit v2 · Phase 1) — text-foreground/40 → text-muted-foreground (WCAG AAA
 // large-text contrast ≥4.5:1 on #0b1220 navy background).
 
 import { HelpCircle, Search, MessageCircle, BookOpen, Settings, CreditCard, Users, BarChart3, Shield, Zap } from "lucide-react";
@@ -84,15 +84,15 @@ export default function HelpPage() {
       subtitle="ابحث عن إجابات لأسئلتك وتعرّف على كيفية استخدام جميع ميزات GARFIX"
       icon={<HelpCircle size={28} />}
     >
-      <div className="space-y-10 text-white/80 text-[15px] leading-[1.9]">
+      <div className="space-y-10 text-foreground/80 text-[15px] leading-[1.9]">
         {/* بحث سريع */}
         <div className="glass-strong bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 text-center shadow-brand-md">
-          <div className="flex items-center gap-3 max-w-[500px] mx-auto bg-white/[0.05] border border-white/[0.1] rounded-lg px-4 py-3">
-            <Search size={18} className="text-white/60" />
+          <div className="flex items-center gap-3 max-w-[500px] mx-auto bg-muted border border-border rounded-lg px-4 py-3">
+            <Search size={18} className="text-muted-foreground" />
             <input
               type="text"
               placeholder="ابحث في مركز المساعدة..."
-              className="bg-transparent border-none outline-none text-white text-sm flex-1 placeholder:text-white/30"
+              className="bg-transparent border-none outline-none text-foreground text-sm flex-1 placeholder:text-muted-foreground/40"
               dir="rtl"
             />
           </div>
@@ -109,9 +109,9 @@ export default function HelpPage() {
             <Link
               key={link.label}
               href={link.href}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl glass border border-emerald-500/20 text-white/70 hover:text-emerald-300 hover:bg-emerald-500/10 transition-all duration-120 hover-lift no-underline shadow-brand-sm"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl glass border border-emerald-500/20 text-muted-foreground/90 hover:text-emerald-600 dark:hover:text-emerald-300 hover:bg-emerald-500/10 transition-all duration-120 hover-lift no-underline shadow-brand-sm"
             >
-              <div className="text-emerald-400">{link.icon}</div>
+              <div className="text-emerald-500 dark:text-emerald-400">{link.icon}</div>
               <span className="text-xs font-bold">{link.label}</span>
             </Link>
           ))}
@@ -119,7 +119,7 @@ export default function HelpPage() {
 
         {/* أقسام المساعدة */}
         <div id="getting-started">
-          <h2 className="text-xl font-extrabold text-white mb-5">أقسام المساعدة</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-5">أقسام المساعدة</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {HELP_CATEGORIES.map((cat) => (
               <div
@@ -127,19 +127,19 @@ export default function HelpPage() {
                 className="glass rounded-xl p-5 border border-emerald-500/10 hover-lift duration-120 transition-all shadow-brand-sm"
               >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-500 dark:text-emerald-400">
                     {cat.icon}
                   </div>
-                  <h3 className="font-extrabold text-white text-sm">{cat.title}</h3>
+                  <h3 className="font-extrabold text-foreground text-sm">{cat.title}</h3>
                 </div>
                 <div className="space-y-2.5">
                   {cat.articles.map((article) => (
                     <div
                       key={article.title}
-                      className="p-3 rounded-lg bg-white/[0.02] border border-emerald-500/10 cursor-pointer hover:bg-emerald-500/10 transition-all duration-120"
+                      className="p-3 rounded-lg bg-muted/50 border border-emerald-500/10 cursor-pointer hover:bg-emerald-500/10 transition-all duration-120"
                     >
-                      <div className="text-white/90 text-sm font-bold mb-0.5">{article.title}</div>
-                      <div className="text-white/50 text-[12px]">{article.desc}</div>
+                      <div className="text-foreground/90 text-sm font-bold mb-0.5">{article.title}</div>
+                      <div className="text-muted-foreground/70 text-[12px]">{article.desc}</div>
                     </div>
                   ))}
                 </div>
@@ -150,15 +150,15 @@ export default function HelpPage() {
 
         {/* الأسئلة الشائعة */}
         <div>
-          <h2 className="text-xl font-extrabold text-white mb-5">أسئلة شائعة</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-5">أسئلة شائعة</h2>
           <div className="space-y-3">
             {FAQ_ITEMS.map((faq) => (
               <details
                 key={faq.q}
                 className="p-4 px-5 rounded-lg glass border border-emerald-500/10 cursor-pointer hover-lift duration-120 transition-all"
               >
-                <summary className="text-[14px] font-bold text-white outline-none">{faq.q}</summary>
-                <p className="text-[13px] text-white/70 leading-relaxed mt-2.5">{faq.a}</p>
+                <summary className="text-[14px] font-bold text-foreground outline-none">{faq.q}</summary>
+                <p className="text-[13px] text-muted-foreground/90 leading-relaxed mt-2.5">{faq.a}</p>
               </details>
             ))}
           </div>
@@ -171,13 +171,13 @@ export default function HelpPage() {
               Screen-reader users navigating by heading level would land here
               with no h2 ancestor above, signaling a broken document outline.
               Promoted to h2 to keep the hierarchy h1 → h2 → h3 consistent. */}
-          <h2 className="font-extrabold text-white text-lg mb-2">لم تجد إجابتك؟</h2>
-          <p className="text-white/60 text-sm mb-4">
+          <h2 className="font-extrabold text-foreground text-lg mb-2">لم تجد إجابتك؟</h2>
+          <p className="text-muted-foreground text-sm mb-4">
             فريق الدعم الفني متاح على مدار الساعة لمساعدتك
           </p>
           <Link
             href="/contact"
-            className="inline-block px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm no-underline transition-all hover:shadow-brand-md active-press duration-150 shadow-brand-sm"
+            className="inline-block px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-foreground font-bold text-sm no-underline transition-all hover:shadow-brand-md active-press duration-150 shadow-brand-sm"
           >
             تواصل مع الدعم
           </Link>

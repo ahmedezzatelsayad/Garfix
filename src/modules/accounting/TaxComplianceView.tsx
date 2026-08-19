@@ -42,7 +42,7 @@ const COUNTRIES = [
 
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
 const _labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
@@ -160,7 +160,7 @@ function VATReturnView({ returns, result, setResult, company, onRefresh }: {
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">VAT على المشتريات</div><div className="text-lg font-extrabold [direction:ltr] text-end text-emerald-500">{fmt(result.vatOnPurchases)}</div></div>
             <div className="bg-muted rounded-md p-3"><div className="text-[11px] text-muted-foreground">VAT المستحق</div><div className={cn("text-xl font-extrabold [direction:ltr] text-end", result.vatDue >= 0 ? "text-red-500" : "text-emerald-500")}>{fmt(result.vatDue)}</div></div>
           </div>
-          <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", result.status === "submitted" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{result.status === "submitted" ? "مُرسل" : "مُنشأ"}</span>
+          <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", result.status === "submitted" ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500")}>{result.status === "submitted" ? "مُرسل" : "مُنشأ"}</span>
         </div>
       )}
 
@@ -175,12 +175,12 @@ function VATReturnView({ returns, result, setResult, company, onRefresh }: {
               </tr></thead>
               <tbody>{returns.map(r => (
                 <tr key={r.id} className="border-b border-border">
-                  <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold bg-emerald-600/15 text-emerald-600">{countryLabel(r.country)}</span></td>
+                  <td className={tdStyle}><span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold bg-mutedmerald-600/15 text-emerald-600">{countryLabel(r.country)}</span></td>
                   <td className={tdStyle} dir="ltr">{r.periodFrom}</td><td className={tdStyle} dir="ltr">{r.periodTo}</td>
                   <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-red-500")}>{fmt(r.vatOnSales)}</td>
                   <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-emerald-500")}>{fmt(r.vatOnPurchases)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", r.vatDue >= 0 ? "text-red-500" : "text-emerald-500")}>{fmt(r.vatDue)}</td>
-                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", r.status === "submitted" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{r.status === "submitted" ? "مُرسل" : "مُنشأ"}</span></td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", r.status === "submitted" ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500")}>{r.status === "submitted" ? "مُرسل" : "مُنشأ"}</span></td>
                 </tr>
               ))}</tbody>
             </table>
@@ -260,7 +260,7 @@ function ZakatView({ records, result, setResult, company, onRefresh }: {
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(r.zakatBase)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end")}>{r.zakatRate}%</td>
                   <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-emerald-700")}>{fmt(r.zakatAmount)}</td>
-                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", r.status === "paid" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{r.status === "paid" ? "مُسدد" : "مُحسب"}</span></td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", r.status === "paid" ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500")}>{r.status === "paid" ? "مُسدد" : "مُحسب"}</span></td>
                 </tr>
               ))}</tbody>
             </table>
@@ -295,7 +295,7 @@ function RemindersView({ reminders }: { reminders: FilingReminder[] }) {
                 const isUrgent = r.daysUntil <= 7 && r.daysUntil >= 0;
                 return (
                   <div key={r.id} className="flex items-start gap-3 bg-muted rounded-md p-3">
-                    <div className={cn("w-8 h-8 rounded-sm flex items-center justify-center shrink-0", isOverdue ? "bg-red-500/20 text-red-500" : isUrgent ? "bg-amber-500/20 text-amber-500" : "bg-emerald-500/20 text-emerald-500")}>
+                    <div className={cn("w-8 h-8 rounded-sm flex items-center justify-center shrink-0", isOverdue ? "bg-red-500/20 text-red-500" : isUrgent ? "bg-cardmber-500/20 text-amber-500" : "bg-mutedmerald-500/20 text-emerald-500")}>
                       {isOverdue ? <AlertTriangle size={16} /> : <Clock size={16} />}
                     </div>
                     <div className="flex-1 flex flex-col gap-1">
@@ -303,7 +303,7 @@ function RemindersView({ reminders }: { reminders: FilingReminder[] }) {
                         <div className="text-[13px] font-bold">{r.title}</div>
                         <div className="flex gap-2">
                           {isOverdue && <span className="py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold bg-red-500/15 text-red-500">متأخر!</span>}
-                          <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", r.status === "done" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{r.status === "done" ? "مكتمل ✓" : "قيد التنفيذ"}</span>
+                          <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", r.status === "done" ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500")}>{r.status === "done" ? "مكتمل ✓" : "قيد التنفيذ"}</span>
                         </div>
                       </div>
                       <div className="text-[11px] text-muted-foreground">{r.type} — الموعد: <span dir="ltr" className="font-mono">{r.nextDeadline}</span></div>
@@ -334,7 +334,7 @@ function RetentionView({ checks }: { checks: RetentionCheck[] }) {
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><CheckCircle2 size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-mutedmerald-500/20 text-emerald-500"><CheckCircle2 size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">متوافق</div><div className="text-lg font-extrabold">{compliantCount}/{checks.length}</div></div>
         </div>
         <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
@@ -362,7 +362,7 @@ function RetentionView({ checks }: { checks: RetentionCheck[] }) {
                     <td className={tdStyle}>{c.requiredYears} سنوات</td>
                     <td className={tdStyle}>{c.actualYears} سنوات</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end", c.recordsAtRisk > 0 ? "text-red-500" : "text-emerald-500")}>{c.recordsAtRisk}</td>
-                    <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", c.compliant ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>{c.compliant ? "متوافق ✓" : "غير متوافق ✗"}</span></td>
+                    <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", c.compliant ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>{c.compliant ? "متوافق ✓" : "غير متوافق ✗"}</span></td>
                   </tr>
                 ))}</tbody>
               </table>

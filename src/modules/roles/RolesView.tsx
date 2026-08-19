@@ -63,10 +63,10 @@ const LEVEL_NAMES: Record<number, string> = {
 
 const LEVEL_COLORS: Record<number, string> = {
   0: "bg-red-500/15 text-red-400",
-  1: "bg-blue-500/15 text-blue-400",
-  2: "bg-amber-500/15 text-amber-400",
+  1: "bg-mutedackgroundlue-500/15 text-blue-400",
+  2: "bg-cardmber-500/15 text-amber-400",
   3: "bg-purple-500/15 text-purple-400",
-  4: "bg-emerald-500/15 text-emerald-400",
+  4: "bg-mutedmerald-500/15 text-emerald-400",
 };
 
 export function RolesView() {
@@ -175,7 +175,7 @@ export function RolesView() {
                     <h3 className="font-bold">{role.nameAr || role.name}</h3>
                     <span className="text-xs text-muted-foreground">({role.name})</span>
                     {role.isBuiltIn ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-mutedackgroundlue-500/15 text-blue-400">
                         مدمج
                       </span>
                     ) : (
@@ -288,7 +288,7 @@ function RoleDetailModal({
   const allPerms = { ...role.inheritedPermissions, ...role.permissions };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-mutedackgroundlack/50 backdrop-blur-sm p-4">
       <div className="bg-card border border-border rounded-2xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="font-bold text-lg">
@@ -383,7 +383,7 @@ function CreateRoleModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-mutedackgroundlack/50 backdrop-blur-sm p-4">
       <div className="bg-card border border-border rounded-2xl shadow-xl max-w-md w-full">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="font-bold text-lg">إنشاء دور جديد</h2>
@@ -409,7 +409,7 @@ function CreateRoleModal({
               value={name}
               onChange={(e) => setName(e.target.value.toUpperCase().replace(/\s/g, "_"))}
               placeholder="CUSTOM_ROLE"
-              className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-primary outline-none"
+              className="w-full px-3 py-2 rounded-lg bg-mutedackgroundackground border border-border focus:border-primary outline-none"
             />
           </div>
 
@@ -420,7 +420,7 @@ function CreateRoleModal({
               value={nameAr}
               onChange={(e) => setNameAr(e.target.value)}
               placeholder="دور مخصص"
-              className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-primary outline-none"
+              className="w-full px-3 py-2 rounded-lg bg-mutedackgroundackground border border-border focus:border-primary outline-none"
             />
           </div>
 
@@ -431,7 +431,7 @@ function CreateRoleModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="وصف موجز للدور..."
               rows={2}
-              className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-primary outline-none resize-none"
+              className="w-full px-3 py-2 rounded-lg bg-mutedackgroundackground border border-border focus:border-primary outline-none resize-none"
             />
           </div>
 
@@ -440,7 +440,7 @@ function CreateRoleModal({
             <select
               value={inheritsFrom}
               onChange={(e) => setInheritsFrom(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-background border border-border focus:border-primary outline-none"
+              className="w-full px-3 py-2 rounded-lg bg-mutedackgroundackground border border-border focus:border-primary outline-none"
             >
               <option value="VIEWER">مشاهد (VIEWER)</option>
               <option value="EMPLOYEE">موظف (EMPLOYEE)</option>

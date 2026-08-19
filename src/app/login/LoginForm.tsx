@@ -53,7 +53,7 @@ export function LoginForm() {
   if (!loading && user) return null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0b1220]" dir="rtl">
+    <div className="min-h-screen flex flex-col bg-background" dir="rtl">
       {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
       <GarfixSkipLinks />
       <header id="main-navigation" className="px-6 py-5">
@@ -61,12 +61,12 @@ export function LoginForm() {
           <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg">
             <BarChart3 className="h-5 w-5 text-white" />
           </div>
-          <span className="font-bold text-lg text-white">GarfiX EOS <span className="text-emerald-400 text-xs font-normal">v4.0</span></span>
+          <span className="font-bold text-lg text-foreground">GarfiX EOS <span className="text-emerald-500 text-xs font-normal">v4.0</span></span>
         </div>
       </header>
 
       <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center px-4 py-8">
-        <Card className="w-full max-w-md shadow-brand-xl glass-strong border-emerald-500/20">
+        <Card className="w-full max-w-md bg-card border border-border shadow-lg">
           <CardHeader className="space-y-3 text-center pb-2">
             <div className="mx-auto relative">
               <div className="h-16 w-16 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-md">

@@ -35,7 +35,7 @@ interface Product {
   [key: string]: unknown;
 }
 
-const inputStyle = "w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus-ring max-md:min-h-[44px] transition-all duration-150";
+const inputStyle = "w-full py-2 px-3 rounded-lg bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus-ring max-md:min-h-[44px] transition-all duration-150";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 
 // ── Sparkline Component for KPI Cards ──────────────────────────────────
@@ -360,7 +360,7 @@ export function CatalogView() {
                     "active-press px-3 py-1.5 rounded-lg border border-border font-bold text-xs max-md:min-h-[44px] transition-all duration-150",
                     safePage === 1 
                       ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" 
-                      : "bg-card text-foreground hover:bg-accent hover-scale"
+                      : "bg-card text-foreground hover:bg-cardccent hover-scale"
                   )}
                 >
                   السابق
@@ -372,7 +372,7 @@ export function CatalogView() {
                     "active-press px-3 py-1.5 rounded-lg border border-border font-bold text-xs max-md:min-h-[44px] transition-all duration-150",
                     safePage === totalPages 
                       ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" 
-                      : "bg-card text-foreground hover:bg-accent hover-scale"
+                      : "bg-card text-foreground hover:bg-cardccent hover-scale"
                   )}
                 >
                   التالي

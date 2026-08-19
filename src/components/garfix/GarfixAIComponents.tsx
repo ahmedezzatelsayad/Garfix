@@ -332,10 +332,10 @@ export function AIInlineSuggestion({
           "border border-primary/20"
         ],
         variant === "subtle" && [
-          "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          "bg-muted text-muted-foreground hover:bg-cardccent hover:text-accent-foreground"
         ],
         variant === "prominent" && [
-          "gradient-primary text-white shadow-brand-sm hover:shadow-brand-md"
+          "gradient-primary text-foreground shadow-brand-sm hover:shadow-brand-md"
         ],
         className
       )}
@@ -386,7 +386,7 @@ export function AICommandInput({
   return (
     <div
       className={cn(
-        "relative flex items-center gap-3 px-4 py-3 bg-background rounded-xl border transition-all duration-200",
+        "relative flex items-center gap-3 px-4 py-3 bg-backgroundackground rounded-xl border transition-all duration-200",
         focused
           ? "border-primary ring-2 ring-primary/20 shadow-brand-sm"
           : "border-border hover:border-border/80",
@@ -466,7 +466,7 @@ export function AIStatusBar({
 }: AIStatusBarProps) {
   const statusConfig = {
     online: { color: "bg-emerald-500", label: "متصل", pulse: true },
-    busy: { color: "bg-amber-500", label: "مشغول", pulse: true },
+    busy: { color: "bg-cardmber-500", label: "مشغول", pulse: true },
     offline: { color: "bg-gray-400", label: "غير متصل", pulse: false },
     error: { color: "bg-red-500", label: "خطأ", pulse: true },
   }
@@ -478,7 +478,7 @@ export function AIStatusBar({
       onClick={onClick}
       className={cn(
         "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors",
-        "hover:bg-accent active-press cursor-pointer focus-ring",
+        "hover:bg-cardccent active-press cursor-pointer focus-ring",
         compact ? "gap-1.5 px-2 py-1" : "",
         className
       )}

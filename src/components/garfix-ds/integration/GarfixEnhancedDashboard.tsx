@@ -372,7 +372,7 @@ function WorkerCard({
         className={cn(
           'rounded-xl border p-4 transition-all duration-200',
           isHovered 
-            ? 'border-emerald-300 bg-emerald-50/50 shadow-lg shadow-emerald-100' 
+            ? 'border-emerald-300 bg-mutedmerald-50/50 shadow-lg shadow-emerald-100' 
             : 'border-gray-200 bg-white'
         )}
         style={hoverStyle}

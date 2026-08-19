@@ -542,7 +542,7 @@ export function AICopilotBubble() {
                   <div
                     className={cn(
                       "w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0",
-                      isUser ? "bg-accent text-accent-foreground shadow-none" : "text-white shadow-[0_4px_12px_rgba(212,165,116,0.3)] ai-card bg-gradient-to-br from-[#d4a574] to-[#e8c49a]"
+                      isUser ? "bg-cardccent text-accent-foreground shadow-none" : "text-white shadow-[0_4px_12px_rgba(212,165,116,0.3)] ai-card bg-gradient-to-br from-[#d4a574] to-[#e8c49a]"
                     )}
                   >
                     {isUser ? <User size={14} /> : <Bot size={14} />}
@@ -553,7 +553,7 @@ export function AICopilotBubble() {
                       isAgent ? "border border-[#d4a574]/25" : "border-none",
                       isUser && !fullscreen ? "bg-muted text-foreground" : "",
                       isUser && fullscreen ? "bg-white/8 text-white" : "",
-                      !isUser && !isAgent && fullscreen ? "bg-emerald-900/25 text-white" : "",
+                      !isUser && !isAgent && fullscreen ? "bg-mutedmerald-900/25 text-white" : "",
                       !isUser && !isAgent && !fullscreen ? "bg-primary text-primary-foreground" : "",
                       isAgent && !fullscreen ? "" : "",
                       isAgent && fullscreen ? "text-white" : "",
@@ -617,7 +617,7 @@ export function AICopilotBubble() {
                 <div
                   className={cn(
                     "px-[14px] py-2.5 rounded-xl text-[13px] flex items-center gap-1",
-                    fullscreen ? "bg-emerald-900/25 text-white" : "bg-primary text-primary-foreground"
+                    fullscreen ? "bg-mutedmerald-900/25 text-white" : "bg-primary text-primary-foreground"
                   )}
                 >
                   <span className="inline-block animate-[garfix-glow_1s_infinite]">…</span>
@@ -632,14 +632,14 @@ export function AICopilotBubble() {
               dir="rtl"
               className={cn(
                 "p-3 border-t border-border shrink-0",
-                fullscreen ? "bg-emerald-900/8" : "bg-muted"
+                fullscreen ? "bg-mutedmerald-900/8" : "bg-muted"
               )}
             >
               <div
                 className="bg-card rounded-xl border border-amber-500/40 p-3.5 flex flex-col gap-2.5 shadow-[0_8px_24px_rgba(245,158,11,0.15)]"
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-500 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-cardmber-500/15 text-amber-500 flex items-center justify-center">
                     <ShieldAlert size={18} />
                   </div>
                   <div className="flex-1">
@@ -660,7 +660,7 @@ export function AICopilotBubble() {
 
                 {confirmation.warning && (
                   <div
-                    className="text-[11px] text-amber-700 p-2 px-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex gap-1.5 items-start"
+                    className="text-[11px] text-amber-700 p-2 px-2.5 rounded-lg bg-cardmber-500/10 border border-amber-500/30 flex gap-1.5 items-start"
                   >
                     <ShieldAlert size={13} className="shrink-0 mt-0.5" />
                     <span>{confirmation.warning}</span>
@@ -714,7 +714,7 @@ export function AICopilotBubble() {
             <div
               className={cn(
                 "px-1.5 sm:px-2.5 pt-1 sm:pt-2 pb-1 flex gap-1 sm:gap-1.5 flex-wrap shrink-0 border-t border-border",
-                fullscreen ? "bg-black/20" : "bg-transparent"
+                fullscreen ? "bg-mutedackgroundlack/20" : "bg-transparent"
               )}
             >
               {QUICK_ACTIONS.map((a) => (
@@ -752,7 +752,7 @@ export function AICopilotBubble() {
           <div
             className={cn(
               "px-2 sm:px-3 py-2 sm:py-2.5 flex gap-2 shrink-0",
-              fullscreen ? "bg-black/20" : "bg-transparent"
+              fullscreen ? "bg-mutedackgroundlack/20" : "bg-transparent"
             )}
           >
             <input
@@ -764,7 +764,7 @@ export function AICopilotBubble() {
               disabled={loading || executing || !!confirmation}
               className={cn(
                 "flex-1 px-[14px] py-2.5 rounded-[10px] font-[inherit] text-[13px] outline-none",
-                fullscreen ? "bg-white/8 border border-white/15 text-white" : "bg-background border border-border text-foreground"
+                fullscreen ? "bg-white/8 border border-white/15 text-white" : "bg-mutedackgroundackground border border-border text-foreground"
               )}
             />
             <button

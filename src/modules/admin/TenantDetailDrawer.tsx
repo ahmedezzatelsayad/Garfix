@@ -146,7 +146,7 @@ export function TenantDetailDrawer({ slug, onClose, onOpenReviewQueue }: { slug:
               <button
                 type="button"
                 onClick={() => onOpenReviewQueue(slug)}
-                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-[10px] bg-amber-500 text-white border-none font-inherit text-xs font-bold cursor-pointer shadow-[0_1px_2px_rgba(245,158,11,0.3)]"
+                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-[10px] bg-cardmber-500 text-white border-none font-inherit text-xs font-bold cursor-pointer shadow-[0_1px_2px_rgba(245,158,11,0.3)]"
               >
                 <ListChecks size={14} />
                 افتح طابور المراجعة لهذه الشركة ({overview.reviewQueueCount as number} عنصر)

@@ -154,21 +154,21 @@ export default function FounderPanelShell({
     // Phase 2 P1 fix: FounderGuard removed — the server-side layout.tsx now
     // does the founder check BEFORE this client component renders. The
     // client-side guard was redundant and caused a flash of unauthenticated HTML.
-    <div className="min-h-dvh bg-[#0b1220] text-foreground" dir="rtl">
+    <div className="min-h-dvh bg-background text-foreground" dir="rtl">
         {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
         <GarfixSkipLinks />
         {/* Mobile Header */}
-        <header id="main-navigation" className="lg:hidden fixed top-0 start-0 end-0 z-40 h-16 bg-[#0f172a]/95 backdrop-blur-md border-b border-white/[0.08] flex items-center justify-between px-4">
+        <header id="main-navigation" className="lg:hidden fixed top-0 start-0 end-0 z-40 h-16 bg-card/95 backdrop-blur-md border-b border-border flex items-center justify-between px-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors text-emerald-400"
+              className="p-2 rounded-lg hover:bg-muted transition-colors text-emerald-500"
             >
               <Menu className="h-6 w-6" />
             </button>
             <div className="flex items-center gap-2">
               <Shield className="h-6 w-6 text-emerald-500" />
-              <span className="font-bold text-white">GarfiX Founder</span>
+              <span className="font-bold text-foreground">GarfiX Founder</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -188,7 +188,7 @@ export default function FounderPanelShell({
         {/* Sidebar */}
         <aside
           className={cn(
-            "fixed top-0 end-0 z-50 h-full bg-[#0f172a]/98 backdrop-blur-xl border-s border-white/[0.08]",
+            "fixed top-0 end-0 z-50 h-full bg-sidebar/98 backdrop-blur-xl border-s border-sidebar-border",
             "transition-all duration-300 ease-out",
             "flex flex-col",
             // Width
@@ -200,7 +200,7 @@ export default function FounderPanelShell({
         >
           {/* Header */}
           <div className={cn(
-            "flex items-center h-16 border-b border-white/[0.08] px-4",
+            "flex items-center h-16 border-b border-sidebar-border px-4",
             collapsed ? "justify-center" : "justify-between"
           )}>
             {!collapsed && (
@@ -209,7 +209,7 @@ export default function FounderPanelShell({
                   <Shield className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <p className="font-bold text-white text-sm leading-tight">GarfiX</p>
+                  <p className="font-bold text-sidebar-foreground text-sm leading-tight">GarfiX</p>
                   <p className="text-[10px] text-[#d4a574]/80 font-medium tracking-wider uppercase">Founder Panel</p>
                 </div>
               </Link>
@@ -218,7 +218,7 @@ export default function FounderPanelShell({
             {/* Collapse Toggle (Desktop) */}
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="hidden lg:flex p-2 rounded-lg hover:bg-white/[0.06] transition-colors text-muted-foreground hover:text-foreground"
+              className="hidden lg:flex p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
               aria-label={collapsed ? "توسيع" : "طي"}
             >
               <Menu className={cn("h-5 w-5 transition-transform", collapsed && "rotate-180")} />
@@ -227,7 +227,7 @@ export default function FounderPanelShell({
             {/* Close (Mobile) */}
             <button
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-2 rounded-lg hover:bg-white/[0.06] transition-colors text-muted-foreground"
+              className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
             >
               <X className="h-5 w-5" />
             </button>
@@ -269,7 +269,7 @@ export default function FounderPanelShell({
                             // Inactive State
                             !isActive && [
                               "text-muted-foreground/80 hover:text-foreground",
-                              "hover:bg-white/[0.04]",
+                              "hover:bg-sidebar-accent",
                               "border border-transparent",
                             ],
                             // Focus
@@ -319,7 +319,7 @@ export default function FounderPanelShell({
 
           {/* Footer */}
           <div className={cn(
-            "border-t border-white/[0.08] p-4",
+            "border-t border-sidebar-border p-4",
             collapsed && "flex justify-center"
           )}>
             {!collapsed ? (
@@ -353,15 +353,15 @@ export default function FounderPanelShell({
           )}
         >
           {/* Top Bar (Desktop) */}
-          <div className="hidden lg:flex h-16 items-center justify-between px-6 border-b border-white/[0.08] bg-[#0b1220]/50 backdrop-blur-sm sticky top-0 z-30">
+          <div className="hidden lg:flex h-16 items-center justify-between px-6 border-b border-border bg-background/50 backdrop-blur-sm sticky top-0 z-30">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setCollapsed(!collapsed)}
-                className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors text-muted-foreground"
+                className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
               >
                 <Menu className={cn("h-5 w-5 transition-transform", collapsed && "rotate-180")} />
               </button>
-              <div className="h-6 w-px bg-white/[0.08]" />
+              <div className="h-6 w-px bg-border" />
               <h1 className="text-sm font-medium text-muted-foreground">
                 {navigationItems.find(i => i.id === activeId)?.labelAr || "لوحة المؤسس"}
               </h1>

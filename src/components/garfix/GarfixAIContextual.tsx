@@ -266,7 +266,7 @@ export function AIFormField({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           className={cn(
-            "w-full min-h-[44px] px-3 py-2 rounded-lg border bg-background text-foreground",
+            "w-full min-h-[44px] px-3 py-2 rounded-lg border bg-backgroundackground text-foreground",
             "placeholder:text-muted-foreground transition-all duration-200",
             "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
             "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -407,7 +407,7 @@ export function AICategorizer({
                 "border cursor-pointer touch-manipulation",
                 isSelected
                   ? "bg-primary text-primary-foreground border-primary shadow-g-sm"
-                  : "bg-background text-foreground border-border hover:border-primary/30 hover:bg-primary/5",
+                  : "bg-backgroundackground text-foreground border-border hover:border-primary/30 hover:bg-primary/5",
                 isAISuggested && !isSelected && "border-primary/40 bg-primary/5"
               )}
             >
@@ -520,7 +520,7 @@ export function AISearchBar({
             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
             placeholder={placeholder}
             className={cn(
-              "w-full min-h-[44px] pe-10 ps-4 pr-10 rounded-lg border bg-background text-foreground",
+              "w-full min-h-[44px] pe-10 ps-4 pr-10 rounded-lg border bg-backgroundackground text-foreground",
               "placeholder:text-muted-foreground transition-all duration-200",
               "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
               isFocused && enableAINaturalSearch && "shadow-g-sm ring-2 ring-primary/10"
@@ -631,8 +631,8 @@ export function AISummaryCard({
       <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <GarfixAIIcon size="md" className="text-white" />
-            <h3 className="font-semibold text-white">{title}</h3>
+            <GarfixAIIcon size="md" className="text-foreground" />
+            <h3 className="font-semibold text-foreground">{title}</h3>
           </div>
           
           {onRegenerate && (
@@ -640,7 +640,7 @@ export function AISummaryCard({
               variant="ghost"
               size="sm"
               onClick={onRegenerate}
-              className="text-white/80 hover:text-white hover:bg-white/10"
+              className="text-foreground/80 hover:text-foreground hover:bg-white/10"
               disabled={isLoading}
             >
               <svg className={cn("w-4 h-4", isLoading && "animate-spin")} fill="none" viewBox="0 0 24 24" stroke="currentColor">

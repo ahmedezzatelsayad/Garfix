@@ -299,7 +299,7 @@ function AppShellContent(_props: Record<string, unknown>) {
           Targets (#main-content, #main-navigation, #main-footer) are set below. */}
       <GarfixSkipLinks />
       <div
-        className="flex flex-col sm:flex-row min-h-dvh bg-[#0b1220] text-foreground dark:bg-[#0b1220]"
+        className="flex flex-col sm:flex-row min-h-dvh bg-mutedackgroundackground text-foreground"
         dir="rtl"
       >
         <div id="main-navigation" role="navigation" aria-label="القائمة الرئيسية">
@@ -441,7 +441,7 @@ function AppShellContent(_props: Record<string, unknown>) {
 function NoAccessView({ label }: { label: string }) {
   return (
     <div className="p-8 md:p-12 text-center" dir="rtl">
-      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-3">
+      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-mutedmerald-500/10 text-emerald-400 border border-emerald-500/20 mb-3">
         !
       </div>
       <h2 className="text-lg sm:text-xl font-extrabold mb-1 text-emerald-400">لا تملك صلاحية الوصول</h2>

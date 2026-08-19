@@ -306,7 +306,7 @@ export const GarfixBanner: React.FC<BannerProps> = ({
         <button
           type="button"
           onClick={handleDismiss}
-          className="flex-shrink-0 p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors duration-120"
+          className="flex-shrink-0 p-1 rounded hover:bg-mutedackgroundlack/10 dark:hover:bg-white/10 transition-colors duration-120"
           style={{ transitionDuration: '120ms' }}
           aria-label="إغلاق الشريط"
         >
@@ -452,7 +452,7 @@ export const GarfixConfirmDialog: React.FC<ConfirmDialogProps> = ({
             type="button"
             onClick={onCancel}
             disabled={isLoading}
-            className="px-4 py-2 text-sm font-medium rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
+            className="px-4 py-2 text-sm font-medium rounded-lg border border-border bg-mutedackgroundackground text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
             style={{ transitionDuration: '150ms' }}
           >
             {cancelLabel}

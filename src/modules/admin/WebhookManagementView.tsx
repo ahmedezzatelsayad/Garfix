@@ -530,7 +530,7 @@ export function WebhookManagementView() {
                             <button
                               onClick={() => handleRetry(d.id)}
                               title="إعادة محاولة"
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md cursor-pointer bg-blue-50 border border-blue-200 text-xs text-blue-700"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md cursor-pointer bg-mutedackgroundlue-50 border border-blue-200 text-xs text-blue-700"
                             >
                               <RefreshCw size={12} /> إعادة
                             </button>

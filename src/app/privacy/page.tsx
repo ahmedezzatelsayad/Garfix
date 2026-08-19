@@ -16,10 +16,10 @@ export default function PrivacyPage() {
       icon={<Shield size={28} />}
       lastUpdated="يوليو 2025"
     >
-      <div className="space-y-8 text-white/80 text-[15px] leading-[1.9]">
+      <div className="space-y-8 text-foreground/80 text-[15px] leading-[1.9]">
         {/* المقدمة */}
         <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
-          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">1. مقدمة</h2>
+          <h2 className="text-xl font-extrabold text-emerald-500 dark:text-emerald-400 mb-3">1. مقدمة</h2>
           <p>
             مرحباً بك في GARFIX. نحن ندرك أهمية خصوصيتك ونلتزم بحماية بياناتك الشخصية بشفافية تامة.
             تسري سياسة الخصوصية هذه على جميع خدمات GARFIX (المشار إليها فيما بعد بـ &quot;المنصة&quot; أو &quot;نحن&quot;)،
@@ -31,27 +31,27 @@ export default function PrivacyPage() {
 
         {/* البيانات المجمعة */}
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">2. البيانات التي نجمعها</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">2. البيانات التي نجمعها</h2>
           <p className="mb-3">
             نجمع أنواعاً مختلفة من البيانات لتقديم خدماتنا وتحسينها. إليك التفاصيل:
           </p>
           <div className="glass rounded-xl p-5 space-y-4 border border-emerald-500/10 hover-lift duration-120 transition-all">
             <div>
-              <h3 className="font-bold text-emerald-400 mb-1">أ. بيانات الحساب</h3>
+              <h3 className="font-bold text-emerald-500 dark:text-emerald-400 mb-1">أ. بيانات الحساب</h3>
               <p>
                 عند إنشاء حساب، نجمع اسمك الكامل وعنوان بريدك الإلكتروني ورقم الهاتف واسم شركتك
                 ومعلومات التسجيل التجاري. هذه البيانات ضرورية لإنشاء هويتك على المنصة وربطك بشركتك.
               </p>
             </div>
             <div>
-              <h3 className="font-bold text-emerald-400 mb-1">ب. بيانات الأعمال</h3>
+              <h3 className="font-bold text-emerald-500 dark:text-emerald-400 mb-1">ب. بيانات الأعمال</h3>
               <p>
                 تشمل بيانات الفواتير والعملاء والموردين والمشتريات والمحاسبة والموارد البشرية التي تدخلها
                 في المنصة. هذه البيانات ملكك تماماً ولا نستخدمها لأي غرض سوى تقديم الخدمة المتفق عليها.
               </p>
             </div>
             <div>
-              <h3 className="font-bold text-emerald-400 mb-1">ج. بيانات الاستخدام</h3>
+              <h3 className="font-bold text-emerald-500 dark:text-emerald-400 mb-1">ج. بيانات الاستخدام</h3>
               <p>
                 نجمع بيانات حول كيفية تفاعلك مع المنصة، مثل الصفحات التي تزورها والميزات التي تستخدمها
                 وتكرار الاستخدام والأخطاء التقنية التي تواجهها. تساعدنا هذه البيانات في تحسين تجربة المستخدم
@@ -59,7 +59,7 @@ export default function PrivacyPage() {
               </p>
             </div>
             <div>
-              <h3 className="font-bold text-emerald-400 mb-1">د. بيانات الجهاز</h3>
+              <h3 className="font-bold text-emerald-500 dark:text-emerald-400 mb-1">د. بيانات الجهاز</h3>
               <p>
                 نجمع معلومات تقنية تلقائية مثل نوع المتصفح ونظام التشغيل ودقة الشاشة وعنوان IP
                 ونوع الجهاز. تُستخدم هذه البيانات لضمان التوافق التقني وتوفير تجربة سلسة عبر جميع الأجهزة.
@@ -70,9 +70,9 @@ export default function PrivacyPage() {
 
         {/* كيفية الاستخدام */}
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">3. كيف نستخدم بياناتك</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">3. كيف نستخدم بياناتك</h2>
           <p className="mb-2">نستخدم بياناتك للأغراض التالية:</p>
-          <ul className="list-disc pr-6 space-y-2 text-white/70">
+          <ul className="list-disc pr-6 space-y-2 text-muted-foreground/90">
             <li>تقديم خدمات المنصة وصيانتها وتحسينها بشكل مستمر</li>
             <li>معالجة الفواتير والمعاملات المالية وإدارة حسابات العملاء</li>
             <li>توفير دعم فني سريع وفعّال عبر قنوات الدعم المتعددة</li>
@@ -85,21 +85,21 @@ export default function PrivacyPage() {
 
         {/* مشاركة البيانات */}
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">4. مشاركة البيانات</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">4. مشاركة البيانات</h2>
           <p>
             لا نبيع بياناتك الشخصية لأي طرف ثالث تحت أي ظرف. قد نشارك بياناتك في الحالات التالية فقط:
           </p>
-          <ul className="list-disc pr-6 space-y-2 text-white/70 mt-3">
-            <li><strong className="text-white/90">مقدمو الخدمات:</strong> شركات الاستضافة السحابية ومعالجة المدفوعات التي تساعدنا في تشغيل المنصة، بموجب اتفاقيات صارمة لحماية البيانات</li>
-            <li><strong className="text-white/90">المتطلبات القانونية:</strong> عندما يقتضي القانون ذلك أو بناءً على طلب رسمي من جهة قضائية مختصة</li>
-            <li><strong className="text-white/90">حماية الحقوق:</strong> لحماية حقوقنا أو سلامة مستخدمينا أو الجمهور من أي أضرار محتملة</li>
-            <li><strong className="text-white/90">موافقتك الصريحة:</strong> في أي حالة أخرى نطلب فيها موافقتك المسبقة ونحصل عليها</li>
+          <ul className="list-disc pr-6 space-y-2 text-muted-foreground/90 mt-3">
+            <li><strong className="text-foreground/90">مقدمو الخدمات:</strong> شركات الاستضافة السحابية ومعالجة المدفوعات التي تساعدنا في تشغيل المنصة، بموجب اتفاقيات صارمة لحماية البيانات</li>
+            <li><strong className="text-foreground/90">المتطلبات القانونية:</strong> عندما يقتضي القانون ذلك أو بناءً على طلب رسمي من جهة قضائية مختصة</li>
+            <li><strong className="text-foreground/90">حماية الحقوق:</strong> لحماية حقوقنا أو سلامة مستخدمينا أو الجمهور من أي أضرار محتملة</li>
+            <li><strong className="text-foreground/90">موافقتك الصريحة:</strong> في أي حالة أخرى نطلب فيها موافقتك المسبقة ونحصل عليها</li>
           </ul>
         </section>
 
         {/* الأمان */}
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">5. الأمان وحماية البيانات</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">5. الأمان وحماية البيانات</h2>
           <p>
             نطبق إجراءات أمنية متقدمة متعددة الطبقات لحماية بياناتك، تشمل:
           </p>
@@ -113,8 +113,8 @@ export default function PrivacyPage() {
               { title: "مراقبة مستمرة", desc: "أنظمة كشف التسلل ومراقبة الأنشطة المشبوهة على مدار الساعة" },
             ].map((item) => (
               <div key={item.title} className="bg-emerald-500/5 rounded-lg p-4 border border-emerald-500/20 hover-lift duration-120 transition-all shadow-brand-sm">
-                <div className="font-bold text-emerald-400 text-sm mb-1">{item.title}</div>
-                <div className="text-white/60 text-[13px]">{item.desc}</div>
+                <div className="font-bold text-emerald-500 dark:text-emerald-400 text-sm mb-1">{item.title}</div>
+                <div className="text-muted-foreground text-[13px]">{item.desc}</div>
               </div>
             ))}
           </div>
@@ -122,24 +122,24 @@ export default function PrivacyPage() {
 
         {/* حقوقك */}
         <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
-          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">6. حقوقك</h2>
+          <h2 className="text-xl font-extrabold text-emerald-500 dark:text-emerald-400 mb-3">6. حقوقك</h2>
           <p>لديك الحقوق التالية فيما يتعلق ببياناتك الشخصية:</p>
-          <ul className="list-disc pr-6 space-y-2 text-white/70 mt-3">
-            <li><strong className="text-white/90">حق الوصول:</strong> يمكنك طلب نسخة من بياناتك الشخصية المخزنة لدينا</li>
-            <li><strong className="text-white/90">حق التصحيح:</strong> يمكنك تحديث أو تصحيح بياناتك في أي وقت من خلال إعدادات الحساب</li>
-            <li><strong className="text-white/90">حق الحذف:</strong> يمكنك طلب حذف بياناتك الشخصية مع مراعاة المتطلبات القانونية للاحتفاظ ببعض البيانات</li>
-            <li><strong className="text-white/90">حق التصدير:</strong> يمكنك تصدير بياناتك بتنسيق قابل للقراءة في أي وقت</li>
-            <li><strong className="text-white/90">حق الاعتراض:</strong> يمكنك الاعتراض على معالجة بياناتك لأغراض تسويقية</li>
+          <ul className="list-disc pr-6 space-y-2 text-muted-foreground/90 mt-3">
+            <li><strong className="text-foreground/90">حق الوصول:</strong> يمكنك طلب نسخة من بياناتك الشخصية المخزنة لدينا</li>
+            <li><strong className="text-foreground/90">حق التصحيح:</strong> يمكنك تحديث أو تصحيح بياناتك في أي وقت من خلال إعدادات الحساب</li>
+            <li><strong className="text-foreground/90">حق الحذف:</strong> يمكنك طلب حذف بياناتك الشخصية مع مراعاة المتطلبات القانونية للاحتفاظ ببعض البيانات</li>
+            <li><strong className="text-foreground/90">حق التصدير:</strong> يمكنك تصدير بياناتك بتنسيق قابل للقراءة في أي وقت</li>
+            <li><strong className="text-foreground/90">حق الاعتراض:</strong> يمكنك الاعتراض على معالجة بياناتك لأغراض تسويقية</li>
           </ul>
         </section>
 
         {/* ملفات تعريف الارتباط */}
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">7. ملفات تعريف الارتباط</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">7. ملفات تعريف الارتباط</h2>
           <p>
             نستخدم ملفات تعريف الارتباط والتقنيات المشابهة لتحسين تجربتك. للحصول على تفاصيل كاملة حول
             كيفية استخدامنا لهذه التقنيات وخيارات التحكم المتاحة لك، يُرجى الاطلاع على{" "}
-            <Link href="/cookies" className="text-emerald-400 underline hover:text-emerald-300 transition-colors duration-120">
+            <Link href="/cookies" className="text-emerald-500 dark:text-emerald-400 underline hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors duration-120">
               سياسة إدارة ملفات تعريف الارتباط
             </Link>.
           </p>
@@ -147,7 +147,7 @@ export default function PrivacyPage() {
 
         {/* الاحتفاظ بالبيانات */}
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">8. الاحتفاظ بالبيانات</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">8. الاحتفاظ بالبيانات</h2>
           <p>
             نحتفظ ببياناتك طوال مدة اشتراكك النشط في المنصة. في حال إلغاء الاشتراك أو حذف الحساب،
             نحتفظ ببعض البيانات لمدة لا تتجاوز 90 يوماً للسماح باستعادة الحساب أو تصدير البيانات.
@@ -159,7 +159,7 @@ export default function PrivacyPage() {
 
         {/* التعديلات */}
         <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
-          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">9. التعديلات على السياسة</h2>
+          <h2 className="text-xl font-extrabold text-emerald-500 dark:text-emerald-400 mb-3">9. التعديلات على السياسة</h2>
           <p>
             قد نقوم بتحديث سياسة الخصوصية هذه من وقت لآخر للاستجابة للتغييرات في خدماتنا
             أو المتطلبات القانونية. سنُخطرك بأي تغييرات جوهرية عبر البريد الإلكتروني أو إشعار
@@ -170,11 +170,11 @@ export default function PrivacyPage() {
 
         {/* التواصل */}
         <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
-          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">10. التواصل معنا</h2>
+          <h2 className="text-xl font-extrabold text-emerald-500 dark:text-emerald-400 mb-3">10. التواصل معنا</h2>
           <p>
             إذا كان لديك أي أسئلة أو استفسارات حول سياسة الخصوصية أو كيفية تعاملنا مع بياناتك،
             يمكنك التواصل معنا من خلال{" "}
-            <Link href="/contact" className="text-emerald-400 underline hover:text-emerald-300 transition-colors duration-120">
+            <Link href="/contact" className="text-emerald-500 dark:text-emerald-400 underline hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors duration-120">
               صفحة التواصل
             </Link>{" "}
             أو إرسال بريد إلكتروني إلى فريق حماية البيانات. نلتزم بالرد على جميع الاستفسارات

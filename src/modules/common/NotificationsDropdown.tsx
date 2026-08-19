@@ -99,7 +99,7 @@ export function NotificationsDropdown() {
         <Bell size={16} />
         {unreadCount > 0 && (
           <span
-            className="absolute top-[3px] right-[3px] min-w-[16px] h-4 px-1 rounded-lg bg-emerald-500 text-white text-[9px] font-extrabold flex items-center justify-center border-2 border-background"
+            className="absolute top-[3px] right-[3px] min-w-[16px] h-4 px-1 rounded-lg bg-mutedmerald-500 text-white text-[9px] font-extrabold flex items-center justify-center border-2 border-background"
           >
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
@@ -119,7 +119,7 @@ export function NotificationsDropdown() {
               <span className="text-[13px] font-extrabold">الإشعارات</span>
               {unreadCount > 0 && (
                 <span
-                  className="bg-emerald-500 text-white text-[10px] font-bold py-0.5 px-[7px] rounded-[10px]"
+                  className="bg-mutedmerald-500 text-white text-[10px] font-bold py-0.5 px-[7px] rounded-[10px]"
                 >
                   {unreadCount} غير مقروء
                 </span>
@@ -158,7 +158,7 @@ export function NotificationsDropdown() {
                     key={n.id}
                     type="button"
                     onClick={() => handleClickNotification(n)}
-                    className={cn("w-full flex gap-2.5 py-2.5 px-3 mb-0.5 rounded-lg border-none cursor-pointer font-inherit text-right transition-colors duration-120 text-popover-foreground hover-lift", n.isRead ? "bg-transparent" : "bg-accent")}
+                    className={cn("w-full flex gap-2.5 py-2.5 px-3 mb-0.5 rounded-lg border-none cursor-pointer font-inherit text-right transition-colors duration-120 text-popover-foreground hover-lift", n.isRead ? "bg-transparent" : "bg-cardccent")}
                     onMouseEnter={(e) => { if (n.isRead) e.currentTarget.classList.add("bg-muted"); }}
                     onMouseLeave={(e) => { if (n.isRead) e.currentTarget.classList.remove("bg-muted"); }}
                   >

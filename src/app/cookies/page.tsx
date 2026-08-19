@@ -62,9 +62,9 @@ export default function CookiesPage() {
       icon={<Shield size={28} />}
       lastUpdated="يوليو 2025"
     >
-      <div className="space-y-8 text-white/80 text-[15px] leading-[1.9]">
+      <div className="space-y-8 text-foreground/80 text-[15px] leading-[1.9]">
         <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
-          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">ما هي ملفات تعريف الارتباط؟</h2>
+          <h2 className="text-xl font-extrabold text-emerald-500 dark:text-emerald-400 mb-3">ما هي ملفات تعريف الارتباط؟</h2>
           <p>
             ملفات تعريف الارتباط (Cookies) هي ملفات نصية صغيرة تُخزّن على جهازك عند زيارة موقع إلكتروني.
             تُستخدم هذه الملفات لتمكين وظائف أساسية وتحسين تجربتك وتقديم محتوى مخصص. في GARFIX،
@@ -74,7 +74,7 @@ export default function CookiesPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">أنواع ملفات تعريف الارتباط</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">أنواع ملفات تعريف الارتباط</h2>
           <div className="space-y-4">
             {COOKIE_CATEGORIES.map((cat) => (
               <div
@@ -86,7 +86,7 @@ export default function CookiesPage() {
                   className={`mt-1 w-10 h-6 rounded-full shrink-0 transition-all relative ${
                     preferences[cat.id]
                       ? "bg-gradient-to-r from-emerald-600 to-emerald-700"
-                      : "bg-white/10"
+                      : "bg-muted"
                   } ${cat.required ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
                   disabled={cat.required}
                   aria-label={`تفعيل ${cat.title}`}
@@ -99,14 +99,14 @@ export default function CookiesPage() {
                 </button>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-white text-sm">{cat.title}</h3>
+                    <h3 className="font-bold text-foreground text-sm">{cat.title}</h3>
                     {cat.required && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 font-bold">
                         مطلوبة
                       </span>
                     )}
                   </div>
-                  <p className="text-white/60 text-[13px] leading-relaxed">{cat.description}</p>
+                  <p className="text-muted-foreground text-[13px] leading-relaxed">{cat.description}</p>
                 </div>
               </div>
             ))}
@@ -114,43 +114,43 @@ export default function CookiesPage() {
         </section>
 
         <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
-          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">ملفات تعريف الارتباط التي نستخدمها</h2>
+          <h2 className="text-xl font-extrabold text-emerald-500 dark:text-emerald-400 mb-3">ملفات تعريف الارتباط التي نستخدمها</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-emerald-500/20 bg-emerald-500/5">
-                  <th className="text-right py-3 px-3 text-white/90 font-bold">الاسم</th>
-                  <th className="text-right py-3 px-3 text-white/90 font-bold">النوع</th>
-                  <th className="text-right py-3 px-3 text-white/90 font-bold">الغرض</th>
-                  <th className="text-right py-3 px-3 text-white/90 font-bold">المدة</th>
+                  <th className="text-right py-3 px-3 text-foreground/90 font-bold">الاسم</th>
+                  <th className="text-right py-3 px-3 text-foreground/90 font-bold">النوع</th>
+                  <th className="text-right py-3 px-3 text-foreground/90 font-bold">الغرض</th>
+                  <th className="text-right py-3 px-3 text-foreground/90 font-bold">المدة</th>
                 </tr>
               </thead>
-              <tbody className="text-white/60">
-                <tr className="border-b border-white/[0.04]">
+              <tbody className="text-muted-foreground">
+                <tr className="border-b border-border">
                   <td className="py-2.5 px-3 font-mono text-xs">garfix_session</td>
                   <td className="py-2.5 px-3">أساسي</td>
                   <td className="py-2.5 px-3">إدارة جلسة المستخدم والمصادقة</td>
                   <td className="py-2.5 px-3">جلسة واحدة</td>
                 </tr>
-                <tr className="border-b border-white/[0.04]">
+                <tr className="border-b border-border">
                   <td className="py-2.5 px-3 font-mono text-xs">garfix_token</td>
                   <td className="py-2.5 px-3">أساسي</td>
                   <td className="py-2.5 px-3">رمز المصادقة للوصول الآمن</td>
                   <td className="py-2.5 px-3">7 أيام</td>
                 </tr>
-                <tr className="border-b border-white/[0.04]">
+                <tr className="border-b border-border">
                   <td className="py-2.5 px-3 font-mono text-xs">garfix_lang</td>
                   <td className="py-2.5 px-3">وظيفي</td>
                   <td className="py-2.5 px-3">تذكر لغة الواجهة المفضلة</td>
                   <td className="py-2.5 px-3">سنة واحدة</td>
                 </tr>
-                <tr className="border-b border-white/[0.04]">
+                <tr className="border-b border-border">
                   <td className="py-2.5 px-3 font-mono text-xs">garfix_theme</td>
                   <td className="py-2.5 px-3">وظيفي</td>
                   <td className="py-2.5 px-3">تذكر تفضيل المظهر (فاتح/داكن)</td>
                   <td className="py-2.5 px-3">سنة واحدة</td>
                 </tr>
-                <tr className="border-b border-white/[0.04]">
+                <tr className="border-b border-border">
                   <td className="py-2.5 px-3 font-mono text-xs">_ga</td>
                   <td className="py-2.5 px-3">تحليلي</td>
                   <td className="py-2.5 px-3">تحليلات Google Analytics المجمعة</td>
@@ -162,7 +162,7 @@ export default function CookiesPage() {
         </section>
 
         <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
-          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">كيفية التحكم في ملفات تعريف الارتباط</h2>
+          <h2 className="text-xl font-extrabold text-emerald-500 dark:text-emerald-400 mb-3">كيفية التحكم في ملفات تعريف الارتباط</h2>
           <p>
             يمكنك التحكم في ملفات تعريف الارتباط بعدة طرق: استخدام أداة التفضيلات أعلاه لتخصيص
             أنواع ملفات تعريف الارتباط المسموح بها، أو تعديل إعدادات المتصفح لحظر أو حذف ملفات
@@ -173,7 +173,7 @@ export default function CookiesPage() {
         </section>
 
         {/* أزرار التحكم */}
-        <div className="flex flex-wrap gap-3 pt-4 border-t border-white/[0.08]">
+        <div className="flex flex-wrap gap-3 pt-4 border-t border-border">
           <button
             onClick={acceptAll}
             className="px-6 py-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm cursor-pointer transition-all hover:shadow-brand-lg active-press duration-150 shadow-brand-sm"
@@ -182,7 +182,7 @@ export default function CookiesPage() {
           </button>
           <button
             onClick={savePreferences}
-            className="px-6 py-3 rounded-lg glass text-white font-bold text-sm cursor-pointer transition-all hover:bg-white/15 active-press duration-150 border border-white/10"
+            className="px-6 py-3 rounded-lg glass text-foreground font-bold text-sm cursor-pointer transition-all hover:bg-muted active-press duration-150 border border-border"
           >
             حفظ التفضيلات
           </button>

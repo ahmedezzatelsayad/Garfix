@@ -266,11 +266,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     <div
       dir="rtl"
       onClick={onClose}
-      className="fixed inset-0 z-[9999] bg-[#0b1220]/70 backdrop-blur-md flex items-start justify-center pt-[8vh] px-4 pb-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] bg-background/70 backdrop-blur-md flex items-start justify-center pt-[8vh] px-4 pb-4 animate-in fade-in duration-200"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-[min(640px,100%)] max-h-[70vh] flex flex-col rounded-2xl overflow-hidden border border-emerald-500/20 bg-[#111827] shadow-brand-xl glass-strong text-[#f5f5fa] font-[inherit] animate-in zoom-in-95 duration-200"
+        className="w-[min(640px,100%)] max-h-[70vh] flex flex-col rounded-2xl overflow-hidden border border-emerald-500/20 bg-card shadow-brand-xl glass-strong text-[#f5f5fa] font-[inherit] animate-in zoom-in-95 duration-200"
       >
         {/* Search input */}
         <div
@@ -367,7 +367,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
         {/* Footer hint */}
         <div
-          className="py-2 px-[14px] border-t border-white/[0.06] bg-[#0b1220]/50 flex items-center justify-between text-[10px] text-[#6b7280] gap-2 flex-wrap"
+          className="py-2 px-[14px] border-t border-white/[0.06] bg-background/50 flex items-center justify-between text-[10px] text-[#6b7280] gap-2 flex-wrap"
         >
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1">

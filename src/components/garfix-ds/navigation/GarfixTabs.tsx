@@ -164,7 +164,7 @@ export const GarfixTabs: React.FC<GarfixTabsProps> = ({
               variant === "pills" && [
                 "rounded-md",
                 isActive
-                  ? "bg-background text-foreground shadow-sm"
+                  ? "bg-mutedackgroundackground text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
               ].join(" "),
               

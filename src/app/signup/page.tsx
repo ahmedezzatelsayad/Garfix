@@ -102,7 +102,7 @@ export default function SignupPage() {
   // Success screen — shown after the API returns 200 — DS v4.0 Celebration
   if (success) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#0b1220]" dir="rtl">
+      <div className="min-h-screen flex flex-col bg-background" dir="rtl">
         {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
         <GarfixSkipLinks />
         <header id="main-navigation" className="px-6 py-5">
@@ -110,11 +110,11 @@ export default function SignupPage() {
             <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-sm">
               <BarChart3 className="h-5 w-5 text-white" />
             </div>
-            <span className="font-bold text-lg text-foreground">GarfiX EOS <span className="text-emerald-400 text-xs font-normal">v4.0</span></span>
+            <span className="font-bold text-lg text-foreground">GarfiX EOS <span className="text-emerald-500 text-xs font-normal">v4.0</span></span>
           </div>
         </header>
         <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center px-4 py-8">
-          <Card className="w-full max-w-md kpi-card-gold shadow-brand-xl border-emerald-500/20">
+          <Card className="w-full max-w-md bg-card border border-border shadow-lg">
             <CardHeader className="space-y-2 text-center">
               <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-[#d4a574] to-[#c9956a] flex items-center justify-center shadow-gold-sm animate-pulse">
                 <CheckCircle2 className="h-8 w-8 text-white" />
@@ -141,7 +141,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0b1220]" dir="rtl">
+    <div className="min-h-screen flex flex-col bg-background" dir="rtl">
       {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
       <GarfixSkipLinks />
       {/* Header — DS v4.0 Emerald Branding */}
@@ -150,12 +150,12 @@ export default function SignupPage() {
           <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-sm">
             <BarChart3 className="h-5 w-5 text-white" />
           </div>
-          <span className="font-bold text-lg text-foreground">GarfiX EOS <span className="text-emerald-400 text-xs font-normal">v4.0</span></span>
+          <span className="font-bold text-lg text-foreground">GarfiX EOS <span className="text-emerald-500 text-xs font-normal">v4.0</span></span>
         </div>
       </header>
 
       <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center px-4 py-8">
-        <Card className="w-full max-w-md shadow-brand-xl glass-strong border-emerald-500/20">
+        <Card className="w-full max-w-md bg-card border border-border shadow-lg">
           {/* ── DS v4.0 Enhanced Onboarding Header ── */}
           <CardHeader className="space-y-3 text-center pb-2">
             {/* Animated Logo with Badge */}
@@ -192,12 +192,12 @@ export default function SignupPage() {
                   id="signup-form-error"
                   role="alert"
                   aria-live="assertive"
-                  className="flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400 glass-strong shadow-brand-sm animate-shake duration-300"
+                  className="flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-400 shadow-brand-sm animate-shake duration-300"
                 >
-                  <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0 text-red-400" />
+                  <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
                   <div className="flex-1 space-y-1">
-                    <p className="font-medium text-red-300">{error}</p>
-                    <p className="text-xs text-red-400/70">
+                    <p className="font-medium text-red-700 dark:text-red-300">{error}</p>
+                    <p className="text-xs text-red-500/70 dark:text-red-400/70">
                       💡 تأكد من ملء جميع الحقول بشكل صحيح
                     </p>
                   </div>

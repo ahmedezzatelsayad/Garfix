@@ -112,7 +112,7 @@ export function Sidebar({
       {mobileOpen && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 bg-black/50 z-[199] backdrop-blur-sm md:hidden"
+          className="fixed inset-0 bg-mutedackgroundlack/50 z-[199] backdrop-blur-sm md:hidden"
         />
       )}
       {/*
@@ -200,7 +200,7 @@ export function Sidebar({
                 <button
                   key={c.slug}
                   onClick={() => { setActiveSlug(c.slug); setShowCompanyMenu(false); }}
-                  className={cn("w-full flex items-center gap-2 py-2 px-2.5 rounded-md border-none text-popover-foreground cursor-pointer font-inherit text-right", c.slug === activeCompany?.slug ? "bg-accent" : "bg-transparent")}
+                  className={cn("w-full flex items-center gap-2 py-2 px-2.5 rounded-md border-none text-popover-foreground cursor-pointer font-inherit text-right", c.slug === activeCompany?.slug ? "bg-cardccent" : "bg-transparent")}
                 >
                   <span className="text-base">{c.emoji || "🏢"}</span>
                   <span className="text-xs font-semibold flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{c.nameAr || c.name}</span>
@@ -220,13 +220,13 @@ export function Sidebar({
                 placeholder="اسم الشركة"
                 value={newCompanyName}
                 onChange={(e) => setNewCompanyName(e.target.value)}
-                className="w-full py-2 rounded-md border border-border mb-1.5 font-inherit text-xs bg-background text-foreground" // TAILWINDBREAK: var(--background)/var(--foreground)
+                className="w-full py-2 rounded-md border border-border mb-1.5 font-inherit text-xs bg-mutedackgroundackground text-foreground" // TAILWINDBREAK: var(--background)/var(--foreground)
               />
               <input
                 placeholder="المعرّف (english-slug)"
                 value={newCompanySlug}
                 onChange={(e) => setNewCompanySlug(e.target.value)}
-                className="w-full py-2 rounded-md border border-border mb-1.5 font-inherit text-xs bg-background text-foreground" dir="ltr" // TAILWINDBREAK: var(--background)/var(--foreground)
+                className="w-full py-2 rounded-md border border-border mb-1.5 font-inherit text-xs bg-mutedackgroundackground text-foreground" dir="ltr" // TAILWINDBREAK: var(--background)/var(--foreground)
               />
               <div className="flex gap-1.5">
                 <button
@@ -272,7 +272,7 @@ export function Sidebar({
                 <Icon size={16} />
                 <span className="flex-1">{item.label}</span>
                 {item.isAiFeature && (
-                  <span className="ai-badge text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                  <span className="ai-badge text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-mutedmerald-500/15 text-emerald-400 border border-emerald-500/25">
                     AI
                   </span>
                 )}

@@ -250,7 +250,7 @@ export function TemplateListManager({ companySlug }: TemplateListManagerProps) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="بحث في القوالب..."
                   className={cn(
-                    "w-full py-2.5 ps-10 pe-4 rounded-lg bg-background border border-border",
+                    "w-full py-2.5 ps-10 pe-4 rounded-lg bg-mutedackgroundackground border border-border",
                     "text-sm text-foreground outline-none",
                     "focus-ring transition-all duration-120",
                     "placeholder:text-muted-foreground"
@@ -414,7 +414,7 @@ export function TemplateListManager({ companySlug }: TemplateListManagerProps) {
                 onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
                 placeholder="مثال: قالب الفاتورة الرسمية"
                 className={cn(
-                  "w-full py-2.5 px-4 rounded-lg bg-background border border-border text-sm",
+                  "w-full py-2.5 px-4 rounded-lg bg-mutedackgroundackground border border-border text-sm",
                   "outline-none transition-all duration-120 ease-out focus-ring",
                   "placeholder:text-muted-foreground",
                   !editForm.name && "border-amber-400/50"
@@ -463,13 +463,13 @@ export function TemplateListManager({ companySlug }: TemplateListManagerProps) {
                   type="color"
                   value={editForm.primaryColor}
                   onChange={(e) => setEditForm((p) => ({ ...p, primaryColor: e.target.value }))}
-                  className="w-11 h-10 shrink-0 cursor-pointer rounded-lg border border-border bg-background p-0.5 focus-ring transition-all duration-120"
+                  className="w-11 h-10 shrink-0 cursor-pointer rounded-lg border border-border bg-mutedackgroundackground p-0.5 focus-ring transition-all duration-120"
                 />
                 <input
                   type="text"
                   value={editForm.primaryColor}
                   onChange={(e) => setEditForm((p) => ({ ...p, primaryColor: e.target.value }))}
-                  className="flex-1 h-10 rounded-lg border border-border bg-background px-3 text-sm font-mono focus-ring transition-all duration-120"
+                  className="flex-1 h-10 rounded-lg border border-border bg-mutedackgroundackground px-3 text-sm font-mono focus-ring transition-all duration-120"
                   dir="ltr"
                   maxLength={7}
                 />
@@ -539,7 +539,7 @@ export function TemplateListManager({ companySlug }: TemplateListManagerProps) {
                 rows={2}
                 placeholder="نص يظهر في أسفل الفاتورة..."
                 className={cn(
-                  "w-full rounded-lg border border-border bg-background px-4 py-3 text-sm resize-none",
+                  "w-full rounded-lg border border-border bg-mutedackgroundackground px-4 py-3 text-sm resize-none",
                   "outline-none transition-all duration-120 ease-out focus-ring",
                   "placeholder:text-muted-foreground"
                 )}
@@ -555,7 +555,7 @@ export function TemplateListManager({ companySlug }: TemplateListManagerProps) {
                 rows={3}
                 placeholder="شروط وأحكام تظهر في أسفل الفاتورة..."
                 className={cn(
-                  "w-full rounded-lg border border-border bg-background px-4 py-3 text-sm resize-none",
+                  "w-full rounded-lg border border-border bg-mutedackgroundackground px-4 py-3 text-sm resize-none",
                   "outline-none transition-all duration-120 ease-out focus-ring",
                   "placeholder:text-muted-foreground"
                 )}
@@ -620,7 +620,7 @@ export function TemplateListManager({ companySlug }: TemplateListManagerProps) {
               <span className="text-destructive font-semibold">لا يمكن التراجع عن هذا الإجراء.</span>
               
               {deletingTemplate?.isDefault && (
-                <span className="block mt-3 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs">
+                <span className="block mt-3 p-2.5 rounded-lg bg-cardmber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs">
                   ⚠️ هذا قالب افتراضي — يجب تعيين قالب آخر كافتراضي أولاً إذا كان هو القالب الوحيد.
                 </span>
               )}

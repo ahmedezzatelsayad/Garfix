@@ -1,7 +1,7 @@
 "use client";
 
-// FE-04 FIX (Audit v2 · Phase 1) — every text-white/40 swapped for
-// text-white/60 to satisfy WCAG AAA large-text contrast (≥4.5:1) on the
+// FE-04 FIX (Audit v2 · Phase 1) — every text-muted-foreground/50 swapped for
+// text-muted-foreground to satisfy WCAG AAA large-text contrast (≥4.5:1) on the
 // #0b1220 navy background.
 
 import { useState, useMemo } from "react";
@@ -28,10 +28,10 @@ const SERVICES: ServiceStatus[] = [
 ];
 
 const STATUS_CONFIG = {
-  operational: { label: "يعمل بشكل طبيعي", color: "text-green-400", bg: "bg-green-400/10", icon: <CheckCircle size={16} /> },
-  degraded: { label: "أداء متدني", color: "text-yellow-400", bg: "bg-yellow-400/10", icon: <AlertTriangle size={16} /> },
-  outage: { label: "انقطاع", color: "text-red-400", bg: "bg-red-400/10", icon: <XCircle size={16} /> },
-  maintenance: { label: "صيانة مجدولة", color: "text-blue-400", bg: "bg-blue-400/10", icon: <Clock size={16} /> },
+  operational: { label: "يعمل بشكل طبيعي", color: "text-green-500 dark:text-green-400", bg: "bg-green-500/10", icon: <CheckCircle size={16} /> },
+  degraded: { label: "أداء متدني", color: "text-yellow-500 dark:text-yellow-400", bg: "bg-yellow-500/10", icon: <AlertTriangle size={16} /> },
+  outage: { label: "انقطاع", color: "text-red-500 dark:text-red-400", bg: "bg-red-500/10", icon: <XCircle size={16} /> },
+  maintenance: { label: "صيانة مجدولة", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", icon: <Clock size={16} /> },
 };
 
 const INCIDENT_HISTORY = [
@@ -78,14 +78,14 @@ export default function StatusPage() {
       subtitle="الوضع الحالي لجميع خدمات GARFIX وسجل الأعطال"
       icon={<Activity size={28} />}
     >
-      <div className="space-y-10 text-white/80 text-[15px] leading-[1.9]">
+      <div className="space-y-10 text-foreground/80 text-[15px] leading-[1.9]">
         {/* الحالة الإجمالية */}
         <div className={`glass-strong ${overallConfig.bg} border border-emerald-500/20 rounded-xl p-6 text-center shadow-brand-md`}>
           <div className={`inline-flex items-center gap-2 ${overallConfig.color} text-lg font-extrabold mb-2`}>
             {overallConfig.icon}
             جميع الأنظمة تعمل بشكل طبيعي
           </div>
-          <p className="text-white/50 text-sm">
+          <p className="text-muted-foreground/70 text-sm">
             آخر فحص: {lastChecked} (توقيت الكويت)
           </p>
           <button
@@ -93,7 +93,7 @@ export default function StatusPage() {
               const now = new Date();
               setLastChecked(now.toLocaleString("ar-KW", { timeZone: "Asia/Kuwait" }));
             }}
-            className="mt-3 inline-flex items-center gap-1.5 text-white/60 hover:text-white/60 text-xs cursor-pointer bg-transparent border-none transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 text-muted-foreground hover:text-muted-foreground text-xs cursor-pointer bg-transparent border-none transition-colors"
           >
             <RefreshCw size={12} />
             تحديث
@@ -109,16 +109,16 @@ export default function StatusPage() {
             { label: "وقت الاسترداد", value: "< 30 د", sub: "متوسط" },
           ].map((stat) => (
             <div key={stat.label} className="kpi-card p-4 rounded-xl text-center hover-lift duration-120 transition-all">
-              <div className="text-2xl font-black text-[#fbbf24]">{stat.value}</div>
-              <div className="text-xs text-white/70 font-bold mt-0.5">{stat.label}</div>
-              <div className="text-[10px] text-white/60">{stat.sub}</div>
+              <div className="text-2xl font-black text-amber-500 dark:text-[#fbbf24]">{stat.value}</div>
+              <div className="text-xs text-muted-foreground/90 font-bold mt-0.5">{stat.label}</div>
+              <div className="text-[10px] text-muted-foreground">{stat.sub}</div>
             </div>
           ))}
         </div>
 
         {/* حالة كل خدمة */}
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-5">حالة الخدمات</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-5">حالة الخدمات</h2>
           <div className="space-y-2">
             {SERVICES.map((service) => {
               const config = STATUS_CONFIG[service.status];
@@ -130,16 +130,16 @@ export default function StatusPage() {
                   <div className={`${config.color} shrink-0`}>{config.icon}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-bold text-white text-sm">{service.name}</span>
+                      <span className="font-bold text-foreground text-sm">{service.name}</span>
                       <span className={`text-[11px] px-2 py-0.5 rounded-full ${config.bg} ${config.color} font-bold`}>
                         {config.label}
                       </span>
                     </div>
-                    <div className="text-white/50 text-[12px]">{service.description}</div>
+                    <div className="text-muted-foreground/70 text-[12px]">{service.description}</div>
                   </div>
                   <div className="text-left shrink-0 hidden sm:block">
-                    <div className="text-white/70 text-xs font-bold">{service.uptime}</div>
-                    <div className="text-white/60 text-[10px]">{service.latency}</div>
+                    <div className="text-muted-foreground/90 text-xs font-bold">{service.uptime}</div>
+                    <div className="text-muted-foreground text-[10px]">{service.latency}</div>
                   </div>
                 </div>
               );
@@ -149,7 +149,7 @@ export default function StatusPage() {
 
         {/* سجل الأعطال */}
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-5">سجل الأعطال</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-5">سجل الأعطال</h2>
           <div className="space-y-4">
             {INCIDENT_HISTORY.map((incident) => (
               <div
@@ -157,14 +157,14 @@ export default function StatusPage() {
                 className="glass border border-emerald-500/10 rounded-xl p-5 shadow-brand-sm"
               >
                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <span className="text-white/60 text-xs">{incident.date}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-400/10 text-green-400 font-bold">
+                  <span className="text-muted-foreground text-xs">{incident.date}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-500 dark:text-green-400 font-bold">
                     {incident.status}
                   </span>
-                  <span className="text-white/60 text-[11px]">المدة: {incident.duration}</span>
+                  <span className="text-muted-foreground text-[11px]">المدة: {incident.duration}</span>
                 </div>
-                <div className="font-bold text-white text-sm mb-1.5">{incident.title}</div>
-                <p className="text-white/60 text-[13px] leading-relaxed">{incident.desc}</p>
+                <div className="font-bold text-foreground text-sm mb-1.5">{incident.title}</div>
+                <p className="text-muted-foreground text-[13px] leading-relaxed">{incident.desc}</p>
               </div>
             ))}
           </div>
@@ -175,18 +175,18 @@ export default function StatusPage() {
           {/* FE-13 FIX (Audit v2 · Phase 3): this CTA heading was an h3 even
               though the previous two sections are h2 — promoting to h2 keeps
               the page outline h1 (FooterPageLayout title) → h2 → h3 flat. */}
-          <h2 className="font-bold text-white text-sm mb-2">اشترك في تحديثات حالة الخدمة</h2>
-          <p className="text-white/50 text-[13px] mb-4">
+          <h2 className="font-bold text-foreground text-sm mb-2">اشترك في تحديثات حالة الخدمة</h2>
+          <p className="text-muted-foreground/70 text-[13px] mb-4">
             احصل على إشعارات فورية عند حدوث أي تغيير في حالة الخدمات
           </p>
           <div className="flex gap-2 max-w-[400px] mx-auto">
             <input
               type="email"
               placeholder="بريدك الإلكتروني"
-              className="flex-1 px-4 py-2.5 rounded-lg bg-white/[0.05] border border-white/[0.1] text-white text-sm outline-none focus-ring focus:border-emerald-500 transition-colors"
+              className="flex-1 px-4 py-2.5 rounded-lg bg-muted border border-border text-foreground text-sm outline-none focus-ring focus:border-emerald-500 transition-colors"
               dir="ltr"
             />
-            <button className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm cursor-pointer border-none transition-all hover:shadow-brand-lg active-press duration-150 whitespace-nowrap shadow-brand-sm">
+            <button className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 text-foreground font-bold text-sm cursor-pointer border-none transition-all hover:shadow-brand-lg active-press duration-150 whitespace-nowrap shadow-brand-sm">
               اشترك
             </button>
           </div>

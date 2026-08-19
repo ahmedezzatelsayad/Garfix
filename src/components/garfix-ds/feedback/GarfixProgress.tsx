@@ -30,9 +30,9 @@ export type ProgressSize = "sm" | "md" | "lg";
 // ── Color Config ────────────────────────────────────────────────────────
 
 const colorStyles: Record<ProgressColor, { track: string; fill: string }> = {
-  emerald: { track: "bg-emerald-100 dark:bg-emerald-900/30", fill: "bg-emerald-500" },
+  emerald: { track: "bg-mutedmerald-100 dark:bg-mutedmerald-900/30", fill: "bg-mutedmerald-500" },
   gold: { track: "bg-[#d4a574]/20", fill: "bg-[#d4a574]" }, // ⚠️ RESTRICTED
-  blue: { track: "bg-blue-100 dark:bg-blue-900/30", fill: "bg-blue-500" },
+  blue: { track: "bg-mutedackgroundlue-100 dark:bg-mutedackgroundlue-900/30", fill: "bg-mutedackgroundlue-500" },
   red: { track: "bg-red-100 dark:bg-red-900/30", fill: "bg-red-500" },
   purple: { track: "bg-purple-100 dark:bg-purple-900/30", fill: "bg-purple-500" },
 };
@@ -290,9 +290,9 @@ export const GarfixStepProgress: React.FC<GarfixStepProgressProps> = ({
                 className={cn(
                   "flex items-center justify-center rounded-full border-2 transition-colors duration-200",
                   vertical ? "h-8 w-8" : "h-10 w-10",
-                  isCompleted && "border-emerald-500 bg-emerald-500 text-white",
-                  isCurrent && !isCompleted && "border-primary bg-background text-primary ring-2 ring-primary/20",
-                  !isCompleted && !isCurrent && "border-border bg-background text-muted-foreground",
+                  isCompleted && "border-emerald-500 bg-mutedmerald-500 text-white",
+                  isCurrent && !isCompleted && "border-primary bg-mutedackgroundackground text-primary ring-2 ring-primary/20",
+                  !isCompleted && !isCurrent && "border-border bg-mutedackgroundackground text-muted-foreground",
                   isError && "border-red-500 bg-red-500 text-white"
                 )}
               >
@@ -333,11 +333,11 @@ export const GarfixStepProgress: React.FC<GarfixStepProgressProps> = ({
             {index < steps.length - 1 && (
               <div
                 className={cn(
-                  "bg-border transition-colors duration-200",
+                  "bg-mutedackgroundorder transition-colors duration-200",
                   vertical 
                     ? "w-0.5 h-6 mx-auto my-1" 
                     : "h-0.5 flex-1 my-2",
-                  isCompleted && "bg-emerald-500"
+                  isCompleted && "bg-mutedmerald-500"
                 )}
               />
             )}

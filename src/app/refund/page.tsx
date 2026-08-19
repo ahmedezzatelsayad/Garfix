@@ -10,9 +10,9 @@ export default function RefundPage() {
       icon={<RotateCcw size={28} />}
       lastUpdated="يوليو 2025"
     >
-      <div className="space-y-8 text-white/80 text-[15px] leading-[1.9]">
+      <div className="space-y-8 text-foreground/80 text-[15px] leading-[1.9]">
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">1. نظرة عامة</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">1. نظرة عامة</h2>
           <p>
             في GARFIX، نؤمن بأن رضا العميل هو أولوية قصوى. نريدك أن تشعر بالثقة الكاملة عند
             الاشتراك في خدماتنا. لذلك، نقدم سياسة استرداد عادلة وشفافة تضمن حقوقك في حال لم
@@ -22,7 +22,7 @@ export default function RefundPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">2. الفترة التجريبية المجانية</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">2. الفترة التجريبية المجانية</h2>
           <p>
             نوفر فترة تجريبية مجانية كاملة لمدة 30 يوماً تشمل جميع ميزات المنصة بدون قيود.
             خلال هذه الفترة، لا يُطلب منك إدخال أي بيانات دفع. الهدف من الفترة التجريبية هو
@@ -33,15 +33,15 @@ export default function RefundPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">3. ضمان استرداد 14 يوماً</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">3. ضمان استرداد 14 يوماً</h2>
           <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-6 mb-4">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 flex items-center justify-center text-white font-black text-lg">
                 14
               </div>
               <div>
-                <h3 className="font-extrabold text-white text-lg">ضمان استرداد الأموال</h3>
-                <p className="text-white/50 text-sm">من تاريخ أول دفعة للاشتراك</p>
+                <h3 className="font-extrabold text-foreground text-lg">ضمان استرداد الأموال</h3>
+                <p className="text-muted-foreground/70 text-sm">من تاريخ أول دفعة للاشتراك</p>
               </div>
             </div>
             <p>
@@ -58,12 +58,12 @@ export default function RefundPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">4. الاسترداد بعد 14 يوماً</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">4. الاسترداد بعد 14 يوماً</h2>
           <p>
             بعد انقضاء فترة ضمان الـ 14 يوماً، يتم التعامل مع طلبات الاسترداد بشكل فردي بناءً
             على الظروف المحددة. قد نقدم استرداداً نسبياً في الحالات التالية:
           </p>
-          <ul className="list-disc pr-6 space-y-2 text-white/70 mt-3">
+          <ul className="list-disc pr-6 space-y-2 text-muted-foreground/90 mt-3">
             <li>أعطال تقنية جوهرية مؤثرة حالت دون استخدام المنصة بشكل معقول</li>
             <li>عدم توفر ميزات أساسية تم الإعلان عنها ولم يتم توفيرها خلال فترة معقولة</li>
             <li>أخطاء في الفوترة أدت إلى خصم مبالغ غير صحيحة</li>
@@ -76,7 +76,7 @@ export default function RefundPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">5. الاشتراكات السنوية</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">5. الاشتراكات السنوية</h2>
           <p>
             بالنسبة للاشتراكات السنوية، يسرى ضمان الاسترداد لمدة 14 يوماً من تاريخ الشراء.
             بعد هذه الفترة، يمكن إلغاء الاشتراك السنوي مع استرداد نسبي للفترة المتبقية غير
@@ -87,8 +87,8 @@ export default function RefundPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">6. كيفية طلب الاسترداد</h2>
-          <div className="bg-white/[0.03] rounded-xl p-5 space-y-4">
+          <h2 className="text-xl font-extrabold text-foreground mb-3">6. كيفية طلب الاسترداد</h2>
+          <div className="bg-muted rounded-xl p-5 space-y-4">
             {[
               { step: "1", title: "تواصل مع الدعم", desc: "أرسل طلب استرداد عبر مركز المساعدة أو البريد الإلكتروني مع ذكر سبب الطلب" },
               { step: "2", title: "مراجعة الطلب", desc: "يراجع فريق الدعم طلبك خلال يومي عمل ويُخطرك بالقرار" },
@@ -100,8 +100,8 @@ export default function RefundPage() {
                   {item.step}
                 </div>
                 <div>
-                  <div className="font-bold text-white text-sm">{item.title}</div>
-                  <div className="text-white/60 text-[13px]">{item.desc}</div>
+                  <div className="font-bold text-foreground text-sm">{item.title}</div>
+                  <div className="text-muted-foreground text-[13px]">{item.desc}</div>
                 </div>
               </div>
             ))}
@@ -109,7 +109,7 @@ export default function RefundPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">7. طرق إعادة الأموال</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">7. طرق إعادة الأموال</h2>
           <p>
             يتم إعادة الأموال عبر نفس طريقة الدفع الأصلية المستخدمة في الشراء. في حال الدفع
             ببطاقة ائتمان، يُعاد المبلغ إلى البطاقة ذاتها. في حال التحويل البنكي، يتم تحويل
@@ -120,14 +120,14 @@ export default function RefundPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">8. التواصل</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">8. التواصل</h2>
           <p>
             لطرح أي أسئلة حول سياسة الاسترداد أو لتقديم طلب استرداد، يمكنك التواصل معنا عبر{" "}
-            <Link href="/contact" className="text-emerald-400 underline hover:text-emerald-300 transition-colors duration-120">
+            <Link href="/contact" className="text-emerald-500 dark:text-emerald-400 underline hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors duration-120">
               صفحة التواصل
             </Link>{" "}
             أو زيارة{" "}
-            <Link href="/help" className="text-emerald-400 underline hover:text-emerald-300 transition-colors duration-120">
+            <Link href="/help" className="text-emerald-500 dark:text-emerald-400 underline hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors duration-120">
               مركز المساعدة
             </Link>. فريق الدعم متاح على مدار الساعة لمساعدتك.
           </p>

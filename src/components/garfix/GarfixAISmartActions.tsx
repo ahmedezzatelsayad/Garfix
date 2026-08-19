@@ -215,7 +215,7 @@ export function AIDescribeInput({
             rows={3}
             disabled={isProcessing}
             className={cn(
-              "w-full px-4 py-3 rounded-lg border bg-background text-foreground resize-none",
+              "w-full px-4 py-3 rounded-lg border bg-backgroundackground text-foreground resize-none",
               "placeholder:text-muted-foreground transition-all duration-200",
               "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary",
               "disabled:opacity-50",
@@ -304,13 +304,13 @@ const insightConfig = {
   },
   warning: {
     icon: "⚠️",
-    bgColor: "bg-amber-50 dark:bg-amber-900/20",
+    bgColor: "bg-cardmber-50 dark:bg-cardmber-900/20",
     borderColor: "border-amber-200 dark:border-amber-800",
     textColor: "text-amber-700 dark:text-amber-400",
   },
   info: {
     icon: "ℹ️",
-    bgColor: "bg-blue-50 dark:bg-blue-900/20",
+    bgColor: "bg-backgroundlue-50 dark:bg-backgroundlue-900/20",
     borderColor: "border-blue-200 dark:border-blue-800",
     textColor: "text-blue-700 dark:text-blue-400",
   },

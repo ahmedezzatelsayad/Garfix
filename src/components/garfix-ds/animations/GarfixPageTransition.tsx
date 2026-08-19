@@ -223,7 +223,7 @@ function DefaultPageLoader() {
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="w-2 h-2 rounded-full bg-emerald-500"
+            className="w-2 h-2 rounded-full bg-mutedmerald-500"
             style={{
               animation: `garfix-dots 1400ms ease-in-out infinite`,
               animationDelay: `${i * 150}ms`,

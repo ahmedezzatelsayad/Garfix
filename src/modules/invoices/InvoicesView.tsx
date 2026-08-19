@@ -259,7 +259,7 @@ export function InvoicesView() {
           banner below. Without this, the UI showed success while inventory
           wasn't actually updated. */}
       {inventoryWarnings.length > 0 && showInventoryBanner && (
-        <Alert className="flex flex-col gap-2 border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+        <Alert className="flex flex-col gap-2 border-amber-300 bg-cardmber-50 text-amber-900 dark:bg-cardmber-950 dark:text-amber-100">
           <div className="flex items-start gap-2">
             <AlertTriangle className="shrink-0 mt-0.5" />
             <AlertTitle className="font-bold">⚠️ {inventoryWarnings.length} تحذير من المختزن</AlertTitle>
@@ -406,7 +406,7 @@ export function InvoicesView() {
           {/* Paid Invoices — Standard KPI */}
           <div className="kpi-card hover-lift rounded-xl">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+              <div className="w-10 h-10 rounded-lg bg-mutedmerald-500/10 flex items-center justify-center text-emerald-500">
                 <CheckCircle2 size={18} />
               </div>
               <span className="kpi-label">الفواتير المدفوعة</span>
@@ -430,7 +430,7 @@ export function InvoicesView() {
           {/* Average Invoice Value — Standard KPI */}
           <div className="kpi-card hover-lift rounded-xl">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+              <div className="w-10 h-10 rounded-lg bg-mutedackgroundlue-500/10 flex items-center justify-center text-blue-500">
                 <BarChart3 size={18} />
               </div>
               <span className="kpi-label">متوسط قيمة الفاتورة</span>
@@ -1216,7 +1216,7 @@ const inputStyle = "w-full py-2 px-3 rounded-sm bg-white border border-gray-200 
 function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoice: Invoice; company: { name: string; nameAr?: string | null; email?: string | null; phone?: string | null; address?: string | null; vatNumber?: string | null; currency: string }; onClose: () => void; onRecordPayment?: () => void }) {
   return (
     <div
-      className="fixed inset-0 bg-black/60 z-[300] flex items-center justify-center p-5"
+      className="fixed inset-0 bg-mutedackgroundlack/60 z-[300] flex items-center justify-center p-5"
       onClick={onClose}
     >
       <div
@@ -1382,7 +1382,7 @@ function PaymentDialog({ invoice, onClose, onPaid }: { invoice: Invoice; onClose
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 z-[320] flex items-center justify-center p-5"
+      className="fixed inset-0 bg-mutedackgroundlack/60 z-[320] flex items-center justify-center p-5"
       onClick={onClose}
     >
       <div
@@ -1399,7 +1399,7 @@ function PaymentDialog({ invoice, onClose, onPaid }: { invoice: Invoice; onClose
           </button>
         </div>
 
-        <div className="bg-accent/40 rounded-[10px] p-3 text-[12px] flex flex-col gap-1">
+        <div className="bg-cardccent/40 rounded-[10px] p-3 text-[12px] flex flex-col gap-1">
           <div className="flex justify-between">
             <span className="text-muted-foreground">الفاتورة</span>
             <span className="font-mono font-bold">#{invoice.invoiceNumber}</span>

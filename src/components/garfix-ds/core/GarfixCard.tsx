@@ -12,7 +12,7 @@
  *
  * DESIGN TOKENS:
  * - Background: #111827 (dark), #ffffff (light)
- * - Glass: backdrop-blur-md bg-white/10 (dark), bg-black/5 (light)
+ * - Glass: backdrop-blur-md bg-white/10 (dark), bg-mutedackgroundlack/5 (light)
  * - Border: rgba(255,255,255,0.1) (dark), rgba(0,0,0,0.08) (light)
  * - Radius: 0.75rem (lg), 1rem (xl)
  * ════════════════════════════════════════════════════════════════════════
@@ -270,9 +270,9 @@ export const KPICard: React.FC<KPICardProps> = ({
         {icon && (
           <div className={cn(
             "p-2.5 rounded-lg",
-            kpiColor === "emerald" && "bg-emerald-500/10 text-emerald-500",
+            kpiColor === "emerald" && "bg-mutedmerald-500/10 text-emerald-500",
             kpiColor === "gold" && "bg-[#d4a574]/10 text-[#d4a574]", // ⚠️ RESTRICTED
-            kpiColor === "blue" && "bg-blue-500/10 text-blue-500",
+            kpiColor === "blue" && "bg-mutedackgroundlue-500/10 text-blue-500",
             kpiColor === "red" && "bg-red-500/10 text-red-500",
             kpiColor === "purple" && "bg-purple-500/10 text-purple-500",
           )}>
@@ -287,7 +287,7 @@ export const KPICard: React.FC<KPICardProps> = ({
           {change !== undefined && (
             <span className={cn(
               "inline-flex items-center gap-0.5 font-semibold px-1.5 py-0.5 rounded",
-              isPositive && "bg-emerald-500/10 text-emerald-500",
+              isPositive && "bg-mutedmerald-500/10 text-emerald-500",
               isNegative && "bg-red-500/10 text-red-500",
             )}>
               {isPositive ? "↑" : "↓"} {Math.abs(change)}%

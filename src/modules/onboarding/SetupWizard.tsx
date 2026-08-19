@@ -254,7 +254,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-mutedackgroundackground">
         <Loader2 size={32} className="animate-spin text-primary" />
       </div>
     );
@@ -609,7 +609,7 @@ function ToggleRow({ icon, label, desc, value, onChange }: {
       </div>
       <div
         className={cn("relative w-10 h-[22px] rounded-[11px] transition-colors duration-200",
-          value ? "bg-emerald-600" : "bg-white/15"
+          value ? "bg-mutedmerald-600" : "bg-white/15"
         )}
       >
         <div

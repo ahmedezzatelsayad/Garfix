@@ -230,7 +230,7 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
                 className={cn(
                   "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors",
                   selectedYear === year
-                    ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400"
+                    ? "bg-mutedmerald-100 dark:bg-mutedmerald-900/30 text-emerald-800 dark:text-emerald-400"
                     : "hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-600 dark:text-gray-400"
                 )}
               >
@@ -255,7 +255,7 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
                 "flex items-center justify-between p-4 rounded-xl",
                 yearStatus.isClosed
                   ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
-                  : "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800"
+                  : "bg-mutedmerald-50 dark:bg-mutedmerald-900/20 border border-emerald-200 dark:border-emerald-800"
               )}>
                 <div className="flex items-center gap-3">
                   {yearStatus.isClosed ? (
@@ -297,7 +297,7 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
                     disabled={actionLoading}
                     className={cn(
                       "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium",
-                      "bg-emerald-600 hover:bg-emerald-700 text-white",
+                      "bg-mutedmerald-600 hover:bg-mutedmerald-700 text-white",
                       "transition-colors disabled:opacity-50",
                       "shadow-brand hover:shadow-brand-md"
                     )}
@@ -371,7 +371,7 @@ export function FiscalYearCloseView({ companySlug }: { companySlug: string }) {
 
               {/* Warning Message for Open Years */}
               {!yearStatus.isClosed && (
-                <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-start gap-3 p-4 bg-mutedackgroundlue-50 dark:bg-mutedackgroundlue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
                   <div className="text-sm text-blue-800 dark:text-blue-300">
                     <strong>تنبيه:</strong> قبل إغلاق السنة المالية، تأكد من:
@@ -472,7 +472,7 @@ function CloseYearModal({
   const [confirmed, setConfirmed] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-mutedackgroundlack/50">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-red-50 dark:bg-red-900/20">
@@ -578,7 +578,7 @@ function ReopenYearModal({
   const [reason, setReason] = useState("");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-mutedackgroundlack/50">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-yellow-50 dark:bg-yellow-900/20">
@@ -671,7 +671,7 @@ function AuditLogModal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-mutedackgroundlack/50">
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -717,7 +717,7 @@ function AuditLogModal({
                         "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
                         entry.status === "مغلق"
                           ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                          : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
+                          : "bg-mutedmerald-100 text-emerald-800 dark:bg-mutedmerald-900/30 dark:text-emerald-400"
                       )}>
                         {entry.status === "مغلق" ? (
                           <Lock className="w-3 h-3 ml-1" />

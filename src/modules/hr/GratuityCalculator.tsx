@@ -45,7 +45,7 @@ interface GratuityResponse {
   countryCode?: string;
 }
 
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none [direction:ltr] text-end max-md:min-h-[44px] focus-ring";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none [direction:ltr] text-end max-md:min-h-[44px] focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 
 const fmt = (n: number, dp = 3) =>
@@ -65,19 +65,19 @@ function AISuggestion({ type }: { type: 'eligible' | 'high' | 'medium' | 'low' }
       icon: <TrendingUp size={16} className="text-emerald-500" />,
       title: "مكافأة مرتفعة",
       text: "مدة خدمة الموظف طويلة مما يعني مكافأة مجزية. راجع سياسة الشركة بشأن الحد الأقصى للمكافآت.",
-      color: "border-emerald-500/30 bg-emerald-500/5"
+      color: "border-emerald-500/30 bg-mutedmerald-500/5"
     },
     medium: {
       icon: <Lightbulb size={16} className="text-amber-500" />,
       title: "ملاحظة",
       text: "المكافأة في النطاق المتوسط. يمكن تحسينها بمراجعة البدلات والمكافآت الإضافية المشمولة.",
-      color: "border-amber-500/30 bg-amber-500/5"
+      color: "border-amber-500/30 bg-cardmber-500/5"
     },
     low: {
       icon: <Info size={16} className="text-blue-500" />,
       title: "فترة قصيرة",
       text: "مدة الخدمة أقل من 5 سنوات، المكافأة تحسب بنصف الراتب. كل سنة إضافية تزيد المبلغ بشكل ملحوظ.",
-      color: "border-blue-500/30 bg-blue-500/5"
+      color: "border-blue-500/30 bg-mutedackgroundlue-500/5"
     }
   };
 
@@ -218,7 +218,7 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
 
       {/* Result - Not eligible */}
       {result && !result.eligible && (
-        <div className="p-5 rounded-xl bg-amber-500/10 border border-amber-500/40 flex items-start gap-3 animate-fade-in-up">
+        <div className="p-5 rounded-xl bg-cardmber-500/10 border border-amber-500/40 flex items-start gap-3 animate-fade-in-up">
           <AlertTriangle size={20} className="text-amber-500 shrink-0 mt-0.5" />
           <div>
             <div className="text-sm font-extrabold text-amber-500 mb-1">
@@ -307,7 +307,7 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
                 </thead>
                 <tbody>
                   {result.gratuity.breakdown.map((b) => (
-                    <tr key={b.period} className="border-b border-border hover:bg-accent/50 transition-colors duration-120">
+                    <tr key={b.period} className="border-b border-border hover:bg-cardccent/50 transition-colors duration-120">
                       <td className="px-3 py-2.5 font-bold">{b.period}</td>
                       <td className="px-3 py-2.5">{b.rate}</td>
                       <td className="px-3 py-2.5 [direction:ltr] text-end">{fmt(b.days, 1)}</td>
@@ -316,7 +316,7 @@ export function GratuityCalculator({ employees }: { employees: Employee[] }) {
                       </td>
                     </tr>
                   ))}
-                  <tr className="bg-accent font-extrabold">
+                  <tr className="bg-cardccent font-extrabold">
                     <td className="p-3 text-xs" colSpan={3}>الإجمالي</td>
                     <td className="p-3 text-[13px] [direction:ltr] text-end text-primary">
                       {fmt(result.gratuity.gratuityAmount)} {selectedEmployee?.currency || ""}

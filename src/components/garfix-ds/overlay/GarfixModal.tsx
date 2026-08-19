@@ -135,7 +135,7 @@ export const GarfixModal: React.FC<GarfixModalProps> = ({
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+        className="absolute inset-0 bg-mutedackgroundlack/50 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={handleBackdropClick}
         aria-hidden="true"
       />

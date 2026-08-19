@@ -404,7 +404,7 @@ export default function AISettingsPage() {
                   className={cn(
                     'px-4 py-2 rounded-lg text-sm font-medium transition-all',
                     activeTab === tab.value
-                      ? 'bg-emerald-500 text-white shadow-sm'
+                      ? 'bg-mutedmerald-500 text-white shadow-sm'
                       : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                   )}
                 >
@@ -542,7 +542,7 @@ export default function AISettingsPage() {
                             <button
                               key={template.label}
                               onClick={() => setSystemPrompt(template.prompt)}
-                              className="px-3 py-1.5 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors"
+                              className="px-3 py-1.5 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-mutedmerald-100 dark:hover:bg-mutedmerald-900 transition-colors"
                             >
                               {template.label}
                             </button>
@@ -596,7 +596,7 @@ export default function AISettingsPage() {
                         className={cn(
                           'flex items-center justify-between p-4 rounded-xl border transition-all',
                           features[feature.key]
-                            ? 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20'
+                            ? 'border-emerald-200 bg-mutedmerald-50/50 dark:border-emerald-800 dark:bg-mutedmerald-950/20'
                             : 'border-gray-200 dark:border-gray-700'
                         )}
                       >
@@ -623,7 +623,7 @@ export default function AISettingsPage() {
                           className={cn(
                             'relative w-12 h-6 rounded-full transition-colors',
                             features[feature.key]
-                              ? 'bg-emerald-500'
+                              ? 'bg-mutedmerald-500'
                               : 'bg-gray-300 dark:bg-gray-600'
                           )}
                         >

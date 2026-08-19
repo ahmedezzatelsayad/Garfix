@@ -68,7 +68,7 @@ export const GarfixTextarea = forwardRef<HTMLTextAreaElement, GarfixTextareaProp
           id={textareaId}
           className={cn(
             // Base
-            "w-full rounded-xl border bg-background text-foreground placeholder:text-muted-foreground/50",
+            "w-full rounded-xl border bg-mutedackgroundackground text-foreground placeholder:text-muted-foreground/50",
             // Focus & States
             "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50",
             "transition-all duration-200 ease-out",

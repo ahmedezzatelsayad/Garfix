@@ -274,7 +274,7 @@ export function PlatformAdminPanel() {
                   <div className="text-center p-4 md:p-8 text-muted-foreground text-sm">لا توجد مستأجرون</div>
                 ) : (
                   currentPageTenants.map((t) => (
-                    <div key={t.id} className="rounded-xl border border-border p-3 bg-background">
+                    <div key={t.id} className="rounded-xl border border-border p-3 bg-mutedackgroundackground">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-xl flex-shrink-0">{t.emoji}</span>
@@ -552,7 +552,7 @@ export function PlatformAdminPanel() {
                   {stockLedgerSlug && (
                     <button
                       onClick={applyStockLedgerFilters}
-                      className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white border-none font-inherit text-[11px] font-bold cursor-pointer active-press"
+                      className="px-3 py-1.5 rounded-lg bg-mutedmerald-600 text-white border-none font-inherit text-[11px] font-bold cursor-pointer active-press"
                     >
                       تطبيق الفلاتر
                     </button>
@@ -667,7 +667,7 @@ export function PlatformAdminPanel() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div
-            className="px-3 py-2.5 bg-amber-500/12 border border-amber-500/30 rounded-lg text-[11px] text-amber-500 font-bold flex items-center gap-1.5"
+            className="px-3 py-2.5 bg-cardmber-500/12 border border-amber-500/30 rounded-lg text-[11px] text-amber-500 font-bold flex items-center gap-1.5"
           >
             <AlertTriangle size={14} />
             soft-delete — data preserved 5 years per retention policy
@@ -697,7 +697,7 @@ export function PlatformAdminPanel() {
                   },
                 );
               }}
-              className="bg-amber-500 hover:bg-amber-600 text-white"
+              className="bg-cardmber-500 hover:bg-cardmber-600 text-white"
             >
               {deleting ? "جارٍ الحذف…" : "نعم، احذف مبدئياً"}
             </AlertDialogAction>
@@ -711,12 +711,12 @@ export function PlatformAdminPanel() {
 
 function StatusBadge({ active, activeText, inactiveText }: { active: boolean; activeText?: string; inactiveText?: string }) {
   const label = active ? (activeText || "نشط") : (inactiveText || "موقوف");
-  return <span role="status" aria-label={label} className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${active ? "bg-emerald-500/15 text-emerald-500" : "bg-gray-400/15 text-gray-400"}`}>{label}</span>;
+  return <span role="status" aria-label={label} className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${active ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-gray-400/15 text-gray-400"}`}>{label}</span>;
 }
 
 function TicketStatusBadge({ status }: { status: string }) {
   const label = status === "open" ? "مفتوحة" : "مغلقة";
-  return <span role="status" aria-label={`تذكرة ${label}`} className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${status === "open" ? "bg-amber-500/15 text-amber-500" : "bg-emerald-500/15 text-emerald-500"}`}>{label}</span>;
+  return <span role="status" aria-label={`تذكرة ${label}`} className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${status === "open" ? "bg-cardmber-500/15 text-amber-500" : "bg-mutedmerald-500/15 text-emerald-500"}`}>{label}</span>;
 }
 
 /**

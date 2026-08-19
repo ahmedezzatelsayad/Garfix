@@ -16,9 +16,9 @@ export default function TermsPage() {
       icon={<FileText size={28} />}
       lastUpdated="يوليو 2025"
     >
-      <div className="space-y-8 text-white/80 text-[15px] leading-[1.9]">
+      <div className="space-y-8 text-foreground/80 text-[15px] leading-[1.9]">
         <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
-          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">1. قبول الشروط</h2>
+          <h2 className="text-xl font-extrabold text-emerald-500 dark:text-emerald-400 mb-3">1. قبول الشروط</h2>
           <p>
             باستخدامك لمنصة GARFIX (المشار إليها فيما بعد بـ &quot;المنصة&quot;)، فإنك توافق على الالتزام
             بهذه الشروط والأحكام كاملةً. إذا كنت لا توافق على أي جزء من هذه الشروط، يُمنع عليك استخدام
@@ -28,7 +28,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">2. وصف الخدمة</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">2. وصف الخدمة</h2>
           <p>
             GARFIX هي منصة سحابية متكاملة لإدارة الأعمال مصممة خصيصاً لأسواق الشرق الأوسط وشمال أفريقيا.
             توفر المنصة خدمات إدارة الفواتير والعملاء والموردين والمشتريات والمحاسبة والموارد البشرية
@@ -39,10 +39,10 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">3. الاشتراكات والفوترة</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">3. الاشتراكات والفوترة</h2>
           <div className="glass rounded-xl p-5 space-y-4 border border-emerald-500/10 hover-lift duration-120 transition-all">
             <div>
-              <h3 className="font-bold text-emerald-400 mb-1">أ. الفترة التجريبية</h3>
+              <h3 className="font-bold text-emerald-500 dark:text-emerald-400 mb-1">أ. الفترة التجريبية</h3>
               <p>
                 تقدم المنصة فترة تجريبية مجانية لمدة 30 يوماً تتضمن جميع الميزات. لا تحتاج لبطاقة ائتمان
                 لبدء التجربة. في نهاية الفترة التجريبية، يمكنك اختيار خطة اشتراك مناسبة أو إلغاء الاشتراك
@@ -50,7 +50,7 @@ export default function TermsPage() {
               </p>
             </div>
             <div>
-              <h3 className="font-bold text-emerald-400 mb-1">ب. خطط الاشتراك</h3>
+              <h3 className="font-bold text-emerald-500 dark:text-emerald-400 mb-1">ب. خطط الاشتراك</h3>
               <p>
                 تتوفر خطط اشتراك متنوعة تناسب مختلف أحجام الأعمال. الأسعار المعروضة تشمل الضريبة
                 حيثما ينطبق ذلك. يمكن ترقية أو تخفيض الخطة في أي وقت، مع احتساب الفرق في الرسوم
@@ -58,7 +58,7 @@ export default function TermsPage() {
               </p>
             </div>
             <div>
-              <h3 className="font-bold text-emerald-400 mb-1">ج. الدفع</h3>
+              <h3 className="font-bold text-emerald-500 dark:text-emerald-400 mb-1">ج. الدفع</h3>
               <p>
                 يتم خصم رسوم الاشتراك تلقائياً في بداية كل فترة فوترة (شهرية أو سنوية). نقبل
                 بطاقات الائتمان والخصم والتحويل البنكي. في حال فشل عملية الدفع، نمنح مهلة 7 أيام
@@ -69,9 +69,9 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">4. واجبات المستخدم</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">4. واجبات المستخدم</h2>
           <p className="mb-2">بصفتك مستخدماً للمنصة، تلتزم بما يلي:</p>
-          <ul className="list-disc pr-6 space-y-2 text-white/70">
+          <ul className="list-disc pr-6 space-y-2 text-muted-foreground/90">
             <li>تقديم معلومات صحيحة ودقيقة عند إنشاء الحساب وتحديثها عند أي تغيير</li>
             <li>الحفاظ على سرية بيانات الدخول وعدم مشاركتها مع أي شخص غير مصرح له</li>
             <li>استخدام المنصة للأغراض المشروعة فقط ووفقاً للقوانين المعمول بها</li>
@@ -83,7 +83,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">5. الملكية الفكرية</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">5. الملكية الفكرية</h2>
           <p>
             جميع حقوق الملكية الفكرية المتعلقة بالمنصة، بما في ذلك الكود البرمجي والتصميم والشعارات
             والعلامات التجارية والمحتوى الأصلي، هي ملك حصري لـ GARFIX. بيانات الأعمال التي تدخلها
@@ -94,7 +94,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">6. مساعد الذكاء الاصطناعي</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">6. مساعد الذكاء الاصطناعي</h2>
           <p>
             تتضمن المنصة مساعداً ذكاءً اصطناعياً يساعدك في إدارة أعمالك. يخضع استخدام المساعد الذكي
             للشروط التالية: النتائج والتوصيات المقدمة إرشادية ولا تُغني عن الحكم المهني. لا نتحمل
@@ -105,7 +105,7 @@ export default function TermsPage() {
         </section>
 
         <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
-          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">7. إخلاء المسؤولية</h2>
+          <h2 className="text-xl font-extrabold text-emerald-500 dark:text-emerald-400 mb-3">7. إخلاء المسؤولية</h2>
           <p>
             تُقدَّم المنصة &quot;كما هي&quot; بدون أي ضمانات صريحة أو ضمنية. لا نضمن أن المنصة ستكون
             خالية من الأخطاء أو متاحة بشكل غير منقطع. لا نتحمل مسؤولية أي أضرار مباشرة أو غير مباشرة
@@ -115,7 +115,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">8. إنهاء الاشتراك</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">8. إنهاء الاشتراك</h2>
           <p>
             يمكنك إلغاء اشتراكك في أي وقت من خلال إعدادات الحساب. عند الإلغاء، يظل حسابك نشطاً
             حتى نهاية فترة الفوترة الحالية. بعد الإلغاء، يمكنك تصدير بياناتك خلال 90 يوماً.
@@ -125,7 +125,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-extrabold text-white mb-3">9. القانون الحاكم</h2>
+          <h2 className="text-xl font-extrabold text-foreground mb-3">9. القانون الحاكم</h2>
           <p>
             تخضع هذه الشروط وتُفسَّر وفقاً لقوانين دولة الكويت. في حال نشوب أي نزاع، يتم حله
             أولاً بالطرق الودية، وفي حال تعذر ذلك، يُحال إلى المحاكم المختصة في دولة الكويت.
@@ -135,10 +135,10 @@ export default function TermsPage() {
         </section>
 
         <section className="glass-strong rounded-xl p-6 border border-emerald-500/10 shadow-brand-sm">
-          <h2 className="text-xl font-extrabold text-emerald-400 mb-3">10. التواصل</h2>
+          <h2 className="text-xl font-extrabold text-emerald-500 dark:text-emerald-400 mb-3">10. التواصل</h2>
           <p>
             لأي استفسارات حول هذه الشروط والأحكام، يمكنك التواصل معنا عبر{" "}
-            <Link href="/contact" className="text-emerald-400 underline hover:text-emerald-300 transition-colors duration-120">
+            <Link href="/contact" className="text-emerald-500 dark:text-emerald-400 underline hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors duration-120">
               صفحة التواصل
             </Link>{" "}
             أو من خلال مركز المساعدة المتاح على المنصة.

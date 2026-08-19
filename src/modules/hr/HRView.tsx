@@ -49,7 +49,7 @@ import type { EnterpriseColumn } from "@/components/ui/GarfixEnterpriseTable";
 
 // ─── Style constants (DS v4.0) ───────────────────────────────────────────
 
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none max-md:min-h-[44px] focus-ring";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none max-md:min-h-[44px] focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 const _thStyle = "text-start px-3 py-2.5 text-[11px] text-muted-foreground font-bold";
 const _tdStyle = "px-3 py-2.5 text-[13px]";
@@ -290,7 +290,7 @@ export function HRView() {
             render: (value) => (
               <span className={cn(
                 "py-0.5 px-2.5 rounded-xl text-[11px] font-bold",
-                value ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500"
+                value ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500"
               )}>
                 {value ? "نشط" : "موقوف"}
               </span>
@@ -338,7 +338,7 @@ export function HRView() {
             render: (value) => (
               <span className={cn(
                 "py-0.5 px-2.5 rounded-xl text-[11px] font-bold",
-                value ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500"
+                value ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500"
               )}>
                 {value ? "مدفوع" : "معلّق"}
               </span>
@@ -359,7 +359,7 @@ export function HRView() {
             render: (value) => (
               <span className={cn(
                 "py-0.5 px-2.5 rounded-xl text-[11px] font-bold",
-                value ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500"
+                value ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500"
               )}>
                 {value ? "مدفوع" : "معلّق"}
               </span>

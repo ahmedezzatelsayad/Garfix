@@ -180,14 +180,14 @@ export function TemplateSettingsForm({ companySlug }: TemplateSettingsFormProps)
                   type="color"
                   value={templateForm.primaryColor}
                   onChange={(e) => setTemplateForm((p) => ({ ...p, primaryColor: e.target.value }))}
-                  className="w-11 h-11 shrink-0 cursor-pointer rounded-lg border-2 border-border bg-background p-0.5 focus-ring transition-all duration-120 hover:border-primary/40"
+                  className="w-11 h-11 shrink-0 cursor-pointer rounded-lg border-2 border-border bg-mutedackgroundackground p-0.5 focus-ring transition-all duration-120 hover:border-primary/40"
                 />
                 <div className="flex-1 space-y-1">
                   <input
                     type="text"
                     value={templateForm.primaryColor}
                     onChange={(e) => setTemplateForm((p) => ({ ...p, primaryColor: e.target.value }))}
-                    className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm font-mono focus-ring transition-all duration-120"
+                    className="w-full h-9 rounded-lg border border-border bg-mutedackgroundackground px-3 text-sm font-mono focus-ring transition-all duration-120"
                     dir="ltr"
                     maxLength={7}
                   />
