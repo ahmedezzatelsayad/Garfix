@@ -2431,3 +2431,32 @@ html.light {
     print-color-adjust: exact !important;
   }
 }
+
+/* ═══ لمسة الإغراء — micro-interactions بجودة Enterprise ═══ */
+
+/* رفع ناعم مع توهج خفيف على بطاقات المزايا عند المرور */
+.landing-card { transition: transform 220ms cubic-bezier(.2,.8,.3,1), box-shadow 220ms ease, border-color 220ms ease; }
+.landing-card:hover { transform: translateY(-4px); box-shadow: 0 18px 44px rgba(4,120,87,0.16); border-color: rgba(4,120,87,0.35); }
+
+/* لمعة CTA: شريط ضوء يعبر الزر الأساسي دوريًا */
+.cta-shine { position: relative; overflow: hidden; }
+.cta-shine::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.28) 48%, transparent 62%);
+  transform: translateX(-120%);
+  animation: cta-shine 3.6s cubic-bezier(.4,0,.2,1) infinite;
+}
+@keyframes cta-shine { 55%, 100% { transform: translateX(120%); } }
+
+/* نبض خفيف لنقطة الحالة الخضراء (AI online) */
+@keyframes garfix-agent-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.45); }
+  50% { box-shadow: 0 0 0 8px rgba(16,185,129,0); }
+}
+.ai-online-dot { animation: garfix-agent-pulse 2.4s ease-in-out infinite; }
+
+/* ظهور تدريجي للبطاقات عند دخول الشاشة */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal-up { opacity: 0; transform: translateY(18px); transition: opacity 500ms ease, transform 500ms cubic-bezier(.2,.8,.3,1); }
+  .reveal-up.is-visible { opacity: 1; transform: none; }
+}

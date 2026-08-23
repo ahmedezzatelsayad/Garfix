@@ -16,6 +16,7 @@ import {
   Sparkles, CheckCircle2, Star, BrainCircuit, FileText, Calculator,
   Boxes, UserCog, Workflow, ArrowLeft, ShieldCheck, Zap,
 } from "lucide-react";
+import NextImage from "next/image";
 import { PublicSiteHeader } from "@/components/site/PublicSiteHeader";
 import { ProfessionalFooter } from "@/components/garfix/ProfessionalFooter";
 
@@ -156,7 +157,7 @@ export function EnhancedLandingPage(_props: EnhancedLandingPageProps) {
           <div className="anim-fade-in flex flex-wrap justify-center gap-3 mb-4">
             <Link
               href="/signup"
-              className="active-press inline-flex items-center gap-2 bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-xl px-8 py-4 text-[15px] font-extrabold no-underline cursor-pointer transition-all shadow-[0_12px_36px_rgba(4,120,87,0.4)] hover:shadow-[0_16px_44px_rgba(4,120,87,0.5)]"
+              className="cta-shine active-press inline-flex items-center gap-2 bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-xl px-8 py-4 text-[15px] font-extrabold no-underline cursor-pointer transition-all shadow-[0_12px_36px_rgba(4,120,87,0.4)] hover:shadow-[0_16px_44px_rgba(4,120,87,0.5)]"
             >
               ابدأ مجاناً — 30 يوماً <ArrowLeft size={17} />
             </Link>
@@ -171,6 +172,32 @@ export function EnhancedLandingPage(_props: EnhancedLandingPageProps) {
             <span className="inline-flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500" /> بدون بطاقة ائتمان</span>
             <span className="inline-flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500" /> إعداد خلال 5 دقائق</span>
             <span className="inline-flex items-center gap-1"><CheckCircle2 size={12} className="text-emerald-500" /> دعم بالعربية</span>
+          </div>
+
+          {/* لمسة الإغراء: لوحة المنتج الحية — فاتورة عربية حقيقية الشكل */}
+          <div className="anim-scale-in relative mt-10 max-w-[820px] mx-auto">
+            <div className="absolute -inset-6 bg-emerald-500/15 blur-3xl rounded-full pointer-events-none" aria-hidden />
+            <NextImage
+              src="/hero-invoice-mockup.png"
+              alt="GarfiX — فاتورة ضريبية عربية أنيقة مع QR وتحليل ذكي"
+              width={820}
+              height={582}
+              priority
+              className="relative rounded-2xl shadow-[0_32px_80px_rgba(4,120,87,0.28)] border border-emerald-500/20 w-full h-auto"
+            />
+            {/* شارات عائمة فوق الصورة */}
+            <span className="absolute -top-3 right-8 px-3.5 py-1.5 rounded-full bg-[linear-gradient(135deg,#047857,#10b981)] text-white text-[11px] font-extrabold shadow-lg animate-[garfix-agent-pulse_3s_infinite]">
+              ✦ AI Fabric يتعلم من كل فاتورة
+            </span>
+          </div>
+
+          {/* شعارات الثقة — هيئات الفوترة الإلكترونية */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 opacity-70">
+            {["ZATCA", "ETA Egypt", "FTA UAE", "NBR Bahrain", "OMAN Tax"].map((b) => (
+              <span key={b} className="text-[11px] font-extrabold tracking-wide text-muted-foreground border border-border rounded-lg px-3 py-1.5 bg-card/60">
+                {b}
+              </span>
+            ))}
           </div>
         </div>
       </section>

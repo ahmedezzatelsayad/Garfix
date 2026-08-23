@@ -131,7 +131,7 @@ export default function PricingPage() {
 
             <Link
               href="/signup"
-              className="mt-8 inline-flex items-center justify-center gap-2 rounded-xl px-8 py-3.5 text-[14px] font-extrabold no-paragraph active-press bg-[linear-gradient(135deg,#047857,#10b981)] text-white shadow-[0_10px_28px_rgba(4,120,87,0.4)]"
+              className="cta-shine mt-8 inline-flex items-center justify-center gap-2 rounded-xl px-8 py-3.5 text-[14px] font-extrabold no-underline active-press bg-[linear-gradient(135deg,#047857,#10b981)] text-white shadow-[0_10px_28px_rgba(4,120,87,0.4)]"
             >
               ابدأ الآن — ٣٠ يومًا مجانًا <ArrowLeft size={16} />
             </Link>
