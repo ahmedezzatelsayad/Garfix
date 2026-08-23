@@ -280,7 +280,7 @@ export function ProductPicker({
                   setIsOpen(false);
                   onCreateNew?.();
                 }}
-                className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-mutedmerald-50 text-[#047857] transition-colors duration-120 text-sm hover-lift"
+                className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-emerald-50 text-[#047857] transition-colors duration-120 text-sm hover-lift"
               >
                 <Plus size={16} />
                 <span>إضافة &quot;{query}&quot; كمنتج جديد</span>

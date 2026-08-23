@@ -32,10 +32,10 @@ type Tab = "budgets" | "vs-actual" | "comparison";
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2.5 px-3 text-[13px]";
 // DS v4.0: Added focus-ring for form inputs
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus-ring";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 // DS v4.0: Added focus-ring for selects
-const selectStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none cursor-pointer focus-ring";
+const selectStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none cursor-pointer focus-ring";
 
 function Empty({ label }: { label: string }) {
   return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
@@ -252,9 +252,9 @@ export function BudgetsView() {
                 <tbody>
                   {budgets.map((b) => {
                     const statusMap: Record<string, { label: string; badge: string }> = {
-                      draft: { label: "مسودة", badge: "bg-cardmber-500/15 text-amber-500" },
-                      approved: { label: "معتمد", badge: "bg-mutedmerald-500/15 text-emerald-500" },
-                      revised: { label: "قيد المراجعة", badge: "bg-mutedackgroundlue-500/15 text-blue-500" },
+                      draft: { label: "مسودة", badge: "bg-amber-500/15 text-amber-500" },
+                      approved: { label: "معتمد", badge: "bg-emerald-500/15 text-emerald-500" },
+                      revised: { label: "قيد المراجعة", badge: "bg-blue-500/15 text-blue-500" },
                     };
                     const st = statusMap[b.status] || { label: b.status, badge: "bg-muted text-muted-foreground" };
                     return (
@@ -268,10 +268,10 @@ export function BudgetsView() {
                           <div className="flex items-center gap-1">
                             {/* DS v4.0: Action buttons with active-press */}
                             {b.status !== "approved" && (
-                              <button onClick={() => handleApprove(b.id)} title="اعتماد" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-mutedmerald-500/10 hover:border-emerald-500/40 hover:text-emerald-600 active-press duration-150"><CheckCircle2 size={13} /></button>
+                              <button onClick={() => handleApprove(b.id)} title="اعتماد" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10 hover:border-emerald-500/40 hover:text-emerald-600 active-press duration-150"><CheckCircle2 size={13} /></button>
                             )}
                             {b.status === "approved" && (
-                              <button onClick={() => handleRevise(b.id)} title="مراجعة" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-cardmber-500/10 hover:border-amber-500/40 hover:text-amber-600 active-press duration-150"><RotateCcw size={13} /></button>
+                              <button onClick={() => handleRevise(b.id)} title="مراجعة" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-amber-500/10 hover:border-amber-500/40 hover:text-amber-600 active-press duration-150"><RotateCcw size={13} /></button>
                             )}
                           </div>
                         </td>

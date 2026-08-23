@@ -193,7 +193,7 @@ export function SaaSControlPanel() {
                         <td className="py-2.5 px-3 text-[13px] font-mono">{p.companySlug}</td>
                         <td className="py-2.5 px-3 text-[13px]">{p.plan}</td>
                         <td className="py-2.5 px-3 text-[13px] font-bold text-right" dir="ltr">{p.amount} {p.currency}</td>
-                        <td className="py-2.5 px-3 text-[13px]">{p.status === "paid" ? <span className="py-0.5 px-2.5 rounded-xl bg-mutedmerald-500/15 text-emerald-500 text-[11px] font-bold">{p.status}</span> : <span className="py-0.5 px-2.5 rounded-xl bg-cardmber-500/15 text-amber-500 text-[11px] font-bold">{p.status}</span>}</td>
+                        <td className="py-2.5 px-3 text-[13px]">{p.status === "paid" ? <span className="py-0.5 px-2.5 rounded-xl bg-emerald-500/15 text-emerald-500 text-[11px] font-bold">{p.status}</span> : <span className="py-0.5 px-2.5 rounded-xl bg-amber-500/15 text-amber-500 text-[11px] font-bold">{p.status}</span>}</td>
                         <td className="py-2.5 px-3 text-[13px]">{p.createdAt ? new Date(p.createdAt).toLocaleDateString("ar-EG") : "—"}</td>
                       </tr>
                     ))
@@ -213,7 +213,7 @@ export function SaaSControlPanel() {
   );
 }
 
-const inputTW = "w-full py-2 px-3 rounded-lg bg-mutedackgroundackground border border-border text-foreground font-inherit text-[13px] outline-none focus-ring"; // DS v4.0: focus-ring added
+const inputTW = "w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground font-inherit text-[13px] outline-none focus-ring"; // DS v4.0: focus-ring added
 const labelTW = "block text-[11px] font-semibold text-muted-foreground mb-1";
 
 function UserForm({ onClose, onSaved, editTarget }: { onClose: () => void; onSaved: () => void; editTarget?: User }) {

@@ -58,7 +58,7 @@ function makeInitialCardState(p: ProviderInfo): CardState {
 }
 
 const labelCls = "block text-[11px] font-bold text-muted-foreground mb-1";
-const inputCls = "w-full px-3 py-2 rounded-lg bg-mutedackgroundackground border border-border text-foreground font-[inherit] text-xs outline-none focus-ring";
+const inputCls = "w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground font-[inherit] text-xs outline-none focus-ring";
 
 export function AiProviderSettings() {
   const providersQuery = useAIProviders();
@@ -318,7 +318,7 @@ export function AiProviderSettings() {
                       "w-full px-2.5 py-2 rounded-lg font-[inherit] text-[11px] outline-none flex items-center gap-1.5 text-foreground",
                       c.testState === "success" ? "bg-green-500/10 border border-green-500/40" : "",
                       c.testState === "fail" ? "bg-red-500/10 border border-red-500/40" : "",
-                      (c.testState === "idle" || c.testState === "testing") ? "bg-mutedackgroundackground border border-border" : ""
+                      (c.testState === "idle" || c.testState === "testing") ? "bg-background border border-border" : ""
                     )}
                   >
                     {c.testState === "testing" && <Loader2 size={12} className="animate-spin" />}

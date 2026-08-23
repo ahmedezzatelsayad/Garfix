@@ -28,6 +28,8 @@ export interface CompanyInfo {
   address?: string | null;
   vatNumber?: string | null;
   currency: string;
+  language?: string | null;
+  timezone?: string | null;
   country?: string | null;
   defaultTaxRate: string;
   plan: string;
@@ -97,6 +99,8 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         address: (c as Record<string, unknown>).address as string | null | undefined ?? null,
         vatNumber: (c as Record<string, unknown>).vatNumber as string | null | undefined ?? null,
         currency: (c as Record<string, unknown>).currency as string ?? "SAR",
+        language: (c as Record<string, unknown>).language as string | null | undefined ?? "ar",
+        timezone: (c as Record<string, unknown>).timezone as string | null | undefined ?? null,
         country: (c as Record<string, unknown>).country as string | null | undefined ?? null,
         defaultTaxRate: (c as Record<string, unknown>).defaultTaxRate as string ?? "0",
         plan: (c as Record<string, unknown>).plan as string ?? "trial",

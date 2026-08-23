@@ -158,7 +158,7 @@ export function GarfiXChat({
           <div>
             <h3 className="font-bold text-base">جارفيكس AI</h3>
             <p className="text-xs text-white/80 flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${isThinking ? 'bg-yellow-300 animate-pulse' : 'bg-mutedmerald-400'}`} />
+              <span className={`w-2 h-2 rounded-full ${isThinking ? 'bg-yellow-300 animate-pulse' : 'bg-emerald-400'}`} />
               {isThinking ? 'جارٍ التفكير...' : 'مستعد للمساعدة'}
             </p>
           </div>
@@ -220,7 +220,7 @@ export function GarfiXChat({
             <div
               className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                 msg.role === 'user'
-                  ? 'bg-mutedmerald-600/90 text-white rounded-tr-none glass'
+                  ? 'bg-emerald-600/90 text-white rounded-tr-none glass'
                   : 'ai-card bg-card border border-[#d4a574]/30 border-r-[3px] border-r-[#d4a574] rounded-tl-none shadow-sm'
               }`}
             >

@@ -267,7 +267,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
         {/* Paid Amount KPI */}
         <div className="kpi-card !p-3 md:!p-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="kpi-icon-sm bg-mutedmerald-500/10 text-emerald-500">
+            <div className="kpi-icon-sm bg-emerald-500/10 text-emerald-500">
               <CheckCircle2 size={14} />
             </div>
             <span className="kpi-label text-[11px]">المدفوع</span>
@@ -278,12 +278,12 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
         {/* Outstanding KPI */}
         <div className={cn(
           "kpi-card !p-3 md:!p-4",
-          outstanding > 0 ? "border-destructive/30 bg-destructive/5" : "border-emerald-300/30 bg-mutedmerald-500/5"
+          outstanding > 0 ? "border-destructive/30 bg-destructive/5" : "border-emerald-300/30 bg-emerald-500/5"
         )}>
           <div className="flex items-center gap-2 mb-2">
             <div className={cn(
               "kpi-icon-sm",
-              outstanding > 0 ? "bg-red-500/10 text-red-500" : "bg-mutedmerald-500/10 text-emerald-500"
+              outstanding > 0 ? "bg-red-500/10 text-red-500" : "bg-emerald-500/10 text-emerald-500"
             )}>
               {outstanding > 0 ? <AlertTriangle size={14} /> : <CheckCircle2 size={14} />}
             </div>
@@ -384,7 +384,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
                 color="#10b981"
               />
               <div
-                className={`mt-1 p-3 rounded-xl flex justify-between items-center transition-all duration-200 ${outstanding > 0 && !fullyPaid ? "bg-red-500/10 border border-red-500/30" : "bg-mutedmerald-500/10 border border-emerald-500/30"}`}
+                className={`mt-1 p-3 rounded-xl flex justify-between items-center transition-all duration-200 ${outstanding > 0 && !fullyPaid ? "bg-red-500/10 border border-red-500/30" : "bg-emerald-500/10 border border-emerald-500/30"}`}
               >
                 <div className="flex items-center gap-2">
                   {fullyPaid
@@ -568,7 +568,7 @@ export function ClientProfile({ clientId, onBack }: ClientProfileProps) {
               placeholder="اكتب ملاحظة عن هذا العميل — يستخدمها الذكاء الاصطناعي لاحقًا لتقديم توصيات أفضل (مثال: يفضّل الدفع نقدًا، يعمل في مجال البناء، موسمي النشاط في الصيف…)"
               rows={3}
               maxLength={4000}
-              className="focus-right w-full rounded-lg border border-border bg-mutedackgroundackground px-3 py-2 text-sm font-inherit resize-y touch-target focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-150"
+              className="focus-right w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-inherit resize-y touch-target focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-150"
             />
             <div className="flex justify-between items-center gap-2">
               <span className="text-[11px] text-muted-foreground">

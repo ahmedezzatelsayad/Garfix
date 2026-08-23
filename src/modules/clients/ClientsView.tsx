@@ -117,7 +117,7 @@ export function ClientsView() {
               <div className="kpi-value">{kpiStats.newThisMonth}</div>
               <div className="kpi-label">جدد هذا الشهر</div>
             </div>
-            <div className="kpi-icon bg-mutedmerald-500/10 text-emerald-500">
+            <div className="kpi-icon bg-emerald-500/10 text-emerald-500">
               <TrendingUp size={20} />
             </div>
           </div>
@@ -126,7 +126,7 @@ export function ClientsView() {
               {[30, 50, 40, 70, 60, 85, 95].map((h, i) => (
                 <div
                   key={i}
-                  className="flex-1 bg-mutedmerald-500/20 rounded-sm min-w-[4px] transition-all duration-300 hover:bg-mutedmerald-500/40"
+                  className="flex-1 bg-emerald-500/20 rounded-sm min-w-[4px] transition-all duration-300 hover:bg-emerald-500/40"
                   style={{ height: `${h}%` }}
                 />
               ))}

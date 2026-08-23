@@ -65,7 +65,7 @@ export function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug
             <button
               type="button"
               onClick={() => onOpenReviewQueue(null)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-mutedmerald-600 text-white border-none font-inherit text-[11px] font-bold cursor-pointer active-press"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white border-none font-inherit text-[11px] font-bold cursor-pointer active-press"
               title="افتح نافذة المراجعة لكل الشركات (founder cross-tenant)"
             >
               <Eye size={12} /> افتح كل الشركات
@@ -117,12 +117,12 @@ export function ReviewQueueTab({ onOpenReviewQueue }: { onOpenReviewQueue: (slug
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-[13px] [direction:ltr] text-right">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.confidence >= 0.85 ? "bg-mutedmerald-500/15 text-emerald-500" : item.confidence >= 0.7 ? "bg-cardmber-500/15 text-amber-500" : "bg-red-500/15 text-red-500"}`}>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.confidence >= 0.85 ? "bg-emerald-500/15 text-emerald-500" : item.confidence >= 0.7 ? "bg-amber-500/15 text-amber-500" : "bg-red-500/15 text-red-500"}`}>
                         {(item.confidence * 100).toFixed(0)}%
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-[13px]">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.tier === "collision-recovery-failed" ? "bg-red-500/15 text-red-500" : "bg-cardmber-500/15 text-amber-500"}`}>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.tier === "collision-recovery-failed" ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-500"}`}>
                         {item.tier}
                       </span>
                     </td>

@@ -26,7 +26,7 @@ type Tab = "accounts" | "reconciliation" | "import" | "transfer";
 /* ─── Shared Styles ────────────────────────────────────────────────────────── */
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
@@ -79,11 +79,11 @@ export function BankingView() {
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
               <div className="kpi-card-gold bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
-                <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-mutedmerald-500/20 text-emerald-500"><Landmark size={18} /></div>
+                <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Landmark size={18} /></div>
                 <div><div className="text-[11px] text-muted-foreground">إجمالي النقدية</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalCash >= 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalCash)}</div></div>
               </div>
               <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
-                <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-mutedmerald-600/20 text-emerald-600"><FileText size={18} /></div>
+                <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-600/20 text-emerald-600"><FileText size={18} /></div>
                 <div><div className="text-[11px] text-muted-foreground">عدد الحسابات</div><div className="text-lg font-extrabold [direction:ltr] text-end">{bankAccounts.length}</div></div>
               </div>
             </div>
@@ -144,7 +144,7 @@ export function BankingView() {
                         <td className={tdStyle}>{t.currency}</td>
                         <td className={tdStyle} dir="ltr">{t.date}</td>
                         <td className={tdStyle}>{t.description || "—"}</td>
-                        <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", t.status === "completed" ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500")}>{t.status === "completed" ? "مكتمل" : "قيد التنفيذ"}</span></td>
+                        <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", t.status === "completed" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{t.status === "completed" ? "مكتمل" : "قيد التنفيذ"}</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -278,11 +278,11 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
             {bankAccounts.map((a) => <option key={a.id} value={a.id}>{a.bankName} — {a.accountNumber}</option>)}
           </select>
         </div>
-        <button onClick={loadItems} disabled={!selectedAccountId || loading} className="py-2 px-4 rounded-sm bg-cardccent text-accent-foreground border border-border text-[12px] font-bold cursor-pointer disabled:opacity-70 inline-flex items-center gap-1.5">
+        <button onClick={loadItems} disabled={!selectedAccountId || loading} className="py-2 px-4 rounded-sm bg-accent text-accent-foreground border border-border text-[12px] font-bold cursor-pointer disabled:opacity-70 inline-flex items-center gap-1.5">
           <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> {loading ? "جارٍ…" : "عرض"}
         </button>
         {selectedAccountId && unmatchedCount === 0 && items.length > 0 && (
-          <button onClick={handleComplete} disabled={completing} className="py-2 px-4 rounded-sm bg-mutedmerald-600 text-white border-none text-[12px] font-bold cursor-pointer disabled:opacity-70 inline-flex items-center gap-1.5">
+          <button onClick={handleComplete} disabled={completing} className="py-2 px-4 rounded-sm bg-emerald-600 text-white border-none text-[12px] font-bold cursor-pointer disabled:opacity-70 inline-flex items-center gap-1.5">
             <CheckCircle2 size={12} /> {completing ? "جارٍ…" : "إتمام المطابقة"}
           </button>
         )}
@@ -291,21 +291,21 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
       {selectedAccountId && items.length > 0 && (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-mutedmerald-500/20 text-emerald-500"><Landmark size={18} /></div>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><Landmark size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">إجمالي البنك</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBank)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-mutedackgroundlue-500/20 text-blue-500"><FileText size={18} /></div>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-blue-500/20 text-blue-500"><FileText size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">إجمالي الكتب</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBook)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", totalDiff === 0 ? "bg-mutedmerald-500/20 text-emerald-500" : "bg-red-500/20 text-red-500")}>
+            <div className={cn("w-10 h-10 rounded-sm flex items-center justify-center", totalDiff === 0 ? "bg-emerald-500/20 text-emerald-500" : "bg-red-500/20 text-red-500")}>
               {totalDiff === 0 ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
             </div>
             <div><div className="text-[11px] text-muted-foreground">الفرق</div><div className={cn("text-lg font-extrabold [direction:ltr] text-end", totalDiff === 0 ? "text-emerald-500" : "text-red-500")}>{fmt(totalDiff)}</div></div>
           </div>
           <div className="bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-mutedmerald-700/20 text-emerald-700"><CheckCircle2 size={18} /></div>
+            <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-700/20 text-emerald-700"><CheckCircle2 size={18} /></div>
             <div><div className="text-[11px] text-muted-foreground">مطابق / غير مطابق</div><div className="text-lg font-extrabold [direction:ltr] text-end"><span className="text-emerald-500">{matchedCount}</span> / <span className="text-amber-500">{unmatchedCount}</span></div></div>
           </div>
         </div>
@@ -322,14 +322,14 @@ function ReconciliationView({ company }: { company: { slug: string } }) {
               </tr></thead>
               <tbody>
                 {items.map((item) => (
-                  <tr key={item.id} className={cn("border-b border-border", item.status === "matched" ? "bg-mutedmerald-500/5" : "bg-transparent")}>
+                  <tr key={item.id} className={cn("border-b border-border", item.status === "matched" ? "bg-emerald-500/5" : "bg-transparent")}>
                     <td className={tdStyle} dir="ltr">{item.date}</td>
                     <td className={cn(tdStyle, "font-bold")}>{item.description}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(item.bankAmount)}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(item.bookAmount)}</td>
                     <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", item.difference === 0 ? "text-emerald-500" : "text-red-500")}>{fmt(item.difference)}</td>
-                    <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", item.status === "matched" ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500")}>{item.status === "matched" ? "مطابق" : "غير مطابق"}</span></td>
-                    <td className={tdStyle}>{item.status !== "matched" && <button onClick={() => handleMatch(item.id)} disabled={actionId === item.id} className="py-1 px-2.5 rounded-md bg-mutedmerald-500/10 border border-emerald-500/30 text-emerald-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">{actionId === item.id ? "جارٍ…" : "مطابقة"}</button>}</td>
+                    <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", item.status === "matched" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{item.status === "matched" ? "مطابق" : "غير مطابق"}</span></td>
+                    <td className={tdStyle}>{item.status !== "matched" && <button onClick={() => handleMatch(item.id)} disabled={actionId === item.id} className="py-1 px-2.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[10px] font-bold cursor-pointer disabled:opacity-50">{actionId === item.id ? "جارٍ…" : "مطابقة"}</button>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -411,8 +411,8 @@ function CSVImportView({ company }: { company: { slug: string } }) {
         <div className="bg-card rounded-[14px] border border-border p-5">
           <h4 className="font-bold text-[14px] mb-3">نتيجة الاستيراد</h4>
           <div className="flex gap-3 mb-3">
-            <div className="py-2 px-4 rounded-md bg-mutedmerald-500/10 border border-emerald-500/30 text-emerald-600 text-[13px] font-bold">مستورد: {result.imported}</div>
-            <div className="py-2 px-4 rounded-md bg-cardmber-500/10 border border-amber-500/30 text-amber-600 text-[13px] font-bold">متجاوز: {result.skipped}</div>
+            <div className="py-2 px-4 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 text-[13px] font-bold">مستورد: {result.imported}</div>
+            <div className="py-2 px-4 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-600 text-[13px] font-bold">متجاوز: {result.skipped}</div>
           </div>
           {result.errors.length > 0 && (
             <div className="bg-red-500/5 rounded-md p-3 text-[12px] max-h-48 overflow-y-auto garfix-scroll">
@@ -427,11 +427,11 @@ function CSVImportView({ company }: { company: { slug: string } }) {
 }
 
 /* ─── Transfer Form ────────────────────────────────────────────────────────── */
-function TransferFormView({ accounts, company, onClose, onSaved }: { accounts: BankAccount[]; company: { slug: string }; onClose: () => void; onSaved: () => void }) {
+function TransferFormView({ accounts, company, onClose, onSaved }: { accounts: BankAccount[]; company: { slug: string; currency?: string | null }; onClose: () => void; onSaved: () => void }) {
   const [fromAccountId, setFromAccountId] = useState<number | null>(null);
   const [toAccountId, setToAccountId] = useState<number | null>(null);
   const [amount, setAmount] = useState(0);
-  const [currency, setCurrency] = useState("KWD");
+  const [currency, setCurrency] = useState(company.currency || "KWD");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);

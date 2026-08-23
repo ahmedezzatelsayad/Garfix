@@ -122,7 +122,7 @@ function getAlertIcon(level: string): string {
 
 function getAlertBg(level: string): string {
   switch (level) {
-    case 'info': return 'bg-mutedackgroundlue-50 border-blue-200';
+    case 'info': return 'bg-blue-50 border-blue-200';
     case 'warning': return 'bg-yellow-50 border-yellow-200';
     case 'error': return 'bg-red-50 border-red-200';
     case 'critical': return 'bg-red-100 border-red-300';
@@ -290,7 +290,7 @@ function WorkerCard({ worker }: { worker: WorkerMetrics }) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
-        <div className="bg-mutedackgroundlue-50 rounded p-2">
+        <div className="bg-blue-50 rounded p-2">
           <p className="text-xs text-blue-600">نشط</p>
           <p className="font-bold text-blue-900">{worker.activeJobs}</p>
         </div>
@@ -742,7 +742,7 @@ export default function AIDashboardPage() {
                         <td className="px-4 py-3 text-center">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                             worker.activeJobs > 0 
-                              ? 'bg-mutedackgroundlue-100 text-blue-800' 
+                              ? 'bg-blue-100 text-blue-800' 
                               : 'bg-muted text-gray-800'
                           }`}>
                             {worker.activeJobs}
@@ -825,7 +825,7 @@ export default function AIDashboardPage() {
                   </div>
                   <div className="w-full bg-muted rounded-full h-4">
                     <div 
-                      className="bg-mutedackgroundlue-500 h-4 rounded-full transition-all flex items-center justify-center text-xs text-white font-medium"
+                      className="bg-blue-500 h-4 rounded-full transition-all flex items-center justify-center text-xs text-white font-medium"
                       style={{ width: `${Math.min((data.data.queue.running / 20) * 100, 100)}%` }}
                     >
                       {data.data.queue.running > 10 ? data.data.queue.running : ''}
@@ -866,7 +866,7 @@ export default function AIDashboardPage() {
                 <h3 className="font-semibold text-gray-900 mb-4">📈 إحصائيات اليوم</h3>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-4 bg-mutedackgroundlue-50 rounded-lg">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
                     <p className="text-3xl font-bold text-blue-600">{formatNumber(data.data.today.totalRequests)}</p>
                     <p className="text-sm text-blue-800 mt-1">إجمالي الطلبات</p>
                   </div>

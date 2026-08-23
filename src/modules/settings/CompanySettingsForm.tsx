@@ -38,9 +38,9 @@ function CollapsibleSection({
 
   const validationStyles = {
     none: "",
-    success: "border-emerald-500/30 bg-mutedmerald-500/5",
+    success: "border-emerald-500/30 bg-emerald-500/5",
     error: "border-destructive/30 bg-destructive/5",
-    warning: "border-amber-500/30 bg-cardmber-500/5",
+    warning: "border-amber-500/30 bg-amber-500/5",
   };
 
   const validationIcons = {
@@ -155,7 +155,7 @@ function FormField({
         disabled={disabled}
         placeholder={placeholder}
         className={cn(
-          "w-full py-2.5 px-3.5 rounded-lg bg-mutedackgroundackground text-foreground font-inherit text-sm",
+          "w-full py-2.5 px-3.5 rounded-lg bg-background text-foreground font-inherit text-sm",
           "outline-none transition-all duration-120 ease-out",
           "focus-ring",
           borderState,
@@ -333,13 +333,13 @@ export function CompanySettingsForm({ activeCompany, onUpdated }: CompanySetting
                 type="color"
                 value={form.color}
                 onChange={(e) => setForm({ ...form, color: e.target.value })}
-                className="w-12 h-10 rounded-lg border border-border bg-mutedackgroundackground cursor-pointer focus-ring transition-all duration-120"
+                className="w-12 h-10 rounded-lg border border-border bg-background cursor-pointer focus-ring transition-all duration-120"
               />
               <input
                 type="text"
                 value={form.color}
                 onChange={(e) => setForm({ ...form, color: e.target.value })}
-                className="flex-1 py-2.5 px-3.5 rounded-lg bg-mutedackgroundackground border border-border text-sm font-mono focus-ring transition-all duration-120"
+                className="flex-1 py-2.5 px-3.5 rounded-lg bg-background border border-border text-sm font-mono focus-ring transition-all duration-120"
                 dir="ltr"
                 maxLength={7}
               />
@@ -429,7 +429,7 @@ export function CompanySettingsForm({ activeCompany, onUpdated }: CompanySetting
                 });
               }}
               className={cn(
-                "w-full py-2.5 px-3.5 rounded-lg bg-mutedackgroundackground border border-border",
+                "w-full py-2.5 px-3.5 rounded-lg bg-background border border-border",
                 "text-foreground font-inherit text-sm outline-none cursor-pointer",
                 "focus-ring transition-all duration-120",
                 "hover:border-primary/40"
@@ -465,7 +465,7 @@ export function CompanySettingsForm({ activeCompany, onUpdated }: CompanySetting
         
         {/* VAT Info Banner */}
         {!isVatApplicable(form.country) && (
-          <div className="mt-4 flex items-start gap-3 p-3.5 rounded-lg bg-cardmber-500/10 border border-amber-500/20">
+          <div className="mt-4 flex items-start gap-3 p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
             <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
             <p className="text-xs sm:text-[13px] text-amber-700 dark:text-amber-400">
               ℹ️ {getCountryConfig(form.country)?.nameAr} لا تطبق ضريبة القيمة المضافة حالياً. تم تعطيل حقل الضريبة تلقائياً.
@@ -486,7 +486,7 @@ export function CompanySettingsForm({ activeCompany, onUpdated }: CompanySetting
               value={form.weekendDays}
               onChange={(e) => setForm({ ...form, weekendDays: e.target.value })}
               className={cn(
-                "w-full py-2.5 px-3.5 rounded-lg bg-mutedackgroundackground border border-border",
+                "w-full py-2.5 px-3.5 rounded-lg bg-background border border-border",
                 "text-foreground font-inherit text-sm outline-none cursor-pointer",
                 "focus-ring transition-all duration-120",
                 "hover:border-primary/40"
@@ -504,7 +504,7 @@ export function CompanySettingsForm({ activeCompany, onUpdated }: CompanySetting
               value={form.ramadanHours ? "true" : "false"}
               onChange={(e) => setForm({ ...form, ramadanHours: e.target.value === "true" })}
               className={cn(
-                "w-full py-2.5 px-3.5 rounded-lg bg-mutedackgroundackground border border-border",
+                "w-full py-2.5 px-3.5 rounded-lg bg-background border border-border",
                 "text-foreground font-inherit text-sm outline-none cursor-pointer",
                 "focus-ring transition-all duration-120",
                 "hover:border-primary/40"

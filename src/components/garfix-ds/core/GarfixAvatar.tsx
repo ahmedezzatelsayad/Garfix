@@ -76,9 +76,9 @@ const sizeStyles: Record<AvatarSize, { container: string; text: string; status: 
 // ── Status Colors ───────────────────────────────────────────────────────
 
 const statusColors: Record<Exclude<AvatarStatus, undefined>, string> = {
-  online: "bg-mutedmerald-500 ring-2 ring-background",
+  online: "bg-emerald-500 ring-2 ring-background",
   offline: "bg-gray-400 ring-2 ring-background",
-  away: "bg-cardmber-500 ring-2 ring-background",
+  away: "bg-amber-500 ring-2 ring-background",
   busy: "bg-red-500 ring-2 ring-background",
 };
 

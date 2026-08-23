@@ -90,7 +90,7 @@ export default function AIFabricFounderPanel() {
           <p className="text-red-500 mb-4">Error: {error?.message ?? "Unknown error"}</p>
           <button
             onClick={() => refetch()}
-            className="px-4 py-2 bg-mutedackgroundlue-500 text-white rounded hover:bg-mutedackgroundlue-600"
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Retry
           </button>

@@ -3,7 +3,7 @@
 /**
  * Topbar — sticky header inside the AppShell.
  *
- * Theme-aware: all colors use shadcn/ui tokens (bg-mutedackgroundackground, text-foreground,
+ * Theme-aware: all colors use shadcn/ui tokens (bg-background, text-foreground,
  * bg-muted, text-muted-foreground, bg-primary/10, text-primary, border-border)
  * so the Topbar reads correctly in BOTH light and dark modes.
  *
@@ -63,7 +63,7 @@ export function Topbar({ user: _user, activeCompany, onOpenMobile }: TopbarProps
 
   return (
     <header
-      className="sticky top-0 z-[100] bg-mutedackgroundackground/95 backdrop-blur
+      className="sticky top-0 z-[100] bg-background/95 backdrop-blur
                  border-b border-border
                  flex items-center gap-3 px-4 py-3 md:px-6 md:gap-3
                  shadow-brand-sm"
@@ -88,7 +88,7 @@ export function Topbar({ user: _user, activeCompany, onOpenMobile }: TopbarProps
             dark mode. */}
         <div
           className="px-2.5 py-1 rounded-full
-                     bg-mutedmerald-500/10 text-emerald-400 border border-emerald-500/20
+                     bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
                      text-xs font-bold truncate max-w-[50vw] md:max-w-none"
         >
           {activeCompany?.nameAr || activeCompany?.name || "—"}
@@ -100,7 +100,7 @@ export function Topbar({ user: _user, activeCompany, onOpenMobile }: TopbarProps
               "text-[10px] font-bold uppercase tracking-wider",
               activeCompany.plan.toLowerCase().includes('premium') || activeCompany.plan.toLowerCase().includes('pro')
                 ? "bg-gradient-to-r from-[#d4a574] to-[#c9956a] text-white shadow-gold-sm"
-                : "bg-mutedmerald-600 text-white"
+                : "bg-emerald-600 text-white"
             )}
           >
             {activeCompany.plan}
@@ -168,7 +168,7 @@ export function Topbar({ user: _user, activeCompany, onOpenMobile }: TopbarProps
         <span className="hidden sm:inline whitespace-nowrap">بحث…</span>
         <kbd
           className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded
-                     bg-mutedackgroundackground border border-border text-[10px] font-mono
+                     bg-background border border-border text-[10px] font-mono
                      text-muted-foreground leading-tight"
         >
           Ctrl K

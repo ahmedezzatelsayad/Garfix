@@ -304,7 +304,7 @@ const insightConfig = {
   },
   warning: {
     icon: "⚠️",
-    bgColor: "bg-cardmber-50 dark:bg-cardmber-900/20",
+    bgColor: "bg-amber-50 dark:bg-amber-900/20",
     borderColor: "border-amber-200 dark:border-amber-800",
     textColor: "text-amber-700 dark:text-amber-400",
   },

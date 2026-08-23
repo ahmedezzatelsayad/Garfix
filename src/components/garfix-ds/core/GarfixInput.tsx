@@ -174,7 +174,7 @@ export const GarfixInput = forwardRef<HTMLInputElement, GarfixInputProps>(
             }
             className={cn(
               // Base
-              "w-full rounded-lg border bg-mutedackgroundackground text-foreground",
+              "w-full rounded-lg border bg-background text-foreground",
               "placeholder:text-muted-foreground/60",
               "transition-all duration-120 ease-[cubic-bezier(0.4,0,0.2,1)]",
               
@@ -195,7 +195,7 @@ export const GarfixInput = forwardRef<HTMLInputElement, GarfixInputProps>(
               ].join(" "),
               isSuccess && !hasError && [
                 "border-[#059669] focus:ring-[#059669]/30 focus:border-[#059669]",
-                "bg-mutedmerald-50/50 dark:bg-mutedmerald-950/10",
+                "bg-emerald-50/50 dark:bg-emerald-950/10",
               ].join(" "),
               state === "default" && !hasError && !isSuccess && [
                 "border-input focus:ring-[#047857]/20 focus:border-[#047857]",

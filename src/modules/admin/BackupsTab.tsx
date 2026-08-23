@@ -119,7 +119,7 @@ export function BackupsTab() {
  onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-3.5">
-              <div className="w-10 h-10 rounded-full bg-mutedmerald-600/15 text-[var(--primary)] flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-emerald-600/15 text-[var(--primary)] flex items-center justify-center shrink-0">
                 <HardDriveDownload size={18} />
               </div>
               <div>

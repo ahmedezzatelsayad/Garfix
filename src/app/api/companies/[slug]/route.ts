@@ -50,10 +50,15 @@ const UpdateSchema = z.object({
   currency: z.string().optional(),
   country: z.string().optional().nullable(),
   timezone: z.string().optional().nullable(),
+  // P3: لغة الشركة (ar/en)
+  language: z.enum(["ar", "en"]).optional(),
   defaultTaxRate: z.string().optional(),
   openrouterModel: z.string().optional(),
   weekendDays: z.string().optional(),
-  ramadanHours: z.string().optional() });
+  ramadanHours: z.string().optional(),
+  // P3: تحديث نمط قالب الفاتورة الافتراضي من معالج الإعداد
+  invoiceTemplateStyle: z.enum(["modern", "classic", "minimal"]).optional(),
+  invoiceTemplateColor: z.string().max(9).optional() });
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -88,9 +93,29 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Route
   if (!parsed.success) {
     return apiError(parsed.error.issues[0]?.message || "Invalid input", 400);
   }
+
+  // P3: نمط قالب الفاتورة ليس عمودًا في Company — يُطبّق على القالب الافتراضي
+  const { invoiceTemplateStyle, invoiceTemplateColor, ...companyFields } = parsed.data;
   const company = await db.company.update({
     where: { slug },
-    data: parsed.data });
+    data: companyFields });
+
+  if (invoiceTemplateStyle || invoiceTemplateColor) {
+    try {
+      const templateUpdate: Record<string, unknown> = {};
+      if (invoiceTemplateStyle) {
+        templateUpdate.layoutType = invoiceTemplateStyle;
+        templateUpdate.name = invoiceTemplateStyle === "classic" ? "القالب الكلاسيكي" : invoiceTemplateStyle === "minimal" ? "القالب المبسّط" : "القالب العصري";
+      }
+      if (invoiceTemplateColor) templateUpdate.primaryColor = invoiceTemplateColor;
+      await db.invoiceTemplate.updateMany({
+        where: { companySlug: slug, isDefault: true },
+        data: templateUpdate,
+      });
+    } catch (tplErr) {
+      logger.warn("[companies] failed to update default invoice template", { slug, err: tplErr instanceof Error ? tplErr.message : String(tplErr) });
+    }
+  }
   await logAudit({
     userEmail: user.email,
     userUid: user.uid,

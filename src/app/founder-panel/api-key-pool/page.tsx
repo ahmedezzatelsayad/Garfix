@@ -93,8 +93,8 @@ const PROVIDER_ICONS: Record<string, string> = {
 };
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  available: { label: 'متاح', color: 'text-emerald-700', bg: 'bg-mutedmerald-100' },
-  assigned: { label: 'مستخدم', color: 'text-blue-700', bg: 'bg-mutedackgroundlue-100' },
+  available: { label: 'متاح', color: 'text-emerald-700', bg: 'bg-emerald-100' },
+  assigned: { label: 'مستخدم', color: 'text-blue-700', bg: 'bg-blue-100' },
   exhausted: { label: 'منتهي', color: 'text-red-700', bg: 'bg-red-100' },
   revoked: { label: 'ملغي', color: 'text-gray-700', bg: 'bg-muted' },
 };
@@ -439,7 +439,7 @@ export default function FounderApiKeyPoolPage() {
                 className={cn(
                   "h-3 rounded-full transition-all",
                   stats.totalUsageToday > 800 ? "bg-red-500" :
-                  stats.totalUsageToday > 500 ? "bg-yellow-500" : "bg-mutedmerald-500"
+                  stats.totalUsageToday > 500 ? "bg-yellow-500" : "bg-emerald-500"
                 )}
                 style={{ width: `${Math.min((stats.totalUsageToday / 1000) * 100, 100)}%` }}
               />
@@ -510,7 +510,7 @@ export default function FounderApiKeyPoolPage() {
           
           {/* Bulk Actions Bar */}
           {selectedKeyIds.size > 0 && (
-            <div className="px-4 py-3 bg-mutedmerald-50 dark:bg-mutedmerald-900/20 border-b border-emerald-200 dark:border-emerald-800">
+            <div className="px-4 py-3 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-200 dark:border-emerald-800">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
                   ✓ محدد: {selectedKeyIds.size} مفاتيح
@@ -555,7 +555,7 @@ export default function FounderApiKeyPoolPage() {
                   <FadeUp key={key.id} delay={index * 30}>
                     <div className={cn(
                       "p-4 hover:bg-muted transition-colors",
-                      selectedKeyIds.has(key.id) && "bg-mutedmerald-50/50 dark:bg-mutedmerald-900/20"
+                      selectedKeyIds.has(key.id) && "bg-emerald-50/50 dark:bg-emerald-900/20"
                     )}>
                       <div className="flex items-start justify-between gap-4">
                         {/* Checkbox + Key Info */}
@@ -682,7 +682,7 @@ export default function FounderApiKeyPoolPage() {
                               onClick={() => setCurrentPage(pageNum)}
                               className={`w-8 h-8 rounded text-sm font-medium ${
                                 currentPage === pageNum
-                                  ? 'bg-mutedmerald-500 text-white'
+                                  ? 'bg-emerald-500 text-white'
                                   : 'hover:bg-muted/80 dark:hover:bg-gray-700'
                               }`}
                             >
@@ -746,7 +746,7 @@ export default function FounderApiKeyPoolPage() {
             </div>
           </div>
           
-          <div className="mt-4 p-3 bg-white/50 dark:bg-mutedackgroundlack/20 rounded-lg text-xs text-center text-muted-foreground">
+          <div className="mt-4 p-3 bg-white/50 dark:bg-black/20 rounded-lg text-xs text-center text-muted-foreground">
             💡 <strong>DeepSeek V3</strong> هو الأنسب للنظام: رخيص ($0.00003/طلب)، سريع، ويدعم العربية!
           </div>
         </GarfixCard>
@@ -778,7 +778,7 @@ export default function FounderApiKeyPoolPage() {
                     className={cn(
                       "p-3 rounded-lg border-2 transition-all text-center",
                       selectedProvider === provider.value
-                        ? "border-emerald-500 bg-mutedmerald-50"
+                        ? "border-emerald-500 bg-emerald-50"
                         : "border-border hover:border-gray-300"
                     )}
                   >

@@ -75,7 +75,7 @@ export const GarfixPageHeader: React.FC<GarfixPageHeaderProps> = ({
         "w-full pb-6 border-b border-border/50",
         
         // Sticky
-        sticky && "sticky top-0 z-30 bg-mutedackgroundackground/80 backdrop-blur-md",
+        sticky && "sticky top-0 z-30 bg-background/80 backdrop-blur-md",
         
         // Glass variant
         isGlass && [

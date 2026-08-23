@@ -24,19 +24,19 @@ type Tab = "methods" | "initiate" | "verify";
 /* ─── Shared Styles ─────────────────────────────────────────────────────────── */
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2.5 px-3 text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus-ring";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
-const selectStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none cursor-pointer";
+const selectStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none cursor-pointer";
 
 function Empty({ label }: { label: string }) {
   return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
 }
 
 const METHOD_TYPE_MAP: Record<string, { label: string; badge: string }> = {
-  bank_transfer:  { label: "تحويل بنكي",  badge: "bg-mutedackgroundlue-500/15 text-blue-500" },
-  card:           { label: "بطاقة",        badge: "bg-mutedmerald-500/15 text-emerald-500" },
-  digital_wallet: { label: "محفظة رقمية", badge: "bg-mutedmerald-600/15 text-emerald-600" },
-  cheque:         { label: "شيك",          badge: "bg-cardmber-500/15 text-amber-500" },
+  bank_transfer:  { label: "تحويل بنكي",  badge: "bg-blue-500/15 text-blue-500" },
+  card:           { label: "بطاقة",        badge: "bg-emerald-500/15 text-emerald-500" },
+  digital_wallet: { label: "محفظة رقمية", badge: "bg-emerald-600/15 text-emerald-600" },
+  cheque:         { label: "شيك",          badge: "bg-amber-500/15 text-amber-500" },
   knet:           { label: "K-NET",        badge: "bg-red-500/15 text-red-500" },
 };
 
@@ -53,7 +53,7 @@ export function PaymentRailsView() {
   /* Initiate form */
   const [initMethod, setInitMethod] = useState("");
   const [initAmount, setInitAmount] = useState("");
-  const [initCurrency, setInitCurrency] = useState("KWD");
+  const [initCurrency, setInitCurrency] = useState(activeCompany?.currency || "KWD");
   const [initInvoiceId, setInitInvoiceId] = useState("");
   const [initResult, setInitResult] = useState<PaymentResult | null>(null);
   const [initiating, setInitiating] = useState(false);
@@ -187,7 +187,7 @@ export function PaymentRailsView() {
                           <td className={tdStyle}>{m.currency}</td>
                           <td className={tdStyle}>{m.country}</td>
                           <td className={tdStyle}>
-                            <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", m.available ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>
+                            <span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", m.available ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500")}>
                               {m.available ? "متاح" : "غير متاح"}
                             </span>
                           </td>
@@ -282,7 +282,7 @@ export function PaymentRailsView() {
               <h3 className="text-[14px] font-bold mb-3">نتيجة التحقق</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">
-                  <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", verifyResult.status === "completed" ? "bg-mutedmerald-500/15 text-emerald-500" : verifyResult.status === "pending" ? "bg-cardmber-500/15 text-amber-500" : "bg-red-500/15 text-red-500")}>
+                  <div className={cn("w-12 h-12 rounded-full flex items-center justify-center shrink-0", verifyResult.status === "completed" ? "bg-emerald-500/15 text-emerald-500" : verifyResult.status === "pending" ? "bg-amber-500/15 text-amber-500" : "bg-red-500/15 text-red-500")}>
                     {verifyResult.status === "completed" ? <CheckCircle2 size={24} /> : verifyResult.status === "pending" ? <Clock size={24} /> : <XCircle size={24} />}
                   </div>
                   <div>

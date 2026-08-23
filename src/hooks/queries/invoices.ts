@@ -162,6 +162,9 @@ export function useCreateInvoice() {
       apiPost<CreateInvoicePayload, InvoiceResponse>("/api/invoices", payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.invoices.lists() });
+      // P3: تحديث إحصائيات الداشبورد فورًا بعد إنشاء فاتورة (كانت تبقى قديمة
+      // حتى إعادة تحميل الصفحة — كانت توحي بأن الفاتورة "لم تُحفظ")
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
     },
   });
 }

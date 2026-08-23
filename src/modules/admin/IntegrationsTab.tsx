@@ -77,13 +77,13 @@ export function IntegrationsTab() {
               <div className="flex flex-col gap-[3px] flex-[1_1_240px] min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-[13px] font-extrabold">{it.name}</span>
-                  <code className="font-mono text-[10px] rounded-md bg-mutedmerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-px">{it.type}</code>
+                  <code className="font-mono text-[10px] rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-px">{it.type}</code>
                 </div>
                 <div className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">{it.description}</div>
                 <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">
                   {it.hasCredentials ? (
                     <>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-mutedmerald-500/20 text-emerald-400 text-[10px] font-bold">● مُهيّأ</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">● مُهيّأ</span>
                       {it.credentialsLastUpdatedAt && <> • آخر تحديث: {new Date(it.credentialsLastUpdatedAt).toLocaleString("ar-EG")}</>}
                     </>
                   ) : (

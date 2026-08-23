@@ -71,7 +71,7 @@ const STATUS_CONFIG: Record<MatchStatus, {
     label: "منتج جديد",
     icon: PlusCircle,
     color: "text-blue-600",
-    bgColor: "bg-mutedackgroundlue-500/10",
+    bgColor: "bg-blue-500/10",
     borderColor: "border-blue-500/30",
   },
   review: {

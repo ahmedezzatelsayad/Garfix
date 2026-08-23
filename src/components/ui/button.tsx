@@ -47,14 +47,14 @@ const buttonVariants = cva(
           "bg-destructive text-white shadow-xs " +
           "hover:bg-destructive/90 hover:shadow-md focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
-          "border bg-mutedackgroundackground shadow-xs " +
-          "hover:bg-cardccent hover:text-accent-foreground hover:shadow-sm hover:border-primary/30 " +
+          "border bg-background shadow-xs " +
+          "hover:bg-accent hover:text-accent-foreground hover:shadow-sm hover:border-primary/30 " +
           "dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
         secondary:
           "bg-secondary text-secondary-foreground shadow-xs " +
           "hover:bg-secondary/80 hover:shadow-sm",
         ghost:
-          "hover:bg-cardccent hover:text-accent-foreground hover:shadow-sm dark:hover:bg-cardccent/50",
+          "hover:bg-accent hover:text-accent-foreground hover:shadow-sm dark:hover:bg-accent/50",
         link:
           "text-primary underline-offset-4 hover:underline",
 
@@ -83,7 +83,7 @@ const buttonVariants = cva(
         /* For icon-only buttons in toolbars/sidebars */
         "icon-ghost":
           "text-muted-foreground " +
-          "hover:bg-cardccent hover:text-accent-foreground hover:shadow-sm " +
+          "hover:bg-accent hover:text-accent-foreground hover:shadow-sm " +
           "p-2 rounded-lg",
       },
       size: {

@@ -132,7 +132,7 @@ export function OnboardingTour() {
   const progress = ((step + 1) / TOUR_STEPS.length) * 100;
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-mutedackgroundlack/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label="جولة تعريفية">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-label="جولة تعريفية">
       {/* Skip backdrop click */}
       <div className="absolute inset-0" onClick={handleSkip} />
 

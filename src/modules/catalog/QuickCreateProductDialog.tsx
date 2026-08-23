@@ -282,7 +282,7 @@ export function QuickCreateProductDialog({
                 {formData.aliases.map((alias, idx) => (
                   <span
                     key={idx}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-mutedmerald-100 text-emerald-700 rounded-md text-xs transition-colors duration-120 hover:bg-mutedmerald-200"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-md text-xs transition-colors duration-120 hover:bg-emerald-200"
                   >
                     {alias}
                     <button

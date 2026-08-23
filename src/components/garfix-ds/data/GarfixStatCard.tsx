@@ -67,7 +67,7 @@ const colorConfig: Record<StatColor, {
   value: string;
 }> = {
   emerald: {
-    iconBg: "bg-mutedmerald-500/10",
+    iconBg: "bg-emerald-500/10",
     iconText: "text-emerald-500",
     trendUp: "text-emerald-500",
     trendDown: "text-red-500",
@@ -82,7 +82,7 @@ const colorConfig: Record<StatColor, {
     value: "text-foreground",
   },
   blue: {
-    iconBg: "bg-mutedackgroundlue-500/10",
+    iconBg: "bg-blue-500/10",
     iconText: "text-blue-500",
     trendUp: "text-blue-500",
     trendDown: "text-red-500",
@@ -264,7 +264,7 @@ export const GarfixStatCard: React.FC<GarfixStatCardProps> = ({
             <div
               className={cn(
                 "h-full rounded-full transition-all duration-500 ease-out",
-                isPositive ? "bg-mutedmerald-500" : isNegative ? "bg-red-500" : "bg-gray-400"
+                isPositive ? "bg-emerald-500" : isNegative ? "bg-red-500" : "bg-gray-400"
               )}
               style={{
                 width: `${Math.min(Math.abs(numericValue / previousValue) * 100, 100)}%`,

@@ -12,7 +12,7 @@ import { requirePermission } from "@/lib/middleware";
 import { z } from "zod";
 import { apiError, withErrorHandler, parseJsonBody } from "@/lib/api";
 import { DEFAULT_PLANS } from "@/lib/plans";
-import { getCountryConfig } from "@/lib/gulfConfig";
+import { getCountryConfig, getDefaultTimezone } from "@/lib/gulfConfig";
 import { getAccountTemplate } from "@/lib/accountTemplates";
 import { logger } from "@/lib/logger";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
@@ -27,9 +27,17 @@ const CreateSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   address: z.string().optional(),
   vatNumber: z.string().optional(),
-  currency: z.string().default("KWD"),
+  // العملة: اختيارية — لو لم تُرسل تُشتق من الدولة (وليست KWD ثابتة كما كان سابقًا)
+  currency: z.string().min(2).max(5).optional(),
   country: z.string().optional(),
   defaultTaxRate: z.string().default("0"),
+  // ── P3: تخصيص الشركة عند الإنشاء ──
+  language: z.enum(["ar", "en"]).default("ar"),
+  timezone: z.string().min(3).max(64).optional(),
+  // نمط قالب الفاتورة الافتراضي: modern | classic | minimal
+  invoiceTemplateStyle: z.enum(["modern", "classic", "minimal"]).default("modern"),
+  // لون القالب الأساسي (hex اختياري)
+  invoiceTemplateColor: z.string().max(9).optional(),
 });
 
 function slugify(s: string): string {
@@ -87,6 +95,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       address: c.address,
       vatNumber: c.vatNumber,
       currency: c.currency,
+      language: c.language,
+      timezone: c.timezone,
       country: c.country,
       defaultTaxRate: c.defaultTaxRate,
       plan: c.plan,
@@ -148,6 +158,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiError("this slug is already taken", 409);
   }
 
+  // P3: اشتقاق الإعدادات المحلية من الدولة المختارة (بدل القيم الثابتة):
+  // العملة + المنطقة الزمنية + نسبة الضريبة الافتراضية. أي قيمة أرسلها
+  // المستخدم صراحةً تتقدم على الاشتقاق التلقائي.
+  const countryConfig = data.country ? getCountryConfig(data.country) : null;
+  const resolvedCurrency = data.currency || countryConfig?.currency || "KWD";
+  const resolvedTimezone = data.timezone || getDefaultTimezone(data.country);
+  const resolvedTaxRate = data.defaultTaxRate && data.defaultTaxRate !== "0"
+    ? data.defaultTaxRate
+    : (countryConfig?.defaultTaxRate || "0");
+
   const company = await db.company.create({
     data: {
       name: data.name,
@@ -157,14 +177,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       emoji: data.emoji || "🏢",
       color: data.color || "#7c3aed",
       address: data.address || null,
-      currency: data.currency || "KWD",
+      currency: resolvedCurrency,
+      language: data.language,
+      timezone: resolvedTimezone,
       country: data.country || null,
-      defaultTaxRate: data.defaultTaxRate || "0",
+      defaultTaxRate: resolvedTaxRate,
       plan: "trial",
       subscriptionStatus: "active",
       trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       // P2-Sprint5-D: Company schema requires `currencyDecimalPlaces` (Int, no default).
-      currencyDecimalPlaces: 2,
+      currencyDecimalPlaces: countryConfig?.currencyDecimalPlaces ?? (resolvedCurrency === "KWD" ? 3 : 2),
     },
   });
 
@@ -236,23 +258,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // 3. Default invoice template
   // ────────────────────────────────────────────────────────────────────────
 
-  // 1. Apply country-specific tax config
-  const countryConfig = data.country ? getCountryConfig(data.country) : null;
-  if (countryConfig) {
-    try {
-      await db.company.update({
-        where: { id: company.id },
-        data: {
-          defaultTaxRate: countryConfig.defaultTaxRate,
-          currency: countryConfig.currency,
-          currencyDecimalPlaces: countryConfig.currencyDecimalPlaces,
-        },
-      });
-      logger.info("[companies] country config applied", { companyId: company.id, country: data.country, vatRate: countryConfig.vatRate });
-    } catch (configErr) {
-      logger.warn("[companies] failed to apply country config", { err: configErr instanceof Error ? configErr.message : String(configErr) });
-    }
-  }
+  // 1. Apply country-specific tax config — تم دمجه في db.company.create أعلاه
+  // (currency/timezone/taxRate/decimalPlaces تُحفظ من اختيارات المستخدم أو الدولة مباشرة)
+  // countryConfig مُعرّف أعلاه في تدفق الإنشاء ويُعاد استخدامه في قالب الفاتورة (QR/ZATCA).
 
   // 2. Auto-seed default chart of accounts (trading template — most general)
   try {
@@ -284,9 +292,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       await db.invoiceTemplate.create({
         data: {
           companySlug: slug,
-          name: "القالب الافتراضي",
-          layoutType: "modern",
-          primaryColor: "#047857",
+          name: data.invoiceTemplateStyle === "classic" ? "القالب الكلاسيكي" : data.invoiceTemplateStyle === "minimal" ? "القالب المبسّط" : "القالب العصري",
+          layoutType: data.invoiceTemplateStyle,
+          primaryColor: data.invoiceTemplateColor || "#047857",
           fontFamily: "Cairo",
           logoPosition: "right",
           showTaxNumber: true,

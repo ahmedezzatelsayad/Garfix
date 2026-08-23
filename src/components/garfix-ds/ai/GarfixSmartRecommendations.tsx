@@ -299,7 +299,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({
               <div className="flex items-center gap-0.5 ms-auto">
                 <button
                   onClick={() => onFeedback("positive")}
-                  className="p-1 rounded hover:bg-mutedmerald-100 dark:hover:bg-mutedmerald-900/30 text-muted-foreground hover:text-emerald-500 transition-colors"
+                  className="p-1 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-muted-foreground hover:text-emerald-500 transition-colors"
                   title="مفيد"
                 >
                   <ThumbsUp className="h-3.5 w-3.5" />

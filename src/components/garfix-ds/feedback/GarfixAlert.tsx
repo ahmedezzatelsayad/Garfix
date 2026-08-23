@@ -61,17 +61,17 @@ const variantConfig: Record<AlertVariant, {
   iconColor: string;
 }> = {
   info: {
-    container: "bg-mutedackgroundlue-50 dark:bg-mutedackgroundlue-950/30 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300",
+    container: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300",
     icon: Info,
     iconColor: "text-blue-500",
   },
   success: {
-    container: "bg-mutedmerald-50 dark:bg-mutedmerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300",
+    container: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300",
     icon: CheckCircle2,
     iconColor: "text-emerald-500",
   },
   warning: {
-    container: "bg-cardmber-50 dark:bg-cardmber-950/30 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300",
+    container: "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300",
     icon: AlertTriangle,
     iconColor: "text-amber-500",
   },
@@ -182,7 +182,7 @@ export const GarfixAlert: React.FC<GarfixAlertProps> = ({
           onClick={handleDismiss}
           className={cn(
             "flex-shrink-0 rounded-lg p-1 transition-colors duration-120",
-            "hover:bg-mutedackgroundlack/5 dark:hover:bg-white/10",
+            "hover:bg-black/5 dark:hover:bg-white/10",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current"
           )}
           aria-label="إغلاق"

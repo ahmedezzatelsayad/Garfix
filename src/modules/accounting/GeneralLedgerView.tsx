@@ -226,8 +226,8 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
             onClick={handlePrint}
             className={cn(
               "inline-flex items-center gap-2 px-3 py-2 rounded-lg font-medium text-sm",
-              "bg-mutedackgroundlue-50 hover:bg-mutedackgroundlue-100 text-blue-700",
-              "dark:bg-mutedackgroundlue-900/20 dark:hover:bg-mutedackgroundlue-900/30 dark:text-blue-400",
+              "bg-blue-50 hover:bg-blue-100 text-blue-700",
+              "dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-400",
               "transition-colors"
             )}
           >
@@ -283,8 +283,8 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
                           setShowAccountDropdown(false);
                         }}
                         className={cn(
-                          "w-full px-4 py-2 text-right hover:bg-mutedmerald-50 dark:hover:bg-mutedmerald-900/20 transition-colors",
-                          selectedAccountId === acc.id && "bg-mutedmerald-100 dark:bg-mutedmerald-900/30"
+                          "w-full px-4 py-2 text-right hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors",
+                          selectedAccountId === acc.id && "bg-emerald-100 dark:bg-emerald-900/30"
                         )}
                       >
                         <span className="font-medium">{acc.code}</span>
@@ -343,7 +343,7 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
               disabled={loading || !selectedAccountId}
               className={cn(
                 "w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium",
-                "bg-mutedmerald-600 hover:bg-mutedmerald-700 text-white",
+                "bg-emerald-600 hover:bg-emerald-700 text-white",
                 "transition-colors disabled:opacity-50",
                 "shadow-brand hover:shadow-brand-md"
               )}
@@ -384,7 +384,7 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
                 className={cn(
                   "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
                   showSummary 
-                    ? "bg-mutedmerald-100 text-emerald-700 dark:bg-mutedmerald-900/30 dark:text-emerald-400"
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                     : "bg-muted text-gray-700 dark:bg-gray-700 dark:text-muted-foreground"
                 )}
               >
@@ -506,7 +506,7 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
                           {formatDate(entry.date)}
                         </td>
                         <td className="px-4 py-3 text-sm">
-                          <span className="font-mono text-emerald-600 dark:text-emerald-400 bg-mutedmerald-50 dark:bg-mutedmerald-900/20 px-2 py-0.5 rounded">
+                          <span className="font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded">
                             {entry.journalEntryNumber}
                           </span>
                         </td>
@@ -529,7 +529,7 @@ export function GeneralLedgerView({ companySlug }: { companySlug: string }) {
                     ))}
 
                     {/* Totals Row */}
-                    <tr className="bg-mutedmerald-50 dark:bg-mutedmerald-900/20 font-bold">
+                    <tr className="bg-emerald-50 dark:bg-emerald-900/20 font-bold">
                       <td colSpan={3} className="px-4 py-3 text-emerald-800 dark:text-emerald-300">
                         الإجمالي / رصيد اختتامي
                       </td>

@@ -253,7 +253,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
             }}
             className={cn(
               "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium",
-              "bg-mutedackgroundlue-600 hover:bg-mutedackgroundlue-700 text-white",
+              "bg-blue-600 hover:bg-blue-700 text-white",
               "transition-colors duration-200",
               "min-h-[44px]"
             )}
@@ -265,7 +265,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
             onClick={() => setShowCreateModal(true)}
             className={cn(
               "inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium",
-              "bg-mutedmerald-600 hover:bg-mutedmerald-700 text-white",
+              "bg-emerald-600 hover:bg-emerald-700 text-white",
               "transition-colors duration-200",
               "shadow-brand hover:shadow-brand-md",
               "min-h-[44px]"
@@ -335,8 +335,8 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
               disabled={actionLoading === "bulk"}
               className={cn(
                 "px-3 py-2 rounded-lg text-sm font-medium",
-                "bg-mutedmerald-100 text-emerald-800 hover:bg-mutedmerald-200",
-                "dark:bg-mutedmerald-900/30 dark:text-emerald-400",
+                "bg-emerald-100 text-emerald-800 hover:bg-emerald-200",
+                "dark:bg-emerald-900/30 dark:text-emerald-400",
                 "transition-colors"
               )}
             >
@@ -374,7 +374,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
             <p className="text-sm mt-1">ابدأ بإنشاء قيد دوري جديد</p>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="mt-4 px-4 py-2 bg-mutedmerald-600 text-white rounded-lg hover:bg-mutedmerald-700 transition-colors"
+              className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
             >
               إنشاء قيد جديد
             </button>
@@ -421,7 +421,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                     key={entry.id}
                     className={cn(
                       "hover:bg-muted dark:hover:bg-gray-700/50 transition-colors",
-                      selectedIds.has(entry.id) && "bg-mutedmerald-50 dark:bg-mutedmerald-900/20"
+                      selectedIds.has(entry.id) && "bg-emerald-50 dark:bg-emerald-900/20"
                     )}
                   >
                     <td className="px-4 py-3">
@@ -445,7 +445,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <span className={cn(
                         "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
-                        "bg-mutedackgroundlue-100 text-blue-800 dark:bg-mutedackgroundlue-900/30 dark:text-blue-400"
+                        "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
                       )}>
                         <Clock className="w-3 h-3 ml-1" />
                         كل {entry.intervalValue > 1 ? `${entry.intervalValue} ` : ""}
@@ -466,7 +466,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                       <span className={cn(
                         "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
                         entry.totalPosted > 10 
-                          ? "bg-mutedmerald-100 text-emerald-800 dark:bg-mutedmerald-900/30 dark:text-emerald-400"
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
                           : "bg-muted text-foreground"
                       )}>
                         {entry.totalPosted}
@@ -476,7 +476,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                       {entry.isActive ? (
                         <span className={cn(
                           "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
-                          "bg-mutedmerald-100 text-emerald-800 dark:bg-mutedmerald-900/30 dark:text-emerald-400"
+                          "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
                         )}>
                           <CheckCircle2 className="w-3 h-3 ml-1" />
                           نشط
@@ -499,8 +499,8 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                           title="تشغيل الآن"
                           className={cn(
                             "p-1.5 rounded-lg transition-colors",
-                            "hover:bg-mutedmerald-100 text-emerald-600",
-                            "dark:hover:bg-mutedmerald-900/30 dark:text-emerald-400",
+                            "hover:bg-emerald-100 text-emerald-600",
+                            "dark:hover:bg-emerald-900/30 dark:text-emerald-400",
                             "disabled:opacity-50 disabled:cursor-not-allowed"
                           )}
                         >
@@ -515,8 +515,8 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                           title="تعديل"
                           className={cn(
                             "p-1.5 rounded-lg transition-colors",
-                            "hover:bg-mutedackgroundlue-100 text-blue-600",
-                            "dark:hover:bg-mutedackgroundlue-900/30 dark:text-blue-400"
+                            "hover:bg-blue-100 text-blue-600",
+                            "dark:hover:bg-blue-900/30 dark:text-blue-400"
                           )}
                         >
                           <Edit3 className="w-4 h-4" />
@@ -528,7 +528,7 @@ export function RecurringEntriesView({ companySlug }: { companySlug: string }) {
                             "p-1.5 rounded-lg transition-colors",
                             entry.isActive
                               ? "hover:bg-yellow-100 text-yellow-600 dark:hover:bg-yellow-900/30 dark:text-yellow-400"
-                              : "hover:bg-mutedmerald-100 text-emerald-600 dark:hover:bg-mutedmerald-900/30 dark:text-emerald-400"
+                              : "hover:bg-emerald-100 text-emerald-600 dark:hover:bg-emerald-900/30 dark:text-emerald-400"
                           )}
                         >
                           {entry.isActive ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
@@ -1030,7 +1030,7 @@ function RecurringEntryModal({
             disabled={loading}
             className={cn(
               "px-6 py-2 rounded-lg font-medium text-white",
-              "bg-mutedmerald-600 hover:bg-mutedmerald-700",
+              "bg-emerald-600 hover:bg-emerald-700",
               "transition-colors disabled:opacity-50",
               "shadow-brand hover:shadow-brand-md"
             )}

@@ -55,11 +55,11 @@ const WEBHOOK_PATHS: Record<string, string> = {
 
 function receiptStatusMeta(status: string): { icon: React.ReactNode; color: string; bg: string; label: string } {
   if (status === "accepted")
-    return { icon: <CheckCircle2 size={14} />, color: "text-emerald-400", bg: "bg-mutedmerald-500/15 border-emerald-500/30", label: "مقبول" };
+    return { icon: <CheckCircle2 size={14} />, color: "text-emerald-400", bg: "bg-emerald-500/15 border-emerald-500/30", label: "مقبول" };
   if (status === "rejected")
     return { icon: <XCircle size={14} />, color: "text-red-400", bg: "bg-red-500/15 border-red-500/30", label: "مرفوض" };
   if (status === "pending")
-    return { icon: <Clock size={14} />, color: "text-amber-400", bg: "bg-cardmber-500/15 border-amber-500/30", label: "معلّق" };
+    return { icon: <Clock size={14} />, color: "text-amber-400", bg: "bg-amber-500/15 border-amber-500/30", label: "معلّق" };
   if (status === "cancelled")
     return { icon: <XCircle size={14} />, color: "text-muted-foreground", bg: "bg-white/[0.06] border-border/50", label: "ملغى" };
   return { icon: <Activity size={14} />, color: "text-muted-foreground", bg: "bg-white/[0.06] border-border/50", label: status };
@@ -119,7 +119,7 @@ function ReceiptCard({ receipt }: { receipt: EInvoicingCompanyTimelineReceipt })
               </span>
             )}
             {receipt.signatureValid === true && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-mutedmerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 <ShieldCheck size={10} />
                 موقّع
               </span>
@@ -179,7 +179,7 @@ function ReceiptCard({ receipt }: { receipt: EInvoicingCompanyTimelineReceipt })
               <FileText size={11} />
               الحمولة الخام (Raw Payload)
             </p>
-            <pre className="text-[10px] font-mono text-foreground/80 bg-mutedackgroundlack/40 rounded-lg p-3 overflow-x-auto max-h-64 scrollbar-thin" dir="ltr">
+            <pre className="text-[10px] font-mono text-foreground/80 bg-black/40 rounded-lg p-3 overflow-x-auto max-h-64 scrollbar-thin" dir="ltr">
               {(() => {
                 try {
                   return JSON.stringify(JSON.parse(receipt.rawPayload), null, 2);
@@ -219,7 +219,7 @@ function InvoiceGroupCard({
             {total !== null && <span> · {total} ر.س</span>}
           </p>
         </div>
-        <span className="text-[11px] px-1.5 py-0.5 rounded bg-mutedackgroundlue-500/15 text-blue-400 border border-blue-500/20 whitespace-nowrap">
+        <span className="text-[11px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/20 whitespace-nowrap">
           {eventCount} حدث
         </span>
       </div>
@@ -258,7 +258,7 @@ export default function EInvoicingCompanyTimelinePage() {
           </button>
           <button
             onClick={() => refetch()}
-            className="px-4 py-2 rounded-lg bg-mutedmerald-500 text-white text-sm font-medium hover:bg-mutedmerald-600 transition-colors"
+            className="px-4 py-2 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors"
           >
             إعادة المحاولة
           </button>
@@ -288,8 +288,8 @@ export default function EInvoicingCompanyTimelinePage() {
             <span className={cn(
               "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border",
               company.isConfigured
-                ? "bg-mutedmerald-500/15 text-emerald-400 border-emerald-500/20"
-                : "bg-cardmber-500/15 text-amber-400 border-amber-500/20",
+                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20"
+                : "bg-amber-500/15 text-amber-400 border-amber-500/20",
             )}>
               {company.isConfigured ? <CheckCircle2 size={11} /> : <Clock size={11} />}
               {company.isConfigured ? "مفعّل" : "معلّق"}
@@ -342,7 +342,7 @@ export default function EInvoicingCompanyTimelinePage() {
                 الفواتير ({data.invoiceGroups.length})
               </span>
             )}
-            {tab === t && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-mutedmerald-400" />}
+            {tab === t && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400" />}
           </button>
         ))}
       </div>
@@ -396,7 +396,7 @@ export default function EInvoicingCompanyTimelinePage() {
       )}
 
       {/* Help */}
-      <div className="rounded-xl border border-emerald-500/20 bg-mutedmerald-500/[0.04] p-4 text-xs">
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4 text-xs">
         <p className="font-bold text-emerald-400 mb-1 flex items-center gap-1">
           <ShieldCheck size={13} />
           webhook URL لهذه الدولة

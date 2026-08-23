@@ -412,6 +412,43 @@ export function getDefaultCurrency(countryCode?: string | null): string {
   return getCountryConfig(countryCode)?.currency || "KWD";
 }
 
+/**
+ * خريطة المناطق الزمنية الافتراضية لكل دولة مدعومة (IANA tz identifiers).
+ * تُستخدم في معالج إنشاء الشركة (SetupWizard) وفي الإعدادات لتلقائي
+ * اقتراح المنطقة الزمنية الصحيحة عند اختيار الدولة، مع إمكانية التعديل اليدوي.
+ */
+export const COUNTRY_TIMEZONES: Record<string, string> = {
+  KW: "Asia/Kuwait",
+  SA: "Asia/Riyadh",
+  AE: "Asia/Dubai",
+  BH: "Asia/Bahrain",
+  OM: "Asia/Muscat",
+  QA: "Asia/Qatar",
+  JO: "Asia/Amman",
+  MA: "Africa/Casablanca",
+  DZ: "Africa/Algiers",
+  TN: "Africa/Tunis",
+  IQ: "Asia/Baghdad",
+  LB: "Asia/Beirut",
+  EG: "Africa/Cairo",
+  PS: "Asia/Gaza",
+  SY: "Asia/Damascus",
+  YE: "Asia/Aden",
+  SD: "Africa/Khartoum",
+  LY: "Africa/Tripoli",
+  SO: "Africa/Mogadishu",
+  DJ: "Africa/Djibouti",
+  KM: "Indian/Comoro",
+  MR: "Africa/Nouakchott",
+  ER: "Africa/Asmara",
+};
+
+/** المنطقة الزمنية الافتراضية لدولة معينة (fallback: Asia/Kuwait). */
+export function getDefaultTimezone(countryCode?: string | null): string {
+  if (!countryCode) return "Asia/Kuwait";
+  return COUNTRY_TIMEZONES[countryCode.toUpperCase()] || "Asia/Kuwait";
+}
+
 export function getEInvoiceAuthority(countryCode?: string | null): EInvoiceAuthority {
   return getCountryConfig(countryCode)?.eInvoiceAuthority || "none";
 }

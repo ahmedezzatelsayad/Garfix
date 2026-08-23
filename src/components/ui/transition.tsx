@@ -311,7 +311,7 @@ function SuccessCheckmark({ size = "md", className }: SuccessCheckmarkProps) {
 
   return (
     <div className={cn(
-      "rounded-full bg-mutedmerald-100 dark:bg-mutedmerald-900/30 flex items-center justify-center",
+      "rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center",
       sizes[size],
       className
     )}>

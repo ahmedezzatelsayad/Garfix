@@ -73,7 +73,7 @@ export function AccountView() {
 
   if (!user) return null;
 
-  const inputTW = "w-full py-2.5 px-3.5 rounded-[10px] bg-mutedackgroundackground border border-border text-foreground font-inherit text-sm outline-none focus-ring"; // TAILWINDBREAK: var(--background)/var(--border)/var(--foreground) CSS variables + DS v4.0 focus-ring
+  const inputTW = "w-full py-2.5 px-3.5 rounded-[10px] bg-background border border-border text-foreground font-inherit text-sm outline-none focus-ring"; // TAILWINDBREAK: var(--background)/var(--border)/var(--foreground) CSS variables + DS v4.0 focus-ring
   const labelTW = "block text-xs font-semibold text-muted-foreground mb-1.5";
   const btnTW = "active-press duration-150 inline-flex items-center gap-1.5 py-2.5 px-5 rounded-[10px] bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-none font-inherit text-[13px] font-bold cursor-pointer shadow-brand-sm"; // DS v4.0: active-press + emerald gradient
 

@@ -64,13 +64,13 @@ const PAGE_SIZE = 20;
 /* ── Action Badge Color ──────────────────────────────────────────────── */
 
 function getActionColor(action: string): string {
-  if (action.includes("create")) return "bg-mutedmerald-500/20 text-emerald-400 border-emerald-500/30";
-  if (action.includes("update")) return "bg-mutedackgroundlue-500/20 text-blue-400 border-blue-500/30";
+  if (action.includes("create")) return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+  if (action.includes("update")) return "bg-blue-500/20 text-blue-400 border-blue-500/30";
   if (action.includes("delete")) return "bg-red-500/20 text-red-400 border-red-500/30";
   if (action.includes("login_success")) return "bg-green-500/20 text-green-400 border-green-500/30";
   if (action.includes("login_failure")) return "bg-red-500/20 text-red-400 border-red-500/30";
-  if (action.includes("payment")) return "bg-cardmber-500/20 text-amber-400 border-amber-500/30";
-  if (action.includes("ai")) return "bg-mutedmerald-500/20 text-emerald-400 border-emerald-500/30";
+  if (action.includes("payment")) return "bg-amber-500/20 text-amber-400 border-amber-500/30";
+  if (action.includes("ai")) return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
   return "bg-white/10 text-white/60 border-white/20";
 }
 
@@ -209,7 +209,7 @@ export function EnhancedAuditView() {
             className={cn(
               "text-[11px] font-bold",
               isOnline
-                ? "bg-mutedmerald-500/10 text-emerald-400 border-emerald-500/20"
+                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                 : "bg-red-500/10 text-red-400 border-red-500/20"
             )}
           >

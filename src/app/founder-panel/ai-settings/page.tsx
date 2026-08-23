@@ -404,7 +404,7 @@ export default function AISettingsPage() {
                   className={cn(
                     'px-4 py-2 rounded-lg text-sm font-medium transition-all',
                     activeTab === tab.value
-                      ? 'bg-mutedmerald-500 text-white shadow-sm'
+                      ? 'bg-emerald-500 text-white shadow-sm'
                       : 'text-muted-foreground hover:text-gray-900 dark:hover:text-white'
                   )}
                 >
@@ -542,7 +542,7 @@ export default function AISettingsPage() {
                             <button
                               key={template.label}
                               onClick={() => setSystemPrompt(template.prompt)}
-                              className="px-3 py-1.5 text-xs rounded-full bg-muted text-foreground hover:bg-mutedmerald-100 dark:hover:bg-mutedmerald-900 transition-colors"
+                              className="px-3 py-1.5 text-xs rounded-full bg-muted text-foreground hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors"
                             >
                               {template.label}
                             </button>
@@ -596,7 +596,7 @@ export default function AISettingsPage() {
                         className={cn(
                           'flex items-center justify-between p-4 rounded-xl border transition-all',
                           features[feature.key]
-                            ? 'border-emerald-200 bg-mutedmerald-50/50 dark:border-emerald-800 dark:bg-mutedmerald-950/20'
+                            ? 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20'
                             : 'border-border'
                         )}
                       >
@@ -623,7 +623,7 @@ export default function AISettingsPage() {
                           className={cn(
                             'relative w-12 h-6 rounded-full transition-colors',
                             features[feature.key]
-                              ? 'bg-mutedmerald-500'
+                              ? 'bg-emerald-500'
                               : 'bg-gray-300 dark:bg-gray-600'
                           )}
                         >

@@ -155,7 +155,7 @@ export default function FinOpsDashboard() {
           <p className="text-red-500 mb-4">Error: {error?.message ?? "Unknown error"}</p>
           <button
             onClick={() => refetch()}
-            className="px-4 py-2 bg-mutedackgroundlue-500 text-white rounded hover:bg-mutedackgroundlue-600"
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Retry
           </button>
@@ -231,7 +231,7 @@ export default function FinOpsDashboard() {
                   </div>
                 </div>
 
-                <div className="mt-6 p-4 bg-mutedackgroundlue-50 border border-blue-200 rounded-lg">
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm font-medium text-blue-800">Forecast (Month-End)</p>
                   <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                     <div>

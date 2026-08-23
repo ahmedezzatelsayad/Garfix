@@ -43,10 +43,10 @@ type Tab = "vouchers" | "quotations" | "purchase-orders" | "opening-balances" | 
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2.5 px-3 text-[13px]";
 // DS v4.0: Added focus-ring for form inputs
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus-ring";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 // DS v4.0: Added focus-ring for selects
-const selectStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none cursor-pointer focus-ring";
+const selectStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none cursor-pointer focus-ring";
 
 function Empty({ label }: { label: string }) {
   return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
@@ -69,7 +69,7 @@ export function VouchersDetailView() {
   const [vType, setVType] = useState("receipt");
   const [vDate, setVDate] = useState("");
   const [vAmount, setVAmount] = useState("");
-  const [vCurrency, setVCurrency] = useState("KWD");
+  const [vCurrency, setVCurrency] = useState(activeCompany?.currency || "KWD");
   const [vPayee, setVPayee] = useState("");
   const [vPayer, setVPayer] = useState("");
 
@@ -150,7 +150,7 @@ export function VouchersDetailView() {
       },
     );
   };
-  const resetVoucherForm = () => { setVType("receipt"); setVDate(""); setVAmount(""); setVCurrency("KWD"); setVPayee(""); setVPayer(""); };
+  const resetVoucherForm = () => { setVType("receipt"); setVDate(""); setVAmount(""); setVCurrency(activeCompany?.currency || "KWD"); setVPayee(""); setVPayer(""); };
 
   /* ── Approve / Cancel Voucher ────────────────────────────────────────────── */
   const handleApproveVoucher = (id: number) => {
@@ -402,7 +402,7 @@ export function VouchersDetailView() {
                   <tbody>
                     {vouchers.map((v) => {
                       const statusMap: Record<string, { label: string; color: string; badge: string }> = {
-                        draft: { label: "مسودة", color: "#f59e0b", badge: "bg-cardmber-500/15 text-amber-500" }, approved: { label: "معتمد", color: "#10b981", badge: "bg-mutedmerald-500/15 text-emerald-500" }, cancelled: { label: "ملغى", color: "#ef4444", badge: "bg-red-500/15 text-red-500" },
+                        draft: { label: "مسودة", color: "#f59e0b", badge: "bg-amber-500/15 text-amber-500" }, approved: { label: "معتمد", color: "#10b981", badge: "bg-emerald-500/15 text-emerald-500" }, cancelled: { label: "ملغى", color: "#ef4444", badge: "bg-red-500/15 text-red-500" },
                       };
                       const st = statusMap[v.status] || { label: v.status, color: "#999", badge: "bg-muted text-muted-foreground" };
                       return (
@@ -419,7 +419,7 @@ export function VouchersDetailView() {
                             {/* DS v4.0: Action buttons with active-press */}
                             <div className="flex items-center gap-1">
                               {v.status === "draft" && (<>
-                                <button onClick={() => handleApproveVoucher(v.id)} title="اعتماد" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-mutedmerald-500/10 active-press duration-150"><CheckCircle2 size={13} className="text-emerald-600" /></button>
+                                <button onClick={() => handleApproveVoucher(v.id)} title="اعتماد" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10 active-press duration-150"><CheckCircle2 size={13} className="text-emerald-600" /></button>
                                 <button onClick={() => handleCancelVoucher(v.id)} title="إلغاء" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-red-500/10 active-press duration-150"><XCircle size={13} className="text-red-500" /></button>
                               </>)}
                               <button title="طباعة" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-muted active-press duration-150"><Printer size={13} /></button>
@@ -485,7 +485,7 @@ export function VouchersDetailView() {
                         <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(q.totalAmount)}</td>
                         <td className={tdStyle}>{q.lineItems?.length || 0}</td>
                         <td className={tdStyle}>
-                          <button onClick={() => handleConvertToInvoice(q.id)} title="تحويل إلى فاتورة" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-mutedmerald-500/10"><ArrowRight size={13} className="text-emerald-600" /></button>
+                          <button onClick={() => handleConvertToInvoice(q.id)} title="تحويل إلى فاتورة" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10"><ArrowRight size={13} className="text-emerald-600" /></button>
                         </td>
                       </tr>
                     ))}
@@ -588,7 +588,7 @@ export function VouchersDetailView() {
                           <td className={cn(tdStyle, "font-mono font-bold")}>{ob.accountCode}</td>
                           <td className={tdStyle}>{ob.accountNameAr}</td>
                           <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(ob.amount)}</td>
-                          <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", ob.posted ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500")}>{ob.posted ? "مُرحّل" : "مسودة"}</span></td>
+                          <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", ob.posted ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{ob.posted ? "مُرحّل" : "مسودة"}</span></td>
                         </tr>
                       ))}
                     </tbody>
@@ -616,9 +616,9 @@ export function VouchersDetailView() {
                         <td className={cn(tdStyle, "font-bold")}>{c.salesperson}</td>
                         <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(c.totalSales)}</td>
                         <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-emerald-500")}>{fmt(c.commissionAmount)}</td>
-                        <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", c.posted ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500")}>{c.posted ? "مُرحّل" : "مسودة"}</span></td>
+                        <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", c.posted ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{c.posted ? "مُرحّل" : "مسودة"}</span></td>
                         <td className={tdStyle}>
-                          {!c.posted && <button onClick={() => handlePostCommission(c.id)} title="ترحيل كقيد يومية" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-mutedmerald-500/10"><CheckCircle2 size={13} className="text-emerald-600" /></button>}
+                          {!c.posted && <button onClick={() => handlePostCommission(c.id)} title="ترحيل كقيد يومية" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10"><CheckCircle2 size={13} className="text-emerald-600" /></button>}
                         </td>
                       </tr>
                     ))}
@@ -646,9 +646,9 @@ export function VouchersDetailView() {
                         <td className={cn(tdStyle, "font-bold")}>{pd.partnerName}</td>
                         <td className={cn(tdStyle, "[direction:ltr] text-end")}>{pd.ownershipPercent}%</td>
                         <td className={cn(cn(tdStyle, "[direction:ltr] text-end font-bold"), "text-emerald-500")}>{fmt(pd.profitShare)}</td>
-                        <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", pd.posted ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500")}>{pd.posted ? "مُرحّل" : "مسودة"}</span></td>
+                        <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", pd.posted ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{pd.posted ? "مُرحّل" : "مسودة"}</span></td>
                         <td className={tdStyle}>
-                          {!pd.posted && <button onClick={() => handlePostProfitDist(pd.id)} title="ترحيل كقيد يومية" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-mutedmerald-500/10"><CheckCircle2 size={13} className="text-emerald-600" /></button>}
+                          {!pd.posted && <button onClick={() => handlePostProfitDist(pd.id)} title="ترحيل كقيد يومية" className="w-7 h-7 rounded-md border border-border flex items-center justify-center cursor-pointer hover:bg-emerald-500/10"><CheckCircle2 size={13} className="text-emerald-600" /></button>}
                         </td>
                       </tr>
                     ))}

@@ -343,6 +343,10 @@ export function useBulkImport() {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.invoices.lists(),
       });
+      // P3: تحديث الداشبورد والعملاء بعد الاستيراد المجمع حتى تظهر الفواتير
+      // الجديدة في كل الواجهات فورًا (كانت قوائم العملاء والكارت تبقى قديمة).
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.clients.all });
     },
   });
 }

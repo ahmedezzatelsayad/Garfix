@@ -225,12 +225,12 @@ export const GarfixThemeSegmented: React.FC<Omit<GarfixThemeToggleProps, "varian
             className={cn(
               "inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-150",
               isActive && [
-                "bg-mutedackgroundackground text-foreground shadow-sm",
+                "bg-background text-foreground shadow-sm",
                 "border border-border"
               ],
               !isActive && [
                 "text-muted-foreground hover:text-foreground",
-                "hover:bg-mutedackgroundackground/50"
+                "hover:bg-background/50"
               ],
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             )}

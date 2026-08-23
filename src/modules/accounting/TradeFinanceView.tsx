@@ -30,19 +30,19 @@ type Tab = "lc" | "fx";
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2.5 px-3 text-[13px]";
 // DS v4.0: Added focus-ring for form inputs
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus-ring";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 // DS v4.0: Added focus-ring for selects
-const selectStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none cursor-pointer focus-ring";
+const selectStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none cursor-pointer focus-ring";
 
 function Empty({ label }: { label: string }) {
   return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>;
 }
 
 const LC_STATUS_MAP: Record<string, { label: string; badge: string }> = {
-  issued:    { label: "مصدرة",       badge: "bg-mutedackgroundlue-500/15 text-blue-500" },
-  amended:   { label: "معدّلة",      badge: "bg-cardmber-500/15 text-amber-500" },
-  utilized:  { label: "مستخدمة",     badge: "bg-mutedmerald-500/15 text-emerald-500" },
+  issued:    { label: "مصدرة",       badge: "bg-blue-500/15 text-blue-500" },
+  amended:   { label: "معدّلة",      badge: "bg-amber-500/15 text-amber-500" },
+  utilized:  { label: "مستخدمة",     badge: "bg-emerald-500/15 text-emerald-500" },
   expired:   { label: "منتهية",      badge: "bg-red-500/15 text-red-500" },
 };
 
@@ -59,13 +59,13 @@ export function TradeFinanceView() {
   const [lcSupplier, setLcSupplier] = useState("");
   const [lcBank, setLcBank] = useState("");
   const [lcAmount, setLcAmount] = useState("");
-  const [lcCurrency, setLcCurrency] = useState("KWD");
+  const [lcCurrency, setLcCurrency] = useState(activeCompany?.currency || "KWD");
   const [lcIssueDate, setLcIssueDate] = useState("");
   const [lcExpiryDate, setLcExpiryDate] = useState("");
 
   /* FX form state */
   const [fxFrom, setFxFrom] = useState("USD");
-  const [fxTo, setFxTo] = useState("KWD");
+  const [fxTo, setFxTo] = useState(activeCompany?.currency || "KWD");
   const [fxRate, setFxRate] = useState("");
   const [fxPeriod, setFxPeriod] = useState("Q1");
 
@@ -101,7 +101,7 @@ export function TradeFinanceView() {
     );
   };
 
-  const resetLcForm = () => { setLcNumber(""); setLcSupplier(""); setLcBank(""); setLcAmount(""); setLcCurrency("KWD"); setLcIssueDate(""); setLcExpiryDate(""); };
+  const resetLcForm = () => { setLcNumber(""); setLcSupplier(""); setLcBank(""); setLcAmount(""); setLcCurrency(activeCompany?.currency || "KWD"); setLcIssueDate(""); setLcExpiryDate(""); };
 
   /* ── Create FX Revaluation ─────────────────────────────────────────────── */
   const createFxMutation = useCreateFXRevaluation();
@@ -122,7 +122,7 @@ export function TradeFinanceView() {
     );
   };
 
-  const resetFxForm = () => { setFxFrom("USD"); setFxTo("KWD"); setFxRate(""); setFxPeriod("Q1"); };
+  const resetFxForm = () => { setFxFrom("USD"); setFxTo(activeCompany?.currency || "KWD"); setFxRate(""); setFxPeriod("Q1"); };
 
   if (!activeCompany) return <div className="p-12 text-center text-muted-foreground">اختر شركة</div>;
 
@@ -191,7 +191,7 @@ export function TradeFinanceView() {
           {/* Pending Approval - Standard KPI */}
           <div className="kpi-card">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-cardmber-500/15 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-amber-500/15 flex items-center justify-center">
                 <Clock size={20} className="text-amber-500" />
               </div>
               <div>
@@ -323,7 +323,7 @@ export function TradeFinanceView() {
                   { label: "خسائر محققة", value: totalRealizedLoss, badgeClass: "bg-red-500/20 text-red-500", textClass: "text-red-500", icon: <TrendingDown size={16} />, cardClass: "kpi-card" },
                   // DS v4.0: GOLD for unrealized gains (Premium financial data!)
                   { label: "أرباح غير محققة", value: totalUnrealizedGain, badgeClass: "bg-[#d4a574]/20 text-[#d4a574]", textClass: "text-[#d4a574]", icon: <TrendingUp size={16} />, cardClass: "kpi-card-gold" },
-                  { label: "خسائر غير محققة", value: totalUnrealizedLoss, badgeClass: "bg-cardmber-500/20 text-amber-500", textClass: "text-amber-500", icon: <TrendingDown size={16} />, cardClass: "kpi-card" },
+                  { label: "خسائر غير محققة", value: totalUnrealizedLoss, badgeClass: "bg-amber-500/20 text-amber-500", textClass: "text-amber-500", icon: <TrendingDown size={16} />, cardClass: "kpi-card" },
                 ].map((m, i) => (
                   <div key={i} className={cn(m.cardClass, "p-3 flex items-center gap-2")}>
                     <div className={cn("w-8 h-8 rounded-md flex items-center justify-center", m.badgeClass)}>{m.icon}</div>

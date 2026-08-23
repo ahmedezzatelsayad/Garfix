@@ -121,7 +121,7 @@ export default async function RootLayout({
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body
-        className={`${cairo.variable} font-cairo antialiased bg-mutedackgroundackground text-foreground`}
+        className={`${cairo.variable} font-cairo antialiased bg-background text-foreground`}
         style={{ fontFamily: "'Cairo', sans-serif" }}
       >
         {/* Providers is a client component ("use client" directive). SSRs normally

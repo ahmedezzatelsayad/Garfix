@@ -49,7 +49,7 @@ const DEP_METHODS = [
 
 const thStyle = "text-start py-2.5 px-3 text-[11px] text-muted-foreground font-bold";
 const tdStyle = "py-2 px-2.5 sm:py-2.5 sm:px-3 text-[12px] sm:text-[13px]";
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[12px] sm:text-[13px] outline-none focus-ring";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 function fmt(n: number) { return n.toLocaleString("ar-EG", { maximumFractionDigits: 3 }); }
 function Empty({ label }: { label: string }) { return <div className="p-12 text-center text-muted-foreground">لا توجد {label} بعد</div>; }
@@ -140,7 +140,7 @@ function AssetList({ assets, totalCost, totalDep, totalBV }: { assets: Asset[]; 
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
         <div className="kpi-card-gold bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-mutedmerald-500/20 text-emerald-500"><DollarSign size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-500/20 text-emerald-500"><DollarSign size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">تكلفة الاستحواذ</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalCost)}</div></div>
         </div>
         <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
@@ -148,7 +148,7 @@ function AssetList({ assets, totalCost, totalDep, totalBV }: { assets: Asset[]; 
           <div><div className="text-[11px] text-muted-foreground">إهلاك متراكم</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalDep)}</div></div>
         </div>
         <div className="kpi-card bg-card rounded-[14px] border border-border py-3.5 px-4 flex items-center gap-3 hover-lift">
-          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-mutedmerald-600/20 text-emerald-600"><Calculator size={18} /></div>
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center bg-emerald-600/20 text-emerald-600"><Calculator size={18} /></div>
           <div><div className="text-[11px] text-muted-foreground">صافي القيمة الدفترية</div><div className="text-lg font-extrabold [direction:ltr] text-end">{fmt(totalBV)}</div></div>
         </div>
       </div>
@@ -171,7 +171,7 @@ function AssetList({ assets, totalCost, totalDep, totalBV }: { assets: Asset[]; 
                   <td className={cn(tdStyle, "[direction:ltr] text-end")}>{fmt(a.acquisitionCost)}</td>
                   <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-red-500")}>{fmt(a.accumulatedDepreciation)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", a.bookValue > 0 ? "text-emerald-500" : "text-muted-foreground")}>{fmt(a.bookValue)}</td>
-                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", a.status === "active" ? "bg-mutedmerald-500/15 text-emerald-500" : a.status === "disposed" ? "bg-red-500/15 text-red-500" : "bg-muted text-muted-foreground")}>{a.status === "active" ? "نشط" : a.status === "disposed" ? "متخلص" : "معلّق"}</span></td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", a.status === "active" ? "bg-emerald-500/15 text-emerald-500" : a.status === "disposed" ? "bg-red-500/15 text-red-500" : "bg-muted text-muted-foreground")}>{a.status === "active" ? "نشط" : a.status === "disposed" ? "متخلص" : "معلّق"}</span></td>
                 </tr>
               ))}</tbody>
             </table>
@@ -294,7 +294,7 @@ function DepreciationView({ entries, company, onRefresh }: { entries: DepEntry[]
                   <td className={tdStyle} dir="ltr">{e.period}</td>
                   <td className={cn(cn(tdStyle, "[direction:ltr] text-end"), "text-red-500")}>{fmt(e.depreciationAmount)}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold", e.bookValueAfter > 0 ? "text-emerald-500" : "text-muted-foreground")}>{fmt(e.bookValueAfter)}</td>
-                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", e.status === "posted" ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500")}>{e.status === "posted" ? "مُرحّل" : "مسودة"}</span></td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", e.status === "posted" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{e.status === "posted" ? "مُرحّل" : "مسودة"}</span></td>
                 </tr>
               ))}</tbody>
             </table>
@@ -328,10 +328,10 @@ function DisposalView({ disposals, assets, company, onRefresh }: { disposals: Di
               <tbody>{disposals.map(d => (
                 <tr key={d.id} className="border-b border-border">
                   <td className={cn(tdStyle, "font-bold")}>{d.assetName}</td>
-                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", d.disposalType === "sold" ? "bg-mutedmerald-500/15 text-emerald-500" : d.disposalType === "scrapped" ? "bg-red-500/15 text-red-500" : "bg-mutedmerald-700/15 text-emerald-700")}>{disposalTypeLabels[d.disposalType] || d.disposalType}</span></td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", d.disposalType === "sold" ? "bg-emerald-500/15 text-emerald-500" : d.disposalType === "scrapped" ? "bg-red-500/15 text-red-500" : "bg-emerald-700/15 text-emerald-700")}>{disposalTypeLabels[d.disposalType] || d.disposalType}</span></td>
                   <td className={tdStyle} dir="ltr">{d.disposalDate}</td>
                   <td className={cn(tdStyle, "[direction:ltr] text-end font-bold")}>{fmt(d.disposalAmount)}</td>
-                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", d.status === "completed" ? "bg-mutedmerald-500/15 text-emerald-500" : "bg-cardmber-500/15 text-amber-500")}>{d.status === "completed" ? "مكتمل" : "قيد التنفيذ"}</span></td>
+                  <td className={tdStyle}><span className={cn("py-0.5 px-2.5 rounded-[12px] text-[11px] font-bold", d.status === "completed" ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500")}>{d.status === "completed" ? "مكتمل" : "قيد التنفيذ"}</span></td>
                 </tr>
               ))}</tbody>
             </table>

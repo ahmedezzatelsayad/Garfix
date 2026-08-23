@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import Image from "next/image";
+import { GarfixAIIcon } from "@/components/garfix/GarfixAIIcon";
 import { useBrand } from "@/context/BrandContext";
 import { useAuth } from "@/context/AuthContext";
 import { useAIChatHistory, useAIChatMessages, useAIToolsExecute } from "@/hooks/queries";
@@ -412,7 +412,9 @@ export function AICopilotBubble() {
         title="مساعد Garfix AI"
         className="fixed bottom-6 left-6 w-[60px] h-[60px] rounded-full text-white border-2 border-white/15 cursor-pointer flex items-center justify-center z-[150] transition-[transform,box-shadow] duration-[250ms] hover:scale-[1.06] shadow-[0_12px_32px_rgba(212,165,116,0.5)] animate-[garfix-agent-pulse_3s_infinite] ai-badge-premium bg-[linear-gradient(135deg,#d4a574_0%,#e8c49a_60%,#f5ddb0_100%)]"
       >
-        {open ? <X size={26} /> : <Image src="/logo.svg" alt="GarfiX" width={30} height={30} className="rounded-md" />}
+        {/* GarfixAIIcon — هوية GarfiX AI الرسمية (حرف G + عُقد شبكة عصبية)،
+            متحركة وحيّة بدل صورة logo.svg الثابتة السابقة */}
+        {open ? <X size={26} /> : <GarfixAIIcon size={34} animated active glow />}
         {/* Small "online" indicator dot */}
         <span
           className="absolute top-1 right-1 w-[12px] h-[12px] rounded-full bg-green-500 border-2 border-white"
@@ -448,7 +450,7 @@ export function AICopilotBubble() {
             <div
               className="w-9 h-9 rounded-[10px] flex items-center justify-center bg-white/[0.18] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"
             >
-              <Image src="/logo.svg" alt="GarfiX" width={20} height={20} className="rounded" />
+              <GarfixAIIcon size={22} animated />
             </div>
 
             {/* Title + Agent badge */}
@@ -497,7 +499,7 @@ export function AICopilotBubble() {
                 <div
                   className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-[14px] text-white shadow-[0_8px_24px_rgba(212,165,116,0.4)] ai-card bg-gradient-to-br from-[#d4a574] to-[#e8c49a]"
                 >
-                  <Image src="/logo.svg" alt="GarfiX" width={32} height={32} className="rounded-md" />
+                  <GarfixAIIcon size={34} animated active />
                 </div>
                 <div className="text-sm font-bold mb-1">
                   مرحباً {user.displayName}!
@@ -542,7 +544,7 @@ export function AICopilotBubble() {
                   <div
                     className={cn(
                       "w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0",
-                      isUser ? "bg-cardccent text-accent-foreground shadow-none" : "text-white shadow-[0_4px_12px_rgba(212,165,116,0.3)] ai-card bg-gradient-to-br from-[#d4a574] to-[#e8c49a]"
+                      isUser ? "bg-accent text-accent-foreground shadow-none" : "text-white shadow-[0_4px_12px_rgba(212,165,116,0.3)] ai-card bg-gradient-to-br from-[#d4a574] to-[#e8c49a]"
                     )}
                   >
                     {isUser ? <User size={14} /> : <Bot size={14} />}
@@ -553,7 +555,7 @@ export function AICopilotBubble() {
                       isAgent ? "border border-[#d4a574]/25" : "border-none",
                       isUser && !fullscreen ? "bg-muted text-foreground" : "",
                       isUser && fullscreen ? "bg-white/8 text-white" : "",
-                      !isUser && !isAgent && fullscreen ? "bg-mutedmerald-900/25 text-white" : "",
+                      !isUser && !isAgent && fullscreen ? "bg-emerald-900/25 text-white" : "",
                       !isUser && !isAgent && !fullscreen ? "bg-primary text-primary-foreground" : "",
                       isAgent && !fullscreen ? "" : "",
                       isAgent && fullscreen ? "text-white" : "",
@@ -617,7 +619,7 @@ export function AICopilotBubble() {
                 <div
                   className={cn(
                     "px-[14px] py-2.5 rounded-xl text-[13px] flex items-center gap-1",
-                    fullscreen ? "bg-mutedmerald-900/25 text-white" : "bg-primary text-primary-foreground"
+                    fullscreen ? "bg-emerald-900/25 text-white" : "bg-primary text-primary-foreground"
                   )}
                 >
                   <span className="inline-block animate-[garfix-glow_1s_infinite]">…</span>
@@ -632,14 +634,14 @@ export function AICopilotBubble() {
               dir="rtl"
               className={cn(
                 "p-3 border-t border-border shrink-0",
-                fullscreen ? "bg-mutedmerald-900/8" : "bg-muted"
+                fullscreen ? "bg-emerald-900/8" : "bg-muted"
               )}
             >
               <div
                 className="bg-card rounded-xl border border-amber-500/40 p-3.5 flex flex-col gap-2.5 shadow-[0_8px_24px_rgba(245,158,11,0.15)]"
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-cardmber-500/15 text-amber-500 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-500 flex items-center justify-center">
                     <ShieldAlert size={18} />
                   </div>
                   <div className="flex-1">
@@ -660,7 +662,7 @@ export function AICopilotBubble() {
 
                 {confirmation.warning && (
                   <div
-                    className="text-[11px] text-amber-700 p-2 px-2.5 rounded-lg bg-cardmber-500/10 border border-amber-500/30 flex gap-1.5 items-start"
+                    className="text-[11px] text-amber-700 p-2 px-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex gap-1.5 items-start"
                   >
                     <ShieldAlert size={13} className="shrink-0 mt-0.5" />
                     <span>{confirmation.warning}</span>
@@ -714,7 +716,7 @@ export function AICopilotBubble() {
             <div
               className={cn(
                 "px-1.5 sm:px-2.5 pt-1 sm:pt-2 pb-1 flex gap-1 sm:gap-1.5 flex-wrap shrink-0 border-t border-border",
-                fullscreen ? "bg-mutedackgroundlack/20" : "bg-transparent"
+                fullscreen ? "bg-black/20" : "bg-transparent"
               )}
             >
               {QUICK_ACTIONS.map((a) => (
@@ -752,7 +754,7 @@ export function AICopilotBubble() {
           <div
             className={cn(
               "px-2 sm:px-3 py-2 sm:py-2.5 flex gap-2 shrink-0",
-              fullscreen ? "bg-mutedackgroundlack/20" : "bg-transparent"
+              fullscreen ? "bg-black/20" : "bg-transparent"
             )}
           >
             <input
@@ -764,7 +766,7 @@ export function AICopilotBubble() {
               disabled={loading || executing || !!confirmation}
               className={cn(
                 "flex-1 px-[14px] py-2.5 rounded-[10px] font-[inherit] text-[13px] outline-none",
-                fullscreen ? "bg-white/8 border border-white/15 text-white" : "bg-mutedackgroundackground border border-border text-foreground"
+                fullscreen ? "bg-white/8 border border-white/15 text-white" : "bg-background border border-border text-foreground"
               )}
             />
             <button

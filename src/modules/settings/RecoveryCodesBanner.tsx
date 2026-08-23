@@ -83,11 +83,11 @@ export function RecoveryCodesBanner() {
       role="alert"
       aria-live="polite"
       className={cn(
-        "relative rounded-xl border border-amber-500/30 bg-cardmber-500/10 p-4 sm:p-5",
+        "relative rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 sm:p-5",
         "flex items-start gap-3 sm:gap-4",
       )}
     >
-      <div className="flex-shrink-0 p-2 rounded-lg bg-cardmber-500/20">
+      <div className="flex-shrink-0 p-2 rounded-lg bg-amber-500/20">
         <ShieldAlert className="text-amber-600 dark:text-amber-400" size={20} />
       </div>
 
@@ -105,7 +105,7 @@ export function RecoveryCodesBanner() {
             href="/settings#mfa"
             className={cn(
               "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold",
-              "bg-cardmber-600 hover:bg-cardmber-700 text-white transition-colors",
+              "bg-amber-600 hover:bg-amber-700 text-white transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2",
             )}
           >
@@ -116,7 +116,7 @@ export function RecoveryCodesBanner() {
             onClick={() => setDismissed(true)}
             className={cn(
               "inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold",
-              "bg-transparent hover:bg-cardmber-500/10 text-amber-700 dark:text-amber-300 transition-colors",
+              "bg-transparent hover:bg-amber-500/10 text-amber-700 dark:text-amber-300 transition-colors",
             )}
             aria-label="إغلاق التنبيه"
           >

@@ -129,8 +129,8 @@ function fmtDate(s: string): string {
 }
 
 function getConfidenceColor(confidence: number): string {
-  if (confidence >= 85) return "text-emerald-500 bg-mutedmerald-500/10";
-  if (confidence >= 70) return "text-amber-500 bg-cardmber-500/10";
+  if (confidence >= 85) return "text-emerald-500 bg-emerald-500/10";
+  if (confidence >= 70) return "text-amber-500 bg-amber-500/10";
   return "text-muted-foreground bg-gray-400/10";
 }
 
@@ -139,7 +139,7 @@ function getImpactBadge(impact: string): { label: string; className: string } {
     case "high":
       return { label: "أثر عالي", className: "bg-red-500/15 text-red-400 border-red-500/30" };
     case "medium":
-      return { label: "أثر متوسط", className: "bg-cardmber-500/15 text-amber-400 border-amber-500/30" };
+      return { label: "أثر متوسط", className: "bg-amber-500/15 text-amber-400 border-amber-500/30" };
     default:
       return { label: "أثر منخفض", className: "bg-muted text-muted-foreground border-gray-500/30" };
   }
@@ -207,7 +207,7 @@ function KPICard({ value, label, icon, trend, isGold = false, sparklineData }: K
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className={cn("p-1.5 rounded-lg", isGold ? "bg-[#d4a574]/15" : "bg-mutedmerald-500/10")}>
+            <span className={cn("p-1.5 rounded-lg", isGold ? "bg-[#d4a574]/15" : "bg-emerald-500/10")}>
               {icon}
             </span>
             {isGold && (
@@ -284,7 +284,7 @@ function AISuggestionItem({ suggestion }: { suggestion: AISuggestion }) {
       </div>
       
       <button 
-        className="active-press shrink-0 ml-2 p-2 rounded-lg bg-mutedmerald-500/10 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+        className="active-press shrink-0 ml-2 p-2 rounded-lg bg-emerald-500/10 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
         title="تطبيق الاقتراح"
       >
         <ArrowUpRight size={14} />
@@ -407,7 +407,7 @@ export function AutomationView() {
           className={cn(
             "active-press inline-flex items-center gap-2 py-2.5 px-4 rounded-xl",
             "bg-card text-foreground border border-border text-[13px] font-semibold",
-            "hover:border-emerald-500/40 hover:bg-mutedmerald-500/5",
+            "hover:border-emerald-500/40 hover:bg-emerald-500/5",
             "transition-all duration-150 disabled:opacity-50 focus-ring"
           )}
         >
@@ -446,7 +446,7 @@ export function AutomationView() {
 
       {/* ─── Info Banner ────────────────────────────────────────────── */}
       <div className={cn(
-        "bg-mutedmerald-500/5 border border-emerald-500/20 rounded-xl p-4",
+        "bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4",
         "text-sm leading-relaxed text-muted-foreground"
       )}>
         <div className="flex items-start gap-3">
@@ -545,8 +545,8 @@ export function AutomationView() {
 
                             {/* Status Badge */}
                             {rule.isActive ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-bold py-0.5 px-2.5 rounded-full bg-mutedmerald-500/15 text-emerald-500 border border-emerald-500/20">
-                                <span className="w-1.5 h-1.5 rounded-full bg-mutedmerald-500 animate-pulse" />
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold py-0.5 px-2.5 rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/20">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                 نشطة
                               </span>
                             ) : (
@@ -588,7 +588,7 @@ export function AutomationView() {
                               <span>أُنشئت</span>
                               <span className="font-medium">{fmtDate(rule.createdAt)}</span>
                             </span>
-                            <span className="w-1 h-1 rounded-full bg-mutedackgroundorder" />
+                            <span className="w-1 h-1 rounded-full bg-border" />
                             <span className="flex items-center gap-1">
                               <span>آخر تحديث</span>
                               <span className="font-medium">{fmtDate(rule.updatedAt)}</span>
@@ -608,8 +608,8 @@ export function AutomationView() {
                             "active-press inline-flex items-center gap-1.5 py-2 px-4 rounded-xl border text-[12px] font-semibold",
                             "transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus-ring",
                             rule.isActive
-                              ? "border-amber-500/40 bg-cardmber-500/10 text-amber-600 hover:bg-cardmber-500/20 hover:border-amber-500/60"
-                              : "border-emerald-500/40 bg-mutedmerald-500/10 text-emerald-600 hover:bg-mutedmerald-500/20 hover:border-emerald-500/60"
+                              ? "border-amber-500/40 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 hover:border-amber-500/60"
+                              : "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:border-emerald-500/60"
                           )}
                         >
                           {isToggling ? <Loader2 size={12} className="animate-spin" /> : null}

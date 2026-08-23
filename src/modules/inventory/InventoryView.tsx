@@ -419,7 +419,7 @@ function WarehouseForm({ company, onClose, onSaved }: { company: { slug: string 
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full py-2 px-3 rounded-lg bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
               placeholder="مثال: المستودع الرئيسي"
             />
           </div>
@@ -428,7 +428,7 @@ function WarehouseForm({ company, onClose, onSaved }: { company: { slug: string 
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              className="w-full py-2 px-3 rounded-lg bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
               dir="ltr"
               placeholder="مثال: WH-01"
             />
@@ -438,7 +438,7 @@ function WarehouseForm({ company, onClose, onSaved }: { company: { slug: string 
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="w-full py-2 px-3 rounded-lg bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
             />
           </div>
           <div>
@@ -446,7 +446,7 @@ function WarehouseForm({ company, onClose, onSaved }: { company: { slug: string 
             <select
               value={isActive ? "1" : "0"}
               onChange={(e) => setIsActive(e.target.value === "1")}
-              className="w-full py-2 px-3 rounded-lg bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
             >
               <option value="1">نشط</option>
               <option value="0">موقوف</option>
@@ -551,7 +551,7 @@ function AdjustStockForm({
             <select
               value={warehouseId ?? ""}
               onChange={(e) => setWarehouseId(Number(e.target.value))}
-              className="w-full py-2 px-3 rounded-lg bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
             >
               {warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} — {w.name}</option>)}
             </select>
@@ -561,7 +561,7 @@ function AdjustStockForm({
             <select
               value={productId ?? ""}
               onChange={(e) => setProductId(e.target.value)}
-              className="w-full py-2 px-3 rounded-lg bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
             >
               {products.map((p) => <option key={p.id} value={p.id}>{p.code ? `${p.code} — ` : ""}{p.name}</option>)}
             </select>
@@ -571,7 +571,7 @@ function AdjustStockForm({
             <select
               value={mode}
               onChange={(e) => setMode(e.target.value as "set" | "adjust")}
-              className="w-full py-2 px-3 rounded-lg bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
             >
               <option value="set">تعيين القيمة (مطلق)</option>
               <option value="adjust">إضافة/خصم (نسبي)</option>
@@ -586,7 +586,7 @@ function AdjustStockForm({
               step="any"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              className="w-full py-2 px-3 rounded-lg bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
               dir="ltr"
             />
           </div>
@@ -597,7 +597,7 @@ function AdjustStockForm({
               step="any"
               value={reorderLevel}
               onChange={(e) => setReorderLevel(e.target.value)}
-              className="w-full py-2 px-3 rounded-lg bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
               dir="ltr"
             />
           </div>
@@ -608,7 +608,7 @@ function AdjustStockForm({
               step="any"
               value={reorderQty}
               onChange={(e) => setReorderQty(e.target.value)}
-              className="w-full py-2 px-3 rounded-lg bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
               dir="ltr"
             />
           </div>
@@ -617,7 +617,7 @@ function AdjustStockForm({
             <input
               value={batchNumber}
               onChange={(e) => setBatchNumber(e.target.value)}
-              className="w-full py-2 px-3 rounded-lg bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
               dir="ltr"
             />
           </div>
@@ -627,7 +627,7 @@ function AdjustStockForm({
               type="date"
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
-              className="w-full py-2 px-3 rounded-lg bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
+              className="w-full py-2 px-3 rounded-lg bg-background border border-border text-foreground text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-120"
               dir="ltr"
             />
           </div>

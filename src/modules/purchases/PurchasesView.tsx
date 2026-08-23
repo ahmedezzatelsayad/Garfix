@@ -31,7 +31,7 @@ interface Purchase {
   [key: string]: unknown;
 }
 
-const inputStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none max-md:min-h-[44px]";
+const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none max-md:min-h-[44px]";
 const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 
 export function PurchasesView() {
@@ -258,7 +258,7 @@ export function PurchasesView() {
                   "px-3 py-1.5 rounded-sm border border-border font-bold text-xs max-md:min-h-[44px]",
                   safePage === 1 
                     ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" 
-                    : "bg-card text-foreground cursor-pointer hover:bg-cardccent"
+                    : "bg-card text-foreground cursor-pointer hover:bg-accent"
                 )}
               >
                 السابق
@@ -270,7 +270,7 @@ export function PurchasesView() {
                   "px-3 py-1.5 rounded-sm border border-border font-bold text-xs max-md:min-h-[44px]",
                   safePage === totalPages 
                     ? "bg-transparent text-muted-foreground cursor-not-allowed opacity-50" 
-                    : "bg-card text-foreground cursor-pointer hover:bg-cardccent"
+                    : "bg-card text-foreground cursor-pointer hover:bg-accent"
                 )}
               >
                 التالي
@@ -363,7 +363,7 @@ function PurchaseForm({ company, onClose, onSaved }: { company: { slug: string }
             <label className={cn(labelStyle, "mb-0")}>البنود</label>
             <button 
               onClick={addItem} 
-              className="bg-cardccent text-accent-foreground border border-border rounded-sm px-2.5 py-1 font-bold text-[11px] cursor-pointer inline-flex items-center gap-1 max-md:min-h-[44px] hover-scale active-press"
+              className="bg-accent text-accent-foreground border border-border rounded-sm px-2.5 py-1 font-bold text-[11px] cursor-pointer inline-flex items-center gap-1 max-md:min-h-[44px] hover-scale active-press"
             >
               <Plus size={12} /> إضافة
             </button>

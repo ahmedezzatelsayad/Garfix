@@ -208,8 +208,8 @@ const _PROVIDER_KEY_HINTS: Record<string, string> = {
 };
 
 const FEATURE_COLORS: Record<string, string> = {
-  blue: 'border-blue-500 bg-mutedackgroundlue-50',
-  emerald: 'border-emerald-500 bg-mutedmerald-50',
+  blue: 'border-blue-500 bg-blue-50',
+  emerald: 'border-emerald-500 bg-emerald-50',
   purple: 'border-purple-500 bg-purple-50',
   gold: 'border-[#d4a574]/50 bg-[#d4a574]/10',
 };
@@ -605,11 +605,11 @@ export default function CompaniesPerFeatureAIPage() {
             </h3>
             
             <div className="flex flex-wrap justify-center gap-4 text-sm">
-              <div className="bg-mutedackgroundlue-100 dark:bg-mutedackgroundlue-900 px-4 py-2 rounded-lg">
+              <div className="bg-blue-100 dark:bg-blue-900 px-4 py-2 rounded-lg">
                 <span className="text-xl">💬</span> Chat Token
               </div>
               <span className="text-muted-foreground">+</span>
-              <div className="bg-mutedmerald-100 dark:bg-mutedmerald-900 px-4 py-2 rounded-lg">
+              <div className="bg-emerald-100 dark:bg-emerald-900 px-4 py-2 rounded-lg">
                 <span className="text-xl">📄</span> Invoice Token
               </div>
               <span className="text-muted-foreground">+</span>
@@ -640,8 +640,8 @@ export default function CompaniesPerFeatureAIPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* ── DeepSeek (Recommended) ── */}
-            <div className="relative border-2 border-emerald-500 bg-mutedmerald-50 dark:bg-mutedmerald-900/20 rounded-xl p-4 overflow-hidden">
-              <div className="absolute top-0 right-0 bg-mutedmerald-500 text-white text-xs px-2 py-1 rounded-bl-lg font-bold">
+            <div className="relative border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 overflow-hidden">
+              <div className="absolute top-0 right-0 bg-emerald-500 text-white text-xs px-2 py-1 rounded-bl-lg font-bold">
                 ⭐ أنصح
               </div>
               <div className="text-2xl mb-2">🟢</div>
@@ -745,12 +745,12 @@ export default function CompaniesPerFeatureAIPage() {
         {/* ══ Bulk Actions Bar ══ */}
         {!isLoading && filteredCompanies.length > 0 && (
           <FadeUp delay={50}>
-            <GarfixCard className="mb-4 p-4 bg-mutedmerald-50 dark:bg-mutedmerald-900/20 border border-emerald-200 dark:border-emerald-800">
+            <GarfixCard className="mb-4 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <button
                     onClick={toggleSelectAll}
-                    className="p-1 rounded hover:bg-mutedmerald-100 dark:hover:bg-mutedmerald-800 transition-colors"
+                    className="p-1 rounded hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-colors"
                     title={isAllSelected ? "إلغاء تحديد الكل" : "تحديد الكل"}
                   >
                     {isAllSelected ? (
@@ -815,7 +815,7 @@ export default function CompaniesPerFeatureAIPage() {
                   className={cn(
                     "hover:shadow-lg transition-all duration-300",
                     company.hasAIConfig && "border-l-4 border-l-emerald-500",
-                    selectedCompanyIds.has(company.id) && "ring-2 ring-emerald-500 bg-mutedmerald-50/50 dark:bg-mutedmerald-900/20"
+                    selectedCompanyIds.has(company.id) && "ring-2 ring-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20"
                   )}
                 >
                   <div className="p-6">
@@ -944,7 +944,7 @@ export default function CompaniesPerFeatureAIPage() {
                       onClick={() => setCurrentPage(pageNum)}
                       className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
                         currentPage === pageNum
-                          ? 'bg-mutedmerald-500 text-white shadow-md'
+                          ? 'bg-emerald-500 text-white shadow-md'
                           : 'hover:bg-muted dark:hover:bg-gray-700 text-muted-foreground'
                       }`}
                     >

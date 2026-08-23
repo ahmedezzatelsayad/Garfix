@@ -44,9 +44,9 @@ function StatCard({
   accent: "emerald" | "amber" | "blue" | "red";
 }) {
   const colorMap = {
-    emerald: "text-emerald-400 bg-mutedmerald-500/10 border-emerald-500/20",
-    amber: "text-amber-400 bg-cardmber-500/10 border-amber-500/20",
-    blue: "text-blue-400 bg-mutedackgroundlue-500/10 border-blue-500/20",
+    emerald: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    amber: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+    blue: "text-blue-400 bg-blue-500/10 border-blue-500/20",
     red: "text-red-400 bg-red-500/10 border-red-500/20",
   };
   return (
@@ -91,7 +91,7 @@ function CountryRow({ country, stats }: { country: string; stats: { total: numbe
         </div>
         <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
           <div
-            className={cn("h-full transition-all duration-500", pct === 100 ? "bg-mutedmerald-500" : pct > 0 ? "bg-mutedackgroundlue-500" : "bg-white/[0.06]")}
+            className={cn("h-full transition-all duration-500", pct === 100 ? "bg-emerald-500" : pct > 0 ? "bg-blue-500" : "bg-white/[0.06]")}
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -104,12 +104,12 @@ function CountryRow({ country, stats }: { country: string; stats: { total: numbe
 
 function StatusBadge({ configured }: { configured: boolean }) {
   return configured ? (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-mutedmerald-500/15 text-emerald-400 border border-emerald-500/20">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
       <CheckCircle2 size={11} />
       مفعّل
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-cardmber-500/15 text-amber-400 border border-amber-500/20">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/20">
       <Clock size={11} />
       معلّق
     </span>
@@ -147,7 +147,7 @@ export default function EInvoicingDashboardPage() {
         <p className="text-muted-foreground">فشل تحميل لوحة الفوترة الإلكترونية</p>
         <button
           onClick={() => refetch()}
-          className="px-4 py-2 rounded-lg bg-mutedmerald-500 text-white text-sm font-medium hover:bg-mutedmerald-600 transition-colors"
+          className="px-4 py-2 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors"
         >
           إعادة المحاولة
         </button>
@@ -253,7 +253,7 @@ export default function EInvoicingDashboardPage() {
                   className={cn(
                     "px-3 py-1.5 rounded-lg font-medium transition-colors",
                     filter === f
-                      ? "bg-mutedmerald-500/15 text-emerald-400 border border-emerald-500/20"
+                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
                       : "text-muted-foreground hover:text-foreground border border-transparent",
                   )}
                 >
@@ -346,7 +346,7 @@ export default function EInvoicingDashboardPage() {
       <WebhookStatsCard />
 
       {/* Footer help */}
-      <div className="rounded-xl border border-emerald-500/20 bg-mutedmerald-500/[0.04] p-5 text-sm">
+      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-5 text-sm">
         <p className="font-bold text-emerald-400 mb-2 flex items-center gap-2">
           <ShieldCheck size={16} />
           تكاملات الفوترة الإلكترونية المتاحة
@@ -463,7 +463,7 @@ function WebhookStatsCard() {
                   <div key={c.authority} className="flex items-center gap-2">
                     <span className="text-xs text-foreground w-24 flex-shrink-0 truncate">{c.label}</span>
                     <div className="flex-1 h-5 bg-white/[0.04] rounded overflow-hidden flex">
-                      <div className="bg-mutedmerald-500/60" style={{ width: `${acceptedPct}%` }} title={`مقبولة: ${c.accepted}`} />
+                      <div className="bg-emerald-500/60" style={{ width: `${acceptedPct}%` }} title={`مقبولة: ${c.accepted}`} />
                       <div className="bg-red-500/60" style={{ width: `${rejectedPct}%` }} title={`مرفوضة: ${c.rejected}`} />
                     </div>
                     <span className="text-[11px] text-muted-foreground w-12 text-left flex-shrink-0">{c.count}</span>
@@ -472,7 +472,7 @@ function WebhookStatsCard() {
               })}
               <div className="flex gap-3 text-[10px] text-muted-foreground mt-2 pt-2 border-t border-white/[0.04]">
                 <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-sm bg-mutedmerald-500/60" />مقبولة
+                  <span className="w-2 h-2 rounded-sm bg-emerald-500/60" />مقبولة
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-sm bg-red-500/60" />مرفوضة
@@ -497,7 +497,7 @@ function WebhookStatsCard() {
                   <span className="text-[11px] text-muted-foreground w-4 flex-shrink-0">{i + 1}.</span>
                   <span className="text-base flex-shrink-0">{c.emoji}</span>
                   <span className="text-xs text-foreground flex-1 min-w-0 truncate">{c.companyName}</span>
-                  <span className="text-[11px] px-1.5 py-0.5 rounded bg-mutedackgroundlue-500/15 text-blue-400 border border-blue-500/20 whitespace-nowrap">
+                  <span className="text-[11px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/20 whitespace-nowrap">
                     {c.receiptCount} إيصال
                   </span>
                 </div>

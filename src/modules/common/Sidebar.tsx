@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { type CompanyInfo } from "@/context/BrandContext";
 import { useCreateCompany } from "@/hooks/queries";
+import { GULF_COUNTRIES, COUNTRY_TIMEZONES } from "@/lib/gulfConfig";
 import type { ViewKey } from "./AppShell";
 import { preloadView } from "./AppShell";
 import { cn } from "@/lib/utils";
@@ -57,7 +58,11 @@ const NAV_ITEMS: Array<{
   { key: "settings", label: "الإعدادات", icon: Settings, perm: "settings_access" },
   { key: "billing", label: "الاشتراك والفوترة", icon: DollarSign },
   { key: "account", label: "حسابي", icon: User },
-  { key: "saas", label: "إدارة المنصة", icon: Building2, adminOnly: true },
+  // saas = إدارة المنصة (لوحة تحكم المنصة على مستوى كل المستأجرين) — founderOnly.
+  // كانت adminOnly سابقًا، لكن كل مستخدم ينشئ أول شركة له يُرقّى تلقائيًا لـ admin
+  // (انظر POST /api/companies) فكان كل "مستخدم عادي" يراها. هي ليست أداة
+  // شركة واحدة بل أداة مؤسس المنصة.
+  { key: "saas", label: "إدارة المنصة", icon: Building2, founderOnly: true },
   { key: "platform-admin", label: "إدارة المؤسس", icon: Shield, founderOnly: true },
   { key: "audit", label: "سجل التدقيق", icon: History, adminOnly: true },
 ];
@@ -71,6 +76,10 @@ export function Sidebar({
   const [showCreateCompany, setShowCreateCompany] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
   const [newCompanySlug, setNewCompanySlug] = useState("");
+  // P3: تخصيص أساسي عند الإنشاء السريع من السلايدر (اللغة/العملة/التوقيت)
+  const [newCompanyLanguage, setNewCompanyLanguage] = useState<"ar" | "en">("ar");
+  const [newCompanyCurrency, setNewCompanyCurrency] = useState("KWD");
+  const [newCompanyTimezone, setNewCompanyTimezone] = useState("Asia/Kuwait");
   const createCompanyMutation = useCreateCompany();
 
   const canSee = (item: typeof NAV_ITEMS[number]) => {
@@ -83,7 +92,13 @@ export function Sidebar({
   const createCompany = async () => {
     if (!newCompanyName || !newCompanySlug) return;
     try {
-      await createCompanyMutation.mutateAsync({ name: newCompanyName, slug: newCompanySlug });
+      await createCompanyMutation.mutateAsync({
+        name: newCompanyName,
+        slug: newCompanySlug,
+        language: newCompanyLanguage,
+        currency: newCompanyCurrency,
+        timezone: newCompanyTimezone,
+      });
       setShowCreateCompany(false);
       setNewCompanyName("");
       setNewCompanySlug("");
@@ -200,7 +215,7 @@ export function Sidebar({
                 <button
                   key={c.slug}
                   onClick={() => { setActiveSlug(c.slug); setShowCompanyMenu(false); }}
-                  className={cn("w-full flex items-center gap-2 py-2 px-2.5 rounded-md border-none text-popover-foreground cursor-pointer font-inherit text-right", c.slug === activeCompany?.slug ? "bg-cardccent" : "bg-transparent")}
+                  className={cn("w-full flex items-center gap-2 py-2 px-2.5 rounded-md border-none text-popover-foreground cursor-pointer font-inherit text-right", c.slug === activeCompany?.slug ? "bg-accent" : "bg-transparent")}
                 >
                   <span className="text-base">{c.emoji || "🏢"}</span>
                   <span className="text-xs font-semibold flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{c.nameAr || c.name}</span>
@@ -220,14 +235,50 @@ export function Sidebar({
                 placeholder="اسم الشركة"
                 value={newCompanyName}
                 onChange={(e) => setNewCompanyName(e.target.value)}
-                className="w-full py-2 rounded-md border border-border mb-1.5 font-inherit text-xs bg-mutedackgroundackground text-foreground" // TAILWINDBREAK: var(--background)/var(--foreground)
+                className="w-full py-2 rounded-md border border-border mb-1.5 font-inherit text-xs bg-background text-foreground" // TAILWINDBREAK: var(--background)/var(--foreground)
               />
               <input
                 placeholder="المعرّف (english-slug)"
                 value={newCompanySlug}
                 onChange={(e) => setNewCompanySlug(e.target.value)}
-                className="w-full py-2 rounded-md border border-border mb-1.5 font-inherit text-xs bg-mutedackgroundackground text-foreground" dir="ltr" // TAILWINDBREAK: var(--background)/var(--foreground)
+                className="w-full py-2 rounded-md border border-border mb-1.5 font-inherit text-xs bg-background text-foreground" dir="ltr" // TAILWINDBREAK: var(--background)/var(--foreground)
               />
+              {/* P3: تخصيص الشركة — العملة واللغة والمنطقة الزمنية */}
+              <div className="grid grid-cols-2 gap-1.5 mb-1.5">
+                <select
+                  value={newCompanyCurrency}
+                  onChange={(e) => setNewCompanyCurrency(e.target.value)}
+                  className="py-2 px-2 rounded-md border border-border font-inherit text-xs bg-background text-foreground cursor-pointer [direction:ltr]"
+                  aria-label="عملة الشركة"
+                  title="العملة"
+                >
+                  {Array.from(new Set([...GULF_COUNTRIES.map((c) => c.currency), "USD", "EUR", "GBP"])).map((cur) => {
+                    const cfg = GULF_COUNTRIES.find((c) => c.currency === cur);
+                    return <option key={cur} value={cur}>{cur}{cfg ? ` — ${cfg.currencyAr}` : ""}</option>;
+                  })}
+                </select>
+                <select
+                  value={newCompanyLanguage}
+                  onChange={(e) => setNewCompanyLanguage(e.target.value as "ar" | "en")}
+                  className="py-2 px-2 rounded-md border border-border font-inherit text-xs bg-background text-foreground cursor-pointer"
+                  aria-label="لغة الشركة"
+                  title="اللغة"
+                >
+                  <option value="ar">العربية</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+              <select
+                value={newCompanyTimezone}
+                onChange={(e) => setNewCompanyTimezone(e.target.value)}
+                className="w-full py-2 px-2 rounded-md border border-border mb-1.5 font-inherit text-xs bg-background text-foreground cursor-pointer [direction:ltr]"
+                aria-label="المنطقة الزمنية"
+                title="المنطقة الزمنية"
+              >
+                {Array.from(new Set(Object.values(COUNTRY_TIMEZONES))).map((tz) => (
+                  <option key={tz} value={tz}>{tz}</option>
+                ))}
+              </select>
               <div className="flex gap-1.5">
                 <button
                   onClick={createCompany}
@@ -272,7 +323,7 @@ export function Sidebar({
                 <Icon size={16} />
                 <span className="flex-1">{item.label}</span>
                 {item.isAiFeature && (
-                  <span className="ai-badge text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-mutedmerald-500/15 text-emerald-400 border border-emerald-500/25">
+                  <span className="ai-badge text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
                     AI
                   </span>
                 )}

@@ -31,14 +31,17 @@
 
 /* ── Cairo Font (default for all UI) ─────────────────────────────────── */
 :root {
-  --font-cairo: 'Cairo', sans-serif;
+  /* سلسلة fallback قوية: لو لم يُحمّل Cairo (بناء بدون GARFIX_USE_GOOGLE_FONT)
+     ننتقل لخطوط عربية نظامية جيدة بدل sans-serif العام — يحافظ على وضوح
+     العربي وثبات المقاييس عبر الأنظمة. */
+  --font-cairo: 'Cairo', 'Tajawal', 'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif;
 }
 * {
-  font-family: 'Cairo', sans-serif !important;
+  font-family: var(--font-cairo) !important;
 }
-/* Keep monospace for code blocks */
+/* أرقام وأكواد لاتينية بخط أحادي مسافة حقيقي (كان Cairo/monospace — غير صحيح) */
 pre, code, kbd, samp, .font-mono, .garfix-mono {
-  font-family: 'Cairo', monospace !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Courier New', monospace !important;
 }
 
 /* ── Theme tokens (shadcn/ui) ──────────────────────────────────────────── */
@@ -298,6 +301,57 @@ pre, code, kbd, samp, .font-mono, .garfix-mono {
   .dark .glass-strong {
     background: #111827d9;
     border: 1px solid #ffffff26;
+  }
+
+  /* ═══ Public Site Shared Utilities (موقع خارجي متعدد الصفحات) ═══ */
+  /* تُستخدم في الرئيسية و/features و/pricing و/about — تُعرّف هنا حتى تعمل
+     في كل الصفحات بدل تعريفها داخل كل صفحة على حدة. */
+
+  /* بطاقة محتوى بحدود ناعمة ورفع عند الهوفر */
+  .landing-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    transition: all 120ms ease;
+  }
+  .landing-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+  .dark .landing-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(4, 120, 87, 0.12);
+    backdrop-filter: blur(8px);
+  }
+  .dark .landing-card:hover {
+    background: rgba(4, 120, 87, 0.08);
+    border-color: rgba(4, 120, 87, 0.25);
+    box-shadow: 0 8px 24px rgba(4, 120, 87, 0.15);
+  }
+
+  /* عنوان رئيسي بتدرج الزمرد */
+  .landing-section-title {
+    background: linear-gradient(120deg, #047857, #059669, #047857);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* إبراز باقة الأسعار المميزة (شامبين جولد) */
+  .pricing-highlight {
+    background: linear-gradient(180deg, rgba(212, 165, 116, 0.1), rgba(212, 165, 116, 0.03));
+    border: 2px solid #d4a574;
+  }
+  .dark .pricing-highlight {
+    background: linear-gradient(180deg, rgba(212, 165, 116, 0.2), rgba(212, 165, 116, 0.05));
+    border: 2px solid #d4a574;
+  }
+
+  /* عمود GARFIX في جدول المقارنة */
+  .comparison-garfix {
+    background: rgba(4, 120, 87, 0.05);
+  }
+  .dark .comparison-garfix {
+    background: rgba(4, 120, 87, 0.08);
   }
 
   /* ═══ Micro-interaction Helpers (Motion System) ═══ */

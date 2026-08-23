@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { ProfessionalFooter } from "./ProfessionalFooter";
+import { PublicSiteHeader } from "@/components/site/PublicSiteHeader";
 // FE-15 FIX (Audit v2 · Phase 3): pages rendered through FooterPageLayout
 // (contact, help, privacy, terms, refund, partners, cookies, status) were
 // missing the skip-nav that the AppShell provides. Keyboard users had no way
@@ -32,25 +31,8 @@ export function FooterPageLayout({
     >
       {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
       <GarfixSkipLinks />
-      {/* ── Nav ──────────────────────────────────────────────────────── */}
-      <nav id="main-navigation" className="py-5 px-[5%] flex flex-wrap items-center justify-between gap-3 border-b border-emerald-500/20">
-        <Link href="/" className="flex items-center gap-3 no-underline">
-          <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-700 flex items-center justify-center text-[22px] font-black text-white shadow-brand-sm">
-            G
-          </div>
-          <div>
-            <div className="text-xl font-black tracking-wider text-foreground">GARFIX</div>
-            <div className="text-[10px] text-emerald-500 dark:text-emerald-400/60 tracking-[2px]">EOS v4.0</div>
-          </div>
-        </Link>
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 text-sm no-underline hover-lift duration-120"
-        >
-          <ArrowRight size={16} />
-          العودة للرئيسية
-        </Link>
-      </nav>
+      {/* ── Nav — الهيدر المشترك للموقع متعدد الصفحات ───────── */}
+      <PublicSiteHeader />
 
       {/* ── Hero ─────────────────────────────────────────────────────── */}
       <header className="py-16 md:py-20 px-[5%] text-center max-w-[900px] mx-auto">

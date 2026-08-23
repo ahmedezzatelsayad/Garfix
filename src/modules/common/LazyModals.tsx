@@ -35,7 +35,7 @@ import { Loader2 } from "lucide-react";
 function ModalLoading() {
   return (
     <div
-      className="fixed inset-0 bg-mutedackgroundlack/60 z-[340] flex items-center justify-center p-5"
+      className="fixed inset-0 bg-black/60 z-[340] flex items-center justify-center p-5"
       role="status"
       aria-label="جارٍ تحميل النافذة"
     >

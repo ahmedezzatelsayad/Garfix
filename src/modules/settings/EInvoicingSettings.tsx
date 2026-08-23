@@ -428,7 +428,7 @@ function CountryEInvoiceSettings({
 
         {/* Regulatory context */}
         {countryMeta.regulatoryNote && (
-          <div className="bg-mutedmerald-500/5 border border-emerald-500/20 rounded-lg p-3 text-xs text-muted-foreground leading-relaxed">
+          <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3 text-xs text-muted-foreground leading-relaxed">
             <MapPin size={12} className="inline ml-1 text-emerald-500" />
             {countryMeta.regulatoryNote}
           </div>
@@ -458,7 +458,7 @@ function CountryEInvoiceSettings({
             className={cn(
               "rounded-lg p-3 text-sm flex items-start gap-2 border",
               testResult.ok
-                ? "bg-mutedmerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
                 : "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400"
             )}
           >
@@ -488,7 +488,7 @@ function CountryEInvoiceSettings({
             disabled={!isConfigured || testing || loading}
             className={cn(
               "flex-1 min-w-[140px] py-3 rounded-lg font-bold text-sm transition-all min-h-[44px] flex items-center justify-center gap-2",
-              "bg-mutedackgroundackground border border-border hover:bg-muted",
+              "bg-background border border-border hover:bg-muted",
               "disabled:opacity-50 disabled:cursor-not-allowed"
             )}
           >
@@ -726,8 +726,8 @@ function StatusBanner({
     <div className={cn(
       "p-4 rounded-xl border flex items-center gap-3",
       isConfigured
-        ? "bg-mutedmerald-500/10 border-emerald-500/30"
-        : "bg-cardmber-500/10 border-amber-500/30"
+        ? "bg-emerald-500/10 border-emerald-500/30"
+        : "bg-amber-500/10 border-amber-500/30"
     )}>
       {isConfigured ? (
         <CheckCircle2 className="text-emerald-500 flex-shrink-0" size={24} />
@@ -802,7 +802,7 @@ function TextField({
           placeholder={placeholder}
           dir={dir}
           className={cn(
-            "w-full py-2.5 rounded-lg bg-mutedackgroundackground border border-border text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all",
+            "w-full py-2.5 rounded-lg bg-background border border-border text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all",
             icon ? "pr-10 pl-3" : "px-3",
             mono && "font-mono"
           )}
@@ -830,7 +830,7 @@ function FormField({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-2.5 rounded-lg bg-mutedackgroundackground border border-border text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+          className="w-full px-3 py-2.5 rounded-lg bg-background border border-border text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
         >
           <option value="">— اختر —</option>
           {field.select.map((opt) => (
@@ -845,7 +845,7 @@ function FormField({
           placeholder={field.placeholder}
           dir={field.type === "password" || (field.placeholder && /[a-z0-9]/i.test(field.placeholder)) ? "ltr" : "rtl"}
           className={cn(
-            "w-full px-3 py-2.5 rounded-lg bg-mutedackgroundackground border border-border text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all",
+            "w-full px-3 py-2.5 rounded-lg bg-background border border-border text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all",
             field.type === "password" && "font-mono"
           )}
         />
@@ -979,7 +979,7 @@ function WebhookUrlHelper({ country, companySlug }: { country: string; companySl
   };
 
   return (
-    <div className="bg-mutedackgroundlue-500/5 border border-blue-500/20 rounded-lg p-4 space-y-3">
+    <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4 space-y-3">
       <div className="flex items-center gap-2">
         <Webhook size={14} className="text-blue-500 flex-shrink-0" />
         <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
@@ -994,14 +994,14 @@ function WebhookUrlHelper({ country, companySlug }: { country: string; companySl
       {/* URL + copy + test buttons */}
       <div className="flex items-stretch gap-2">
         <code
-          className="flex-1 px-3 py-2 rounded-lg bg-mutedackgroundackground border border-border text-[11px] font-mono break-all"
+          className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-[11px] font-mono break-all"
           dir="ltr"
         >
           {fullUrl}
         </code>
         <button
           onClick={handleCopy}
-          className="px-3 rounded-lg bg-mutedackgroundlue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-mutedackgroundlue-500/20 transition-colors flex items-center justify-center"
+          className="px-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors flex items-center justify-center"
           title="نسخ الرابط"
         >
           <Copy size={14} />
@@ -1009,7 +1009,7 @@ function WebhookUrlHelper({ country, companySlug }: { country: string; companySl
         <button
           onClick={handleTestSend}
           disabled={testing}
-          className="px-3 rounded-lg bg-mutedmerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-mutedmerald-500/20 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           title="إرسال payload تجريبي موقّع إلى هذا الـ webhook"
         >
           {testing ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
@@ -1022,7 +1022,7 @@ function WebhookUrlHelper({ country, companySlug }: { country: string; companySl
           className={cn(
             "rounded-md p-2.5 text-[11px] flex items-start gap-2 border leading-relaxed",
             testResult.ok
-              ? "bg-mutedmerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
               : "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400"
           )}
         >
@@ -1059,7 +1059,7 @@ function WebhookUrlHelper({ country, companySlug }: { country: string; companySl
         </div>
       </div>
 
-      <div className="bg-cardmber-500/5 border border-amber-500/15 rounded-md p-2 text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+      <div className="bg-amber-500/5 border border-amber-500/15 rounded-md p-2 text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
         <AlertCircle size={11} className="inline ml-1" />
         تأكد أن الـ URL متاح من خارج الشبكة (public internet). في بيئة الإنتاج، استخدم HTTPS فقط. زر الإرسال 🟢 بيستخدم payload تجريبي موقّع للتأكد من الـ pipeline.
       </div>
@@ -1105,7 +1105,7 @@ function CertCard({ title, subtitle, expiry, active }: {
   return (
     <div className={cn(
       "p-3 rounded-lg border flex items-center gap-2",
-      active ? "bg-mutedmerald-500/10 border-emerald-500/30" : "bg-muted/30 border-border"
+      active ? "bg-emerald-500/10 border-emerald-500/30" : "bg-muted/30 border-border"
     )}>
       {active ? (
         <CheckCircle2 size={18} className="text-emerald-500 flex-shrink-0" />

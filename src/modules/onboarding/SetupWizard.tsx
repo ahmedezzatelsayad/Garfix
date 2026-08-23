@@ -11,9 +11,10 @@ import { toast } from "sonner";
 import {
   Check, ChevronLeft, ChevronRight, Building2, Globe, Briefcase,
   Users, Package, MessageCircle, Sparkles, Loader2, Rocket, X as XIcon,
+  Languages, Clock, FileText, Palette,
 } from "lucide-react";
 import { BUSINESS_TYPES, type BusinessType } from "@/lib/accountTemplates";
-import { GULF_COUNTRIES } from "@/lib/gulfConfig";
+import { GULF_COUNTRIES, COUNTRY_TIMEZONES, getDefaultTimezone } from "@/lib/gulfConfig";
 import { cn } from "@/lib/utils";
 
 interface WizardData {
@@ -22,16 +23,87 @@ interface WizardData {
   hasEmployees?: boolean;
   hasWarehouse?: boolean;
   usesWhatsApp?: boolean;
+  country?: string;
 }
 
 const STEPS = [
   { key: "welcome", label: "مرحباً", icon: Rocket },
   { key: "company", label: "بيانات الشركة", icon: Building2 },
   { key: "country", label: "الدولة", icon: Globe },
+  { key: "prefs", label: "اللغة والقالب", icon: Palette },
   { key: "business", label: "نوع النشاط", icon: Briefcase },
   { key: "features", label: "المميزات", icon: Package },
   { key: "ai-test", label: "جرّب الذكاء", icon: Sparkles },
   { key: "done", label: "اكتمل", icon: Check },
+];
+
+/** العملات المتاحة للاختيار (عملات الدول المدعومة + العملات العالمية). */
+const CURRENCY_OPTIONS = Array.from(
+  new Set([...GULF_COUNTRIES.map((c) => c.currency), "USD", "EUR", "GBP", "TRY"]),
+);
+
+/** المناطق الزمنية المتاحة (منطقتنا العربيّة + المناطق الشائعة عالميًا). */
+const TIMEZONE_OPTIONS = Array.from(
+  new Set([...Object.values(COUNTRY_TIMEZONES), "Europe/London", "America/New_York", "Asia/Tokyo"]),
+).sort();
+
+/** أنماط قالب الفاتورة — مع معاينة بصرية مصغّرة. */
+const TEMPLATE_STYLES = [
+  {
+    value: "modern" as const,
+    label: "العصري",
+    desc: "شريط علوي ملوّن وخطوط نظيفة",
+    preview: (
+      <div className="rounded-md overflow-hidden border border-white/15 h-[72px] flex flex-col">
+        <div className="h-5 bg-[linear-gradient(90deg,#047857,#10b981)] flex items-center px-1.5 gap-1">
+          <span className="w-3 h-2 rounded-sm bg-white/70" />
+          <span className="w-6 h-[3px] rounded-full bg-white/50" />
+        </div>
+        <div className="flex-1 bg-white/90 p-1.5 flex flex-col gap-1">
+          <span className="w-8 h-[3px] rounded-full bg-gray-400/80" />
+          <span className="w-full h-[3px] rounded-full bg-gray-300" />
+          <span className="w-full h-[3px] rounded-full bg-gray-300" />
+          <span className="w-10 h-[5px] rounded-sm bg-[#047857]/70 self-start mt-auto" />
+        </div>
+      </div>
+    ),
+  },
+  {
+    value: "classic" as const,
+    label: "الكلاسيكي",
+    desc: "إطار رسمي مناسب للمؤسسات والجهات الحكومية",
+    preview: (
+      <div className="rounded-md overflow-hidden border-2 border-[#047857] h-[72px] flex flex-col">
+        <div className="bg-[#047857]/15 px-1.5 py-1 flex items-center justify-between">
+          <span className="w-4 h-4 rounded-full border border-[#047857]" />
+          <span className="w-10 h-[3px] rounded-full bg-[#047857]/60" />
+        </div>
+        <div className="flex-1 bg-white/90 p-1.5 flex flex-col gap-[3px]">
+          <span className="w-full h-[2px] bg-gray-400/70" />
+          <span className="w-full h-[2px] bg-gray-400/70" />
+          <span className="w-full h-[2px] bg-gray-400/70" />
+          <span className="w-9 h-[4px] bg-[#047857]/60 self-end mt-auto" />
+        </div>
+      </div>
+    ),
+  },
+  {
+    value: "minimal" as const,
+    label: "المبسّط",
+    desc: "مساحات بيضاء وإخراج خفيف للطباعة",
+    preview: (
+      <div className="rounded-md border border-white/15 h-[72px] bg-white/95 p-2 flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <span className="w-6 h-2 rounded-sm bg-gray-800/80" />
+          <span className="w-7 h-[3px] rounded-full bg-[#047857]" />
+        </div>
+        <span className="w-full h-[2px] bg-gray-300" />
+        <span className="w-3/4 h-[2px] bg-gray-300" />
+        <span className="w-1/2 h-[2px] bg-gray-300" />
+        <span className="w-8 h-[5px] rounded-sm bg-gray-800/70 self-end mt-auto" />
+      </div>
+    ),
+  },
 ];
 
 const labelStyle = "block text-xs font-semibold text-white/60 mb-1.5";
@@ -49,6 +121,13 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
   const [aiTestText, setAiTestText] = useState("");
   const [aiResult, setAiResult] = useState<Record<string, unknown> | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+
+  // ── P3: تخصيص الشركة — اللغة والمنطقة الزمنية والعملة وقالب الفاتورة ──
+  // تُهيّأ تلقائيًا من الدولة المختارة في الخطوة السابقة، وقابلة للتعديل يدويًا.
+  const [prefLanguage, setPrefLanguage] = useState<"ar" | "en">("ar");
+  const [prefTimezone, setPrefTimezone] = useState("Asia/Kuwait");
+  const [prefCurrency, setPrefCurrency] = useState("KWD");
+  const [prefTemplateStyle, setPrefTemplateStyle] = useState<"modern" | "classic" | "minimal">("modern");
 
   // Onboarding P2 — slug availability check + auto-suggest from company name.
   // - When the user types a company NAME, we auto-suggest a slug via the same
@@ -254,7 +333,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-mutedackgroundackground">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 size={32} className="animate-spin text-primary" />
       </div>
     );
@@ -419,6 +498,10 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
                   <button
                     key={c.code}
                     onClick={async () => {
+                      // P3: خزّن الدولة واظبط افتراضيات التخصيص (عملة + توقيت)
+                      setData((d) => ({ ...d, country: c.code }));
+                      setPrefCurrency(c.currency);
+                      setPrefTimezone(getDefaultTimezone(c.code));
                       // Update company country
                       if (data.companySlug) {
                         try {
@@ -427,6 +510,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
                             country: c.code,
                             currency: c.currency,
                             defaultTaxRate: c.defaultTaxRate,
+                            timezone: getDefaultTimezone(c.code),
                           });
                         } catch { /* silent best-effort */ }
                       }
@@ -446,8 +530,121 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
             </StepCard>
           )}
 
-          {/* Step 3: Business Type */}
+          {/* Step 3: Preferences — اللغة والمنطقة الزمنية والعملة وقالب الفاتورة */}
           {step === 3 && (
+            <StepCard
+              icon={<Palette size={28} />}
+              title="خصّص شركتك"
+              subtitle="اللغة والمنطقة الزمنية والعملة وقالب الفاتورة — مضبوطة تلقائياً من دولتك وتقدر تعدّلها"
+            >
+              {/* اللغة */}
+              <div className="mb-5">
+                <label className={labelStyle}>
+                  <span className="inline-flex items-center gap-1.5"><Languages size={13} /> لغة الواجهة والفواتير</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {([
+                    { value: "ar" as const, label: "العربية", sub: "واجهة RTL وفواتير عربية" },
+                    { value: "en" as const, label: "English", sub: "LTR interface & invoices" },
+                  ]).map((lang) => (
+                    <button
+                      key={lang.value}
+                      type="button"
+                      onClick={() => setPrefLanguage(lang.value)}
+                      className={cn(
+                        "p-4 rounded-[12px] text-start cursor-pointer transition-all border-2 max-md:min-h-[44px]",
+                        prefLanguage === lang.value
+                          ? "bg-[rgba(4,120,87,0.25)] border-[#10b981] text-white"
+                          : "bg-white/[0.05] border-white/[0.08] text-white/80 hover:border-[#10b981]/50"
+                      )}
+                    >
+                      <div className="text-sm font-bold mb-0.5">{lang.label}</div>
+                      <div className="text-[11px] opacity-60">{lang.sub}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* العملة + المنطقة الزمنية */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                <div>
+                  <label className={labelStyle}>العملة</label>
+                  <select value={prefCurrency} onChange={(e) => setPrefCurrency(e.target.value)} className={cn(inputStyle, "[direction:ltr] cursor-pointer")}>
+                    {CURRENCY_OPTIONS.map((cur) => {
+                      const cfg = GULF_COUNTRIES.find((c) => c.currency === cur);
+                      return (
+                        <option key={cur} value={cur} className="text-black">
+                          {cur}{cfg ? ` — ${cfg.currencyAr}` : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelStyle}>
+                    <span className="inline-flex items-center gap-1.5"><Clock size={13} /> المنطقة الزمنية</span>
+                  </label>
+                  <select value={prefTimezone} onChange={(e) => setPrefTimezone(e.target.value)} className={cn(inputStyle, "[direction:ltr] cursor-pointer")}>
+                    {TIMEZONE_OPTIONS.map((tz) => (
+                      <option key={tz} value={tz} className="text-black">{tz}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* قالب الفاتورة */}
+              <div className="mb-2">
+                <label className={labelStyle}>
+                  <span className="inline-flex items-center gap-1.5"><FileText size={13} /> قالب الفاتورة الافتراضي</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {TEMPLATE_STYLES.map((t) => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => setPrefTemplateStyle(t.value)}
+                      className={cn(
+                        "p-3 rounded-[14px] cursor-pointer text-start transition-all border-2 max-md:min-h-[44px]",
+                        prefTemplateStyle === t.value
+                          ? "bg-[rgba(4,120,87,0.25)] border-[#10b981]"
+                          : "bg-white/[0.05] border-white/[0.08] hover:border-[#10b981]/50"
+                      )}
+                    >
+                      {t.preview}
+                      <div className="text-[13px] font-bold mt-2.5 text-white">{t.label}</div>
+                      <div className="text-[10px] text-white/50 mt-0.5 leading-relaxed">{t.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <NavButtons
+                onNext={async () => {
+                  // طبّق التخصيص على الشركة قبل الانتقال للخطوة التالية
+                  if (data.companySlug) {
+                    try {
+                      await updateCompanyMutation.mutateAsync({
+                        slug: data.companySlug,
+                        language: prefLanguage,
+                        currency: prefCurrency,
+                        timezone: prefTimezone,
+                        invoiceTemplateStyle: prefTemplateStyle,
+                      });
+                      toast.success("تم تطبيق التخصيص");
+                    } catch {
+                      toast.warning("تعذّر تطبيق التخصيص الآن — تقدر تعدّله لاحقًا من الإعدادات");
+                    }
+                  }
+                  await next();
+                }}
+                onPrev={prev}
+                nextLabel="التالي"
+              />
+            </StepCard>
+          )}
+
+          {/* Step 4: Business Type */}
+          {step === 4 && (
             <StepCard
               icon={<Briefcase size={28} />}
               title="نوع نشاطك"
@@ -475,7 +672,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
           )}
 
           {/* Step 4: Features */}
-          {step === 4 && (
+          {step === 5 && (
             <StepCard
               icon={<Package size={28} />}
               title="مميزات إضافية"
@@ -507,7 +704,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
           )}
 
           {/* Step 5: AI Test */}
-          {step === 5 && (
+          {step === 6 && (
             <StepCard
               icon={<Sparkles size={28} />}
               title="جرّب الذكاء الاصطناعي"
@@ -542,7 +739,7 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
           )}
 
           {/* Step 6: Done */}
-          {step === 6 && (
+          {step === 7 && (
             <div className="text-center">
               <div className="w-20 h-20 rounded-xl bg-[linear-gradient(135deg,#10b981,#34d399)] inline-flex items-center justify-center text-[40px] mb-6 shadow-[0_16px_48px_rgba(16,185,129,0.4)]">
                 <Check size={36} />
@@ -609,7 +806,7 @@ function ToggleRow({ icon, label, desc, value, onChange }: {
       </div>
       <div
         className={cn("relative w-10 h-[22px] rounded-[11px] transition-colors duration-200",
-          value ? "bg-mutedmerald-600" : "bg-white/15"
+          value ? "bg-emerald-600" : "bg-white/15"
         )}
       >
         <div

@@ -249,7 +249,16 @@ export function BulkInputView() {
   }, []);
 
   const handleSave = useCallback(() => {
-    if (!activeCompany || orders.length === 0) return;
+    // P3: ردود فعل واضحة بدل الصمت — المستخدم كان يضغط "حفظ" دون أي استجابة
+    // لو لم توجد طلبات أو لم تختر شركة.
+    if (!activeCompany) {
+      toast.error("اختر شركة نشطة أولاً");
+      return;
+    }
+    if (orders.length === 0) {
+      toast.warning("لا توجد طلبات للحفظ — الصق نصاً أو ارفع صورة/ملفاً ثم اضغط تحليل");
+      return;
+    }
     setSaving(true);
     bulkImportMutation.mutate(
       { companySlug: activeCompany.slug, orders, createJournalEntries },
@@ -327,7 +336,7 @@ export function BulkInputView() {
     );
   }
 
-  const inputStyle = "w-full py-2 px-3 rounded-sm bg-mutedackgroundackground border border-border text-foreground text-[13px] outline-none focus-ring"; // DS v4.0: focus-ring added
+  const inputStyle = "w-full py-2 px-3 rounded-sm bg-background border border-border text-foreground text-[13px] outline-none focus-ring"; // DS v4.0: focus-ring added
   const labelStyle = "block text-[11px] font-semibold text-muted-foreground mb-1";
 
   return (
@@ -436,7 +445,7 @@ export function BulkInputView() {
             <label className={labelStyle}>الصق نص الطلبات (واتساب، إيصال، ملاحظات...)</label>
             <button
               onClick={() => setRawText(SAMPLE_TEXT)}
-              className="hover-lift duration-120 bg-cardccent text-accent-foreground border border-border rounded-[6px] py-1 px-2.5 text-[11px] font-bold cursor-pointer active-press duration-150"
+              className="hover-lift duration-120 bg-accent text-accent-foreground border border-border rounded-[6px] py-1 px-2.5 text-[11px] font-bold cursor-pointer active-press duration-150"
             >
               جرّب مثالاً
             </button>
@@ -542,7 +551,7 @@ export function BulkInputView() {
               />
               <button
                 onClick={() => { setImageBase64(null); setImagePreview(null); }}
-                className="absolute top-2 left-2 bg-mutedackgroundlack/70 text-white border-none rounded-[6px] p-1.5 cursor-pointer flex items-center"
+                className="absolute top-2 left-2 bg-black/70 text-white border-none rounded-[6px] p-1.5 cursor-pointer flex items-center"
               >
                 <X size={14} />
               </button>
@@ -632,7 +641,7 @@ export function BulkInputView() {
 
       {/* Meta info */}
       {meta && (
-        <div className="kpi-card py-3 px-4 rounded-[10px] bg-mutedmerald-500/5 border border-emerald-500/30 text-[12px] text-foreground flex gap-4 flex-wrap shadow-brand-sm">
+        <div className="kpi-card py-3 px-4 rounded-[10px] bg-emerald-500/5 border border-emerald-500/30 text-[12px] text-foreground flex gap-4 flex-wrap shadow-brand-sm">
           <span>⏱️ {meta.processingMs}ms</span>
           <span>📋 {meta.ordersCount} طلب</span>
           <span>📦 {meta.itemsCount} عنصر</span>
@@ -807,7 +816,7 @@ export function BulkInputView() {
                             <label className={cn(labelStyle, "mb-0")}>البنود</label>
                             <button
                               onClick={() => addItem(idx)}
-                              className="bg-cardccent text-accent-foreground border border-border rounded-[6px] py-1 px-2.5 text-[11px] font-bold cursor-pointer inline-flex items-center gap-1"
+                              className="bg-accent text-accent-foreground border border-border rounded-[6px] py-1 px-2.5 text-[11px] font-bold cursor-pointer inline-flex items-center gap-1"
                             >
                               <Plus size={12} /> إضافة
                             </button>
@@ -862,7 +871,7 @@ export function BulkInputView() {
                               const matchStatus = getMatchStatusFromResult(item.matchResult);
                               
                               return (
-                                <tr key={itemIdx} className={cn("border-b border-border", item.matchResult?.error ? "bg-red-500/5" : item.matchResult?.productId ? "bg-mutedmerald-500/5" : "")}>
+                                <tr key={itemIdx} className={cn("border-b border-border", item.matchResult?.error ? "bg-red-500/5" : item.matchResult?.productId ? "bg-emerald-500/5" : "")}>
                                   <td className="py-1.5 px-2">
                                     <div className="flex items-center gap-2">
                                       <span>{item.name}</span>

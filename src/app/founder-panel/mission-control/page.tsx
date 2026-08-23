@@ -120,7 +120,7 @@ export default function MissionControlPage() {
           <p className="text-muted-foreground mb-4">{error?.message ?? "Unknown error"}</p>
           <button
             onClick={() => refetch()}
-            className="px-4 py-2 bg-mutedackgroundlue-600 hover:bg-mutedackgroundlue-700 text-white rounded-lg transition-colors"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
           >
             Retry Connection
           </button>

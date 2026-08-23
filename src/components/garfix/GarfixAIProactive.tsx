@@ -105,7 +105,7 @@ export function AINotificationCenter({
           <line x1="12" y1="17" x2="12.01" y2="17"/>
         </svg>
       ),
-      bg: "bg-cardmber-50 dark:bg-cardmber-950/30",
+      bg: "bg-amber-50 dark:bg-amber-950/30",
       border: "border-amber-200 dark:border-amber-800",
       text: "text-amber-700 dark:text-amber-300",
     },
@@ -197,7 +197,7 @@ export function AINotificationCenter({
                 <div
                   key={notification.id}
                   className={cn(
-                    "flex items-start gap-3 px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-cardccent/30 cursor-pointer",
+                    "flex items-start gap-3 px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-accent/30 cursor-pointer",
                     !notification.read && "bg-primary/5"
                   )}
                   onClick={() => onMarkRead?.(notification.id)}
@@ -493,7 +493,7 @@ export function AIMemoryContext({
       {/* Header - Always visible */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-cardccent/50 transition-colors"
+        className="w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors"
       >
         <div className="flex items-center gap-3">
           <GarfixAIIcon size="sm" />

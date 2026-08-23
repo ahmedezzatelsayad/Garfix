@@ -8,6 +8,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const staticRoutes = [
     "",
+    "/features",
+    "/pricing",
+    "/about",
     "/login",
     "/signup",
     "/privacy",
@@ -24,6 +27,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: `${base}${path}`,
     lastModified: now,
     changeFrequency: path === "" ? ("daily" as const) : ("monthly" as const),
-    priority: path === "" ? 1 : 0.5,
+    // الصفحة الرئيسية + المميزات + الأسعار هي صفحات التحويل الأساسية — أولوية أعلى
+    priority: path === "" ? 1 : ["/features", "/pricing"].includes(path) ? 0.9 : 0.5,
   }));
 }

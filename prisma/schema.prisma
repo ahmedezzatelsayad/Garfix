@@ -115,6 +115,8 @@ model Company {
   plan                    String    @default("trial")
   subscriptionStatus      String    @default("inactive")
   currency                String    @default("USD")
+  // P3: لغة واجهة الشركة الافتراضية (ar/en) — تُختار عند إنشاء الشركة
+  language                String    @default("ar")
   taxId                   String?
   address                 String?
   // Brand + locale + trial fields used by onboarding wizard and settings page.
