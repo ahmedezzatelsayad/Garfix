@@ -34,11 +34,19 @@ export const POST = async (req: NextRequest) => {
   }
 
   try {
-    // npx prisma CLI متاح داخل تتبع ملفات Vercel (serverless)
+    // npx prisma CLI متاح داخل تتبع ملفات Vercel (serverless).
+    // HOTFIX: بعض عمليات النشر لا تُمرر متغيرات env الحساسة للعملية الفرعية
+    // رغم توفرها في process.env — نبنيها صراحة مع fallback منطقي.
+    const env = { ...process.env } as NodeJS.ProcessEnv;
+    if (!env.DATABASE_DIRECT_URL && env.DATABASE_URL) {
+      env.DATABASE_DIRECT_URL = env.DATABASE_URL;
+    }
     const { stdout, stderr } = await execFileAsync(
-      "npx",
-      ["prisma", "migrate", "deploy", "--schema", "prisma/schema.prisma"],
-      { timeout: 55_000, env: process.env, maxBuffer: 4 * 1024 * 1024 },
+      process.env.VERCEL ? "node_modules/.bin/prisma" : "npx",
+      process.env.VERCEL
+        ? ["migrate", "deploy", "--schema", "prisma/schema.prisma"]
+        : ["prisma", "migrate", "deploy", "--schema", "prisma/schema.prisma"],
+      { timeout: 55_000, env, maxBuffer: 4 * 1024 * 1024, cwd: process.cwd() },
     );
     logger.info("[admin/migrate] migrate deploy completed", { tail: stdout.slice(-200) });
     return NextResponse.json({
