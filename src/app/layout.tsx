@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+// SEO: السعر في البيانات المنظمة من نفس مصدر الفوترة الفعلي — لا انحراف تسويقي
+import { COUNTRY_PRICES, COUNTRY_CURRENCY } from "@/lib/billing/pricing";
 
 // FONT FIX: Use next/font/google when building on Vercel/CI (has internet
 // access to fonts.gstatic.com). Fall back to a CSS-only variable when
@@ -32,12 +34,21 @@ const cairo =
 export const metadata: Metadata = {
   metadataBase: new URL("https://garfix.app"),
   title: {
-    default: "GarfiX EOS — AI-Native Business Platform",
-    template: "%s · GarfiX EOS",
+    default: "جارفيكس | برنامج فواتير ومحاسبة إلكترونية بالذكاء الاصطناعي",
+    template: "%s · جارفيكس GarfiX",
   },
-  description: "Modular Enterprise Monolith with 16-Stage AI Cascade Pipeline. Accounting, HR, E-Invoicing, and more.",
-  keywords: ["GarfiX", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI", "accounting", "HR", "e-invoicing"],
-  authors: [{ name: "GarfiX Team" }],
+  description:
+    "منصة سحابية عربية لإدارة الفواتير الإلكترونية المعتمدة (ZATCA وETA) والمحاسبة والمخزون والموارد البشرية — مدعومة بالذكاء الاصطناعي. جرّب 30 يومًا مجانًا بدون بطاقة ائتمان.",
+  keywords: [
+    "فواتير إلكترونية", "برنامج محاسبة", "فاتورة ضريبية", "فاتورة إلكترونية ZATCA",
+    "برنامج فواتير", "محاسبة", "إدارة مخزون", "برنامج موارد بشرية",
+    "فوترة إلكترونية السعودية", "فاتورة", "GarfiX", "جارفيكس",
+  ],
+  authors: [{ name: "GarfiX جارفيكس" }],
+  creator: "GarfiX",
+  publisher: "GarfiX",
+  applicationName: "GarfiX جارفيكس",
+  category: "business software",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -48,20 +59,40 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
-    title: "GarfiX EOS",
-    description: "AI-Native Business Platform — Modular Enterprise Monolith",
+    title: "جارفيكس | فواتير ومحاسبة إلكترونية بالذكاء الاصطناعي",
+    description:
+      "فواتير إلكترونية معتمدة + محاسبة كاملة + مخزون + ذكاء اصطناعي يحوّل رسائل الطلبات إلى فواتير. مدعوم لأكثر من 20 دولة عربية.",
     url: "https://garfix.app",
-    siteName: "GarfiX",
+    siteName: "GarFiX جارفيكس",
     type: "website",
     locale: "ar_SA",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "جارفيكس — منظومة أعمال كاملة: فواتير إلكترونية ومحاسبة ومخزون بالذكاء الاصطناعي",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "GarfiX EOS",
-    description: "AI-Native Business Platform",
+    title: "جارفيكس | فواتير ومحاسبة إلكترونية بالذكاء الاصطناعي",
+    description: "منصة أعمال عربية متكاملة: فوترة إلكترونية معتمدة، محاسبة، مخزون، ومساعد ذكي ينفّذ أوامرك.",
+    images: ["/og-image.png"],
   },
   alternates: {
     canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 
@@ -96,6 +127,53 @@ const themeInitScript = `
 })();
 `;
 
+/**
+ * SEO: بيانات منظمة JSON-LD — تُحقن في كل الصفحات (Organization + SoftwareApplication).
+ * تساعد محركات البحث على فهم الكيان وعرض rich results (تقييم/سعر/روابط).
+ */
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://garfix.app/#organization",
+      name: "GarFiX جارفيكس",
+      url: "https://garfix.app",
+      logo: "https://garfix.app/icons/icon-512.png",
+      description: "منصة سحابية عربية للفواتير الإلكترونية والمحاسبة وإدارة الأعمال بالذكاء الاصطناعي",
+      areaServed: ["SA", "KW", "AE", "EG", "QA", "BH", "OM", "JO", "MA"],
+      knowsLanguage: ["ar", "en"],
+      sameAs: [
+        "https://x.com/garfix",
+        "https://linkedin.com/company/garfix",
+      ],
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://garfix.app/#app",
+      name: "GarFiX جارفيكس",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web, Android (PWA), iOS (PWA)",
+      url: "https://garfix.app",
+      description: "برنامج فواتير إلكترونية ومحاسبة ومخزون وموارد بشرية بالذكاء الاصطناعي للشركات العربية",
+      inLanguage: ["ar", "en"],
+      offers: {
+        "@type": "Offer",
+        price: String(COUNTRY_PRICES.SA.starter),
+        priceCurrency: COUNTRY_CURRENCY.SA,
+        url: "https://garfix.app/pricing",
+      },
+      featureList: [
+        "فواتير إلكترونية معتمدة ZATCA/ETA",
+        "محاسبة مزدوجة كاملة",
+        "إدارة مخزون متعدد المستودعات",
+        "موارد بشرية ورواتب",
+        "مساعد ذكاء اصطناعي تنفيذي",
+      ],
+    },
+  ],
+};
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -119,6 +197,11 @@ export default async function RootLayout({
             CSS rule (now removed), NOT by this script. */}
         {/* Phase 9 P2 fix: pass nonce to satisfy nonce-based CSP in production. */}
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        {/* SEO: JSON-LD structured data (Organization + SoftwareApplication) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </head>
       <body
         className={`${cairo.variable} font-cairo antialiased bg-background text-foreground`}

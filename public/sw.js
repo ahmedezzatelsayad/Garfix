@@ -2,10 +2,10 @@
 // Version: 12 (aligned with app version)
 // Strategies: network-first for API, cache-first for static, stale-while-revalidate for pages
 
-const CACHE_NAME = "garfix-v12";
-const STATIC_CACHE = "garfix-static-v12";
-const API_CACHE = "garfix-api-v12";
-const PAGE_CACHE = "garfix-pages-v12";
+const CACHE_NAME = "garfix-v12.1";
+const STATIC_CACHE = "garfix-static-v12.1";
+const API_CACHE = "garfix-api-v12.1";
+const PAGE_CACHE = "garfix-pages-v12.1";
 
 const APP_SHELL = [
   "/",
@@ -123,13 +123,17 @@ async function staleWhileRevalidate(request, cacheName) {
 }
 
 // ── Fetch Handler ────────────────────────────────────────────────────
+// P0 SW FIX: كان في الملف اتنين addEventListener("fetch") — الثاني كان
+// يستدعي respondWith مرة ثانية لنفس طلبات التنقل بعد ما عالجها الأول،
+// وكل استدعاء ثانٍ يرمي "respondWith() called twice" في كل تنقل صفحة.
+// الآن معالج واحد يغطي كل الاستراتيجيات + fallback الأوفلاين للتنقل.
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
   // Skip non-GET
   if (event.request.method !== "GET") return;
 
-  // Skip cross-origin requests (except our own API)
+  // Skip cross-origin requests
   if (url.origin !== self.location.origin) return;
 
   // API requests: network-first
@@ -144,35 +148,36 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // App pages: stale-while-revalidate
+  // App pages: stale-while-revalidate + offline fallback for navigations
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      staleWhileRevalidate(event.request, PAGE_CACHE).then((res) => {
+        if (res && res.status !== 503) return res;
+        return offlineFallbackPage();
+      })
+    );
+    return;
+  }
+
   event.respondWith(staleWhileRevalidate(event.request, PAGE_CACHE));
 });
 
-// ── Offline Fallback Page ────────────────────────────────────────────
-self.addEventListener("fetch", (event) => {
-  // This is a secondary handler for navigation requests that fail
-  if (event.request.mode === "navigate") {
-    event.respondWith(
-      fetch(event.request).catch(async () => {
-        const cache = await caches.open(CACHE_NAME);
-        const cachedPage = await cache.match("/");
-        if (cachedPage) return cachedPage;
-
-        // Generate a minimal offline page
-        return new Response(
-          `<!DOCTYPE html>
+/** صفحة عدم الاتصال الاحتياطية (لطلبات التنقل الفاشلة). */
+async function offlineFallbackPage() {
+  return new Response(
+    `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>GARFIX — وضع عدم الاتصال</title>
   <style>
-    body { background: #0f0a1e; color: white; font-family: system-ui; display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center; }
-    .card { background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.2); padding: 40px 30px; border-radius: 18px; max-width: 400px; }
+    body { background: #0f0a1e; color: white; font-family: system-ui, Tahoma, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; text-align: center; margin: 0; }
+    .card { background: rgba(4,120,87,0.12); border: 1px solid rgba(16,185,129,0.25); padding: 40px 30px; border-radius: 18px; max-width: 400px; }
     .icon { font-size: 48px; margin-bottom: 20px; }
     h1 { font-size: 24px; font-weight: 900; margin-bottom: 10px; }
-    p { color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 20px; }
-    button { background: linear-gradient(135deg,#7c3aed,#a78bfa); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    p { color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 20px; line-height: 1.8; }
+    button { background: linear-gradient(135deg,#047857,#10b981); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -184,12 +189,9 @@ self.addEventListener("fetch", (event) => {
   </div>
 </body>
 </html>`,
-          { headers: { "Content-Type": "text/html; charset=utf-8" } }
-        );
-      })
-    );
-  }
-});
+    { headers: { "Content-Type": "text/html; charset=utf-8" } }
+  );
+}
 
 // ── Push Notification Placeholder ────────────────────────────────────
 self.addEventListener("push", (event) => {

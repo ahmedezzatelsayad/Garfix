@@ -13,14 +13,22 @@ import { Check, X, Star, ArrowLeft, ChevronDown } from "lucide-react";
 import { PublicSiteHeader } from "@/components/site/PublicSiteHeader";
 import { ProfessionalFooter } from "@/components/garfix/ProfessionalFooter";
 import { cn } from "@/lib/utils";
+// مصدر حقيقة واحد للأسعار: نفس ملف الفوترة الفعلي — كانت الصفحة تعرض
+// 99/299/799 بينما النظام يحاسب فعليًا بأسعار مختلفة ومفاتيح باقات أخرى.
+import { COUNTRY_PRICES, COUNTRY_CURRENCY } from "@/lib/billing/pricing";
+
+/** الدولة المعروضة افتراضياً في التسويق — السوق الأكبر. */
+const MARKETING_COUNTRY = "SA";
+const SA_PRICES = COUNTRY_PRICES[MARKETING_COUNTRY];
+const SA_CURRENCY = COUNTRY_CURRENCY[MARKETING_COUNTRY];
 
 const PRICING_TIERS = [
   {
     key: "starter",
     name: "Starter",
     nameAr: "المبتدئة",
-    price: 99,
-    currency: "SAR",
+    price: SA_PRICES.starter,
+    currency: SA_CURRENCY,
     periodAr: "شهرياً",
     highlight: false,
     badge: null as string | null,
@@ -35,11 +43,11 @@ const PRICING_TIERS = [
     ],
   },
   {
-    key: "growth",
-    name: "Growth",
+    key: "professional",
+    name: "Professional",
     nameAr: "النمو",
-    price: 299,
-    currency: "SAR",
+    price: SA_PRICES.professional,
+    currency: SA_CURRENCY,
     periodAr: "شهرياً",
     highlight: true,
     badge: "الأكثر شعبية",
@@ -56,18 +64,18 @@ const PRICING_TIERS = [
     ],
   },
   {
-    key: "enterprise",
-    name: "Enterprise",
+    key: "unlimited",
+    name: "Unlimited",
     nameAr: "المؤسسات",
-    price: 799,
-    currency: "SAR",
+    price: SA_PRICES.unlimited,
+    currency: SA_CURRENCY,
     periodAr: "شهرياً",
     highlight: false,
     badge: null as string | null,
     descAr: "للمجموعات والمؤسسات متعددة الفروع",
     features: [
       "مستخدمون غير محدودين",
-      "كل ميزات Growth",
+      "كل ميزات النمو",
       "شركات متعددة بتقارير موحدة",
       "API مخصص + Webhooks",
       "موارد بشرية ورواتب كاملة",
@@ -103,12 +111,27 @@ function Cell({ value }: { value: boolean | string }) {
   return <span className="text-[11px] text-muted-foreground font-semibold">{value}</span>;
 }
 
+/** SEO: أسئلة شائعة بصيغة JSON-LD — تؤهل الصفحة لـ rich results في البحث. */
+function FaqJsonLd() {
+  const faq = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQ_ITEMS.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  };
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faq) }} />;
+}
+
 export default function PricingPage() {
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   return (
     <div dir="rtl" className="min-h-dvh bg-background text-foreground">
+      <FaqJsonLd />
       <PublicSiteHeader />
 
       {/* Hero */}
@@ -156,7 +179,8 @@ export default function PricingPage() {
       <section className="px-[5%] pb-14 max-w-[1100px] mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-stretch">
           {PRICING_TIERS.map((tier) => {
-            const price = billingPeriod === "yearly" ? tier.price * 10 : tier.price;
+            // نفس معادلة الخصم السنوي التي يحاسب بها نظام الدفع الفعلي (٢٠٪)
+            const price = billingPeriod === "yearly" ? Math.round(tier.price * 12 * 0.8 * 100) / 100 : tier.price;
             return (
               <div
                 key={tier.key}

@@ -261,7 +261,13 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // ── MyFatoorah flow (Gulf countries) ──
   const cfg = await getIntegrationConfig("myfatoorah");
   if (!cfg?.api_key || !cfg?.base_url) {
-    return apiError("بوابة الدفع MyFatoorah غير مُهيّأة. تواصل مع المؤسس.", 503);
+    const { isFounderEmail } = await import("@/lib/founder");
+    return apiError(
+      isFounderEmail(user.email)
+        ? "بوابة الدفع MyFatoorah غير مُهيّأة بعد — اضبطها الآن من: لوحة المؤسس ← التكاملات ← MyFatoorah (api_key + base_url). بعدها يعمل الدفع فورًا."
+        : "بوابة الدفع غير مُهيّأة بعد. تواصل مع المؤسس.",
+      503,
+    );
   }
 
   // 3. Initiate Payment — get available payment methods

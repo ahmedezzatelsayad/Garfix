@@ -80,7 +80,7 @@ const TESTIMONIALS = [
 
 const QUICK_LINKS = [
   { href: "/features", titleAr: "استعرض كل المميزات", descAr: "18 وحدة من الفاتورة إلى القوائم المالية", icon: <Sparkles size={18} /> },
-  { href: "/pricing", titleAr: "خطط الأسعار", descAr: "باقات واضحة تبدأ من 99 ريالاً شهرياً", icon: <Zap size={18} /> },
+  { href: "/pricing", titleAr: "خطط الأسعار", descAr: "باقات واضحة تبدأ من 37.5 ريالاً شهرياً", icon: <Zap size={18} /> },
   { href: "/about", titleAr: "تعرّف علينا", descAr: "قصتنا وقيمنا ورحلتنا من الكويت", icon: <ShieldCheck size={18} /> },
 ];
 

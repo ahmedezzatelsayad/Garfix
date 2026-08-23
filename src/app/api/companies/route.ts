@@ -73,7 +73,13 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   }
 
   let companies;
-  if (hasUnrestrictedScope(user)) {
+  // P0 FIX (عزل المستأجرين): كان الـ admin (مالك شركة) يرى كل شركات المنصة
+  // لأن hasUnrestrictedScope(admin)=true — فيعرض السويتشر شركات لا يملكها
+  // ويختار تلقائياً أحدثها → كل استعلاماتها 403 (تأكيد بالتشغيل الفعلي).
+  // عرض كل الشركات مقصود للمؤسس فقط (مالك المنصة). assertCompanyAccess نفسه
+  // يرفض أصلاً أي شركة خارج قائمة المستخدم — هذا مجرد مواءمة للقائمة.
+  const { isFounderEmail } = await import("@/lib/founder");
+  if (isFounderEmail(user.email)) {
     companies = await db.company.findMany({ orderBy: { createdAt: "desc" } });
   } else {
     companies = await db.company.findMany({
