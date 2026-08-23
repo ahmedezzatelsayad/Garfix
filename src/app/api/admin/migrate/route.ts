@@ -39,6 +39,9 @@ export const POST = async (req: NextRequest) => {
     // رغم توفرها في process.env — نبنيها صراحة مع fallback منطقي.
     const env = { ...process.env } as NodeJS.ProcessEnv;
     // Vercel لا يمرر دائمًا كل المتغيرات للعمليات الفرعية — نحقن الصريحين:
+    // تشخيص: ما المتغيرات المرئية فعلًا في هذا الـ runtime؟
+    const visible = ["DATABASE_URL","DATABASE_DIRECT_URL","METRICS_TOKEN","VERCEL","NODE_ENV"]
+      .map((k) => k + "=" + (process.env[k] ? "set" : "MISSING")).join(" ");
     const dbUrl = process.env.DATABASE_URL || env.DATABASE_URL;
     const directUrl = process.env.DATABASE_DIRECT_URL || env.DATABASE_DIRECT_URL || dbUrl;
     if (!dbUrl) throw new Error("DATABASE_URL not available in runtime env");
@@ -51,9 +54,10 @@ export const POST = async (req: NextRequest) => {
         : ["prisma", "migrate", "deploy", "--schema", "prisma/schema.prisma"],
       { timeout: 55_000, env, maxBuffer: 4 * 1024 * 1024, cwd: process.cwd() },
     );
-    logger.info("[admin/migrate] migrate deploy completed", { tail: stdout.slice(-200) });
+    logger.info("[admin/migrate] migrate deploy completed", { tail: stdout.slice(-200), visible });
     return NextResponse.json({
       ok: true,
+      visible,
       output: stdout.split("\n").slice(-8),
       stderr: stderr ? stderr.split("\n").slice(-3) : [],
     });
@@ -62,7 +66,7 @@ export const POST = async (req: NextRequest) => {
     return NextResponse.json(
       {
         ok: false,
-        error: err instanceof Error ? err.message.slice(0, 300) : "migrate failed",
+        error: err instanceof Error ? err.message.slice(0, 300) : "migrate failed", visible,
       },
       { status: 500 },
     );
