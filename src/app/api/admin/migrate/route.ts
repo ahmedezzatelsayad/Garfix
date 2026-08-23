@@ -38,9 +38,12 @@ export const POST = async (req: NextRequest) => {
     // HOTFIX: بعض عمليات النشر لا تُمرر متغيرات env الحساسة للعملية الفرعية
     // رغم توفرها في process.env — نبنيها صراحة مع fallback منطقي.
     const env = { ...process.env } as NodeJS.ProcessEnv;
-    if (!env.DATABASE_DIRECT_URL && env.DATABASE_URL) {
-      env.DATABASE_DIRECT_URL = env.DATABASE_URL;
-    }
+    // Vercel لا يمرر دائمًا كل المتغيرات للعمليات الفرعية — نحقن الصريحين:
+    const dbUrl = process.env.DATABASE_URL || env.DATABASE_URL;
+    const directUrl = process.env.DATABASE_DIRECT_URL || env.DATABASE_DIRECT_URL || dbUrl;
+    if (!dbUrl) throw new Error("DATABASE_URL not available in runtime env");
+    if (dbUrl) env.DATABASE_URL = dbUrl;
+    if (directUrl) env.DATABASE_DIRECT_URL = directUrl;
     const { stdout, stderr } = await execFileAsync(
       process.env.VERCEL ? "node_modules/.bin/prisma" : "npx",
       process.env.VERCEL
