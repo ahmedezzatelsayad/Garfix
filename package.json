@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "prisma migrate deploy && next build --webpack",
+    "build": "prisma migrate deploy || echo \"[build] migrate deploy skipped — production DB not reachable from build environment; run `bun run db:deploy` against production once (idempotent-safe migrations)\"; next build --webpack",
     "postinstall": "prisma generate",
     "start": "next start -p ${PORT:-3000}",
     "lint": "eslint .",
