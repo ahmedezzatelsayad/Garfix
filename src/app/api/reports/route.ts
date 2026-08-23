@@ -57,10 +57,14 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const cursor = req.nextUrl.searchParams.get("cursor");
   const PAGE_SIZE = 1000;
 
+  // P0 FIX: Prisma DateTime يرفض نص التاريخ فقط (premature end of input)
+  // — كان يفشل كل أنواع التقارير بـ 500. تحويل لكائنات Date.
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
   const invoices = await db.invoice.findMany({
     where: {
       companySlug,
-      issueDate: { gte: from, lte: to },
+      issueDate: { gte: fromDate, lte: toDate },
     },
     orderBy: { id: "asc" },
     select: {
@@ -78,7 +82,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const purchases = await db.purchaseInvoice.findMany({
     where: {
       companySlug,
-      date: { gte: from, lte: to },
+      date: { gte: fromDate, lte: toDate },
     },
     orderBy: { date: "asc" },
     select: { id: true, num: true, date: true, supplier: true, items: true, totalQty: true, notes: true },

@@ -214,9 +214,9 @@ describe("syncInventoryOnPurchase — collision recovery", () => {
 
     // StockMovement recorded with +qty, source "purchase".
     expect(mocks.stockMovementCreate).toHaveBeenCalledTimes(1);
-    expect(mocks.stockMovementCreate.mock.calls[0][0].data.qty).toBe("3.000");
+    expect(mocks.stockMovementCreate.mock.calls[0][0].data.quantity).toBe("3.000");
     expect(mocks.stockMovementCreate.mock.calls[0][0].data.sourceType).toBe("purchase");
-    expect(mocks.stockMovementCreate.mock.calls[0][0].data.sourceId).toBe(500);
+    expect(mocks.stockMovementCreate.mock.calls[0][0].data.sourceId).toBe("500");
 
     // Audit row is a normal "auto-match" entry (NOT collision-recovery-failed).
     expect(mocks.productMatchAuditCreate).toHaveBeenCalledTimes(1);
@@ -264,12 +264,12 @@ describe("syncInventoryOnPurchase — collision recovery", () => {
     // StockMovement recorded with qty 0 + sourceType "collision-recovery".
     expect(mocks.stockMovementCreate).toHaveBeenCalledTimes(1);
     const mvCall = mocks.stockMovementCreate.mock.calls[0][0];
-    expect(mvCall.data.qty).toBe("0.000");
+    expect(mvCall.data.quantity).toBe("0.000");
     expect(mvCall.data.sourceType).toBe("collision-recovery");
-    expect(mvCall.data.sourceId).toBe(501); // ← same reference as audit
+    expect(mvCall.data.sourceId).toBe("501"); // ← same reference as audit
     expect(mvCall.data.productId).toBeNull();
-    expect(mvCall.data.note).toContain("orphan purchase item");
-    expect(mvCall.data.note).toContain("Mystery Purchase Item");
+    expect(mvCall.data.reference).toContain("orphan purchase item");
+    expect(mvCall.data.reference).toContain("Mystery Purchase Item");
   });
 
   it("3. purchase-collision-recovery-fail writes the REAL purchaseInvoiceId on the audit row (NOT null)", async () => {
@@ -289,7 +289,7 @@ describe("syncInventoryOnPurchase — collision recovery", () => {
     expect(auditCall.data.invoiceId).toBe(9999);
     // The StockMovement also carries the same sourceId for cross-referencing.
     const mvCall = mocks.stockMovementCreate.mock.calls[0][0];
-    expect(mvCall.data.sourceId).toBe(9999);
+    expect(mvCall.data.sourceId).toBe("9999");
   });
 
   it("4. purchase-collision-recovery-fail surfaces the warning in result.warnings (caller's responsibility to forward as reviewQueueWarnings)", async () => {

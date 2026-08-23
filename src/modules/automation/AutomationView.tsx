@@ -11,9 +11,9 @@
  *
  * Uses useAutomations (read), useUpdateAutomation (toggle), useDeleteAutomation (delete).
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useBrand } from "@/context/BrandContext";
-import { useAutomations, useUpdateAutomation, useDeleteAutomation } from "@/hooks/queries";
+import { useAutomations, useUpdateAutomation, useDeleteAutomation, useCreateAutomation } from "@/hooks/queries";
 import { toast } from "sonner";
 import {
   Zap,
@@ -241,7 +241,7 @@ function KPICard({ value, label, icon, trend, isGold = false, sparklineData }: K
 
 // ── AI Suggestion Item ─────────────────────────────────────────────────
 
-function AISuggestionItem({ suggestion }: { suggestion: AISuggestion }) {
+function AISuggestionItem({ suggestion, onApply, applying }: { suggestion: AISuggestion; onApply?: () => void; applying?: boolean }) {
   const impact = getImpactBadge(suggestion.impact);
   const triggerInfo = TRIGGER_LABELS[suggestion.trigger] || { label: suggestion.trigger, icon: "⚡" };
   const actionInfo = ACTION_LABELS[suggestion.action] || { label: suggestion.action, icon: "→" };
@@ -283,11 +283,16 @@ function AISuggestionItem({ suggestion }: { suggestion: AISuggestion }) {
         </div>
       </div>
       
+      {/* P0 UX FIX: كان الزر ديكوري بلا onClick — يضغط ولا يفعل شيئًا.
+          الآن ينشئ قاعدة فعلية من الاقتراح فورًا. */}
       <button 
-        className="active-press shrink-0 ml-2 p-2 rounded-lg bg-emerald-500/10 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-        title="تطبيق الاقتراح"
+        className="active-press shrink-0 ml-2 p-2 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-wait"
+        title="تطبيق الاقتراح — إنشاء القاعدة فورًا"
+        aria-label={`تطبيق اقتراح: ${suggestion.title}`}
+        onClick={onApply}
+        disabled={applying}
       >
-        <ArrowUpRight size={14} />
+        {applying ? <Loader2 size={14} className="animate-spin" /> : <ArrowUpRight size={14} />}
       </button>
     </div>
   );
@@ -300,6 +305,36 @@ export function AutomationView() {
   const { data, isLoading, refetch } = useAutomations(activeCompany?.slug || "");
   const updateMutation = useUpdateAutomation();
   const deleteMutation = useDeleteAutomation();
+  const createMutation = useCreateAutomation();
+  // P0 UX FIX: تطبيق اقتراح AI = إنشاء قاعدة فعلية فورًا (الزر كان ديكوري)
+  const [applyingSuggestionId, setApplyingSuggestionId] = useState<string | null>(null);
+
+  const applySuggestion = async (s: AISuggestion) => {
+    if (!activeCompany?.slug) {
+      toast.error("اختر شركة نشطة أولاً");
+      return;
+    }
+    // مطابقة نوع الإجراء مع ما يقبل الـ API فعليًا
+    const actionType = ["send_whatsapp", "create_task", "send_email"].includes(s.action)
+      ? s.action
+      : "create_task";
+    setApplyingSuggestionId(s.id);
+    try {
+      await createMutation.mutateAsync({
+        companySlug: activeCompany.slug,
+        name: s.title,
+        trigger: s.trigger,
+        condition: {},
+        actions: [{ type: actionType, params: { source: "ai-suggestion", confidence: s.confidence } }],
+        isActive: true,
+      });
+      toast.success(`تم تفعيل القاعدة: ${s.title}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "تعذّر إنشاء القاعدة");
+    } finally {
+      setApplyingSuggestionId(null);
+    }
+  };
 
   // API returns { rules: [...] }
   // Wrap fallback array in useMemo so downstream useMemo hooks (activeCount, runsToday) don't see a new array reference on every render.
@@ -670,7 +705,12 @@ export function AutomationView() {
             {/* AI Suggestions List */}
             <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1 custom-scrollbar">
               {MOCK_AI_SUGGESTIONS.map((suggestion) => (
-                <AISuggestionItem key={suggestion.id} suggestion={suggestion} />
+                <AISuggestionItem
+                  key={suggestion.id}
+                  suggestion={suggestion}
+                  applying={applyingSuggestionId === suggestion.id}
+                  onApply={() => applySuggestion(suggestion)}
+                />
               ))}
             </div>
 

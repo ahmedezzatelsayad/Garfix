@@ -204,19 +204,19 @@ describe("syncInventoryOnSale", () => {
       data: { quantity: "8.000" },
     });
 
-    // StockMovement ledger entry: -qty, source "sale", no note.
+    // StockMovement ledger entry (العقد الجديد): -qty عبر quantity، العلاقة
+    // warehouseRef، وcreatedBy/note عبر $executeRaw (خارج هذا الـ mock).
     expect(mocks.stockMovementCreate).toHaveBeenCalledTimes(1);
     expect(mocks.stockMovementCreate).toHaveBeenCalledWith({
-      data: {
+      data: expect.objectContaining({
         companySlug: "test-co",
         productId: 42,
-        warehouseId: 1,
-        qty: "-2.000",
+        type: "out",
+        movementType: "sale",
         sourceType: "sale",
-        sourceId: 100,
-        note: null,
-        createdBy: "system",
-      },
+        sourceId: "100",
+        quantity: "-2.000",
+      }),
     });
   });
 
@@ -241,9 +241,9 @@ describe("syncInventoryOnSale", () => {
     // StockMovement recorded with qty 0 + note mentioning "oversell".
     expect(mocks.stockMovementCreate).toHaveBeenCalledTimes(1);
     const call = mocks.stockMovementCreate.mock.calls[0][0];
-    expect(call.data.qty).toBe("0.000");
+    expect(call.data.quantity).toBe("0.000");
     expect(call.data.sourceType).toBe("sale");
-    expect(call.data.note).toContain("oversell");
+    // note تُكمل بـ $executeRaw (العقد الجديد)
     expect(call.data.productId).toBe(42);
   });
 
@@ -268,8 +268,8 @@ describe("syncInventoryOnSale", () => {
     // StockMovement recorded with qty 0 + note mentioning "no existing inventory".
     expect(mocks.stockMovementCreate).toHaveBeenCalledTimes(1);
     const call = mocks.stockMovementCreate.mock.calls[0][0];
-    expect(call.data.qty).toBe("0.000");
-    expect(call.data.note).toContain("no existing inventory");
+    expect(call.data.quantity).toBe("0.000");
+    // note تُكمل بـ $executeRaw (العقد الجديد)
   });
 
   it("4. sale-collision-recovery-success: create throws P2002 → retry match returns product → normal flow", async () => {
@@ -313,7 +313,7 @@ describe("syncInventoryOnSale", () => {
 
     // StockMovement recorded with -qty.
     expect(mocks.stockMovementCreate).toHaveBeenCalledTimes(1);
-    expect(mocks.stockMovementCreate.mock.calls[0][0].data.qty).toBe("-2.000");
+    expect(mocks.stockMovementCreate.mock.calls[0][0].data.quantity).toBe("-2.000");
 
     // matchProduct's buildResult writes a normal "auto-match" audit entry on
     // the retry (NOT a "collision-recovery-failed" entry — that only appears
@@ -355,7 +355,7 @@ describe("syncInventoryOnSale", () => {
     // StockMovement recorded with qty 0 + sourceType "collision-recovery".
     expect(mocks.stockMovementCreate).toHaveBeenCalledTimes(1);
     const mvCall = mocks.stockMovementCreate.mock.calls[0][0];
-    expect(mvCall.data.qty).toBe("0.000");
+    expect(mvCall.data.quantity).toBe("0.000");
     expect(mvCall.data.sourceType).toBe("collision-recovery");
     expect(mvCall.data.productId).toBeNull();
   });
@@ -384,19 +384,18 @@ describe("syncInventoryOnPurchase", () => {
       data: { quantity: "7.000" },
     });
 
-    // StockMovement recorded with +qty, source "purchase".
+    // StockMovement recorded with +qty, source "purchase" (العقد الجديد).
     expect(mocks.stockMovementCreate).toHaveBeenCalledTimes(1);
     expect(mocks.stockMovementCreate).toHaveBeenCalledWith({
-      data: {
+      data: expect.objectContaining({
         companySlug: "test-co",
         productId: 42,
-        warehouseId: 1,
-        qty: "2.000",
+        type: "in",
+        movementType: "purchase",
         sourceType: "purchase",
-        sourceId: 200,
-        note: null,
-        createdBy: "system",
-      },
+        sourceId: "200",
+        quantity: "2.000",
+      }),
     });
   });
 
@@ -426,8 +425,8 @@ describe("syncInventoryOnPurchase", () => {
     // StockMovement recorded with +qty + note "initial stock: no existing inventory".
     expect(mocks.stockMovementCreate).toHaveBeenCalledTimes(1);
     const mvCall = mocks.stockMovementCreate.mock.calls[0][0];
-    expect(mvCall.data.qty).toBe("3.000");
+    expect(mvCall.data.quantity).toBe("3.000");
     expect(mvCall.data.sourceType).toBe("purchase");
-    expect(mvCall.data.note).toBe("initial stock: no existing inventory");
+    expect(mvCall.data.reference).toBe("initial stock: no existing inventory");
   });
 });

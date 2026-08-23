@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNotifications, useMarkAllNotificationsRead, type Notification } from "@/hooks/queries/dashboard";
+import { useBrand } from "@/context/BrandContext";
 import { toast } from "sonner";
 import { Bell, X, CheckCheck, BellOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -41,8 +42,12 @@ export function NotificationsDropdown() {
   const [markingAll, setMarkingAll] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // TanStack Query hook
-  const { data: notificationsData, isLoading: loading } = useNotifications("");
+  // P0 NOTIFICATIONS FIX: كان الـ hook يُستدعى بسلسلة فارغة مع enabled: !!companySlug
+  // — فكان الاستعلام معطلاً دائماً والقائمة لا تُحمل أبدًا مهما وصل من إشعارات.
+  // الآن: نجلب إشعارات الشركة النشطة، ولو لا توجد شركة نشطة نجلب كل إشعارات
+  // المستخدم (الـ API يتجاهل companySlug الفارغ أصلاً).
+  const { activeCompany } = useBrand();
+  const { data: notificationsData, isLoading: loading } = useNotifications(activeCompany?.slug || "__all__");
   const markAllReadMutation = useMarkAllNotificationsRead();
 
   const notifications: Notification[] = notificationsData?.notifications || [];
