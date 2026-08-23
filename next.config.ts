@@ -139,6 +139,14 @@ const nextConfig: NextConfig = {
   // causing "Prisma Client could not locate the Query Engine" at runtime.
   outputFileTracingIncludes: {
     "/": ["./node_modules/.prisma/client/**/*", "./node_modules/@prisma/client/**/*"],
+    // HOTFIX: تضمين CLI + migrations لنقطة /api/admin/migrate (تشغيل migrations
+    // من الـ runtime لأن بيئة البناء لا تصل لقاعدة الإنتاج)
+    "/api/admin/migrate": [
+      "./node_modules/prisma/**/*",
+      "./node_modules/@prisma/**/*",
+      "./node_modules/.bin/prisma*",
+      "./prisma/**",
+    ],
   },
   // Type checking is enabled by default (Next.js default behavior).
 };
