@@ -29,14 +29,34 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ── Cairo Font (default for all UI) ─────────────────────────────────── */
+/* ─── IBM Plex Sans Arabic (self-hosted) — الخط الأساسي للمنصة ───
+   خط عربي حديث من IBM: وضوح عالٍ للأرقام والجداول المالية، 7 أوزان،
+   self-hosted (صفر طلبات خارجية = أسرع + يعمل أوفلاين في PWA). */
+@font-face { font-family: 'IBM Plex Sans Arabic'; font-style: normal; font-weight: 100; font-display: swap; src: url('/fonts/plex-arabic-100.ttf') format('truetype'); }
+@font-face { font-family: 'IBM Plex Sans Arabic'; font-style: normal; font-weight: 200; font-display: swap; src: url('/fonts/plex-arabic-200.ttf') format('truetype'); }
+@font-face { font-family: 'IBM Plex Sans Arabic'; font-style: normal; font-weight: 300; font-display: swap; src: url('/fonts/plex-arabic-300.ttf') format('truetype'); }
+@font-face { font-family: 'IBM Plex Sans Arabic'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/plex-arabic-400.ttf') format('truetype'); }
+@font-face { font-family: 'IBM Plex Sans Arabic'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/plex-arabic-500.ttf') format('truetype'); }
+@font-face { font-family: 'IBM Plex Sans Arabic'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/plex-arabic-600.ttf') format('truetype'); }
+@font-face { font-family: 'IBM Plex Sans Arabic'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/plex-arabic-700.ttf') format('truetype'); }
+
+/* ── IBM Plex Sans Arabic (default for all UI) ────────────────────────── */
+
+Old block replaced below
 :root {
-  /* سلسلة fallback قوية: لو لم يُحمّل Cairo (بناء بدون GARFIX_USE_GOOGLE_FONT)
-     ننتقل لخطوط عربية نظامية جيدة بدل sans-serif العام — يحافظ على وضوح
-     العربي وثبات المقاييس عبر الأنظمة. */
-  --font-cairo: 'Cairo', 'Tajawal', 'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif;
+  /* P3 FONT UPGRADE: Cairo → IBM Plex Sans Arabic — خط عربي حديث أوضح
+     للأرقام/الجداول المالية + self-hosted. Cairo يبقى fallback. */
+  --font-cairo: 'IBM Plex Sans Arabic', 'Cairo', 'Tajawal', 'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif;
+}
+/* Tailwind v4 layering: * وحدها قد لا تتغلب على preflight داخل نفس الطبقة —
+   التوريث من html/body أضمن + !important للطوارئ القديمة */
+html, body {
+  font-family: var(--font-cairo);
 }
 * {
+  font-family: inherit;
+}
+button, input, select, textarea, table, th, td {
   font-family: var(--font-cairo) !important;
 }
 /* أرقام وأكواد لاتينية بخط أحادي مسافة حقيقي (كان Cairo/monospace — غير صحيح) */
@@ -1900,7 +1920,16 @@ pre, code, kbd, samp, .font-mono, .garfix-mono {
   .space-rtl-8 > * + * { margin-right: 2rem; }
 
   /* Print styles */
-  @media print {
+  
+/* ═══ RTL NUMERAL SAFETY — أرقام لاتينية سليمة داخل نص عربي ═══
+   المتصفحات أحيانًا تعيد ترتيب تسلسل "123.45" داخل RTL فتظهر "45.123".
+   القاعدة تفرض اتجاه LTR على أي عنصر يحمل الفئة .num أو [data-num]
+   مع دمج يونيكود سليم. */
+.num, [data-num] { direction: ltr; unicode-bidi: embed; }
+/* أرقام الإدخالات المالية تُعرض LTR حتى أثناء الكتابة العربية */
+input[type="number"] { direction: ltr; text-align: end; }
+
+@media print {
     .no-print { display: none !important; }
     .print-break-before { page-break-before: always; }
     .print-break-after { page-break-after: always; }
@@ -2349,4 +2378,56 @@ html.light {
 
 .animation-contained {
   contain: layout style paint;
+}
+
+/* ═══ INVOICE PRINT SYSTEM — طباعة احترافية للفاتورة فقط ═══
+   المشكلة السابقة: window.print() كان يطبع الصفحة كاملة (سايدبار+قوائم)
+   لأن ما من قاعدة print تعزل المودال. الآن:
+   - عند الطباعة: كل الجسم يختفي إلا .invoice-print-area
+   - زر الأوامر مخفي (.no-print)
+   - الأرقام تُطبع LTR سليمة داخل السياق العربي RTL
+   - مقاس A4 بهوامش مناسبة للطباعة العربية */
+@media print {
+  @page { size: A4; margin: 12mm; }
+
+  /* أخفِ كل شيء افتراضيًا */
+  body * { visibility: hidden !important; }
+
+  /* وأظهر منطقة الفاتورة فقط (مع احتوائها الكامل) */
+  .invoice-print-area,
+  .invoice-print-area * { visibility: visible !important; }
+
+  /* ثبّت صندوق الفاتورة أعلى الصفحة الأولى */
+  .invoice-print-area {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  /* إخفاء عناصر التحكم (أزرار الطباعة/الدفع/الإغلاق) */
+  .no-print { display: none !important; }
+
+  /* منع كسر صفوف الجدول عبر الصفحات */
+  .invoice-print-area table tr { page-break-inside: avoid !important; }
+
+  /* ترويسة الجدول تتكرر على كل صفحة */
+  .invoice-print-area thead { display: table-header-group !important; }
+
+  /* الأرقام والعملات دائمًا LTR داخل RTL */
+  .invoice-print-area [direction="ltr"],
+  .invoice-print-area .num { direction: ltr !important; unicode-bidi: embed !important; }
+
+  /* خلفيات الألوان تُطبع (رؤوس الجداول/الإجمالي) */
+  .invoice-print-area * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }

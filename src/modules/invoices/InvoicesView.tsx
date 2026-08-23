@@ -600,7 +600,7 @@ export function InvoicesView() {
                   label: 'تاريخ الإصدار',
                   sortable: true,
                   render: (value) => (
-                    <span className="text-muted-foreground text-xs">{value as string}</span>
+                    <span className="text-muted-foreground text-xs">{arDate(value as string)}</span>
                   ),
                 },
                 {
@@ -734,7 +734,7 @@ export function InvoicesView() {
                     </div>
                     <div className="flex items-center justify-between gap-2 text-[12px] leading-tight">
                       <span className="text-muted-foreground truncate">{inv.clientName}</span>
-                      <span className="text-muted-foreground/70 flex-shrink-0">{inv.issueDate}</span>
+                      <span className="text-muted-foreground/70 flex-shrink-0">{arDate(inv.issueDate)}</span>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
@@ -1200,6 +1200,17 @@ function Row({ label, value, strong }: { label: string; value: number; strong?: 
   );
 }
 
+/** تاريخ مقروء عربي (٢٣ أغسطس ٢٠٢٦) من قيمة ISO — بدل عرض الخام
+ *  "2026-08-23T00:00:00.000Z" مباشرةً. */
+function arDate(v: string | Date | null | undefined): string {
+  if (!v) return "—";
+  try {
+    return new Intl.DateTimeFormat("ar-EG", { year: "numeric", month: "long", day: "numeric" }).format(new Date(v));
+  } catch {
+    return String(v).slice(0, 10);
+  }
+}
+
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
@@ -1234,10 +1245,10 @@ function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoic
             <div className="text-[32px] font-black text-[#047857]">فاتورة</div>
             <div className="text-[14px] font-mono mt-1">#{invoice.invoiceNumber}</div>
             <div className="text-[12px] text-[#666] mt-2">
-              تاريخ الإصدار: {invoice.issueDate}
+              تاريخ الإصدار: {arDate(invoice.issueDate)}
             </div>
             <div className="text-[12px] text-[#666]">
-              تاريخ الاستحقاق: {invoice.dueDate}
+              تاريخ الاستحقاق: {arDate(invoice.dueDate)}
             </div>
           </div>
         </div>

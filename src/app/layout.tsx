@@ -205,7 +205,7 @@ export default async function RootLayout({
       </head>
       <body
         className={`${cairo.variable} font-cairo antialiased bg-background text-foreground`}
-        style={{ fontFamily: "'Cairo', sans-serif" }}
+        style={{ fontFamily: "'IBM Plex Sans Arabic', 'Cairo', sans-serif" }}
       >
         {/* Providers is a client component ("use client" directive). SSRs normally
             and hydrates on the client. (Phase 17 P3: was incorrectly documented as dynamic/ssr:false.)
