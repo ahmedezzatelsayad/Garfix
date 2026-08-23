@@ -65,7 +65,7 @@ export const POST = async (req: NextRequest) => {
     return NextResponse.json(
       {
         ok: false,
-        error: err instanceof Error ? err.message.slice(0, 300) : "migrate failed", visible,
+        error: err instanceof Error ? err.message.slice(0, 400) : "migrate failed",
       },
       { status: 500 },
     );
