@@ -43,12 +43,24 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   // لو التصحيح موجود → علّم النمط المرتبط بأنه تعلّم منه (سيُفحص لاحقًا)
+  // P0: نربط التقييم ببصمة المدخل (إن توفرت) ليستخدمها patternIsTrusted
+  // في إسقاط الأنماط المستمرة الفشل — هذا هو جسر feedback→learning.
+  let inputHashPrefix: string | undefined;
+  if (d.question && d.question.startsWith("hash:")) {
+    inputHashPrefix = d.question; // أصلاً بصمة مخزنة
+  } else if (d.question) {
+    try {
+      const { fabricHash } = await import("@/lib/ai-fabric/types");
+      inputHashPrefix = `hash:${fabricHash(d.question)}`;
+    } catch { /* best-effort */ }
+  }
+
   const feedback = await db.aIFeedback.create({
     data: {
       companySlug: d.companySlug,
       conversationId: d.conversationId ?? null,
       requestLogId: d.requestLogId ?? null,
-      question: d.question ?? null,
+      question: inputHashPrefix ?? d.question ?? null,
       answer: d.answer ?? null,
       rating: d.rating,
       correctedAnswer: d.correctedAnswer ?? null,

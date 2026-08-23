@@ -14,7 +14,7 @@ import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { toast } from "sonner";
 import {
-  Bot, BookOpen, Workflow, Activity, Upload, CheckCircle2,
+  Bot, BookOpen, Workflow, Activity, Upload, CheckCircle2, ChevronDown,
   Loader2, Play, ThumbsUp, ThumbsDown, Link2, Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -257,30 +257,35 @@ export function CompanyAgentView() {
         </div>
       )}
 
-      {/* ── Tab: n8n ── */}
+      {/* ── Tab: n8n — Flow Map مرئي + قوالب جاهزة ── */}
       {tab === "n8n" && (
-        <div className="landing-card rounded-2xl p-6">
-          <h3 className="font-bold text-foreground mb-2">ربط بيئة n8n الخاصة بك</h3>
-          <p className="text-[13px] text-muted-foreground leading-relaxed mb-5">
-            اربط بيئة n8n الذاتية الاستضافة ليستطيع الوكيل تنفيذ أتمتة حقيقية: إنشاء الطلبات من واتساب،
-            تحديث العملاء، إرسال الإشعارات — بدون كتابة كود.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-2.5">
-            <input
-              dir="ltr"
-              value={n8nUrl}
-              onChange={(e) => setN8nUrl(e.target.value)}
-              placeholder="https://n8n.your-domain.com/webhook/garfix-agent"
-              className="flex-1 px-4 py-3 rounded-xl bg-background border border-border text-[13px] outline-none focus:border-emerald-500"
-            />
-            <button onClick={testN8n} disabled={testing} className="px-6 py-3 rounded-xl bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none text-[13px] font-extrabold cursor-pointer whitespace-nowrap active-press disabled:opacity-60">
-              {testing ? <Loader2 size={14} className="animate-spin inline me-1" /> : <Play size={14} className="inline me-1" />}
-              اختبار الاتصال
-            </button>
+        <div className="space-y-5">
+          {/* الاتصال */}
+          <div className="landing-card rounded-2xl p-6">
+            <h3 className="font-bold text-foreground mb-2">ربط بيئة n8n الخاصة بك</h3>
+            <p className="text-[13px] text-muted-foreground leading-relaxed mb-4">
+              أدخل رابط Webhook من بيئة n8n — اختر قالبًا من الأسفل، أو أنشئ Workflow خاصًا بنفس المخطط.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <input
+                dir="ltr"
+                value={n8nUrl}
+                onChange={(e) => setN8nUrl(e.target.value)}
+                placeholder="https://n8n.your-domain.com/webhook/garfix-agent"
+                className="flex-1 px-4 py-3 rounded-xl bg-background border border-border text-[13px] outline-none focus:border-emerald-500"
+              />
+              <button onClick={testN8n} disabled={testing} className="px-6 py-3 rounded-xl bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none text-[13px] font-extrabold cursor-pointer whitespace-nowrap active-press disabled:opacity-60">
+                {testing ? <Loader2 size={14} className="animate-spin inline me-1" /> : <Play size={14} className="inline me-1" />}
+                اختبار الاتصال
+              </button>
+            </div>
+            <div className={cn("mt-3 flex items-center gap-2 text-[12px] font-bold", agent.n8nConnected ? "text-emerald-500" : "text-muted-foreground")}>
+              <Link2 size={14} /> {agent.n8nConnected ? "متصل ويعمل" : "غير متصل"}
+            </div>
           </div>
-          <div className={cn("mt-4 flex items-center gap-2 text-[12px] font-bold", agent.n8nConnected ? "text-emerald-500" : "text-muted-foreground")}>
-            <Link2 size={14} /> {agent.n8nConnected ? "متصل ويعمل" : "غير متصل"}
-          </div>
+
+          {/* مكتبة القوالب + المخطط المرئي */}
+          <N8nFlowTemplates webhookUrl={n8nUrl} onUseTemplate={() => {}} />
         </div>
       )}
 
@@ -356,3 +361,130 @@ function KBUploader({ onUpload, uploading }: { onUpload: (f: File, kind: string,
 }
 
 export default CompanyAgentView;
+
+/* ═══ n8n Flow Map — مخططات مرئية + قوالب جاهزة بنقرة ═══
+   كل قالب = خطوات مرسومة كبطاقات متصلة (يسهل فهمها ونسخها في n8n)
+   مع JSON التصدير الكامل للاستيراد المباشر في بيئة العميل. */
+
+interface FlowStep { icon: string; title: string; desc: string }
+interface FlowTemplate { id: string; nameAr: string; badge: string; steps: FlowStep[]; json: (hook: string) => string }
+
+const FLOW_TEMPLATES: FlowTemplate[] = [
+  {
+    id: "wa-order",
+    nameAr: "واتساب → طلب تلقائي",
+    badge: "الأكثر طلبًا",
+    steps: [
+      { icon: "💬", title: "WhatsApp Trigger", desc: "Webhook من Meta Cloud API" },
+      { icon: "🧠", title: "Garfix Agent", desc: "POST نص الرسالة لوكيل شركتك" },
+      { icon: "📦", title: "استخراج المنتجات", desc: "مطابقة الكتالوج والأسعار" },
+      { icon: "🧾", title: "إنشاء فاتورة", desc: "ERP API — فاتورة مسودة + عميل" },
+      { icon: "📲", title: "رد تأكيد", desc: "إرسال ملخص الطلب للعميل" },
+    ],
+    json: (hook) => JSON.stringify({
+      name: "Garfix — WhatsApp Auto-Order",
+      nodes: [
+        { parameters: { httpMethod: "POST", path: "garfix-wa" }, name: "WhatsApp Webhook", type: "n8n-nodes-base.webhook", position: [0, 0] },
+        { parameters: { url: hook || "https://your-app/api/ai/smart-parse", method: "POST", bodyParameters: { parameters: [{ name: "rawText", value: "={{$json.body.message.text}}" }, { name: "companySlug", value: "YOUR_SLUG" }] } }, name: "Garfix Agent", type: "n8n-nodes-base.httpRequest", position: [220, 0] },
+        { parameters: { url: "https://your-app/api/invoices", method: "POST" }, name: "Create Invoice", type: "n8n-nodes-base.httpRequest", position: [440, 0] },
+      ],
+      connections: { "WhatsApp Webhook": { main: [[{ node: "Garfix Agent", type: "main", index: 0 }]] }, "Garfix Agent": { main: [[{ node: "Create Invoice", type: "main", index: 0 }]] } },
+    }, null, 2),
+  },
+  {
+    id: "low-stock",
+    nameAr: "تنبيه انخفاض المخزون",
+    badge: "تشغيلي",
+    steps: [
+      { icon: "⏰", title: "Schedule", desc: "كل صباح 8:00" },
+      { icon: "📊", title: "قراءة المخزون", desc: "أصناف تحت الحد الأدنى" },
+      { icon: "🧮", title: "تصفية", desc: "IF أقل من حد إعادة الطلب" },
+      { icon: "✉️", title: "إشعار المشتريات", desc: "إيميل + واتساب للمدير" },
+    ],
+    json: (hook) => JSON.stringify({ name: "Garfix — Low Stock Alert", nodes: [
+      { parameters: { rule: { interval: [{ field: "hours", hoursInterval: 24 }] } }, name: "Daily", type: "n8n-nodes-base.scheduleTrigger", position: [0, 0] },
+      { parameters: { url: "https://your-app/api/inventory/items", method: "GET" }, name: "Fetch Stock", type: "n8n-nodes-base.httpRequest", position: [220, 0] },
+      { parameters: {}, name: "Notify", type: "n8n-nodes-base.emailSend", position: [440, 0] },
+    ], connections: { Daily: { main: [[{ node: "Fetch Stock", type: "main", index: 0 }]] }, "Fetch Stock": { main: [[{ node: "Notify", type: "main", index: 0 }]] } } }, null, 2),
+  },
+  {
+    id: "daily-report",
+    nameAr: "تقرير يومي للأرباح",
+    badge: "إداري",
+    steps: [
+      { icon: "🌆", title: "نهاية اليوم", desc: "Cron 23:00" },
+      { icon: "📈", title: "ملخص المبيعات", desc: "إيراد/مقبوضات/آجل" },
+      { icon: "🤖", title: "تحليل AI", desc: "ملاحظات وتوصيات قصيرة" },
+      { icon: "📧", title: "إرسال للمدير", desc: "إيميل بتنسيق أنيق" },
+    ],
+    json: (hook) => JSON.stringify({ name: "Garfix — Daily P&L", nodes: [
+      { parameters: { rule: { interval: [{ triggerAtHour: 23 }] } }, name: "Nightly", type: "n8n-nodes-base.scheduleTrigger", position: [0, 0] },
+      { parameters: { url: hook || "https://your-app/api/reports", method: "GET" }, name: "Report", type: "n8n-nodes-base.httpRequest", position: [220, 0] },
+      { parameters: {}, name: "Email", type: "n8n-nodes-base.emailSend", position: [440, 0] },
+    ], connections: { Nightly: { main: [[{ node: "Report", type: "main", index: 0 }]] }, Report: { main: [[{ node: "Email", type: "main", index: 0 }]] } } }, null, 2),
+  },
+];
+
+function N8nFlowTemplates({ webhookUrl, onUseTemplate }: { webhookUrl: string; onUseTemplate: (t: FlowTemplate) => void }) {
+  const [expanded, setExpanded] = useState<string | null>("wa-order");
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copyJson = (t: FlowTemplate) => {
+    navigator.clipboard.writeText(t.json(webhookUrl)).then(() => {
+      setCopied(t.id);
+      setTimeout(() => setCopied(null), 2000);
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      <h3 className="font-bold text-foreground text-[15px]">قوالب الأتمتة الجاهزة — انسخ والصق في n8n</h3>
+      {FLOW_TEMPLATES.map((t) => (
+        <div key={t.id} className="landing-card rounded-2xl overflow-hidden">
+          <button
+            onClick={() => setExpanded(expanded === t.id ? null : t.id)}
+            className="w-full flex items-center justify-between p-4 bg-transparent border-none cursor-pointer text-right"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-[13.5px] font-extrabold text-foreground">{t.nameAr}</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">{t.badge}</span>
+            </div>
+            <ChevronDown size={16} className={cn("text-muted-foreground transition-transform", expanded === t.id && "rotate-180")} />
+          </button>
+
+          {expanded === t.id && (
+            <div className="px-4 pb-4">
+              {/* المخطط المرئي: بطاقات متصلة */}
+              <div className="flex items-stretch gap-0 overflow-x-auto garfix-scroll pb-2" dir="rtl">
+                {t.steps.map((st, i) => (
+                  <div key={st.title} className="flex items-center shrink-0">
+                    <div className="w-[130px] p-3 rounded-xl border border-border bg-background text-center">
+                      <div className="text-xl mb-1">{st.icon}</div>
+                      <div className="text-[11.5px] font-extrabold text-foreground leading-tight">{st.title}</div>
+                      <div className="text-[10px] text-muted-foreground mt-1 leading-snug">{st.desc}</div>
+                    </div>
+                    {i < t.steps.length - 1 && (
+                      <div className="w-6 flex items-center justify-center text-emerald-500" aria-hidden>
+                        ←
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <button
+                  onClick={() => copyJson(t)}
+                  className="px-4 py-2 rounded-lg bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none text-[12px] font-bold cursor-pointer active-press inline-flex items-center gap-1.5"
+                >
+                  {copied === t.id ? <CheckCircle2 size={13} /> : <Workflow size={13} />}
+                  {copied === t.id ? "تم النسخ ✓ الصقها في n8n" : "نسخ JSON للقالب"}
+                </button>
+                <span className="text-[11px] text-muted-foreground self-center">n8n → Workflows → Import from Clipboard</span>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}

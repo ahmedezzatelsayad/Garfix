@@ -317,6 +317,31 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       select: { total: true },
     });
     const revenue = revenueRows.reduce((s, r) => s + num(r.total, 3), 0);
+    // P3: Company Knowledge Base Retrieval — اجلب مستندات الشركة (سياسات/
+    // كتالوج/FAQ) وحقن مقتطفاتها في السياق فيجيب الوكيل من "معرفة الشركة"
+    // لا من الذاكرة العامة للنموذج فقط. (Commercial v2: AI Agent $20)
+    let kbBlock = "";
+    try {
+      const kbDocs = await db.aIMemoryNote.findMany({
+        where: { companySlug: data.companySlug, category: { startsWith: "kb_" } },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+      });
+      const chunks: string[] = [];
+      for (const doc of kbDocs) {
+        try {
+          const meta = JSON.parse(doc.content || "{}") as { title?: string; textPreview?: string; text?: string };
+          const body = (meta.text || meta.textPreview || "").slice(0, 600);
+          if (body.trim()) {
+            chunks.push(`【${meta.title || "مستند"}】\n${body}`);
+          }
+        } catch { /* تخطَّ المستندات غير النصية */ }
+      }
+      if (chunks.length > 0) {
+        kbBlock = `\nمعرفة الشركة (Knowledge Base) — استخدمها كمصدر أول للإجابة:\n${chunks.join("\n---\n")}\n`;
+      }
+    } catch { /* best-effort */ }
+
     contextBlock = `
 سياق الأعمال الحالي:
 - الشركة: ${companyData?.nameAr || companyData?.name || data.companySlug}
@@ -331,7 +356,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 - إجمالي الإيرادات: ${revenue.toFixed(3)}
 - آخر 5 فواتير:
 ${recentInvoices.map((i) => `  • ${i.invoiceNumber} — ${redactPii(i.clientName || "")} — ${num(i.total, 3)} — ${i.status} — ${i.issueDate}`).join("\n")}
-`;
+${kbBlock}`;
   }
 
   const pageContext = data.currentPage

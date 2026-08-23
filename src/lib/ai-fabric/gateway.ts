@@ -116,6 +116,12 @@ async function patternStage(
         if (raw) {
           const parsed = InvoiceSchema.safeParse(raw);
           if (parsed.success) {
+            // P0: تجاهل النمط إذا كان مستمر الفشل وفق تقييمات البشر
+            const trusted = await patternIsTrusted(req.companySlug, fp);
+            if (!trusted) {
+              logger.info("[gateway] pattern skipped — flagged by feedback", { companySlug: req.companySlug, fp });
+              return { hit: false, data: null };
+            }
             return { hit: true, data: parsed.data };
           }
         }
@@ -505,6 +511,31 @@ export async function executeCascade<T = unknown>(
 
 // ─── Convenience: store a memory entry (used by Phase 7) ───────────────────
 
+
+/**
+ * P0 LEARNING LOOP: هل النمط/الذاكرة موثوقًا؟
+ * قبل إرجاع نتيجة من pattern/memory نفحص سجل التغذية الراجعة:
+ * إذا تجاوزت الإجابات المرتبطة بذلك الـ inputHash عتبة التصحيحات البشرية
+ * (3 👎) نُسقط الثقة في النمط ونتجاوز المرحلة — فيتعلم النظام مما فُشل
+ * وليس فقط مما تكرر. هذا يحول feedback السلبي إلى سلوك فعلي.
+ */
+async function patternIsTrusted(companySlug: string, inputHash: string): Promise<boolean> {
+  try {
+    const downvotes = await db.aIFeedback.count({
+      where: {
+        companySlug,
+        rating: "down",
+        // الإجابة المخزنة في الذاكرة تُسجّل كـ question بصيغة hash حتى نربطها
+        question: { startsWith: `hash:${inputHash}` },
+      },
+    });
+    return downvotes < 3;
+  } catch {
+    // فحص التغذية الراجعة best-effort — لا يوقف الـ cascade أبدًا
+    return true;
+  }
+}
+
 export async function storeAIMemory(params: {
   companySlug: string;
   category: string;
@@ -519,6 +550,15 @@ export async function storeAIMemory(params: {
       content,
     },
   });
+
+  // P2: تقييم جودة تلقائي (ai-score) خلف الكواليس بعد كل حفظ تعلم —
+  // يحوّل الجودة من ادعاء إلى قياس دوري لكل شركة (best-effort، fire-and-forget).
+  void (async () => {
+    try {
+      const { computeAndSaveScore } = await import("./ai-score");
+      await computeAndSaveScore(params.companySlug);
+    } catch { /* غير حرج */ }
+  })();
 }
 
 // ─── Barrel export ─────────────────────────────────────────────────────────

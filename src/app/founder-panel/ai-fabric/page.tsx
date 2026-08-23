@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useAIFabric } from "@/hooks/queries/founder-panel";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -82,6 +83,15 @@ export default function AIFabricFounderPanel() {
     );
   }
 
+  // P1: Stage Metrics — توزيع المراحل واتجاه التعلم (من AIRequestLog)
+  const [metrics, setMetrics] = useState<Record<string, unknown> | null>(null);
+  useEffect(() => {
+    fetch("/api/founder-panel/ai-fabric-metrics", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setMetrics)
+      .catch(() => {});
+  }, []);
+
   // Error state
   if (error && !data) {
     return (
@@ -113,6 +123,31 @@ export default function AIFabricFounderPanel() {
         <p className="text-sm text-muted-foreground mb-8">
           Period: {periodStart} → {periodEnd} (current month)
         </p>
+
+        {/* P1: Stage Metrics — الدليل القابل للقياس */}
+        {metrics && (
+          <div className="mb-10 p-5 bg-white rounded-xl border border-gray-200 shadow-sm">
+            <h2 className="text-lg font-bold mb-1">Stage Metrics (P1) — التعلم الحقيقي بالأرقام</h2>
+            <p className="text-xs text-muted-foreground mb-4">
+              {String(metrics.totalRequests)} طلب خلال {String(metrics.windowDays)} يوم —
+              نسبة الحل بدون LLM: <b className="text-emerald-600">{String((metrics.learning as Record<string, unknown>).zeroCostRate)}%</b>
+              (كلما ارتفعت = المنصة تتعلم وتوفر أكثر)
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+              {((metrics.stages as Array<Record<string, unknown>>) || []).map((st) => (
+                <div key={String(st.stage)} className="p-3 rounded-lg bg-gray-50 border text-center">
+                  <div className="text-[11px] font-bold text-gray-500 uppercase">{String(st.stage)}</div>
+                  <div className="text-xl font-black text-gray-900">{String(st.count)}</div>
+                  <div className="text-[10px] text-gray-400">{String(st.share)}% • {String(st.avgLatencyMs)}ms</div>
+                </div>
+              ))}
+            </div>
+            <div className="text-xs text-gray-500">
+              تكلفة كل 1000 طلب: <b>${String((metrics.learning as Record<string, unknown>).costPer1kRequests)}</b>
+              {" • "}إجمالي الشهر: <b>${String((metrics.learning as Record<string, unknown>).totalCostUsd)}</b>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Companies */}

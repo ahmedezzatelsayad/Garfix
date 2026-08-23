@@ -294,7 +294,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Webhook app secret decryption failed" }, { status: 403 });
     }
 
-    // Extract and log messages
+    // Extract and process messages
     const messages = extractMessages(body);
 
     if (messages.length > 0) {
@@ -307,6 +307,33 @@ export async function POST(req: NextRequest) {
           text: msg.text.slice(0, 500),
           timestamp: msg.timestamp,
         });
+
+        // P4 AGENT ACTIONS: رسائل نصية → smart-parse → فواتير تلقائية
+        // (Commercial v2: AI Company Agent). fire-and-forget — لا نؤخر رد Meta.
+        if (msg.type === "text" && msg.text.trim().length >= 6 && company.slug) {
+          void (async () => {
+            try {
+              const parsed = JSON.stringify({ rawText: msg.text, companySlug: company.slug, source: "whatsapp" });
+              const res = await fetch(`http://localhost:${process.env.PORT || 3000}/api/ai/smart-parse`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "x-internal-agent": "whatsapp-webhook" },
+                body: parsed,
+              });
+              if (res.ok) {
+                const d = (await res.json()) as { orders?: unknown[] };
+                logger.info("[whatsapp-webhook] P4 agent: orders extracted", {
+                  companySlug: company.slug,
+                  from: msg.from,
+                  count: d.orders?.length || 0,
+                });
+              }
+            } catch (e) {
+              logger.warn("[whatsapp-webhook] P4 agent parse failed", {
+                companySlug: company.slug, err: e instanceof Error ? e.message : String(e),
+              });
+            }
+          })();
+        }
       }
     } else {
       // Could be a status update or other non-message event
