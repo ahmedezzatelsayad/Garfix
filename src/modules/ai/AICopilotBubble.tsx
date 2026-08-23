@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { GarfixAIIcon } from "@/components/garfix/GarfixAIIcon";
+import { toast } from "sonner";
+import { ThumbsUp, ThumbsDown } from "lucide-react";
 import { useBrand } from "@/context/BrandContext";
 import { useAuth } from "@/context/AuthContext";
 import { useAIChatHistory, useAIChatMessages, useAIToolsExecute } from "@/hooks/queries";
@@ -362,6 +364,25 @@ export function AICopilotBubble() {
   // - Fullscreen mode: unchanged (covers entire viewport on all sizes).
   // Layout styles converted from inline panelStyle to Tailwind classes on the panel div.
 
+  // P0 LEARNING LOOP: تقييم ردود المساعد — يغذي التعلم الحقيقي
+  const sendFeedback = (answer: string, rating: "up" | "down") => {
+    const slug = activeCompany?.slug;
+    if (!slug) return;
+    fetch("/api/ai/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        companySlug: slug,
+        question: input.trim() || undefined,
+        answer: answer.slice(0, 4000),
+        rating,
+      }),
+    }).then(() => {
+      toast.success(rating === "up" ? "شكرًا — سيساعد هذا تحسين المساعد" : "تم تسجيل الملاحظة — سنركز على تحسين هذا النوع من الردود");
+    }).catch(() => { /* silent */ });
+  };
+
   return (
     <>
       {/* Inject keyframes (no-op if already present) */}
@@ -570,6 +591,27 @@ export function AICopilotBubble() {
                       </div>
                     )}
                     {m.content}
+                    {/* P0 Learning Loop: أزرار تقييم على ردود المساعد فقط */}
+                    {!isUser && !isAgent && (
+                      <div className="flex gap-1.5 mt-2 pt-1.5 border-t border-current/10 opacity-60 hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => sendFeedback(m.content, "up")}
+                          aria-label="رد مفيد"
+                          title="رد مفيد — يساعد التعلم"
+                          className="w-6 h-6 rounded-md bg-transparent border border-current/20 flex items-center justify-center cursor-pointer hover:bg-current/10 transition-colors"
+                        >
+                          <ThumbsUp size={11} />
+                        </button>
+                        <button
+                          onClick={() => sendFeedback(m.content, "down")}
+                          aria-label="رد بحاجة تحسين"
+                          title="رد بحاجة تحسين — سنسجل للتعلم"
+                          className="w-6 h-6 rounded-md bg-transparent border border-current/20 flex items-center justify-center cursor-pointer hover:bg-current/10 transition-colors"
+                        >
+                          <ThumbsDown size={11} />
+                        </button>
+                      </div>
+                    )}
                     {/* P0.1 fix (Remaining Work Handoff): persistent warning banner
                         for review-queue / oversell items, mirroring the BulkInputView
                         banner pattern from GATE 5.1. Renders only when the assistant

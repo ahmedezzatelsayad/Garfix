@@ -2102,6 +2102,29 @@ model TamperEvidenceChain {
 
 // ─── AI Request Log (matches db.aIRequestLog) ───
 
+
+// ─── AI Feedback Loop (P0 Learning) — تقييم البشر لردود الذكاء ───
+model AIFeedback {
+  id             String   @id @default(cuid())
+  companySlug    String
+  requestLogId   Int?     // ربط بسجل AIRequestLog الأصلي
+  conversationId String?
+  messageRole    String   @default("assistant")
+  question       String?
+  answer         String?
+  rating         String   @default("pending") // up | down | pending
+  correctedAnswer String?
+  correctionReason String?
+  correctedBy    String?
+  learnedFrom    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([companySlug])
+  @@index([rating])
+  @@map("ai_feedback")
+}
+
 model AIRequestLog {
   id          Int      @id @default(autoincrement())
   companySlug String

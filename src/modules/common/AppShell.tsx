@@ -121,6 +121,12 @@ const AIAgentsView = lazy(() => import(
   "@/modules/ai-agents/AIAgentsView"
 ).then((m) => ({ default: m.AIAgentsView })));
 
+// Company Agent — الوكيل الخاص بالشركة + n8n (Commercial v2: $20 add-on)
+const CompanyAgentView = lazy(() => import(
+  /* webpackChunkName: "company-agent" */
+  "@/modules/company-agent/CompanyAgentView"
+).then((m) => ({ default: m.CompanyAgentView })));
+
 const BulkInputView = lazy(() => import(
   /* webpackChunkName: "bulk-input" */
   "@/modules/bulk-input/BulkInputView"
@@ -173,7 +179,8 @@ export const preloadViewMap: Record<ViewKey, () => Promise<void>> = {
   account: () => import(/* webpackChunkName: "account" */ "@/modules/account/AccountView").then(() => {}),
   inventory: () => import(/* webpackChunkName: "inventory" */ "@/modules/inventory/InventoryView").then(() => {}),
   automation: () => import(/* webpackChunkName: "automation" */ "@/modules/automation/AutomationView").then(() => {}),
-  "ai-agents": () => import(/* webpackChunkName: "ai-agents" */ "@/modules/ai-agents/AIAgentsView").then(() => {}),
+"ai-agents": () => import(/* webpackChunkName: "ai-agents" */ "@/modules/ai-agents/AIAgentsView").then(() => {}),
+  "company-agent": () => import(/* webpackChunkName: "company-agent" */ "@/modules/company-agent/CompanyAgentView").then(() => {}),
   billing: () => import(/* webpackChunkName: "billing" */ "@/modules/billing/BillingView").then(() => {}),
   roles: () => import(/* webpackChunkName: "roles" */ "@/modules/roles/RolesView").then(() => {}),
 };
@@ -210,10 +217,12 @@ export type ViewKey =
   | "inventory"
   | "automation"
   | "ai-agents"
+  | "company-agent"
   | "billing"
   | "roles";
 
-const VALID_VIEWS: ViewKey[] = ["dash", "invoices", "clients", "catalog", "purchases", "hr", "accounting", "settings", "saas", "platform-admin", "audit", "bulk-input", "reports", "team", "account", "inventory", "automation", "ai-agents", "billing", "roles"];
+const VALID_VIEWS: ViewKey[] = ["dash", "invoices", "clients", "catalog", "purchases", "hr", "accounting", "settings", "saas", "platform-admin", "audit", "bulk-input", "reports", "team", "account", "inventory", "automation", "ai-agents",
+  "company-agent", "billing", "roles"];
 
 function parseHash(): ViewKey {
   if (typeof window === "undefined") return "dash";
@@ -433,6 +442,7 @@ function AppShellContent(_props: Record<string, unknown>) {
                 <Suspense fallback={<MinimalLoading />}>
                   {view === "automation" && ((perms.settings_access || isAdmin || isFounder) ? <AutomationView /> : <NoAccessView label="الأتمتة" />)}
                   {view === "ai-agents" && <AIAgentsView />}
+                  {view === "company-agent" && <CompanyAgentView />}
                   {view === "team" && ((perms.settings_access || isAdmin || isFounder) ? <TeamView /> : <NoAccessView label="الفريق" />)}
                   {view === "billing" && <BillingView />}
                   {view === "roles" && ((isAdmin || isFounder) ? <RolesView /> : <NoAccessView label="الأدوار والصلاحيات" />)}

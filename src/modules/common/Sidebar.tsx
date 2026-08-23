@@ -53,6 +53,7 @@ const NAV_ITEMS: Array<{
   { key: "reports", label: "التقارير", icon: BarChart3, perm: "reports_access" },
   { key: "automation", label: "الأتمتة", icon: Zap, perm: "settings_access" },
   { key: "ai-agents", label: "وكلاء AI", icon: Bot, isAiFeature: true },
+  { key: "company-agent", label: "وكيل شركتي + n8n", icon: Bot, isAiFeature: true },
   { key: "team", label: "فريقي", icon: Users, perm: "settings_access" },
   { key: "roles", label: "الأدوار والصلاحيات", icon: Shield, adminOnly: true },
   { key: "settings", label: "الإعدادات", icon: Settings, perm: "settings_access" },

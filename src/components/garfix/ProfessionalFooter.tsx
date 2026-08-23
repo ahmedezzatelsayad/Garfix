@@ -193,7 +193,7 @@ export function ProfessionalFooter({ variant = "landing", version = "12" }: Prof
       <div className={`border-t ${colors.border} py-5 px-[5%] bg-muted/50`}>
         <div className="max-w-[1200px] mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className={`text-[11px] ${colors.muted} flex flex-wrap items-center gap-x-2`}>
-            <span>&copy; {new Date().getFullYear()} GARFIX v4.0. جميع الحقوق محفوظة.</span>
+            <span>&copy; {new Date().getFullYear()} GARFIX — Engineered &amp; Developed by <a href="https://ahmedelsayad.agency" target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:underline">Ahmedelsayad.agency</a></span>
             <span className="mx-1">|</span>
             <span>صُنع بـ ❤️ في الكويت</span>
           </div>

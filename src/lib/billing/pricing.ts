@@ -1,15 +1,15 @@
 /**
- * pricing.ts — Country-specific pricing for Garfix SaaS plans.
+ * pricing.ts — Commercial Model v2: خطة واحدة بسيطة + إضافة AI Agent.
  *
- * Each Gulf/MENA country has localized pricing in the local currency.
- * The default fallback is USD (current DEFAULT_PLANS prices).
+ * الفلسفة التجارية (من خطة العمل المعتمدة):
+ *   - "GarfiX Invoicing" $10/شهر: فواتير وعملاء ومنتجات بلا حدود — نقطة الدخول
+ *     التي تكتسب بها الشركات. لا تدرجات ولا رسوم لكل فاتورة ولا تعقيد.
+ *   - "AI Company Agent" $20/شهر/شركة: وكيل ذكي يتعلم بيانات الشركة
+ *     (Knowledge Base + WhatsApp + أتمتة) — محرك الإيرادات الأكبر (Upsell).
+ *   - العملة تُحوَّل تلقائيًا حسب بلد الشركة بأسعار صرف قابلة للتحديث.
  *
- * Country → Currency → Plan prices:
- *   KW: KWD (starter: 3.000, pro: 6.000, unlimited: 9.000)
- *   SA: SAR (starter: 37.50, pro: 75.00, unlimited: 112.50)
- *   AE: AED (starter: 37.00, pro: 74.00, unlimited: 111.00)
- *   EG: EGP (starter: 300, pro: 600, unlimited: 900)
- *   Default: USD (starter: 9.99, pro: 19.99, unlimited: 29.99)
+ * الأسعار الأساسية محفوظة بالدولار (عملة التسوية مع بوابات الدفع)،
+ * والع converted prices تُستخدم للعرض فقط.
  */
 
 export interface CountryPricingEntry {
@@ -19,114 +19,163 @@ export interface CountryPricingEntry {
   priceMonthly: number;
 }
 
-/** Country → Currency mapping */
-export const COUNTRY_CURRENCY: Record<string, string> = {
-  KW: 'KWD',
-  SA: 'SAR',
-  AE: 'AED',
-  BH: 'BHD',
-  OM: 'OMR',
-  QA: 'QAR',
-  EG: 'EGP',
-  DEFAULT: 'USD',
+// ═══ Plans (Commercial v2) ═══
+
+export type CommercialPlanKey = "invoicing" | "ai_agent";
+
+export interface CommercialPlanDef {
+  key: CommercialPlanKey;
+  name: string;
+  nameAr: string;
+  /** السعر بالدولار — عملة التسوية */
+  priceMonthlyUsd: number;
+  /** ملاحظة تسويقية قصيرة */
+  pitchAr: string;
+  /** هل إضافة على الخطة الأساسية أم مستقلة */
+  standalone: boolean;
+  featureBullets: string[];
+}
+
+export const COMMERCIAL_PLANS: Record<CommercialPlanKey, CommercialPlanDef> = {
+  invoicing: {
+    key: "invoicing",
+    name: "GarfiX Invoicing",
+    nameAr: "جارفيكس للفواتير",
+    priceMonthlyUsd: 10,
+    pitchAr: "اشتراك واحد — كل شيء مفتوح",
+    standalone: true,
+    featureBullets: [
+      "فواتير بلا حدود",
+      "عملاء بلا حدود",
+      "منتجات بلا حدود",
+      "تقارير أساسية",
+      "كل العملات — فوتر بأي عملة",
+      "الضرائب والأسعار حسب إعدادات شركتك",
+    ],
+  },
+  ai_agent: {
+    key: "ai_agent",
+    name: "AI Company Agent",
+    nameAr: "الوكيل الذكي للشركة",
+    priceMonthlyUsd: 20,
+    pitchAr: "موظف ذكي يتعلم شركتك — يعمل ٢٤/٧",
+    standalone: true,
+    featureBullets: [
+      "وكيل AI خاص بشركتك فقط",
+      "Company Knowledge Base (ملفات وسياسات وكتالوج)",
+      "واتساب: نص + صوت + صور",
+      "إنشاء الطلبات تلقائيًا",
+      "ذاكرة وتعلم مستمر من بياناتك",
+      "تكامل ERP كامل",
+    ],
+  },
 };
 
-/** Country → Plan → Monthly price */
-export const COUNTRY_PRICES: Record<string, Record<string, number>> = {
-  KW: {
-    starter: 3.000,
-    professional: 6.000,
-    unlimited: 9.000,
-  },
-  SA: {
-    starter: 37.50,
-    professional: 75.00,
-    unlimited: 112.50,
-  },
-  AE: {
-    starter: 37.00,
-    professional: 74.00,
-    unlimited: 111.00,
-  },
-  BH: {
-    starter: 3.500,
-    professional: 7.000,
-    unlimited: 10.500,
-  },
-  OM: {
-    starter: 3.800,
-    professional: 7.600,
-    unlimited: 11.400,
-  },
-  QA: {
-    starter: 36.00,
-    professional: 72.00,
-    unlimited: 108.00,
-  },
-  EG: {
-    starter: 300,
-    professional: 600,
-    unlimited: 900,
-  },
-  DEFAULT: {
-    starter: 9.99,
-    professional: 19.99,
-    unlimited: 29.99,
-  },
+// ═══ FX: تحويل تلقائي لعملة بلد الشركة ═══
+
+/**
+ * أسعار تحويل استرشادية من الدولار (التسوية) لعملات الدول المدعومة.
+ * القيم مدروسة لتكون "نفسية" لطيفة للعرض (تقريب لطيف لأرقام نظيفة)
+ * وقابلة للتحديث لاحقًا من مزود أسعار صرف حي دون تغيير الكود المستهلك.
+ */
+export const USD_FX: Record<string, number> = {
+  USD: 1,
+  SAR: 37.5,   // ~3.75 ربط رسمي — نعرض بالريال
+  EGP: 490,    // تقريب نفس العرضية
+  KWD: 3.1,
+  AED: 36.7,
+  QAR: 36.4,
+  BHD: 3.8,
+  OMR: 3.85,
+  JOD: 7.1,
+  MAD: 98,
+  TND: 31,
+  DZD: 1340,
+  IQD: 13100,
+  LYD: 4.85,
+  // fallback
+};
+
+/** عملة بلد الشركة الافتراضية. */
+export const COUNTRY_CURRENCY: Record<string, string> = {
+  KW: "KWD", SA: "SAR", AE: "AED", EG: "EGP", QA: "QAR", BH: "BHD",
+  OM: "OMR", JO: "JOD", MA: "MAD", TN: "TND", DZ: "DZD", IQ: "IQD",
+  LY: "LYD", DEFAULT: "USD",
 };
 
 /**
- * Get the pricing entry for a given country and plan.
- * Falls back to DEFAULT (USD) if the country or plan is not found.
+ * سعر خطة بعملة الشركة — تقريب نفسي للوحدة الأصغر (أرقام نظيفة للعرض).
+ */
+export function planPriceIn(
+  plan: CommercialPlanKey,
+  currency: string,
+): { price: number; currency: string; approx: boolean } {
+  const usd = COMMERCIAL_PLANS[plan].priceMonthlyUsd;
+  const rate = USD_FX[currency] ?? USD_FX.USD;
+  if (rate === 1) return { price: usd, currency: "USD", approx: false };
+  const raw = usd * rate;
+  // تقريب نفسي: لو > 100 → لأقرب 5؛ لو > 20 → لأقرب 1؛ غير ذلك → لأقرب 0.25
+  const rounded =
+    raw >= 100 ? Math.round(raw / 5) * 5 :
+    raw >= 20 ? Math.round(raw) :
+    Math.round(raw * 4) / 4;
+  return { price: rounded, currency, approx: true };
+}
+
+/**
+ * توافق خلفي: النظام القديم يمرر مفاتيح starter/professional/unlimited —
+ * نُرجعها كلها لنفس قيمة الخطة الموحدة ($10) حتى لا ينكسر أي مسار دفع قائم،
+ * مع الإشارة للنظام الجديد عبر metadata.
  */
 export function getCountryPricing(country: string, plan: string): CountryPricingEntry | null {
-  const normalizedCountry = country.toUpperCase();
-  const prices = COUNTRY_PRICES[normalizedCountry] || COUNTRY_PRICES.DEFAULT;
-  const currency = COUNTRY_CURRENCY[normalizedCountry] || COUNTRY_CURRENCY.DEFAULT;
-  const priceMonthly = prices[plan];
-
-  if (priceMonthly === undefined) {
-    return null;
+  const currency = COUNTRY_CURRENCY[country.toUpperCase()] || COUNTRY_CURRENCY.DEFAULT;
+  // التجريبي مجاني كما هو
+  if (plan === "trial") {
+    return { country: country.toUpperCase(), currency, plan, priceMonthly: 0 };
   }
-
+  // كل الخطط المدفوعة القديمة = الخطة الموحدة الجديدة
+  const usd = COMMERCIAL_PLANS.invoicing.priceMonthlyUsd;
+  const rate = USD_FX[currency] ?? 1;
+  const priceMonthly = rate === 1 ? usd : Math.round(usd * rate * 100) / 100;
   return {
-    country: normalizedCountry,
+    country: country.toUpperCase(),
     currency,
     plan,
     priceMonthly,
   };
 }
 
-/**
- * Get all available prices for a given country.
- * Returns the full plan price map for the country (or DEFAULT fallback).
- */
 export function getCountryPlanPrices(country: string): Record<string, number> {
-  const normalizedCountry = country.toUpperCase();
-  return COUNTRY_PRICES[normalizedCountry] || COUNTRY_PRICES.DEFAULT;
+  const currency = COUNTRY_CURRENCY[country.toUpperCase()] || COUNTRY_CURRENCY.DEFAULT;
+  const rate = USD_FX[currency] ?? 1;
+  const base = COMMERCIAL_PLANS.invoicing.priceMonthlyUsd;
+  return {
+    trial: 0,
+    starter: base * rate,
+    professional: base * rate,
+    unlimited: base * rate,
+    invoicing: base * rate,
+    ai_agent: COMMERCIAL_PLANS.ai_agent.priceMonthlyUsd * rate,
+  };
 }
 
-/**
- * Get the currency for a given country.
- * Falls back to USD if the country is not in the map.
- */
-export function getCountryCurrency(country: string): string {
-  const normalizedCountry = country.toUpperCase();
-  return COUNTRY_CURRENCY[normalizedCountry] || COUNTRY_CURRENCY.DEFAULT;
-}
+// ── compat exports (المستهلكون القدامى يستوردون هذه مباشرة) ──
+
+/** توافق خلفي: عملة كل بلد (كانت تصدر من هنا قبل v2) */
+export const COUNTRY_CURRENCY_V2 = COUNTRY_CURRENCY;
 
 /**
- * Get all supported countries with their currencies and plan prices.
- * Useful for the billing UI to show available pricing options.
+ * توافق خلفي: أسعار قديمة الشكل لكن بقيم النموذج الموحد الجديد —
+ * كل خطة مدفوعة = 10$ محوّلة لعملة البلد.
  */
-export function getAllCountryPricing(): Array<{
-  country: string;
-  currency: string;
-  plans: Record<string, number>;
-}> {
-  return Object.entries(COUNTRY_PRICES).map(([country, plans]) => ({
-    country,
-    currency: COUNTRY_CURRENCY[country] || 'USD',
-    plans,
-  }));
-}
+export const COUNTRY_PRICES: Record<string, Record<string, number>> = Object.fromEntries(
+  Object.entries(COUNTRY_CURRENCY).map(([country, currency]) => {
+    const rate = USD_FX[currency] ?? 1;
+    const base = COMMERCIAL_PLANS.invoicing.priceMonthlyUsd * rate;
+    return [country, {
+      starter: Math.round(base * 100) / 100,
+      professional: Math.round(base * 100) / 100,
+      unlimited: Math.round(base * 100) / 100,
+    }];
+  }),
+);

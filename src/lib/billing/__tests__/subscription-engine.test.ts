@@ -227,31 +227,33 @@ describe('subscription-engine', () => {
   });
 
   describe('country pricing integration', () => {
-    it('should return KW starter pricing in KWD', () => {
+    it('should return KW starter pricing in KWD (Commercial v2: $10 → KWD)', () => {
       const pricing = getCountryPricing('KW', 'starter');
       expect(pricing).not.toBe(null);
       expect(pricing!.country).toBe('KW');
       expect(pricing!.currency).toBe('KWD');
-      expect(pricing!.priceMonthly).toBe(3);
+      expect(pricing!.priceMonthly).toBe(31); // $10 × 3.1
     });
 
     it('should return SA starter pricing in SAR', () => {
       const pricing = getCountryPricing('SA', 'starter');
       expect(pricing).not.toBe(null);
       expect(pricing!.currency).toBe('SAR');
-      expect(pricing!.priceMonthly).toBe(37.50);
+      expect(pricing!.priceMonthly).toBe(375); // $10 × 37.5
     });
 
     it('should return EG starter pricing in EGP', () => {
       const pricing = getCountryPricing('EG', 'starter');
       expect(pricing).not.toBe(null);
       expect(pricing!.currency).toBe('EGP');
-      expect(pricing!.priceMonthly).toBe(300);
+      expect(pricing!.priceMonthly).toBe(4900); // $10 × 490
     });
 
-    it('should return null for unknown plan', () => {
+    it('unknown plan falls back to unified price (Commercial v2 — لا خطط متعددة)', () => {
       const pricing = getCountryPricing('KW', 'unknown_plan');
-      expect(pricing).toBe(null);
+      // Commercial v2: كل مفتاح غير التجريبي = الخطة الموحدة
+      expect(pricing).not.toBe(null);
+      expect(pricing!.priceMonthly).toBe(31);
     });
 
     it('should fall back to USD for unknown country', () => {
