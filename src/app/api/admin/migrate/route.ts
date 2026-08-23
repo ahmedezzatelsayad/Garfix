@@ -38,13 +38,12 @@ export const POST = async (req: NextRequest) => {
     // HOTFIX: بعض عمليات النشر لا تُمرر متغيرات env الحساسة للعملية الفرعية
     // رغم توفرها في process.env — نبنيها صراحة مع fallback منطقي.
     const env = { ...process.env } as NodeJS.ProcessEnv;
-    // Vercel لا يمرر دائمًا كل المتغيرات للعمليات الفرعية — نحقن الصريحين:
-    // تشخيص: ما المتغيرات المرئية فعلًا في هذا الـ runtime؟
+    // تشخيص (معرف قبل أي throw ليظل مرئيًا في catch): المتغيرات الفعلية
     const visible = ["DATABASE_URL","DATABASE_DIRECT_URL","METRICS_TOKEN","VERCEL","NODE_ENV"]
       .map((k) => k + "=" + (process.env[k] ? "set" : "MISSING")).join(" ");
     const dbUrl = process.env.DATABASE_URL || env.DATABASE_URL;
     const directUrl = process.env.DATABASE_DIRECT_URL || env.DATABASE_DIRECT_URL || dbUrl;
-    if (!dbUrl) throw new Error("DATABASE_URL not available in runtime env");
+    if (!dbUrl) throw new Error("DATABASE_URL not available in runtime env [" + visible + "]");
     if (dbUrl) env.DATABASE_URL = dbUrl;
     if (directUrl) env.DATABASE_DIRECT_URL = directUrl;
     const { stdout, stderr } = await execFileAsync(
