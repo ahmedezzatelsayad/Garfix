@@ -1746,6 +1746,9 @@ model ProductMatchAudit {
   isUndone     Boolean
   undoneBy     String?
   undoneAt     DateTime?
+  // P0 FIX: عمود كان الكود يكتبه (inventory-sync وغيره) وغير موجود في المخطط
+  // — كل كتابة تدقيق بالـ createdBy كانت تفشل صامتة.
+  createdBy    String?
 
   @@index([companySlug])
   @@map("product_match_audit")

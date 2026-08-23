@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils";
 // FE-15 FIX (Audit v2 · Phase 3): founder-panel pages render through
 // FounderPanelShell, which never included the shared skip-links that AppShell
 // has. Keyboard users had to Tab through the entire sidebar to reach content.
-import { GarfixSkipLinks } from "@/components/garfix-ds";
 // Phase 2 P1 fix: FounderGuard import removed — server layout does the check now.
 
 // ── Types ───────────────────────────────────────────────────────────────
@@ -156,7 +155,6 @@ export default function FounderPanelShell({
     // client-side guard was redundant and caused a flash of unauthenticated HTML.
     <div className="min-h-dvh bg-background text-foreground" dir="rtl">
         {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
-        <GarfixSkipLinks />
         {/* Mobile Header */}
         <header id="main-navigation" className="lg:hidden fixed top-0 start-0 end-0 z-40 h-16 bg-card/95 backdrop-blur-md border-b border-border flex items-center justify-between px-4">
           <div className="flex items-center gap-3">

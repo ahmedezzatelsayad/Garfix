@@ -1,7 +1,7 @@
 // Responsive: sm/md/lg breakpoints added
 "use client";
 
-import { useEffect, useState, useCallback, Suspense, lazy, startTransition } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense, lazy, startTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useBrand } from "@/context/BrandContext";
@@ -15,7 +15,6 @@ import { AppFooter } from "@/components/garfix/AppFooter";
 // FE-01 FIX (Audit v2): import GarfixSkipLinks so skip-link targets work.
 // The skip links were defined in garfix-ds but never rendered in the shell,
 // making them dead code (WCAG 2.4.1 violation).
-import { GarfixSkipLinks } from "@/components/garfix-ds";
 // Lazy Loading: Specific loading states for each view type
 import {
   DashboardLoading,
@@ -290,14 +289,28 @@ function AppShellContent(_props: Record<string, unknown>) {
   // → all API queries 401/empty → views either show "no data" or crash
   // on undefined fields. This is the gap that produced the user's complaint
   // "مفيش onboarding ومفيش داش بورد".
-  const showOnboarding = !loadingCompanies && companies.length === 0;
+  // P0 ONBOARDING FIX: كان المعالج يُغلق فور إنشاء الشركة (refreshCompanies
+  // يحدّث القائمة فينقلب showOnboarding إلى false من منتصف الرحلة) — فلا يرى
+  // المستخدم الجديد خطوات الدولة/التخصيص/النشاط/المميزات أبداً. الآن: بمجرد
+  // فتح المعالج يبقى مفتوحاً حتى يُكمل المستخدم الخطوات أو يتخطاها صراحةً.
+  const [wizardDismissed, setWizardDismissed] = useState(false);
+  // بمجرد فتح المعالج نثبّته (ref) حتى لو ظهرت شركات أثناء الرحلة — see showOnboarding
+  const wizardForcedRef = useRef(false);
+  if (typeof window !== "undefined" && !loadingCompanies && companies.length === 0) {
+    wizardForcedRef.current = true;
+  }
+  const needsOnboarding = !loadingCompanies && companies.length === 0;
+  const showOnboarding = !wizardDismissed && (needsOnboarding || wizardForcedRef.current);
+  const dismissWizard = useCallback(() => {
+    wizardForcedRef.current = false;
+    setWizardDismissed(true);
+  }, []);
 
   return (
     <CommandPaletteProvider>
       {/* FE-01 FIX (Audit v2): Render skip links at the top of the shell so
           keyboard users can jump directly to main content / nav / footer.
           Targets (#main-content, #main-navigation, #main-footer) are set below. */}
-      <GarfixSkipLinks />
       <div
         className="flex flex-col sm:flex-row min-h-dvh bg-background text-foreground"
         dir="rtl"
@@ -358,8 +371,8 @@ function AppShellContent(_props: Record<string, unknown>) {
                     → companies list populates → showOnboarding flips false →
                     the real dashboard mounts. */}
                 <SetupWizard
-                  onComplete={async () => { await refreshCompanies(); }}
-                  onSkip={async () => { await refreshCompanies(); }}
+                  onComplete={async () => { await refreshCompanies(); dismissWizard(); }}
+                  onSkip={async () => { await refreshCompanies(); dismissWizard(); }}
                 />
               </Suspense>
             ) : (

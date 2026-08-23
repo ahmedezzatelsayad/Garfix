@@ -56,7 +56,9 @@ describe("P2 Typed Prisma — migration invariants", () => {
 
   it("ai-provisioning.ts imports dbTyped (not the untyped db)", () => {
     const src = readSrc("services/ai-provisioning.ts");
-    expect(src).toContain("import { dbTyped as db } from '@/lib/db';");
+    // P2 relaxation: يقبل الاستيراد مع رموز إضافية (withTenantTx) — المهم أنه
+    // dbTyped وليس الـ db غير المُنمّط.
+    expect(src).toMatch(/import\s*\{[^}]*dbTyped\s+as\s+db[^}]*\}\s*from\s*['"]@\/lib\/db['"]/);
   });
 });
 
@@ -185,7 +187,8 @@ describe("P2 Typed Prisma — graduated migration discipline", () => {
 
   it("db.ts keeps dbAsAny escape hatch for documented exceptions only", () => {
     const src = readSrc("db.ts");
-    expect(src).toMatch(/export const dbAsAny:\s*any/);
+    // P2: النوع رُقّي من any إلى unknown (أكثر أماناً) — نقبل كليهما.
+    expect(src).toMatch(/export const dbAsAny:\s*(any|unknown)/);
   });
 
   it("db.ts retains the graduated-migration commentary (so future agents don't re-introduce any)", () => {
@@ -298,9 +301,9 @@ describe("P2-Sprint-4 — subscription-engine + payment + inter-company migratio
     it(`${file} imports dbTyped (not the untyped db)`, () => {
       const abs = resolve(import.meta.dir, "../../../", file);
       const src = readFileSync(abs, "utf8");
-      const hasDbTyped =
-        src.includes('import { dbTyped as db } from "@/lib/db"') ||
-        src.includes("import { dbTyped as db } from '@/lib/db'");
+      // P2 relaxation: يقبل الاستيراد مع رموز إضافية (مثل withTenantTx) — المهم
+      // أنه dbTyped وليس الـ db غير المُنمّط.
+      const hasDbTyped = /import\s*\{[^}]*dbTyped\s+as\s+db[^}]*\}\s*from\s*['"]@\/lib\/db['"]/.test(src);
       expect(hasDbTyped).toBe(true);
     });
   }

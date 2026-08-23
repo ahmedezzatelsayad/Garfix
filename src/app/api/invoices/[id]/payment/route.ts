@@ -31,7 +31,9 @@ const PaymentSchema = z.object({
   // H5 FIX: optional client-supplied idempotency key. UUID/v4 recommended.
   // If provided, the same key+invoiceId combination will not record a second
   // payment within IDEMPOTENCY_TTL_HOURS — the original response is returned.
-  idempotencyKey: z.string().min(8).max(128),
+  // P0 FIX: كان الحقل إلزامياً بالخطأ (بدون .optional()) فكان أي تسجيل دفعة
+  // من الواجهة يفشل بـ 400 "Invalid input" — استحالة تحصيل أي فاتورة.
+  idempotencyKey: z.string().min(8).max(128).optional(),
 });
 
 const IDEMPOTENCY_TTL_HOURS = 24;

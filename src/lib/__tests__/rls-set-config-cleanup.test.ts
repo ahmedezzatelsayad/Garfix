@@ -90,7 +90,7 @@ describe("FC-3 set_config('app.current_company_slug', ..., true) cleanup", () =>
       insideValue = r[0]?.v ?? null;
     });
     expect(insideValue).toBe("test-tx-scope");
-  }, 15000);
+  }), 15000);
 
   it("after the transaction commits, a new query on the same client returns NULL/empty", skipIfSqlite(async () => {
     // Step 1: run a $transaction that sets the var with is_local=true.

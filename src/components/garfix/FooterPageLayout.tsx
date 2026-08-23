@@ -7,8 +7,6 @@ import { PublicSiteHeader } from "@/components/site/PublicSiteHeader";
 // missing the skip-nav that the AppShell provides. Keyboard users had no way
 // to jump past the long nav/hero to the main content. We render the shared
 // GarfixSkipLinks component here and add matching id targets below.
-import { GarfixSkipLinks } from "@/components/garfix-ds";
-
 interface FooterPageLayoutProps {
   title: string;
   subtitle?: string;
@@ -30,7 +28,6 @@ export function FooterPageLayout({
       className="min-h-dvh bg-background text-foreground"
     >
       {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
-      <GarfixSkipLinks />
       {/* ── Nav — الهيدر المشترك للموقع متعدد الصفحات ───────── */}
       <PublicSiteHeader />
 

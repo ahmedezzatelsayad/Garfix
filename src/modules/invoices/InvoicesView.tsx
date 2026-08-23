@@ -1366,7 +1366,10 @@ function PaymentDialog({ invoice, onClose, onPaid }: { invoice: Invoice; onClose
       return;
     }
     recordPaymentMutation.mutate(
-      { id: invoice.id, amount: amt, date: new Date().toISOString().slice(0, 10), method },
+      // P0 FIX: نرسل مفتاح idempotency (UUID) مع كل محاولة دفع — يمنع تسجيل
+      // الدفعة مرتين لو أعاد المستخدم المحاولة/انقطع الاتصال. السيرفر يقبل
+      // غيابه الآن أيضاً بعد إصلاح الحقل الإلزامي الخاطئ.
+      { id: invoice.id, amount: amt, date: new Date().toISOString().slice(0, 10), method, idempotencyKey: crypto.randomUUID() },
       {
         onSuccess: () => { toast.success("تم تسجيل الدفعة بنجاح"); onPaid(); },
         onError: (err: unknown) => {

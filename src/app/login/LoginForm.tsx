@@ -18,8 +18,6 @@ import { AlertTriangle, BarChart3, Loader2, ShieldCheck } from "lucide-react";
 // FE-15 FIX (Audit v2 · Phase 3): login page is outside AppShell, so it
 // never got the shared skip-links. We render them directly here and add
 // matching id targets on <header> / <main> / <footer>.
-import { GarfixSkipLinks } from "@/components/garfix-ds";
-
 export function LoginForm() {
   const router = useRouter();
   const { user, loading, login } = useAuth();
@@ -55,7 +53,6 @@ export function LoginForm() {
   return (
     <div className="min-h-screen flex flex-col bg-background" dir="rtl">
       {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
-      <GarfixSkipLinks />
       <header id="main-navigation" className="px-6 py-5">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg">

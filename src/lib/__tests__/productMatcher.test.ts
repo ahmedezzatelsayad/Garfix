@@ -47,8 +47,15 @@ const dbMock = {
   },
   platformSettings: { findMany: async () => [] },
   productAlias: {
+    // P0 FIX companion: the matcher now calls findFirst (no companySlug_alias
+    // compound unique in schema). Kept findUnique for any legacy callers.
     findUnique: async (args: any) => {
-      const { companySlug: _companySlug, alias } = args.where.companySlug_alias;
+      const { companySlug: _companySlug, alias } = args.where.companySlug_alias ?? { alias: args.where.alias };
+      const found = fakeAliases.find(a => a.alias === alias);
+      return found || null;
+    },
+    findFirst: async (args: any) => {
+      const alias = args.where.alias;
       const found = fakeAliases.find(a => a.alias === alias);
       return found || null;
     },

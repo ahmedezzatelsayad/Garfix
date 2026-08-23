@@ -84,29 +84,46 @@ function resolvePerms(profile: UserProfile | null): Record<string, number> {
  */
 const AUTH_FETCH_TIMEOUT_MS = 5000;
 
+/**
+ * P0 FIX (مهلة الطلبات): كان authedFetch يستخدم مهلة 5 ثوانٍ لكل الطلبات —
+ * مسارات الـ AI (استخراج/تحليل/محادثة) تستغرق 3-30 ثانية بطبيعتها فكانت
+ * تُقطع في منتصف التنفيذ والواجهة تظهر "لا شيء حدث" رغم أن السيرفر
+ * أكمل العمل. الآن: 5 ثوانٍ لمسارات الـ auth السريعة فقط، و30 ثانية
+ * لأي طلب آخر (والـ api-client يمرر signal خاصاً له حين يريد أقل/أكثر).
+ */
+const API_FETCH_TIMEOUT_MS = 30_000;
+
 function fetchWithTimeout(
   url: string,
   opts: RequestInit = {},
-  timeoutMs = AUTH_FETCH_TIMEOUT_MS,
+  timeoutMs = API_FETCH_TIMEOUT_MS,
 ): Promise<Response> {
+  // Caller-provided signal (from api-client) takes precedence — link both.
   const controller = new AbortController();
+  const externalSignal = opts.signal;
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener("abort", () => controller.abort(), { once: true });
+  }
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  return fetch(url, { ...opts, signal: controller.signal }).finally(() => {
+  const { signal: _ignored, ...restOpts } = opts;
+  return fetch(url, { ...restOpts, signal: controller.signal }).finally(() => {
     clearTimeout(timer);
   });
 }
 
 async function fetchMe(): Promise<UserProfile | null> {
   try {
-    const res = await fetchWithTimeout("/api/auth/me", { credentials: "include" });
+    // مهلة قصيرة لمسارات الـ auth فقط (كانت 5 ثوانٍ للجميع)
+    const res = await fetchWithTimeout("/api/auth/me", { credentials: "include" }, AUTH_FETCH_TIMEOUT_MS);
     if (res.ok) return res.json();
     if (res.status === 401) {
       const refreshRes = await fetchWithTimeout("/api/auth/refresh", {
         method: "POST",
         credentials: "include",
-      });
+      }, AUTH_FETCH_TIMEOUT_MS);
       if (refreshRes.ok) {
-        const retryRes = await fetchWithTimeout("/api/auth/me", { credentials: "include" });
+        const retryRes = await fetchWithTimeout("/api/auth/me", { credentials: "include" }, AUTH_FETCH_TIMEOUT_MS);
         if (retryRes.ok) return retryRes.json();
       }
     }
@@ -129,15 +146,14 @@ export async function authedFetch(url: string, opts: RequestInit = {}): Promise<
   }
   const finalOpts: RequestInit = { ...opts, headers, credentials: "include" };
 
-  // RCA FIX: apply the same 5s timeout as fetchMe() so a hung mutating
-  // request (POST /api/invoices, etc.) doesn't freeze the UI indefinitely.
-  // Caller can override by passing their own `signal` in opts.
+  // P0 FIX: مهلة 30 ثانية (كانت 5) — انظر تعليق API_FETCH_TIMEOUT_MS أعلاه.
+  // الـ api-client يمرر signal خاصاً للطلبات التي تحتاج مهلة مختلفة.
   const res = await fetchWithTimeout(url, finalOpts);
   if (res.status !== 401) return res;
   const refreshRes = await fetchWithTimeout("/api/auth/refresh", {
     method: "POST",
     credentials: "include",
-  });
+  }, AUTH_FETCH_TIMEOUT_MS);
   if (!refreshRes.ok) return res;
   // After refresh, re-read CSRF token (it may have been re-issued)
   const refreshedHeaders = new Headers(opts.headers || undefined);

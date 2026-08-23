@@ -117,8 +117,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // P2 FIX (audit): Pre-assign invoice numbers so they're deterministic
   // even when processing in parallel batches.
   const baseInvNum = `INV-${Date.now().toString().slice(-6)}`;
-  const issueDate = new Date().toISOString().slice(0, 10);
-  const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  // P0 FIX: Prisma DateTime لا يقبل نص تاريخ فقط ("2026-08-23") — يرمي
+  // "premature end of input. Expected ISO-8601 DateTime" وكان يفشل حفظ
+  // كل فواتير الاستيراد المجمع. نحوّل لكائن Date كامل.
+  const issueDate = new Date();
+  const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
   // ── P2 FIX (audit): Batched processing ──────────────────────────────
   // Replaced sequential for-loop with chunked Promise.all processing.
@@ -273,8 +276,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
           return { success: true as const, data: createdEntry, index };
         } catch (err) {
-          const msg = "خطأ في إنشاء الفاتورة";
-          logger.error("[bulk-import] order failed", { err: err instanceof Error ? err.message : String(err), index, order: order.clientName });
+          // P1: أدرج أول سطر من السبب الحقيقي في رسالة الخطأ للعميل — التعميم
+          // السابق كان يخفي أعطالاً مثل خطأ التاريخ/الحقل ويصعّب التشخيص.
+          const raw = err instanceof Error ? err.message : String(err);
+          const reason = raw.split("\n").find((l) => l.includes("Invalid")) || raw.slice(0, 140);
+          const msg = `خطأ في إنشاء الفاتورة: ${reason}`;
+          logger.error("[bulk-import] order failed", { err: raw, index, order: order.clientName });
           return { success: false as const, error: msg, index };
         }
       })

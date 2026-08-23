@@ -118,11 +118,19 @@ function buildMockTx(size: number): { tx: any; products: MockProduct[]; aliases:
     });
   }
   // tx — matchProduct reads:
-  //   tx.productAlias.findUnique({where:{companySlug_alias:{alias}}}) → exact match
+  //   tx.productAlias.findFirst({where:{companySlug, alias}}) → exact match
+  //   (P0 FIX companion: كان findUnique بمفتاح companySlug_alias المركب القديم)
   //   tx.productAlias.findMany({where:{companySlug}}) → all aliases for fuzzy
   //   tx.productMatchAudit.create(...) → no-op
   const tx = {
     productAlias: {
+      findFirst: async ({ where }: { where?: { alias?: string } }) => {
+        const alias = where?.alias;
+        if (!alias) return null;
+        const found = aliases.find(a => a.alias === alias || a.alias.toLowerCase() === alias.toLowerCase());
+        if (!found) return null;
+        return { ...found, product: products.find(p => p.id === found.productCatalogId) };
+      },
       findUnique: async ({ where }: { where: { companySlug_alias?: { alias: string } } }) => {
         const alias = where?.companySlug_alias?.alias;
         if (!alias) return null;

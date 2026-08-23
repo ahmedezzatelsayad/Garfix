@@ -381,10 +381,15 @@ describe("auth.ts — Token Blacklist (No Valkey)", () => {
     expect(result).toBe(false);
   });
 
-  it("blacklistToken throws when no Valkey is configured (fail-closed for writes)", async () => {
-    // SEC-04 FIX: blacklistToken now throws when Valkey is unavailable
-    // (fail-closed for writes — the caller must know revocation failed).
-    await expect(blacklistToken("jti-test-456", 3600)).rejects.toThrow();
+  it("blacklistToken skips silently when no Valkey is configured (no store exists — revocation via tokenVersion)", async () => {
+    // P0 AUTH FIX: غياب Valkey تماماً ليس عطلاً — لا توجد قائمة حظر أصلاً،
+    // فالرمي كان يعطّل تسجيل الخروج/تغيير كلمة المرور في كل نشر بدون Valkey.
+    // fail-closed للكتابات يبقى مطبقاً فقط عند وجود Valkey مُهيأ وفشل الكتابة.
+    await expect(blacklistToken("jti-test-456", 3600)).resolves.toBeUndefined();
+  });
+
+  it("blacklistToken still throws for invalid TTL regardless of Valkey config (fail-closed for writes)", async () => {
+    await expect(blacklistToken("jti-test-000", 0)).rejects.toThrow();
   });
 });
 
@@ -626,13 +631,16 @@ describe("Chaos Tests — Graceful Degradation", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("auth blacklist fails closed by default (no Valkey = reject token)", async () => {
+  it("auth blacklist fails-open when Valkey is not configured (P0 AUTH FIX — app must stay usable)", async () => {
     delete process.env.VALKEY_URL;
+    delete process.env.REDIS_URL;
     delete process.env.VALKEY_FAIL_MODE;
     const mod = await import("@/lib/auth?chaos=3");
     const result = await mod.isTokenBlacklisted("chaos-jti");
-    // SEC-04 FIX: fail-closed — no Valkey means token is assumed blacklisted
-    expect(result).toBe(true);
+    // P0 AUTH FIX: غياب Valkey تماماً = لا قائمة حظر أصلاً → قبول التوكن.
+    // fail-closed يبقى فقط عند Valkey مُهيأ لكنه غير متصل. الإبطال مضمون عبر
+    // tokenVersion + SessionRegistry.
+    expect(result).toBe(false);
   });
 
   it("auth blacklist can be set to fail-open via VALKEY_FAIL_MODE=open", async () => {

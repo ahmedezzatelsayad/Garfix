@@ -135,10 +135,11 @@ function makeTx(opts: MakeTxOptions = {}): { tx: any; mocks: TxMocks } {
   const tx = {
     warehouse: { findFirst: warehouseFindFirst },
     productCatalog: { findUnique: productCatalogFindUnique, create: productCatalogCreate },
-    productAlias: { findUnique: productAliasFindUnique, findMany: productAliasFindMany, create: productAliasCreate },
+    productAlias: { findUnique: productAliasFindUnique, findFirst: productAliasFindUnique, findMany: productAliasFindMany, create: productAliasCreate },
     productMatchAudit: { create: productMatchAuditCreate },
     inventoryItem: {
       findUnique: inventoryItemFindUnique,
+      findFirst: inventoryItemFindUnique,
       update: inventoryItemUpdate,
       create: inventoryItemCreate,
     },

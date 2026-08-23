@@ -8,8 +8,6 @@ import { useState, useMemo, useCallback } from "react";
 import { ProfessionalFooter } from "@/components/garfix/ProfessionalFooter";
 // FE-15 FIX (Audit v2 · Phase 3): /api-docs is a standalone page with no
 // AppShell — add the shared skip-links + matching id targets below.
-import { GarfixSkipLinks } from "@/components/garfix-ds";
-
 // ─── Types ──────────────────────────────────────────────────────────────
 interface ApiEndpoint {
   path: string;
@@ -253,7 +251,6 @@ export default function ApiDocsPage() {
       dir={isRtl ? "rtl" : "ltr"}
     >
       {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
-      <GarfixSkipLinks />
       {/* ── Header ─────────────────────────────────────────────────── */}
       <header id="main-navigation" className="sticky top-0 z-40 glass-strong bg-card/90 dark:bg-card/90 border-b border-emerald-500/20 shadow-brand-md">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">

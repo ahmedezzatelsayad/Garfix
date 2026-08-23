@@ -932,8 +932,13 @@ export async function matchProduct(
   }
 
   // 1. Exact alias match — byte-identical, no normalization invoked.
-  const exactAlias = await dbClient.productAlias.findUnique({
-    where: { companySlug_alias: { companySlug, alias: description.trim() } },
+  // P0 FIX (مطابقة المنتجات): كان الاستعلام يستخدم المفتاح المركب القديم
+  // companySlug_alias الذي لم يعد موجوداً بعد إضافة عمود language
+  // (المفتاح الحالي alias_companySlug_language بثلاثة أعمدة) — فكان
+  // prisma يرفض الاستعلام ويفشل إنشاء الفاتورة بالكامل (500).
+  // findFirst بنفس الفلتر يعطي نفس النتيجة ويعتمد على فهرس companySlug فقط.
+  const exactAlias = await dbClient.productAlias.findFirst({
+    where: { companySlug, alias: description.trim() },
     include: { product: true },
   });
   if (exactAlias) {

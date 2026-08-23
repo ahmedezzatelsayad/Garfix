@@ -102,7 +102,11 @@ export async function syncInventoryOnSale(
       }
     }
 
-    const invItem = await tx.inventoryItem.findUnique({ where: { warehouseId_productId: { warehouseId: warehouse.id, productId: product.id } } });
+    // P0 FIX (مزامنة المخزون): المفتاح المركب warehouseId_productId غير معرّف في
+    // schema.prisma (لا يوجد @@unique([warehouseId, productId])) — findUnique كان
+    // يرمي خطأ ويفشل حفظ الفاتورة بالكامل. findFirst بنفس الفلتر يعتمد على
+    // فهارس موجودة ويعطي نفس السلوك.
+    const invItem = await tx.inventoryItem.findFirst({ where: { warehouseId: warehouse.id, productId: product.id } });
 
     if (invItem) {
       const currentQty = num(invItem.quantity, 3);
@@ -177,7 +181,11 @@ export async function syncInventoryOnPurchase(
       }
     }
 
-    const invItem = await tx.inventoryItem.findUnique({ where: { warehouseId_productId: { warehouseId: warehouse.id, productId: product.id } } });
+    // P0 FIX (مزامنة المخزون): المفتاح المركب warehouseId_productId غير معرّف في
+    // schema.prisma (لا يوجد @@unique([warehouseId, productId])) — findUnique كان
+    // يرمي خطأ ويفشل حفظ الفاتورة بالكامل. findFirst بنفس الفلتر يعتمد على
+    // فهارس موجودة ويعطي نفس السلوك.
+    const invItem = await tx.inventoryItem.findFirst({ where: { warehouseId: warehouse.id, productId: product.id } });
     if (invItem) {
       const currentQty = num(invItem.quantity, 3);
       await tx.inventoryItem.update({ where: { id: invItem.id }, data: { quantity: (currentQty + qty).toFixed(3) } });

@@ -33,8 +33,6 @@ import { AlertTriangle, BarChart3, CheckCircle2, Loader2, UserPlus } from "lucid
 // FE-15 FIX (Audit v2 · Phase 3): signup page lives outside AppShell, so it
 // never inherited the shared skip-links. We render them here and add matching
 // id targets on <header>/<main>/<footer> below.
-import { GarfixSkipLinks } from "@/components/garfix-ds";
-
 export default function SignupPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -104,7 +102,6 @@ export default function SignupPage() {
     return (
       <div className="min-h-screen flex flex-col bg-background" dir="rtl">
         {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
-        <GarfixSkipLinks />
         <header id="main-navigation" className="px-6 py-5">
           <div className="flex items-center gap-2">
             <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-brand-sm">
@@ -143,7 +140,6 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background" dir="rtl">
       {/* FE-15 FIX (Audit v2 · Phase 3): skip-nav for keyboard users. */}
-      <GarfixSkipLinks />
       {/* Header — DS v4.0 Emerald Branding */}
       <header id="main-navigation" className="px-6 py-5">
         <div className="flex items-center gap-2">

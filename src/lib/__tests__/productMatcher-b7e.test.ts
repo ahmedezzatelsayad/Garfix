@@ -73,13 +73,15 @@ beforeAll(() => {
   };
   (db as any).platformSettings = { findMany: async () => [] };
 
-  // productAlias.findUnique: exact-match path — returns null for our test
-  // inputs (we want them to fall through to the fuzzy path so the
+  // productAlias.findUnique/findFirst: exact-match path — returns null for our
+  // test inputs (we want them to fall through to the fuzzy path so the
   // multisetJaccard / charSetJaccard scoring is exercised).
   // productAlias.findMany: returns the per-test fixture (the alias we want
   // the fuzzy path to consider as a candidate).
   (db as any).productAlias = {
     findUnique: async () => null,
+    // P0 FIX companion: matcher's exact path now uses findFirst.
+    findFirst: async () => null,
     findMany: async () => fakeAliases,
   };
 

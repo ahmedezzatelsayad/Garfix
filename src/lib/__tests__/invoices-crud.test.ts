@@ -233,6 +233,12 @@ const RICH_TX = {
       alias: "Item A",
       product: { id: 100, name: "Item A", sellingPrice: "1.500", companySlug: "test-co" },
     }),
+    // P0 FIX companion: productMatcher now uses findFirst (schema has no
+    // companySlug_alias compound unique anymore — see productMatcher.ts).
+    findFirst: async () => ({
+      alias: "Item A",
+      product: { id: 100, name: "Item A", sellingPrice: "1.500", companySlug: "test-co" },
+    }),
     findMany: async () => [],
     create: async () => ({}),
   },
@@ -243,6 +249,9 @@ const RICH_TX = {
   productMatchAudit: { create: async () => ({}) },
   inventoryItem: {
     findUnique: async () => ({ id: 50, quantity: "100.000" }),
+    // P0 FIX companion: inventorySync now uses findFirst (no warehouseId_productId
+    // compound unique in schema).
+    findFirst: async () => ({ id: 50, quantity: "100.000" }),
     update: async () => ({}),
     create: async () => ({}),
   },

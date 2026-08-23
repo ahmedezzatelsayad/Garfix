@@ -130,6 +130,12 @@ beforeAll(() => {
       // productAlias.findUnique would return.
       return CATALOG.find(a => a.alias === alias) || null;
     },
+    // P0 FIX companion: the matcher's exact path now uses findFirst (schema
+    // no longer has the companySlug_alias compound unique).
+    findFirst: async (args: any) => {
+      const alias = args.where.alias;
+      return CATALOG.find(a => a.alias === alias) || null;
+    },
     findMany: async () => CATALOG,
   };
 

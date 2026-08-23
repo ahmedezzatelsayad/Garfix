@@ -200,21 +200,23 @@ export function verifyRefreshToken(token: string): { uid: string; tv: number } |
 export async function isTokenBlacklisted(jti: string): Promise<boolean> {
   const client = await getValkeyClient();
   if (!client) {
-    // VERCEL FIX: On Vercel without Valkey, default to fail-OPEN so auth works.
-    // Without a Valkey/Redis store, there is no blacklist to check — rejecting
-    // all tokens would make the entire app unusable. The env var VALKEY_FAIL_MODE
-    // can still override this to "closed" if a Valkey instance is later added.
-    const isVercelNoValkey = process.env.VERCEL === "1" && !process.env.VALKEY_URL && !process.env.REDIS_URL;
-    const failMode = process.env.VALKEY_FAIL_MODE || (isVercelNoValkey ? "open" : "closed");
+    // P0 AUTH FIX: كان الاستثناء لوضع fail-open يشترط VERCEL==1 فقط، مما يجعل
+    // أي نشر خارج Vercel بدون Valkey (VPS/Docker/محلي) يرفض كل التوكنات
+    // ويعطّل التطبيق بالكامل (كل طلب API يرجع 401 بعد تسجيل الدخول).
+    // الصحيح: غياب Valkey أصلاً (غير مُهيأ) = لا توجد قائمة حظر ليفحصها
+    // أحد → fail-open. أما Valkey مُهيأ لكنه غير متصل (عطل تشغيلي حقيقي)
+    // → fail-closed. يمكن دائماً ال Override بـ VALKEY_FAIL_MODE.
+    const valkeyConfigured = !!process.env.VALKEY_URL || !!process.env.REDIS_URL;
+    const failMode = process.env.VALKEY_FAIL_MODE || (valkeyConfigured ? "closed" : "open");
     if (failMode === "open") return false;
-    console.warn("[auth] Valkey unavailable — fail-closed (rejecting token)");
+    console.warn("[auth] Valkey configured but unreachable — fail-closed (rejecting token)");
     return true;
   }
   try {
     return (await client.exists(`token:blacklist:${jti}`)) > 0;
   } catch (err) {
-    const isVercelNoValkey = process.env.VERCEL === "1" && !process.env.VALKEY_URL && !process.env.REDIS_URL;
-    const failMode = process.env.VALKEY_FAIL_MODE || (isVercelNoValkey ? "open" : "closed");
+    const valkeyConfigured = !!process.env.VALKEY_URL || !!process.env.REDIS_URL;
+    const failMode = process.env.VALKEY_FAIL_MODE || (valkeyConfigured ? "closed" : "open");
     if (failMode === "open") return false;
     console.warn("[auth] Valkey blacklist check failed — fail-closed", {
       err: err instanceof Error ? err.message : String(err),
@@ -232,15 +234,18 @@ export async function isTokenBlacklisted(jti: string): Promise<boolean> {
  * the error, meaning logout/password-change didn't actually revoke the token.
  */
 export async function blacklistToken(jti: string, remainingTtlSeconds: number): Promise<void> {
+  // SEC-04: TTL غير صالح يُرفض دائماً (fail-closed للكتابات) مهما كانت إعدادات
+  // Valkey — كان الترتيب السابق يتجاوز فحص الـ TTL حين لا يكون Valkey مُهيأً.
+  if (remainingTtlSeconds <= 0) {
+    throw new Error(`Cannot blacklist token: invalid remaining TTL (${remainingTtlSeconds})`);
+  }
   const client = await getValkeyClient();
-  if (!client || remainingTtlSeconds <= 0) {
-    // VERCEL FIX: On Vercel without Valkey, silently skip blacklisting.
-    // Without a Valkey store, token revocation via blacklist is not possible.
-    // This is acceptable because token version checking (tv field) still
-    // provides a DB-backed revocation mechanism for password changes/logouts.
-    const isVercelNoValkey = process.env.VERCEL === "1" && !process.env.VALKEY_URL && !process.env.REDIS_URL;
-    if (isVercelNoValkey) {
-      console.warn("[auth] Valkey unavailable on Vercel — skipping token blacklist (revocation via tokenVersion still active)");
+  if (!client) {
+    // P0 AUTH FIX: غياب Valkey تماماً ليس عطلاً — لا توجد قائمة حظر أصلاً.
+    // الإبطال يبقى مضموناً عبر tokenVersion (tv).
+    const valkeyConfigured = !!process.env.VALKEY_URL || !!process.env.REDIS_URL;
+    if (!valkeyConfigured) {
+      console.warn("[auth] Valkey not configured — skipping token blacklist (revocation via tokenVersion still active)");
       return;
     }
     throw new Error("Cannot blacklist token: Valkey unavailable");
