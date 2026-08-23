@@ -469,8 +469,11 @@ export async function preventPostingToClosedPeriod(
   companySlug: string,
   date: string,
 ): Promise<void> {
+  // P0 FIX: Prisma DateTime لا يقبل نص تاريخ فقط ("2026-08-23") — يرمي
+  // validation error ويفشل إنشاء القيد كليًا (نفس علة bulk-import السابقة).
+  const dateObj = new Date(date);
   const period = await db.fiscalPeriod.findFirst({
-    where: { companySlug, startDate: { lte: date }, endDate: { gte: date } },
+    where: { companySlug, startDate: { lte: dateObj }, endDate: { gte: dateObj } },
   });
 
   if (!period) return;

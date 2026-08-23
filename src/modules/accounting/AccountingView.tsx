@@ -91,7 +91,7 @@ type StatementType = "profit-loss" | "balance-sheet" | "cash-flow";
 // Critical fixes (SSRF, JWT, auth, schema drift, rate-limit, code-split,
 // Account.id validators, Invoice interface reconciliation) ARE applied.
 interface Account { id: number; code: string; nameAr: string; nameEn?: string; type: string; balance: number; currency: string; }
-interface JournalLine { id: number; accountId: number; debit: number; credit: number; description?: string; }
+interface JournalLine { id: number; accountId: string; debit: number; credit: number; description?: string; }
 interface JournalEntry { id: number; date: string; description?: string; reference?: string; status: string; lines: JournalLine[]; }
 interface TrialRow {
   id: number; code: string; nameAr: string; type: string;
@@ -847,7 +847,7 @@ function CostCenterForm({ company, costCenters, onClose, onSaved }: { company: {
   const [code, setCode] = useState("");
   const [nameAr, setNameAr] = useState("");
   const [type, setType] = useState("department");
-  const [parentId, setParentId] = useState<number | null>(null);
+  const [parentId, setParentId] = useState<string | null>(null);
   const [budget, setBudget] = useState(0);
   const [saving, setSaving] = useState(false);
   const createCostCenterMutation = useCreateCostCenter();
@@ -875,7 +875,7 @@ function CostCenterForm({ company, costCenters, onClose, onSaved }: { company: {
           </select>
         </div>
         <div><label className={labelStyle}>الأب</label>
-          <select value={parentId ?? ""} onChange={(e) => setParentId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
+          <select value={parentId ?? ""} onChange={(e) => setParentId(e.target.value || null)} className={inputStyle}>
             <option value="">—</option>
             {costCenters.map((cc) => <option key={cc.id} value={cc.id}>{cc.code} — {cc.nameAr}</option>)}
           </select>
@@ -1345,7 +1345,7 @@ function AccountForm({ company, accounts, onClose, onSaved }: { company: { slug:
   const [nameAr, setNameAr] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [type, setType] = useState("asset");
-  const [parentId, setParentId] = useState<number | null>(null);
+  const [parentId, setParentId] = useState<string | null>(null);
   const [balance, setBalance] = useState(0);
   const [saving, setSaving] = useState(false);
   const createAccountMutation = useCreateAccount();
@@ -1377,7 +1377,7 @@ function AccountForm({ company, accounts, onClose, onSaved }: { company: { slug:
             </select>
           </div>
           <div><label className={labelStyle}>الحساب الأب</label>
-            <select value={parentId ?? ""} onChange={(e) => setParentId(e.target.value ? Number(e.target.value) : null)} className={inputStyle}>
+            <select value={parentId ?? ""} onChange={(e) => setParentId(e.target.value || null)} className={inputStyle}>
               <option value="">—</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.nameAr}</option>)}
             </select>
           </div>
@@ -1398,7 +1398,7 @@ function JournalForm({ company, accounts, onClose, onSaved }: { company: { slug:
   const [description, setDescription] = useState("");
   const [reference, setReference] = useState("");
   const [status, setStatus] = useState("draft");
-  const [lines, setLines] = useState<Array<{ _key: string; accountId: number | null; debit: number; credit: number; description?: string }>>([{ _key: "line-0", accountId: null, debit: 0, credit: 0 }]);
+  const [lines, setLines] = useState<Array<{ _key: string; accountId: string | null; debit: number; credit: number; description?: string }>>([{ _key: "line-0", accountId: null, debit: 0, credit: 0 }]);
   const [saving, setSaving] = useState(false);
   const createJournalEntryMutation = useCreateJournalEntry();
 
@@ -1446,7 +1446,7 @@ function JournalForm({ company, accounts, onClose, onSaved }: { company: { slug:
           <div className="flex flex-col gap-2">
             {lines.map((l, i) => (
               <div key={l._key} className="grid grid-cols-[1fr_80px_100px_28px] sm:grid-cols-[1fr_100px_100px_32px] gap-1 sm:gap-2 items-center">
-                <select value={l.accountId ?? ""} onChange={(e) => updateLine(i, "accountId", Number(e.target.value))} className={inputStyle}><option value="">— اختر حساب —</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.nameAr}</option>)}</select>
+                <select value={l.accountId ?? ""} onChange={(e) => updateLine(i, "accountId", e.target.value)} className={inputStyle}><option value="">— اختر حساب —</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.nameAr}</option>)}</select>
                 <input type="number" placeholder="مدين" value={l.debit} onChange={(e) => updateLine(i, "debit", Number(e.target.value))} className={inputStyle} dir="ltr" />
                 <input type="number" placeholder="دائن" value={l.credit} onChange={(e) => updateLine(i, "credit", Number(e.target.value))} className={inputStyle} dir="ltr" />
                 <button onClick={() => removeLine(i)} className="bg-transparent border border-border text-destructive rounded-[6px] cursor-pointer flex items-center justify-center h-8"><X size={12} /></button>

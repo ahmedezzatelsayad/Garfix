@@ -142,7 +142,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         // Generate a unique number from timestamp.
         number: `JE-${Date.now()}`,
         companyId,
-        date: data.date, description: data.description || null,
+        // P0 FIX: Prisma DateTime يرفض نص التاريخ فقط — تحويل لكائن Date
+        // (كان يفشل إنشاء كل قيد يومية بـ premature end of input).
+        date: new Date(data.date), description: data.description || null,
         reference: data.reference || null, status: data.status, createdBy: user.email,
         lines: {
           create: data.lines.map((l) => ({

@@ -112,6 +112,10 @@ const IS_BROWSER = typeof window !== "undefined";
  *   - Server: process.stdout.write (structured JSON, no console formatting)
  *   - Browser: console.log/info/warn/error (browser devtools formatting)
  */
+// P0 MIDDLEWARE FIX: الـ Edge Runtime (الذي يشغّل middleware) لا يوفر
+// process.stdout — كان يستدعاؤه يُفشل تحميل حزمة الـ Edge بالكامل فتتعطل
+// طبقة الأمان (CSRF/CSP/headers) بصمت رغم عدم استخدام middleware للـ logger
+// مباشرة (instrumentation هو المستورد). نفس حماية المتصفح تُطبق هنا.
 function writeLog(level: Level, msg: string, meta?: LogMeta): void {
   const formatted = format(level, msg, meta);
   if (IS_BROWSER) {
@@ -139,7 +143,10 @@ function writeLog(level: Level, msg: string, meta?: LogMeta): void {
     switch (level) {
       case "debug":
       case "info":
-        process.stdout.write(formatted + "\n");
+        // P0 EDGE FIX: process.stdout غير مدعوم في Edge Runtime ويُفشل حزمة
+        // الـ middleware تحليليًا في Turbopack — console.log يعمل في كل الأوساط.
+        // eslint-disable-next-line no-console
+        console.log(formatted);
         break;
       case "warn":
         console.warn(formatted);

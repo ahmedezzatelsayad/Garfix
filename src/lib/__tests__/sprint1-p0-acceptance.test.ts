@@ -211,11 +211,16 @@ describe("P0-7: ZATCA QR Code / TLV Encoding", () => {
 
 describe("P0-6: CSP + HSTS Security Headers", () => {
   test("SECURITY_HEADERS object contains CSP and HSTS", async () => {
-    // P0 FIX: middleware moved from src/middleware.ts to root middleware.ts
+    // P0 SECURITY FIX: middleware MUST live in src/ (root was silently ignored — security layer was dead in production)
     // (Next.js 16 requires it at root). Read file directly instead of importing.
     const fs = await import("fs");
     const path = await import("path");
-    const middlewarePath = path.join(process.cwd(), "middleware.ts");
+    // P0 SECURITY FIX: مع وجود مجلد src/ في المشروع، Next.js 16 يبحث عن
+    // الـ middleware داخل src/ فقط — ملف الجذر كان يُتجاهل بصمت كليًا
+    // (طبقة CSRF/CSP كاملة كانت معطلة في الإنتاج!). المسار الصحيح الآن src/.
+    const middlewarePath = fs.existsSync(path.join(process.cwd(), "src", "middleware.ts"))
+      ? path.join(process.cwd(), "src", "middleware.ts")
+      : path.join(process.cwd(), "middleware.ts");
     const content = fs.readFileSync(middlewarePath, "utf-8");
 
     expect(content).toContain("Content-Security-Policy");
@@ -228,7 +233,12 @@ describe("P0-6: CSP + HSTS Security Headers", () => {
   test("CSP includes required directives", async () => {
     const fs = await import("fs");
     const path = await import("path");
-    const middlewarePath = path.join(process.cwd(), "middleware.ts");
+    // P0 SECURITY FIX: مع وجود مجلد src/ في المشروع، Next.js 16 يبحث عن
+    // الـ middleware داخل src/ فقط — ملف الجذر كان يُتجاهل بصمت كليًا
+    // (طبقة CSRF/CSP كاملة كانت معطلة في الإنتاج!). المسار الصحيح الآن src/.
+    const middlewarePath = fs.existsSync(path.join(process.cwd(), "src", "middleware.ts"))
+      ? path.join(process.cwd(), "src", "middleware.ts")
+      : path.join(process.cwd(), "middleware.ts");
     const content = fs.readFileSync(middlewarePath, "utf-8");
 
     // Key CSP directives for an ERP application
@@ -243,7 +253,12 @@ describe("P0-6: CSP + HSTS Security Headers", () => {
   test("Middleware matcher covers ALL routes (not just /api/*)", async () => {
     const fs = await import("fs");
     const path = await import("path");
-    const middlewarePath = path.join(process.cwd(), "middleware.ts");
+    // P0 SECURITY FIX: مع وجود مجلد src/ في المشروع، Next.js 16 يبحث عن
+    // الـ middleware داخل src/ فقط — ملف الجذر كان يُتجاهل بصمت كليًا
+    // (طبقة CSRF/CSP كاملة كانت معطلة في الإنتاج!). المسار الصحيح الآن src/.
+    const middlewarePath = fs.existsSync(path.join(process.cwd(), "src", "middleware.ts"))
+      ? path.join(process.cwd(), "src", "middleware.ts")
+      : path.join(process.cwd(), "middleware.ts");
     const content = fs.readFileSync(middlewarePath, "utf-8");
 
     // P0-6: Matcher should cover all routes, not just /api/*

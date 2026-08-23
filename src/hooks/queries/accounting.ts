@@ -31,7 +31,7 @@ export interface Account {
 
 /** A single line within a journal entry. */
 export interface JournalLine {
-  accountId: number;
+  accountId: string; // cuid — كان number بالخطأ (Number(cuid)=NaN كسر فورم القيود)
   debit: number;
   credit: number;
 }
@@ -522,7 +522,7 @@ interface CostCenterListResponse {
 }
 
 interface CreateCostCenterPayload {
-  code: string; nameAr: string; type: string; parentId?: number;
+  code: string; nameAr: string; type: string; parentId?: string;
   budget?: number; companySlug: string;
 }
 
