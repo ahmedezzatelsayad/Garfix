@@ -50,30 +50,23 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // P0 FIX: الجدول فيه مجموعتا أعمدة (entityType/entityId/note القديمة +
-  // category/content الجديدة) والـ Prisma يعرف الجديدة فقط — الفلترة بـ entityId
-  // كانت ترمي Unknown argument (500). نقرأ عبر raw مع الحقول القديمة مباشرة.
-  const rows = entityId
-    ? await db.$queryRaw<Array<{ id: number; companySlug: string; category: string; content: string; entityId: string | null; note: string | null; createdBy: string | null; createdAt: Date }>>`
-        SELECT id, "companySlug", category, content, "entityId", note, "createdBy", "createdAt"
-        FROM ai_memory_notes
-        WHERE "companySlug" = ${companySlug} AND category = ${entityType} AND "entityId" = ${String(entityId)}
-        ORDER BY "createdAt" DESC LIMIT 200`
-    : (
-        await db.aIMemoryNote.findMany({
-          where: { companySlug, category: entityType },
-          orderBy: { createdAt: "desc" },
-          take: 200,
-        })
-      ).map((n) => ({ ...n, entityId: null, note: null, createdBy: null }));
+  // RECONCILED (20260823180000): entityId الآن في المخطط — استعلام Prisma
+  // نظيف (كان raw query لفشل الفلترة بالمفتاح الغائب عن المخطط بـ 500).
+  const notes = await db.aIMemoryNote.findMany({
+    where: entityId
+      ? { companySlug, category: entityType, entityId: String(entityId) }
+      : { companySlug, category: entityType },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  });
 
   return NextResponse.json({
-    notes: rows.map((n) => ({
+    notes: notes.map((n) => ({
       id: n.id,
       companySlug: n.companySlug,
       entityType: n.category,
       entityId: n.entityId,
-      note: n.note ?? n.content,
+      note: n.content,
       createdBy: n.createdBy,
       createdAt: n.createdAt,
     })),
@@ -104,7 +97,11 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     data: {
       companySlug: data.companySlug,
       category: data.entityType,
+      // RECONCILED: entityId/createdBy أصبحا في المخطط — يُحفظان مع السجل
+      // (كانا يُفقدان والقراءة ترجع null دائمًا).
+      entityId: data.entityId != null ? String(data.entityId) : null,
       content: data.note,
+      createdBy: user.uid,
     },
   });
 
@@ -129,9 +126,9 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
         id: note.id,
         companySlug: note.companySlug,
         entityType: note.category,
-        entityId: null,
+        entityId: note.entityId,
         note: note.content,
-        createdBy: null,
+        createdBy: note.createdBy,
         createdAt: note.createdAt,
       },
     },

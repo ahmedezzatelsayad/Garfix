@@ -212,7 +212,6 @@ describe("syncInventoryOnSale", () => {
         companySlug: "test-co",
         productId: 42,
         type: "out",
-        movementType: "sale",
         sourceType: "sale",
         sourceId: "100",
         quantity: "-2.000",
@@ -391,7 +390,6 @@ describe("syncInventoryOnPurchase", () => {
         companySlug: "test-co",
         productId: 42,
         type: "in",
-        movementType: "purchase",
         sourceType: "purchase",
         sourceId: "200",
         quantity: "2.000",
@@ -427,6 +425,6 @@ describe("syncInventoryOnPurchase", () => {
     const mvCall = mocks.stockMovementCreate.mock.calls[0][0];
     expect(mvCall.data.quantity).toBe("3.000");
     expect(mvCall.data.sourceType).toBe("purchase");
-    expect(mvCall.data.reference).toBe("initial stock: no existing inventory");
+    expect(mvCall.data.note).toBe("initial stock: no existing inventory");
   });
 });

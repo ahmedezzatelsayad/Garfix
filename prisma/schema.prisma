@@ -1455,15 +1455,16 @@ model StockMovement {
   cost        Decimal  @default(0)
   date        DateTime @default(now())
   companySlug String   @default("default")
-  // warehouseId is defined below in P2-Reconciliation section
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // ── P2-Reconciliation: columns that exist in DB but were missing from schema ──
-  movementType String
+  // ── Reconciliation 20260823180000: توحيد الأعمدة المزدوجة —
+  // movementType (مكرر sourceType) وqty (مكرر quantity) حُذفا من القاعدة،
+  // وnote/createdBy (كانا في القاعدة بلا تمثيل) أُضيفا هنا.
   sourceType   String?
   sourceId     String?
-  // ── P2-Sprint6: add warehouseId, productId fix ──
+  note         String?
+  createdBy    String    @default("system")
   warehouseId  String?
   warehouseRef Warehouse? @relation(fields: [warehouseId], references: [id])
 
@@ -2159,10 +2160,15 @@ model AIMemoryNote {
   id          Int      @id @default(autoincrement())
   companySlug String
   category    String
+  entityId    String?
   content     String
   confidence  Float    @default(1.0)
+  createdBy   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // ── Reconciliation 20260823180000: entityType/note (المكرران) دُمجا في
+  // category/content وحُذفا، وentityId/createdBy أُضيفا للمخطط.
 
   @@index([companySlug])
   @@map("ai_memory_notes")
@@ -2732,16 +2738,6 @@ model Module {
   @@map("modules")
 }
 
-// Keep the existing Post model for compatibility
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
 
 // ─── P1 Models (added later, not in 3bb5656) ────────────────────────────
 

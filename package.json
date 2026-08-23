@@ -13,7 +13,7 @@
     "audit:deps": "bun audit --prod || npm audit --omit=dev",
     "test": "bun test --isolate --preload ./test.preload.ts",
     "test:ci": "bun test --isolate --coverage $(find src __tests__ -type f \\( -name '*.test.ts' -o -name '*.test.tsx' \\) -not -path '*/founder-validation/__tests__/*' 2>/dev/null | tr '\\n' ' ')",
-    "test:founder": "bun test --isolate --preload ./test.preload.ts src/lib/founder-validation/__tests__/",
+    "test:founder": "bun test --isolate --preload ./test.preload.ts $(ls src/lib/founder-validation/__tests__/*.test.ts | grep -vE \"load-test|failure-injection|real-openrouter\" | tr \"\n\" \" \")",
     "test:contract": "bun test src/lib/__tests__/api-contract.test.ts",
     "test:e2e": "bunx playwright test",
     "openapi:generate": "bun run scripts/generate-openapi-spec.ts",
@@ -24,7 +24,11 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
     "seed": "bun prisma/seed.ts",
-    "verify:env": "node scripts/verify-env.mjs"
+    "verify:env": "node scripts/verify-env.mjs",
+    "schema:drift": "node scripts/drift-scan.mjs",
+    "db:backup": "node scripts/dump-backup.mjs",
+    "test:founder:chaos": "bun test --isolate --preload ./test.preload.ts src/lib/founder-validation/__tests__/failure-injection-*.test.ts",
+    "test:founder:load": "for f in src/lib/founder-validation/__tests__/load-test-*.test.ts; do echo \"== $f\"; bun test --isolate --preload ./test.preload.ts \"$f\" || exit 1; done"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

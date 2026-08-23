@@ -268,8 +268,8 @@ describe("syncInventoryOnPurchase — collision recovery", () => {
     expect(mvCall.data.sourceType).toBe("collision-recovery");
     expect(mvCall.data.sourceId).toBe("501"); // ← same reference as audit
     expect(mvCall.data.productId).toBeNull();
-    expect(mvCall.data.reference).toContain("orphan purchase item");
-    expect(mvCall.data.reference).toContain("Mystery Purchase Item");
+    expect(mvCall.data.note).toContain("orphan purchase item");
+    expect(mvCall.data.note).toContain("Mystery Purchase Item");
   });
 
   it("3. purchase-collision-recovery-fail writes the REAL purchaseInvoiceId on the audit row (NOT null)", async () => {

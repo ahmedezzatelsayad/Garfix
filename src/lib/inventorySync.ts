@@ -37,30 +37,23 @@ export async function recordStockMovement(
   note?: string, createdBy: string = "system",
 ): Promise<void> {
   try {
-    // P0 FIX: جدول stock_movements فيه أعمدة NOT NULL إجبارية (type, quantity,
-    // movementType) من مصالحة schema قديمة — الكتابة بدونها كانت تفشل صامتة
-    // (الخطأ يُسجل فقط في اللوج) فيُفقد سجل حركة المخزون.
+    // RECONCILED (20260823180000): الجدول الآن موحّد مع المخطط — كل الحقول
+    // (type/quantity/sourceType/sourceId/note/createdBy) تُكتب عبر Prisma
+    // نظيفًا بلا raw query (كانت الكتابة تفشل صامتة بسبب الأعمدة المزدوجة).
     const moveType = signedQty < 0 ? "out" : signedQty > 0 ? "in" : "adjustment";
-    const created = await tx.stockMovement.create({
+    await tx.stockMovement.create({
       data: {
-        companySlug, productId,
+        companySlug,
+        productId,
         warehouseRef: warehouseId ? { connect: { id: String(warehouseId) } } : undefined,
         type: moveType,
-        movementType: sourceType,
-        // sourceType موجود في المخطط (String?) لكنه NOT NULL في القاعدة بلا
-        // default — إرساله مع الإنشاء إلزامي وإلا فشل الـ INSERT.
         sourceType,
-        // sourceId موجود في المخطط (String?) — إرساله هنا يبقيه مرئيًا
-        // للسجلات والاختبارات بدلاً من الاكتفاء بالتحديث الخام.
         sourceId: sourceId === null ? null : String(sourceId),
         quantity: signedQty.toFixed(3),
-        ...(note ? { reference: note.slice(0, 250) } : {}),
+        note: note ?? null,
+        createdBy,
       },
     });
-    // أكمل الأعمدة القديمة (createdBy/note) الموجودة في القاعدة بلا تمثيل
-    // في المخطط — تحديث مباشر بسجل الحركة الذي أُنشئ للتو (best-effort).
-    await tx.
-$executeRaw`UPDATE stock_movements SET "createdBy" = ${createdBy}, note = ${note ?? null} WHERE id = ${created.id}`;
   } catch (err) {
     logger.error("[inventory-sync] failed to record stock movement", { companySlug, productId, signedQty, sourceType, err: err instanceof Error ? err.message : String(err) });
   }
