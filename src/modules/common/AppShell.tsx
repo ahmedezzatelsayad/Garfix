@@ -234,6 +234,14 @@ function AppShellContent(_props: Record<string, unknown>) {
   const { activeCompany, companies, setActiveSlug, loadingCompanies, refreshCompanies, theme, toggleTheme } = useBrand();
   // Lazy-initialize from the URL hash so we don't need a setState-in-effect on mount
   const [view, setView] = useState<ViewKey>(() => parseHash());
+  // LINT FIX (من أسفل المكون): حالة المعالج وref التثبيت — كانتا بعد
+  // early-return فكسرتا قواعد Hooks.
+  const [wizardDismissed, setWizardDismissed] = useState(false);
+  const wizardForcedRef = useRef(false);
+  const dismissWizard = useCallback(() => {
+    wizardForcedRef.current = false;
+    setWizardDismissed(true);
+  }, []);
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const searchParams = useSearchParams();
 
@@ -271,6 +279,14 @@ function AppShellContent(_props: Record<string, unknown>) {
     setMobileSidebar(false);
   }, []);
 
+  // تثبيت المعالج: بمجرد رؤية "لا شركات" يبقى مفتوحاً حتى بعد ظهور شركة
+  // أثناء الرحلة (inside effect — لا تحويل حالة أثناء الرسم).
+  useEffect(() => {
+    if (!loadingCompanies && companies.length === 0) {
+      wizardForcedRef.current = true;
+    }
+  }, [loadingCompanies, companies]);
+
   const handleLogout = useCallback(async () => {
     try {
       await logout();
@@ -293,18 +309,10 @@ function AppShellContent(_props: Record<string, unknown>) {
   // يحدّث القائمة فينقلب showOnboarding إلى false من منتصف الرحلة) — فلا يرى
   // المستخدم الجديد خطوات الدولة/التخصيص/النشاط/المميزات أبداً. الآن: بمجرد
   // فتح المعالج يبقى مفتوحاً حتى يُكمل المستخدم الخطوات أو يتخطاها صراحةً.
-  const [wizardDismissed, setWizardDismissed] = useState(false);
-  // بمجرد فتح المعالج نثبّته (ref) حتى لو ظهرت شركات أثناء الرحلة — see showOnboarding
-  const wizardForcedRef = useRef(false);
-  if (typeof window !== "undefined" && !loadingCompanies && companies.length === 0) {
-    wizardForcedRef.current = true;
-  }
+  // LINT FIX: الحالة والـ ref نُقلتا لأعلى المكون (كانتا بعد early-return —
+  // استدعاء hooks شرطي يكسر قواعد React ويرمي عند تغيّر الترتيب).
   const needsOnboarding = !loadingCompanies && companies.length === 0;
   const showOnboarding = !wizardDismissed && (needsOnboarding || wizardForcedRef.current);
-  const dismissWizard = useCallback(() => {
-    wizardForcedRef.current = false;
-    setWizardDismissed(true);
-  }, []);
 
   return (
     <CommandPaletteProvider>

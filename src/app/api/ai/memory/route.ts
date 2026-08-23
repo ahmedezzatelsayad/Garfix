@@ -50,26 +50,31 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Phase 4 P2 fix: filter by entityId when provided (was ignored — returned
-  // all memory notes for the company regardless of which entity was queried).
-  const whereClause: Record<string, unknown> = { companySlug, category: entityType };
-  if (entityId) {
-    whereClause.entityId = String(entityId);
-  }
-  const notes = await db.aIMemoryNote.findMany({
-    where: whereClause,
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
+  // P0 FIX: الجدول فيه مجموعتا أعمدة (entityType/entityId/note القديمة +
+  // category/content الجديدة) والـ Prisma يعرف الجديدة فقط — الفلترة بـ entityId
+  // كانت ترمي Unknown argument (500). نقرأ عبر raw مع الحقول القديمة مباشرة.
+  const rows = entityId
+    ? await db.$queryRaw<Array<{ id: number; companySlug: string; category: string; content: string; entityId: string | null; note: string | null; createdBy: string | null; createdAt: Date }>>`
+        SELECT id, "companySlug", category, content, "entityId", note, "createdBy", "createdAt"
+        FROM ai_memory_notes
+        WHERE "companySlug" = ${companySlug} AND category = ${entityType} AND "entityId" = ${String(entityId)}
+        ORDER BY "createdAt" DESC LIMIT 200`
+    : (
+        await db.aIMemoryNote.findMany({
+          where: { companySlug, category: entityType },
+          orderBy: { createdAt: "desc" },
+          take: 200,
+        })
+      ).map((n) => ({ ...n, entityId: null, note: null, createdBy: null }));
 
   return NextResponse.json({
-    notes: notes.map((n) => ({
+    notes: rows.map((n) => ({
       id: n.id,
       companySlug: n.companySlug,
       entityType: n.category,
-      entityId: (n as Record<string, unknown>)?.entityId || null,
-      note: n.content,
-      createdBy: null,
+      entityId: n.entityId,
+      note: n.note ?? n.content,
+      createdBy: n.createdBy,
       createdAt: n.createdAt,
     })),
   });

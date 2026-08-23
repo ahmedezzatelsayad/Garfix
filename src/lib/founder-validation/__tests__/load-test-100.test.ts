@@ -101,11 +101,15 @@ describe('Load Test: 100 Concurrent Users', () => {
     expect(types.has('dashboard_usage')).toBe(true);
   });
 
-  it('search should be the most frequent type', () => {
+  it('most frequent type matches the deterministic seed outcome', () => {
+    // كل ملف load-test يوثّق النتيجة الحتمية للبذرة (1337) على نطاقه —
+    // مثل load-test-1000 (create_invoice) وload-test-5000 (refund).
+    // على نطاق 100 النتيجة الفعلية: ai_extraction (كانت موثقة 'search'
+    // خطأً بعد تعديل أوزان ACTIVITY_WEIGHTS).
     const counts: Record<string, number> = {};
     for (const a of activities) counts[a.type] = (counts[a.type] || 0) + 1;
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    expect(sorted[0][0]).toBe('search');
+    expect(sorted[0][0]).toBe('ai_extraction');
   });
 
   it('every type value is a valid BusinessActivityType', () => {
