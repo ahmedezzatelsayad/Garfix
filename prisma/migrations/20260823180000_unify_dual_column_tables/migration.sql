@@ -47,7 +47,7 @@ BEGIN
   -- انقل القيم من الأعمدة القديمة إن وُجدت (قواعد ذات تاريخ قديم)
   IF EXISTS (SELECT 1 FROM information_schema.columns
              WHERE table_name='stock_movements' AND column_name='qty') THEN
-    EXECUTE 'UPDATE "stock_movements" SET "quantity" = "qty" WHERE "qty" IS NOT NULL AND "qty" <> 0 AND "quantity" = 0';
+    EXECUTE 'UPDATE "stock_movements" SET "quantity" = "qty"::numeric WHERE "qty" IS NOT NULL AND "qty"::numeric <> 0 AND "quantity" = 0';
     EXECUTE 'ALTER TABLE "stock_movements" DROP COLUMN "qty"';
   END IF;
 
@@ -85,13 +85,13 @@ BEGIN
 
   IF EXISTS (SELECT 1 FROM information_schema.columns
              WHERE table_name='ai_memory_notes' AND column_name='entityType') THEN
-    EXECUTE $q$UPDATE ai_memory_notes SET category = entityType WHERE (category IS NULL OR category = '') AND entityType IS NOT NULL$q$;
+    EXECUTE 'UPDATE "ai_memory_notes" SET "category" = "entityType" WHERE ("category" IS NULL OR length("category") = 0) AND "entityType" IS NOT NULL';
     EXECUTE 'ALTER TABLE "ai_memory_notes" DROP COLUMN "entityType"';
   END IF;
 
   IF EXISTS (SELECT 1 FROM information_schema.columns
              WHERE table_name='ai_memory_notes' AND column_name='note') THEN
-    EXECUTE $q$UPDATE ai_memory_notes SET content = note WHERE (content IS NULL OR content = '') AND note IS NOT NULL$q$;
+    EXECUTE 'UPDATE "ai_memory_notes" SET "content" = "note" WHERE ("content" IS NULL OR length("content") = 0) AND "note" IS NOT NULL';
     EXECUTE 'ALTER TABLE "ai_memory_notes" DROP COLUMN "note"';
   END IF;
 END $$;
