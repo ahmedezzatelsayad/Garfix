@@ -46,6 +46,9 @@ import { CSRF_COOKIE, generateCsrfToken, CSRF_COOKIE_OPTS } from "@/lib/cookies"
 // register, forgot-password, reset-password). They are exempt from CSRF
 // enforcement. All other mutating endpoints require the double-submit token.
 const CSRF_EXEMPT_ROUTES = [
+  // HOTFIX: نداء سيرفر→سيرفر مؤمّن بـ METRICS_TOKEN خاص (لا كوكيز متصفح
+  // أصلاً) — حماية CSRF غير منطقية هنا وتمنع تشغيل migrations من الـ runtime.
+  "/api/admin/migrate",
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/forgot-password",
