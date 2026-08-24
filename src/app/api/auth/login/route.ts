@@ -190,6 +190,15 @@ function parseJson<T>(s: string | null, fallback: T): T {
   try {
     return JSON.parse(s) as T;
   } catch {
+    // P0 HARDENING: سطور مثل [slug1,slug2] بدون علامات اقتباس كانت تفشل
+    // بصمت → جلسات بلا شركات → كل الشاشات تفتح المعالج. نحاول إصلاحها
+    // تلقائيًا (split على الفواصل) قبل الاستسلام للقيمة الفارغة.
+    try {
+      const cleaned = s.replace(/^[\[\]]|[[\]]$/g, "").trim();
+      if (cleaned.includes(",")) {
+        return (cleaned.split(",").map((x) => x.trim().replace(/^["']|["']$/g, "")).filter(Boolean)) as unknown as T;
+      }
+    } catch { /* غير قابل للإصلاح */ }
     return fallback;
   }
 }
