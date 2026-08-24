@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/", "/dashboard", "/setup"],
+        disallow: ["/api/", "/dashboard"],
       },
     ],
     sitemap: "https://garfix.app/sitemap.xml",

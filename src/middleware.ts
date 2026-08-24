@@ -54,14 +54,6 @@ const CSRF_EXEMPT_ROUTES = [
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
   "/api/auth/refresh",  // refresh only rotates tokens; can't be read cross-origin
-  // Setup wizard endpoints — exempt because they run BEFORE the founder has
-  // a session or CSRF cookie. Once /api/setup/complete writes the marker
-  // file, these routes return 410 Gone and refuse to do anything.
-  "/api/setup/test-db",
-  "/api/setup/run-migrations",
-  "/api/setup/create-founder",
-  "/api/setup/save-integrations",
-  "/api/setup/complete",
   // SECURITY FIX (Review H5 / 2026-08-24): inbound server-to-server webhooks
   // are called by external authorities (ZATCA/ETA/FTA/payment providers) with
   // NO browser session and therefore no CSRF cookie. Each of these routes
@@ -220,43 +212,11 @@ function withSecurityHeaders(response: NextResponse, pathname?: string): NextRes
 export function middleware(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
 
-  // ── 0. Setup wizard routing ─────────────────────────────────────────────
-  // Edge-runtime-safe check: reads SETUP_COMPLETE env var (no fs access).
-  // The full fs-based check is done inside /api/setup/status; middleware only
-  // needs to handle the redirect logic. If SETUP_COMPLETE is unset (first
-  // boot), we redirect unauthenticated / traffic to /setup so the founder
-  // can configure the app before anyone uses it. If SETUP_COMPLETE=true,
-  // we redirect /setup → / so the wizard can't be re-run.
-  //
-  // VERCEL FIX: On Vercel, if SETUP_COMPLETE is not set but DATABASE_URL is,
-  // assume setup is already done (migrations run externally). This prevents
-  // the setup wizard from blocking all traffic on Vercel deployments where
-  // env vars are configured via the Vercel dashboard rather than the wizard.
-  //
-  // Allow these paths regardless of setup state:
-  //   - /api/setup/*          (wizard APIs)
-  //   - /_next, /favicon.ico  (static assets)
-  //   - /login, /signup       (so users can log in / register)
-  //   - /api/auth/*           (auth endpoints must work for login/refresh)
-  const isVercelWithDb = process.env.VERCEL === "1" && !!process.env.DATABASE_URL;
-  const isSetupDone = process.env.SETUP_COMPLETE === "true" || isVercelWithDb;
-  const SETUP_ALLOW_PATHS = ["/login", "/signup", "/api/auth", "/api/setup"];
-  const isSetupAllowedPath =
-    pathname === "/setup" ||
-    SETUP_ALLOW_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
-
-  if (!isSetupDone && !isSetupAllowedPath && !pathname.startsWith("/_next") && pathname !== "/favicon.ico") {
-    // Redirect everything else to /setup
-    const url = req.nextUrl.clone();
-    url.pathname = "/setup";
-    return NextResponse.redirect(url);
-  }
-  if (isSetupDone && pathname === "/setup") {
-    // Setup is done — refuse to serve the wizard
-    const url = req.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
-  }
+  // ── 0. Setup wizard — REMOVED (2026-08-25) ───────────────────────────────
+  // The first-boot /setup wizard was removed entirely: the platform is now
+  // provisioned exclusively via .env / Vercel env vars + `prisma migrate
+  // deploy` + the seed scripts (see README "Quick Start" — Path B).
+  // No routing gate is needed anymore; /setup now 404s naturally.
 
   // ── 1. CSRF double-submit verification for mutating methods ────────────
   // Pure string comparison — no DB, no JWT, no Redis. The inv_csrf cookie

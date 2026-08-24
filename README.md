@@ -28,7 +28,6 @@ GarfiX is an enterprise-grade ERP designed for Gulf and MENA markets. It combine
 - **3-tier queue fallback** (BullMQ + Valkey → pg-boss + PostgreSQL → in-process) with transactional outbox relay
 - **Transactional outbox pattern** for at-least-once event delivery with dead-letter handling
 - **12 Playwright E2E specs** (~30 test blocks) + 1,736 test files
-- **Setup wizard** (OpenCart-style) for zero-config first-boot installation without `.env` editing
 
 ### Verified Metrics
 
@@ -199,7 +198,6 @@ garfix/
 ├── src/
 │   ├── app/                        # Next.js App Router (308 files)
 │   │   ├── api/                    # 257 route.ts files
-│   │   ├── setup/                  # Setup wizard (6-step installer)
 │   │   ├── founder-panel/          # Founder-only admin (10 pages)
 │   │   └── (dashboard)/            # Authenticated app pages
 │   ├── lib/                        # Business logic (1,949 files)
@@ -211,7 +209,6 @@ garfix/
 │   │   ├── invoice-brain/          # OCR + pattern extraction (22 files)
 │   │   ├── circuit-breaker/        # 12 per-service breakers
 │   │   ├── accessibility/          # WCAG 2.1 AAA focus traps
-│   │   ├── setup/                  # Setup wizard config helpers
 │   │   ├── auth.ts                 # JWT + session + refresh rotation
 │   │   ├── mfa.ts                  # TOTP + recovery codes
 │   │   ├── permissions.ts          # RBAC catalog + role defaults
@@ -256,26 +253,9 @@ garfix/
 | **PostgreSQL** | ≥ 17 | Primary database |
 | **Valkey** | ≥ 8.1 | Cache + queues + rate limiting (optional for dev) |
 
-### Path A: Setup Wizard (no `.env` needed)
-
-```bash
-git clone https://github.com/ahmedezzatelsayad/Garfix.git
-cd Garfix
-bun install
-bunx prisma generate
-bun run build
-bun run start
-```
-
-Open `http://localhost:3000` — the middleware redirects to `/setup` (6-step wizard):
-1. Welcome
-2. Database configuration (tests connection live)
-3. Run migrations
-4. Create founder account + company
-5. Optional integrations (Stripe, OpenRouter, WhatsApp, Redis, SMTP)
-6. Complete (writes `.env` + `.setup-complete` marker, disables wizard)
-
-### Path B: Manual `.env` configuration
+> **2026-08-25:** the first-boot `/setup` wizard was **removed** — the
+> platform is provisioned via environment variables + `prisma migrate deploy`
+> + seed scripts (the flow below). `/setup` now returns 404.
 
 ```bash
 git clone https://github.com/ahmedezzatelsayad/Garfix.git
@@ -316,7 +296,6 @@ bash scripts/final_compliance_check.sh            # (against a deployed URL) 33 
 | `VALKEY_URL` | Production | Valkey/Redis for queues + cache + rate limit | `valkey://localhost:6379` |
 | `VAULT_SALT` | Recommended | Per-deployment salt for scrypt | `openssl rand -hex 32` |
 | `APP_URL` | Production | Public URL for callbacks/links | `https://garfix.app` |
-| `SETUP_COMPLETE` | Optional | Skip setup wizard (set after manual setup) | `true` |
 | `NODE_ENV` | Production | Runtime environment | `production` |
 | `TRUSTED_PROXIES` | Optional | Comma-separated proxy IPs for rate limiting | `10.0.0.1,10.0.0.2` |
 | `BCRYPT_ROUNDS` | Optional | Bcrypt cost factor (default 12) | `12` |
@@ -375,7 +354,6 @@ bunx prisma studio                              # GUI for database
 | **hr/** | 14 | employees, salaries, commissions, attendance, leaves, performance, gratuity |
 | **invoices/** | 4 | CRUD + payment + status |
 | **webhooks/** | 5 | endpoints, events, deliveries, whatsapp |
-| **setup/** | 6 | status, test-db, run-migrations, create-founder, save-integrations, complete |
 | **Other** | 53 | clients, catalog, inventory, automation, saas, permissions, health, metrics, storage, etc. |
 
 ---
