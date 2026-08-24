@@ -9,7 +9,7 @@
  * الأسعار محوّلة تلقائيًا لعملة الزائر حسب بلد الشركة المعروضة.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Check, X, Star, ArrowLeft, ChevronDown, Bot, Zap } from "lucide-react";
 import { PublicSiteHeader } from "@/components/site/PublicSiteHeader";
@@ -59,7 +59,24 @@ function FaqJsonLd() {
 export default function PricingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   // محوّل عملة تفاعلي — الزائر يرى السعر بعملته فورًا
+  // PRICING FIX (2026-08-25): العملة تُختار تلقائيًا حسب بلد الزائر (IP)
+  // عبر /api/geo (يقرأ x-vercel-ip-country على Vercel) — بدل الافتراض
+  // الثابت بالريال السعودي. الزائر يظل قادرًا على تغييرها يدويًا.
   const [currency, setCurrency] = useState("SAR");
+  const [geoCountry, setGeoCountry] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/geo")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { country?: string | null; currency?: string } | null) => {
+        if (cancelled || !data?.currency) return;
+        setCurrency(data.currency);
+        setGeoCountry(data.country ?? null);
+      })
+      .catch(() => { /* geo is best-effort — keep the manual picker */ });
+    return () => { cancelled = true; };
+  }, []);
   const currencies = Object.keys(COUNTRY_CURRENCY).filter(k => k !== "DEFAULT");
   const inv = planPriceIn("invoicing", currency);
   const agent = planPriceIn("ai_agent", currency);
@@ -81,9 +98,11 @@ export default function PricingPage() {
             لا تدرجات، لا رسوم على كل فاتورة، لا مفاجآت — اشتراك واحد يشمل كل ما تحتاجه لإدارة فواتير شركتك.
           </p>
 
-          {/* Currency picker */}
+          {/* Currency picker — auto-selected by visitor country (IP) */}
           <div className="inline-flex items-center gap-2 text-sm mb-2">
-            <span className="text-muted-foreground text-xs">العرض بعملة:</span>
+            <span className="text-muted-foreground text-xs">
+              {geoCountry ? `العرض بعملة بلدك (${geoCountry}):` : "العرض بعملة:"}
+            </span>
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}

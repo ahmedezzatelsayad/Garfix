@@ -40,7 +40,7 @@ const { PERMISSION_CATALOG: _PERMISSION_CATALOG, LOCKED_PERMS: _LOCKED_PERMS, co
 type User = { uid: string; email: string; role: string; companies: string[]; permissions: Record<string, number>; tv: number };
 
 const adminUser: User = { uid: "a1", email: "admin@garfix.app", role: "admin", companies: ["co-a", "co-b"], permissions: {}, tv: 1 };
-const founderUser: User = { uid: "f1", email: "founder@garfix.app", role: "admin", companies: ["co-a", "co-b"], permissions: {}, tv: 1 };
+const founderUser: User = { uid: "f1", email: "founder@garfix.com", role: "admin", companies: ["co-a", "co-b"], permissions: {}, tv: 1 };
 const employeeUser: User = { uid: "e1", email: "emp@co-a.com", role: "employee", companies: ["co-a"], permissions: {}, tv: 1 };
 const multiCompanyUser: User = { uid: "m1", email: "multi@co.com", role: "editor", companies: ["co-a", "co-b", "co-c"], permissions: {}, tv: 1 };
 const noCompanyUser: User = { uid: "n1", email: "none@x.com", role: "employee", companies: [], permissions: {}, tv: 1 };

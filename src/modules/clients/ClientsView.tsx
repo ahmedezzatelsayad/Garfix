@@ -26,12 +26,22 @@ export function ClientsView() {
 
   // Listen for quick-action events from the Command Palette (e.g. "عميل جديد")
   useEffect(() => {
-    const onQuickAction = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { type?: string } | undefined;
-      if (detail?.type === "new-client") {
+    const consume = (type?: string) => {
+      if (type === "new-client") {
         setEditing(null);
         setShowForm(true);
+        return true;
       }
+      return false;
+    };
+    // Pending intent set by the dashboard quick-action button.
+    const w = window as unknown as { __garfixPendingQuickAction?: string };
+    if (w.__garfixPendingQuickAction && consume(w.__garfixPendingQuickAction)) {
+      w.__garfixPendingQuickAction = undefined;
+    }
+    const onQuickAction = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { type?: string } | undefined;
+      if (consume(detail?.type)) w.__garfixPendingQuickAction = undefined;
     };
     window.addEventListener("garfix:quick-action", onQuickAction as EventListener);
     return () => window.removeEventListener("garfix:quick-action", onQuickAction as EventListener);

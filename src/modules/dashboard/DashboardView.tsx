@@ -223,6 +223,24 @@ function ProgressRing({
 }
 
 /**
+ * FIX (2026-08-25): navigate to a view and open its create modal.
+ * The target views (InvoicesView, ClientsView, …) listen for the
+ * `garfix:quick-action` CustomEvent AFTER they mount, so the event must be
+ * dispatched on the next tick once the hash navigation has rendered them.
+ */
+function quickAction(view: string, type: string) {
+  // Robust across lazy-loaded views: stash the intent where the target view
+  // can read it on mount (slow chunks in dev / cold starts), AND dispatch the
+  // live event for already-mounted views. The view clears the flag once
+  // consumed. A short retry loop covers the in-between window.
+  (window as unknown as { __garfixPendingQuickAction?: string }).__garfixPendingQuickAction = type;
+  window.location.hash = view;
+  const dispatch = () =>
+    window.dispatchEvent(new CustomEvent("garfix:quick-action", { detail: { type } }));
+  [150, 400, 800, 1400].forEach((ms) => setTimeout(dispatch, ms));
+}
+
+/**
  * QuickActionButton - Quick action button with icon
  */
 function QuickActionButton({ 
@@ -541,41 +559,50 @@ export function DashboardView() {
             SECTION 2: QUICK ACTIONS GRID
            ════════════════════════════════════════════════════════════════ */}
         <section className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 animate-fade-in" style={{ animationDelay: '100ms' }}>
+          {/*
+            FIX (2026-08-25): the previous handlers assigned
+            `location.hash = "#invoices/new"` — the AppShell only recognizes
+            exact view keys ("invoices", "clients", …), so "/new" paths did
+            NOTHING (the dead create-buttons reported from the dashboard).
+            Correct flow: switch the view, then dispatch the quick-action
+            event the target view already listens for (garfix:quick-action)
+            once it has mounted.
+          */}
           <QuickActionButton 
             icon={Plus} 
             label="فاتورة جديدة" 
             variant="primary"
-            onClick={() => window.location.hash = "#invoices/new"}
+            onClick={() => quickAction("invoices", "new-invoice")}
           />
           <QuickActionButton 
             icon={Users} 
             label="إضافة عميل" 
             variant="secondary"
-            onClick={() => window.location.hash = "#clients/new"}
+            onClick={() => quickAction("clients", "new-client")}
           />
           <QuickActionButton 
             icon={FileText} 
             label="التقارير" 
             variant="secondary"
-            onClick={() => window.location.hash = "#reports"}
+            onClick={() => { window.location.hash = "reports"; }}
           />
           <QuickActionButton 
             icon={Download} 
             label="تصدير" 
             variant="secondary"
-            onClick={() => {}}
+            onClick={() => { window.location.hash = "reports"; }}
           />
           <QuickActionButton 
             icon={Brain} 
             label="AI مساعد" 
             variant="gold"
-            onClick={() => window.location.hash = "#ai-agents"}
+            onClick={() => { window.location.hash = "ai-agents"; }}
           />
           <QuickActionButton 
             icon={MoreHorizontal} 
             label="المزيد" 
             variant="secondary"
-            onClick={() => {}}
+            onClick={() => { window.location.hash = "settings"; }}
           />
         </section>
 

@@ -14,7 +14,7 @@
  * ═════════════════════════════════════════════════════════════
  */
 
-import { useState } from "react";
+import {useState, useEffect} from "react";
 import { useBrand } from "@/context/BrandContext";
 import { Check, Loader2, Crown, Zap, Infinity as InfinityIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -76,7 +76,21 @@ export function BillingView() {
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [error, setError] = useState<string | null>(null);
 
-  const country = activeCompany?.country || "DEFAULT";
+  // PRICING FIX (2026-08-25): العملة حسب بلد الزائر (IP) عندما لا تكون
+  // الشركة مسجلة ببلد محدد — بدل الرجوع الثابت للدولار/الريال.
+  const [geoCountry, setGeoCountry] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/geo")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { country?: string | null } | null) => {
+        if (!cancelled && data?.country) setGeoCountry(data.country);
+      })
+      .catch(() => { /* best-effort */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const country = activeCompany?.country || geoCountry || "DEFAULT";
   const currencyMap: Record<string, string> = {
     DEFAULT: "USD", KW: "KWD", SA: "SAR", AE: "AED",
     BH: "BHD", OM: "OMR", QA: "QAR", EG: "EGP",

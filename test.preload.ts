@@ -27,9 +27,11 @@ if (!process.env.JWT_REFRESH_SECRET) {
 }
 
 // ── Founder email ───────────────────────────────────────────────────────────
-if (!process.env.FOUNDER_EMAIL) {
-  process.env.FOUNDER_EMAIL = "founder@garfix.com";
-}
+// HERMETIC TESTS FIX (2026-08-25): always override — a developer's .env may
+// set FOUNDER_EMAIL to a real address, which silently broke the founder
+// test fixtures (they expect founder@garfix.com). Tests must not depend on
+// the ambient environment.
+process.env.FOUNDER_EMAIL = "founder@garfix.com";
 
 // ── Default AI provider: DeepSeek (cheapest + fastest for invoice parsing) ──
 if (!process.env.DEEPSEEK_API_KEY) {

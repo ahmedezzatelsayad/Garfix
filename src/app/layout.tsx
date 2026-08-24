@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
@@ -30,6 +30,23 @@ const cairo =
         }
       })()
     : { variable: "--font-cairo", className: "" };
+
+/**
+ * VIEWPORT STABILITY FIX (2026-08-25):
+ * - `interactiveWidget: "resizes-content"` — on Android/Chrome the visual
+ *   viewport RESIZES to fit above the keyboard instead of auto-zooming in,
+ *   which is what caused "keyboard opens → page zooms → must pinch-out"
+ *   on mobile.
+ * - We deliberately do NOT set maximumScale=1 — that blocks user zoom
+ *   entirely (WCAG 1.4.4 violation). The iOS focus-zoom is instead prevented
+ *   by enforcing 16px font-size on all inputs at mobile widths (globals.css).
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  minimumScale: 1,
+  interactiveWidget: "resizes-content",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://garfix.app"),
