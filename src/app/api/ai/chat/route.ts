@@ -227,6 +227,15 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // from CompanyAIConfig — so a company on the "starter" plan (60 RPM) can't
   // exceed their quota even with 10 active users. Falls back gracefully if
   // Valkey is unavailable (per-instance in-memory limiter).
+  // TRIAL v2: فحص حصة رسائل المساعد (20 للتجربة / بلا حدود للمدفوع)
+  if (data.companySlug) {
+    const { checkAiChatQuota } = await import("@/lib/usageMeter");
+    const aiQuota = await checkAiChatQuota(data.companySlug);
+    if (!aiQuota.ok) {
+      return NextResponse.json({ error: aiQuota.reason, code: "AI_QUOTA_EXCEEDED" }, { status: 402 });
+    }
+  }
+
   if (data.companySlug) {
     try {
       const { checkAndRecordRateLimit } = await import("@/lib/ai/valkey-rate-limiter");

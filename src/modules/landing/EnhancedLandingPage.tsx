@@ -159,7 +159,7 @@ export function EnhancedLandingPage(_props: EnhancedLandingPageProps) {
               href="/signup"
               className="cta-shine active-press inline-flex items-center gap-2 bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-xl px-8 py-4 text-[15px] font-extrabold no-underline cursor-pointer transition-all shadow-[0_12px_36px_rgba(4,120,87,0.4)] hover:shadow-[0_16px_44px_rgba(4,120,87,0.5)]"
             >
-              ابدأ مجاناً — 30 يوماً <ArrowLeft size={17} />
+              ابدأ مجانًا — ٧ أيام كاملة <ArrowLeft size={17} />
             </Link>
             <Link
               href="/features"

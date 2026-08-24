@@ -77,6 +77,17 @@ async function isInScope(agentType: AgentType, userMessage: string): Promise<boo
 }
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // TRIAL v2: رسائل الوكلاء من نفس حصة التجربة (20)
+  try {
+    const preBody = await req.clone().json();
+    if (preBody?.companySlug) {
+      const { checkAiChatQuota } = await import("@/lib/usageMeter");
+      const q = await checkAiChatQuota(preBody.companySlug);
+      if (!q.ok) {
+        return NextResponse.json({ error: q.reason, code: "AI_QUOTA_EXCEEDED" }, { status: 402 });
+      }
+    }
+  } catch { /* body parse سيُعاد في المسار الأصلي */ }
   const result = await resolveAuth(req);
   if (!result.ok || !result.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

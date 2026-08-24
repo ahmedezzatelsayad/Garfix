@@ -11,6 +11,7 @@ export interface PlanDef {
   maxCompanies: number;
   maxUsers: number;
   trialDays: number;
+  maxAiMessagesPerTrial?: number;
   currency?: string;
   billingPeriod?: string;
   featureBullets?: string[];
@@ -23,48 +24,51 @@ export const DEFAULT_PLANS: PlanCatalog = {
   trial: {
     name: "تجريبي",
     priceMonthly: 0,
-    maxInvoicesPerMonth: 999999,
+    // TRIAL v2: تجربة حقيقية محدودة — 7 أيام / 100 فاتورة / 20 رسالة AI
+    // (كانت 999,999 فاتورة = بلا حدود فعلية — لا قيمة تجريبية ولا حماية تكلفة)
+    maxInvoicesPerMonth: 100,
+    maxAiMessagesPerTrial: 20,
     maxCompanies: 1,
     maxUsers: 3,
-    trialDays: 30,
+    trialDays: 7,
     currency: "$",
     billingPeriod: "مجاناً",
-    featureBullets: ["كل المزايا الأساسية", "حتى ٣ مستخدمين", "٣٠ يوماً تجربة مجانية"],
+    featureBullets: ["٧ أيام كاملة", "١٠٠ فاتورة", "٢٠ رسالة للمساعد الذكي", "كل طرق الإدخال (يدوي/صورة/ملف/مجمع)"],
     highlight: false,
   },
   starter: {
-    name: "Starter",
-    priceMonthly: 9.99,
-    maxInvoicesPerMonth: 10000,
+    name: "Invoicing",
+    priceMonthly: 10,
+    maxInvoicesPerMonth: -1, // Commercial v2: unlimited
     maxCompanies: 3,
     maxUsers: 10,
     trialDays: 0,
     currency: "$",
     billingPeriod: "شهرياً",
-    featureBullets: ["حتى ٣ شركات", "حتى ١٠ مستخدمين", "١٠٬٠٠٠ فاتورة شهرياً", "دعم عبر البريد"],
-    highlight: false,
+    featureBullets: [
+      "فواتير بلا حدود",
+      "عملاء ومنتجات بلا حدود",
+      "كل العملات والضرائب",
+    ],
+    highlight: true,
   },
+  // Commercial v2: professional/unlimited مجرد أسماء قديمة لنفس الخطة الموحدة
+  // (توافق خلفي لمسارات الدفع القائمة — كلها $10 الآن)
   professional: {
-    name: "Professional",
-    priceMonthly: 19.99,
-    maxInvoicesPerMonth: 30000,
+    name: "Invoicing",
+    priceMonthly: 10,
+    maxInvoicesPerMonth: -1,
     maxCompanies: 10,
     maxUsers: 30,
     trialDays: 0,
     currency: "$",
     billingPeriod: "شهرياً",
-    featureBullets: [
-      "حتى ١٠ شركات",
-      "حتى ٣٠ مستخدماً",
-      "٣٠٬٠٠٠ فاتورة شهرياً",
-      "مساعد الذكاء الاصطناعي",
-      "دعم ذو أولوية",
-    ],
-    highlight: true,
+    featureBullets: ["نفس الخطة الموحدة — 10$ شهرياً"],
+    highlight: false,
   },
   unlimited: {
-    name: "Unlimited",
-    priceMonthly: 29.99,
+    name: "Invoicing",
+    priceMonthly: 10,
     maxInvoicesPerMonth: -1,
     maxCompanies: -1,
     maxUsers: -1,

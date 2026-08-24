@@ -284,11 +284,47 @@ export function DashboardView() {
   const { data: statsData, isLoading: loading, error: statsError } = useDashboardStats(companySlug);
   const stats = statsData?.stats ?? null;
 
+  // ── TRIAL v2: عداد التجربة المرئي (7 أيام/100 فاتورة/20 رسالة AI) ──
+  const [trial, setTrial] = useState<{daysLeft: number|null; invoicesUsed: number; invoicesLimit: number; aiUsed: number; aiLimit: number; plan: string} | null>(null);
+  useEffect(() => {
+    if (!companySlug) return;
+    fetch(`/api/trial-summary?companySlug=${encodeURIComponent(companySlug)}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setTrial(d?.summary || null))
+      .catch(() => {});
+  }, [companySlug]);
+
   // State for interactive features
   const [activeTab, setActiveTab] = useState<"overview" | "financial" | "operations">("overview");
   const [showSearch, setShowSearch] = useState(false);
 
   // ── Empty States ──────────────────────────────────────────────────────
+
+  // بطاقة عداد التجربة (فوق كل شيء للخطة التجريبية)
+  const trialBanner = trial && trial.plan === "trial" ? (
+    <div className="mb-4 p-4 rounded-2xl border border-emerald-500/30 bg-[linear-gradient(135deg,rgba(4,120,87,0.10),rgba(16,185,129,0.05))] flex flex-wrap items-center gap-x-6 gap-y-3" dir="rtl">
+      <div className="flex items-center gap-2 font-extrabold text-[13px] text-emerald-700 dark:text-emerald-400">
+        <Sparkles size={15} /> تجربتك المجانية
+      </div>
+      <div className="flex items-center gap-1.5 text-[12px] font-bold">
+        <span className="text-muted-foreground">متبقي</span>
+        <span className="text-foreground">{trial.daysLeft ?? 0} أيام</span>
+      </div>
+      <div className="flex items-center gap-1.5 text-[12px] font-bold">
+        <span className="text-muted-foreground">فواتير</span>
+        <span className="text-foreground">{trial.invoicesUsed}/{trial.invoicesLimit}</span>
+        <span className="w-20 h-1.5 rounded-full bg-muted overflow-hidden inline-block"><span className="block h-full bg-emerald-500" style={{width: `${Math.min(100, (trial.invoicesUsed/Math.max(1,trial.invoicesLimit))*100)}%`}} /></span>
+      </div>
+      <div className="flex items-center gap-1.5 text-[12px] font-bold">
+        <span className="text-muted-foreground">رسائل AI</span>
+        <span className="text-foreground">{trial.aiUsed}/{trial.aiLimit}</span>
+        <span className="w-20 h-1.5 rounded-full bg-muted overflow-hidden inline-block"><span className="block h-full bg-[#d4a574]" style={{width: `${Math.min(100, (trial.aiUsed/Math.max(1,trial.aiLimit))*100)}%`}} /></span>
+      </div>
+      <a href="#billing" className="ms-auto px-4 py-2 rounded-xl bg-[linear-gradient(135deg,#047857,#10b981)] text-white text-[12px] font-extrabold no-underline active-press">
+        ترقية الآن — 10$/شهر
+      </a>
+    </div>
+  ) : null;
 
   if (!loading && companies.length === 0) {
     return (
@@ -414,6 +450,7 @@ export function DashboardView() {
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
+      {trialBanner}
       <div className="max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8 space-y-6">
         
         {/* ════════════════════════════════════════════════════════════════

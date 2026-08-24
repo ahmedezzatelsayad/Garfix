@@ -190,7 +190,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       defaultTaxRate: resolvedTaxRate,
       plan: "trial",
       subscriptionStatus: "active",
-      trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // TRIAL v2: 7 أيام
       // P2-Sprint5-D: Company schema requires `currencyDecimalPlaces` (Int, no default).
       currencyDecimalPlaces: countryConfig?.currencyDecimalPlaces ?? (resolvedCurrency === "KWD" ? 3 : 2),
     },

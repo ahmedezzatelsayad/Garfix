@@ -28,7 +28,7 @@ const COMPARISON_FEATURES = [
 ];
 
 const FAQ_ITEMS = [
-  { q: "هل أحتاج بطاقة ائتمان للتجربة المجانية؟", a: "لا، التجربة المجانية ٣٠ يوماً لا تتطلب بطاقة ائتمان. سجّل ببريدك وابدأ فوراً." },
+  { q: "هل أحتاج بطاقة ائتمان للتجربة المجانية؟", a: "لا — التجربة ٧ أيام كاملة (١٠٠ فاتورة + ٢٠ رسالة للمساعد الذكي) بدون أي بطاقة. سجّل ببريدك وابدأ فورًا." },
   { q: "هل الأسعار موحدة بكل العملات؟", a: "نعم — نفس قيمة الاشتراك تُحوَّل تلقائياً لعملة بلدك (ريال، جنيه، دينار...) بدون رسوم تحويل إضافية." },
   { q: "ما الفرق بين الاشتراك الأساسي والوكيل الذكي؟", a: "الأساسي ($10) يشمل الفواتير الكاملة. الوكيل الذكي ($20 إضافة) موظف AI يتعلم بيانات شركتك ويرد على عملائك على واتساب ويُنشئ الطلبات تلقائياً — يُشترى منفرداً إن أردت." },
   { q: "هل بياناتي آمنة؟", a: "نعم، تشفير AES-256 لكل البيانات الحساسة، وعزل كامل بين الشركات على مستوى قاعدة البيانات، ونسخ احتياطية يومية." },
@@ -133,7 +133,7 @@ export default function PricingPage() {
               href="/signup"
               className="cta-shine mt-8 inline-flex items-center justify-center gap-2 rounded-xl px-8 py-3.5 text-[14px] font-extrabold no-underline active-press bg-[linear-gradient(135deg,#047857,#10b981)] text-white shadow-[0_10px_28px_rgba(4,120,87,0.4)]"
             >
-              ابدأ الآن — ٣٠ يومًا مجانًا <ArrowLeft size={16} />
+              ابدأ الآن — تجربة ٧ أيام مجانًا <ArrowLeft size={16} />
             </Link>
           </div>
 
@@ -233,7 +233,7 @@ export default function PricingPage() {
 
         <div className="mt-10 rounded-2xl bg-[linear-gradient(135deg,rgba(4,120,87,0.12),rgba(16,185,129,0.07))] dark:bg-[linear-gradient(135deg,rgba(4,120,87,0.28),rgba(16,185,129,0.12))] border border-emerald-500/25 p-8 text-center">
           <h3 className="text-lg font-black mb-2 text-foreground">جاهز تبدأ؟</h3>
-          <p className="text-muted-foreground text-sm mb-5">٣٠ يومًا مجانًا — بدون بطاقة ائتمان، وبإلغاء فوري في أي وقت.</p>
+          <p className="text-muted-foreground text-sm mb-5">٧ أيام مجانًا — ١٠٠ فاتورة و٢٠ رسالة AI بدون بطاقة ائتمان، وبإلغاء فوري في أي وقت.</p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link href="/signup" className="inline-flex items-center gap-2 bg-[linear-gradient(135deg,#047857,#10b981)] text-white border-none rounded-lg px-6 py-3 text-[13px] font-extrabold no-underline active-press">
               أنشئ حسابك مجانًا <ArrowLeft size={15} />

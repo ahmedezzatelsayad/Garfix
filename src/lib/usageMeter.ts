@@ -166,3 +166,90 @@ export async function checkCompanyQuota(userUid: string): Promise<QuotaCheck> {
 
   return { ok: true, limit: plan.maxCompanies, current: companies.length };
 }
+
+// ═══ TRIAL v2: حدود المساعد الذكي (20 رسالة للتجربة) ═══
+
+/**
+ * فحص حصة رسائل المساعد الذكي للفترة التجريبية.
+ * التجربة: 20 رسالة إجمالية. الخطط المدفوعة: بلا حدود.
+ * العدّ من AIRequestLog لكل company (requestType=chat/whatsapp).
+ */
+export async function checkAiChatQuota(companySlug: string): Promise<QuotaCheck> {
+  const company = await db.company.findUnique({
+    where: { slug: companySlug },
+    select: { plan: true, subscriptionStatus: true },
+  });
+  if (!company) return { ok: false, reason: "Company not found" };
+
+  // المدفوع = بلا حدود
+  const isPaid = company.plan !== "trial" && company.subscriptionStatus === "active";
+  if (isPaid) return { ok: true, limit: -1, current: 0 };
+
+  const planKey = (company.plan || "trial") as keyof typeof DEFAULT_PLANS;
+  const plan = DEFAULT_PLANS[planKey] || DEFAULT_PLANS.trial;
+  const limit = plan.maxAiMessagesPerTrial;
+  if (!limit || limit <= 0) return { ok: true, limit: -1, current: 0 };
+
+  const used = await db.aIRequestLog.count({
+    where: {
+      companySlug,
+      requestType: { in: ["chat", "whatsapp"] },
+    },
+  });
+
+  if (used >= limit) {
+    return {
+      ok: false,
+      reason: `استنفدت رسائل المساعد الذكي في التجربة (${limit} رسالة). ترقّى لباقة 10$ للحصول على مساعد بلا حدود يتعلم من شركتك.`,
+      limit,
+      current: used,
+    };
+  }
+  return { ok: true, limit, current: used };
+}
+
+/** ملخص التجربة للواجهة — يُستخدم في عداد الداشبورد. */
+export async function getTrialSummary(companySlug: string): Promise<{
+  plan: string;
+  daysLeft: number | null;
+  invoicesUsed: number;
+  invoicesLimit: number;
+  aiUsed: number;
+  aiLimit: number;
+} | null> {
+  const company = await db.company.findUnique({
+    where: { slug: companySlug },
+    select: { plan: true, trialEndsAt: true, subscriptionStatus: true },
+  });
+  if (!company) return null;
+
+  const isTrial = company.plan === "trial";
+  const daysLeft = isTrial && company.trialEndsAt
+    ? Math.max(0, Math.ceil((new Date(company.trialEndsAt).getTime() - Date.now()) / 86400000))
+    : null;
+
+  const planKey = (company.plan || "trial") as keyof typeof DEFAULT_PLANS;
+  const plan = DEFAULT_PLANS[planKey] || DEFAULT_PLANS.trial;
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  const [invoices, aiMsgs] = await Promise.all([
+    db.invoice.count({
+      where: { companySlug, deletedAt: null, issueDate: { gte: monthStart, lt: monthEnd } },
+    }),
+    db.aIRequestLog.count({
+      where: { companySlug, requestType: { in: ["chat", "whatsapp"] } },
+    }),
+  ]);
+
+  return {
+    plan: company.plan,
+    daysLeft,
+    invoicesUsed: invoices,
+    invoicesLimit: plan.maxInvoicesPerMonth,
+    aiUsed: aiMsgs,
+    aiLimit: plan.maxAiMessagesPerTrial ?? -1,
+  };
+}
