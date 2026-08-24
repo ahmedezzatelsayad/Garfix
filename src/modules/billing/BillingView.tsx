@@ -31,43 +31,29 @@ interface PlanInfo {
 const PLANS: PlanInfo[] = [
   {
     key: "starter",
-    name: "Starter",
-    nameAr: "المبتدئ",
+    name: "Invoicing",
+    nameAr: "جارفيكس للفواتير",
     icon: Zap,
-    features: [
-      "حتى 100 فاتورة شهرياً",
-      "استخراج AI للفواتير",
-      "إدارة عملاء ومخزون",
-      "دعم فني بالبريد الإلكتروني",
-    ],
-  },
-  {
-    key: "professional",
-    name: "Professional",
-    nameAr: "الاحترافي",
-    icon: Crown,
     highlighted: true,
     features: [
-      "حتى 500 فاتورة شهرياً",
-      "كل ميزات المبتدئ",
-      "محاسبة كاملة (دفاتر، AR/AP، بنوك)",
-      "وكلاء AI متقدمون",
-      "تقارير مخصصة",
-      "دعم ذو أولوية",
+      "فواتير بلا حدود",
+      "عملاء ومنتجات بلا حدود",
+      "كل العملات والضرائب حسب بلدك",
+      "تقارير أساسية",
+      "كل طرق الإدخال (يدوي/صورة/ملف/مجمع AI)",
     ],
   },
   {
-    key: "unlimited",
-    name: "Unlimited",
-    nameAr: "غير المحدود",
-    icon: InfinityIcon,
+    key: "ai_agent",
+    name: "AI Agent",
+    nameAr: "الوكيل الذكي للشركة",
+    icon: Crown,
     features: [
-      "فواتير غير محدودة",
-      "كل ميزات الاحترافي",
-      "متعدد الشركات",
-      "API كامل + Webhooks",
-      "تكاملات مخصصة",
-      "مدير حساب مخصص",
+      "وكيل AI خاص بشركتك يتعلم من بياناتك",
+      "قاعدة معرفة (سياسات/كتالوج/FAQ)",
+      "واتساب: نص + صوت + صور → طلبات تلقائية",
+      "ذاكرة وتعلم مستمر",
+      "أتمتة n8n + تكامل ERP كامل",
     ],
   },
 ];
@@ -97,14 +83,14 @@ export function BillingView() {
   const currency = currencyMap[country] || "USD";
 
   const prices: Record<string, Record<string, number>> = {
-    DEFAULT: { starter: 9.99, professional: 19.99, unlimited: 29.99 },
-    KW: { starter: 3.0, professional: 6.0, unlimited: 9.0 },
-    SA: { starter: 37.5, professional: 75.0, unlimited: 112.5 },
-    AE: { starter: 37.0, professional: 74.0, unlimited: 111.0 },
-    BH: { starter: 3.5, professional: 7.0, unlimited: 10.5 },
-    OM: { starter: 3.8, professional: 7.6, unlimited: 11.4 },
-    QA: { starter: 36.0, professional: 72.0, unlimited: 108.0 },
-    EG: { starter: 300, professional: 600, unlimited: 900 },
+    DEFAULT: { starter: 10, ai_agent: 20 },
+    KW: { starter: 3.1, ai_agent: 6.2 },
+    SA: { starter: 37.5, ai_agent: 75 },
+    AE: { starter: 36.7, ai_agent: 73.4 },
+    BH: { starter: 3.8, ai_agent: 7.6 },
+    OM: { starter: 3.85, ai_agent: 7.7 },
+    QA: { starter: 36.4, ai_agent: 72.8 },
+    EG: { starter: 490, ai_agent: 980 },
   };
 
   const countryPrices = prices[country] || prices.DEFAULT;

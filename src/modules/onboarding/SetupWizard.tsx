@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import {
   Check, ChevronLeft, ChevronRight, Building2, Globe, Briefcase,
   Users, Package, MessageCircle, Sparkles, Loader2, Rocket, X as XIcon,
-  Languages, Clock, FileText, Palette,
+  Languages, Clock, FileText, Palette, Sun, Moon,
 } from "lucide-react";
 import { BUSINESS_TYPES, type BusinessType } from "@/lib/accountTemplates";
 import { GULF_COUNTRIES, COUNTRY_TIMEZONES, getDefaultTimezone } from "@/lib/gulfConfig";
@@ -106,8 +106,8 @@ const TEMPLATE_STYLES = [
   },
 ];
 
-const labelStyle = "block text-xs font-semibold text-white/60 mb-1.5";
-const inputStyle = "w-full py-2.5 px-3.5 rounded-md bg-white/[0.06] border border-white/10 text-white text-sm outline-none max-md:min-h-[44px]";
+const labelStyle = "block text-xs font-semibold text-muted-foreground mb-1.5 dark:text-white/60";
+const inputStyle = "w-full py-2.5 px-3.5 rounded-md bg-muted/60 border border-border text-foreground text-sm outline-none dark:bg-white/[0.06] dark:border-white/10 dark:text-white max-md:min-h-[44px]";
 
 export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; onSkip: () => void }) {
   const { user } = useAuth();
@@ -331,6 +331,15 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
   };
   const prev = () => setStep((s) => Math.max(s - 1, 0));
 
+  // THEME: تتبع الوضع الحالي + تبديل — كان المعالج داكنًا قسريًا بلا تحكم
+  const [isDark, setIsDark] = useState(true);
+  const toggleWizardTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    try { localStorage.setItem("garfix:theme", next ? "dark" : "light"); } catch { /* ignore */ }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -346,7 +355,12 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
   return (
     <div
       dir="rtl"
-      className="min-h-screen bg-[linear-gradient(135deg,#041a0f_0%,#0b1a14_50%,#061210_100%)] text-white flex flex-col"
+      className={cn(
+            "min-h-screen flex flex-col transition-colors duration-300",
+            isDark
+              ? "bg-[linear-gradient(135deg,#041a0f_0%,#0b1a14_50%,#061210_100%)] text-white"
+              : "bg-[linear-gradient(135deg,#f0fdf4_0%,#ecfdf5_50%,#f8fafc_100%)] text-foreground"
+          )}
     >
       {/* Progress bar */}
       <div className="py-5 px-[5%] flex flex-wrap items-center gap-2 border-b border-white/[0.08]">
@@ -369,6 +383,15 @@ export function SetupWizard({ onComplete, onSkip }: { onComplete: () => void; on
             />
           ))}
         </div>
+        <button
+          onClick={toggleWizardTheme}
+          aria-label="تبديل الوضع الفاتح/الداكن"
+          title="تبديل الوضع"
+          className="bg-white/[0.08] border border-white/15 text-white/80 rounded-sm px-3 py-1.5 cursor-pointer max-md:min-h-[44px] inline-flex items-center gap-1.5 hover:bg-white/[0.15] transition-colors"
+        >
+          {isDark ? <Sun size={14} /> : <Moon size={14} />}
+          {isDark ? "فاتح" : "داكن"}
+        </button>
         <button
           onClick={onSkip}
           className="bg-transparent border border-white/15 text-white/60 rounded-sm px-3.5 py-1.5 text-xs cursor-pointer max-md:min-h-[44px]"

@@ -846,7 +846,35 @@ export default function CompaniesPerFeatureAIPage() {
                           <h3 className="font-semibold text-lg text-gray-900">
                             {company.nameAr || company.name}
                           </h3>
-                          <p className="text-sm text-muted-foreground">{company.plan.toUpperCase()}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-sm text-muted-foreground">{company.plan.toUpperCase()}</span>
+                            {/* FOUNDER CONTROL: ترقية/تخفيض فوري */}
+                            <select
+                              defaultValue={company.plan}
+                              onChange={async (e) => {
+                                const newPlan = e.target.value;
+                                try {
+                                  const res = await fetch(`/api/founder-panel/companies/${company.slug}/plan`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    credentials: "include",
+                                    body: JSON.stringify({ plan: newPlan }),
+                                  });
+                                  if (!res.ok) throw new Error((await res.json()).error || "فشل");
+                                  console.log("plan updated:", newPlan);
+                                  window.location.reload();
+                                } catch (err) {
+                                  console.error("plan update failed:", err);
+                                }
+                              }}
+                              className="text-[11px] px-2 py-1 rounded-lg border border-border bg-card text-foreground cursor-pointer"
+                              aria-label="تغيير خطة الشركة"
+                            >
+                              <option value="trial">تجريبي</option>
+                              <option value="starter">Invoicing $10</option>
+                              <option value="ai_agent">AI Agent $20</option>
+                            </select>
+                          </div>
                           
                           {/* Feature Keys Status */}
                           {company.hasAIConfig && (

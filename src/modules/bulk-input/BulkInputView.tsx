@@ -90,6 +90,9 @@ export function BulkInputView() {
   const [tab, setTab] = useState<Tab>("text");
   const [rawText, setRawText] = useState("");
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  // P0 FIX: كان mimeType ثابتًا "image/jpeg" — رفع PNG/WebP/GIF كان يرفض
+  // بـ 415 (magic bytes mismatch). نخزن النوع الحقيقي من الملف.
+  const [imageMime, setImageMime] = useState<string>("image/jpeg");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [fileBase64, setFileBase64] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -180,7 +183,7 @@ export function BulkInputView() {
     setShowWarningsBanner(true);
 
     parseImageMutation.mutate(
-      { imageBase64, mimeType: "image/jpeg", companySlug: activeCompany.slug, autoAddProducts },
+      { imageBase64, mimeType: imageMime, companySlug: activeCompany.slug, autoAddProducts },
       {
         onSuccess: (data: Record<string, unknown>) => {
           const ordersList = (data as { orders?: ParsedOrder[] }).orders || [];
@@ -199,7 +202,7 @@ export function BulkInputView() {
         },
       },
     );
-  }, [activeCompany, imageBase64, autoAddProducts, parseImageMutation]);
+  }, [activeCompany, imageBase64, imageMime, autoAddProducts, parseImageMutation]);
 
   const handleParseFile = useCallback(() => {
     if (!activeCompany) { toast.error("اختر شركة أولاً"); return; }
@@ -237,6 +240,9 @@ export function BulkInputView() {
       toast.error("حجم الصورة يجب أن يكون أقل من 5 ميجابايت");
       return;
     }
+    // النوع الحقيقي — الأولوية لما يقرأه المتصفح ثم امتداد الملف
+    const realMime = file.type || `image/${file.name.split(".").pop()?.toLowerCase().replace("jpg", "jpeg") || "jpeg"}`;
+    setImageMime(realMime);
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
