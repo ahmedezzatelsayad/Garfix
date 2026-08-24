@@ -953,8 +953,13 @@ function InvoiceForm({
         issueDate, dueDate,
         // P0 FIX: strip client-only `localId` before sending to API — backend
         // expects the canonical LineItem shape (description/qty/price/total).
+        // REVIEW-2 FIX (2026-08-24): filter by DESCRIPTION only — the old
+        // `it.description || it.qty || it.price` let empty-description rows
+        // through whenever qty defaulted to 1, and the API schema
+        // (LineItemSchema.description min(1)) rejected the whole invoice
+        // with a 400. A line without a description is not a line.
         lineItems: lineItems
-          .filter((it) => it.description || it.qty || it.price)
+          .filter((it) => it.description && it.description.trim().length > 0)
           .map(({ localId: _localId, ...rest }) => rest),
         taxRate, shipping, discount, notes,
         expectedVersion: editing?.version,
