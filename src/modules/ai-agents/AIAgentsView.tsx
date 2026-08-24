@@ -68,6 +68,13 @@ const AGENT_PERFORMANCE: Record<string, number> = {
   inventory: 91,
 };
 
+/** وصف واضح لدور كل وكيل — يظهر تحت الاسم في البطاقة */
+const AGENT_ROLE_DESC: Record<string, string> = {
+  accounting: 'أرصدة وقيود وميزان مراجعة وقوائم مالية',
+  sales: 'إنشاء فواتير وإدارة عملاء وتسجيل دفعات',
+  inventory: 'كميات ومستويات مخزون وتنبيهات نقص',
+};
+
 const AGENT_DESCRIPTIONS: Record<string, string> = {
   accounting: "أسئلة المحاسبة، القيود، الأرصدة، ميزان المراجعة، القوائم المالية.",
   sales: "إنشاء فواتير، استعراض العملاء، تسجيل مدفوعات، عروض الأسعار.",
@@ -315,7 +322,12 @@ export function AIAgentsView() {
                   "p-4 flex flex-col gap-3",
                   active && "pt-5"
                 )}>
-                  {/* Agent Icon & Name */}
+                  {/* Agent role description — يوضح دوره فورًا */}
+                <div className="text-[11px] text-muted-foreground leading-snug px-1">
+                  {AGENT_ROLE_DESC[a.type] || ""}
+                </div>
+
+                {/* Agent Icon & Name */}
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 transition-all duration-120",

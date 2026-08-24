@@ -176,12 +176,12 @@ export function Topbar({ user: _user, activeCompany, onOpenMobile }: TopbarProps
       </button>
 
       {/* GarfiX AI Status - Everywhere Presence */}
+      {/* GarfiX AI — زر واضح بالأيقونة والاسم */}
       <AIStatusBar
         status="online"
         lastActivity="جاهز للمساعدة"
         onClick={() => window.dispatchEvent(new CustomEvent('open-ai-copilot'))}
-        compact
-        className="hidden sm:flex"
+        className="hidden sm:flex border border-border rounded-xl shadow-sm hover:shadow-md transition-shadow"
       />
       
       <NotificationsDropdown />

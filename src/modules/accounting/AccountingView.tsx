@@ -102,25 +102,53 @@ interface CostCenter { id: number; code: string; nameAr: string; parentId?: numb
 interface AgingBucket { range: string; receivable: number; payable: number; count: number; }
 interface BankAccount { id: number; name: string; bankName: string; accountNumber: string; currency: string; balance: number; iban?: string; }
 
-/* ─── Module Tab Definitions ───────────────────────────────────────────────── */
-const MODULE_TABS: Array<{ key: ModuleTab; label: string; icon: React.ComponentType<{ size?: number }> }> = [
-  { key: "core", label: "المحاسبة الأساسية", icon: Calculator },
-  { key: "dashboard", label: "لوحة التحكم المالية", icon: LayoutDashboard },
-  { key: "ar-ap", label: "الذمم المدينة/الدائنة", icon: ArrowUpDown },
-  { key: "banking", label: "البنوك والتسوية", icon: Landmark },
-  { key: "payroll", label: "الرواتب/WPS", icon: DollarSign },
-  { key: "fixed-assets", label: "الأصول الثابتة", icon: Building },
-  { key: "inventory", label: "تكلفة المخزون", icon: Package },
-  { key: "vouchers", label: "السندات والعروض", icon: FileText },
-  { key: "tax", label: "الضرائب والامتثال", icon: Receipt },
-  { key: "trade", label: "التمويل التجاري", icon: Globe },
-  { key: "budgets", label: "الموازنات", icon: BarChart3 },
-  { key: "collab", label: "المحاسب الخارجي", icon: Users },
-  { key: "payments", label: "طرق الدفع المحلية", icon: CreditCard },
-  { key: "multi-company", label: "الشركات المتعددة", icon: Building2 },
-  { key: "recurring", label: "القيود الدورية", icon: RefreshCcw },
-  { key: "fiscal-close", label: "إغلاق السنة المالية", icon: Shield },
-  { key: "general-ledger", label: "الأستاذ العام", icon: BookOpen },
+/* ─── Module Tab Definitions — منظمة في 4 مجموعات ─────────────────────────
+   كانت 17 زرًا مسطحًا عشوائيًا — الآن مصنفة منطقيًا للعقل المحاسبي العربي. */
+interface ModuleTabDef { key: ModuleTab; label: string; icon: React.ComponentType<{ size?: number }> }
+interface ModuleGroup { id: string; labelAr: string; tabs: ModuleTabDef[] }
+
+const MODULE_GROUPS: ModuleGroup[] = [
+  {
+    id: "daily",
+    labelAr: "العمليات اليومية",
+    tabs: [
+      { key: "core", label: "دليل الحسابات والقيود", icon: Calculator },
+      { key: "dashboard", label: "اللوحة المالية", icon: LayoutDashboard },
+      { key: "vouchers", label: "السندات والعروض", icon: FileText },
+      { key: "recurring", label: "القيود الدورية", icon: RefreshCcw },
+      { key: "general-ledger", label: "الأستاذ العام", icon: BookOpen },
+    ],
+  },
+  {
+    id: "assets",
+    labelAr: "الأصول والمخزون",
+    tabs: [
+      { key: "fixed-assets", label: "الأصول الثابتة", icon: Building },
+      { key: "inventory", label: "تكلفة المخزون", icon: Package },
+      { key: "budgets", label: "الموازنات", icon: BarChart3 },
+    ],
+  },
+  {
+    id: "financial",
+    labelAr: "الالتزامات والتحصيل",
+    tabs: [
+      { key: "ar-ap", label: "الذمم المدينة/الدائنة", icon: ArrowUpDown },
+      { key: "banking", label: "البنوك والتسوية", icon: Landmark },
+      { key: "payments", label: "طرق الدفع المحلية", icon: CreditCard },
+      { key: "payroll", label: "الرواتب والأجور", icon: DollarSign },
+    ],
+  },
+  {
+    id: "compliance",
+    labelAr: "الامتثال والتقارير",
+    tabs: [
+      { key: "tax", label: "الضرائب والامتثال", icon: Receipt },
+      { key: "fiscal-close", label: "إقفال السنة", icon: Shield },
+      { key: "trade", label: "التمويل التجاري", icon: Globe },
+      { key: "collab", label: "المحاسب الخارجي", icon: Users },
+      { key: "multi-company", label: "تقارير الشركات", icon: Building2 },
+    ],
+  },
 ];
 
 const PAGE_SIZE = 20;
@@ -317,27 +345,36 @@ export function AccountingView() {
         <div><h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2"><Calculator size={20} /> المحاسبة</h1><p className="text-[13px] text-muted-foreground">{activeCompany.nameAr || activeCompany.name}</p></div>
       </div>
 
-      {/* Module-level navigation tabs (top row, visually distinct) */}
-      <div className="flex gap-1.5 flex-wrap bg-muted/50 rounded-[12px] p-2">
-        {MODULE_TABS.map((mt) => {
-          const Icon = mt.icon;
-          const active = moduleTab === mt.key;
-          return (
-            <button
-              key={mt.key}
-              onClick={() => setModuleTab(mt.key)}
-              className={cn(
-                "py-2.5 px-4 rounded-[10px] text-[13px] font-bold cursor-pointer inline-flex items-center gap-2 transition-colors",
-                active
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-card text-muted-foreground border border-border hover:bg-accent hover:text-accent-foreground",
-              )}
-            >
-              <Icon size={16} />
-              {mt.label}
-            </button>
-          );
-        })}
+      {/* Module-level navigation — مجموعات منظمة (4 فئات محاسبية) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-1">
+        {MODULE_GROUPS.map((group) => (
+          <div key={group.id} className="bg-muted/40 rounded-[14px] p-3 border border-border/50">
+            <div className="text-[10.5px] font-extrabold text-muted-foreground tracking-wide mb-2 px-1 uppercase">
+              {group.labelAr}
+            </div>
+            <div className="flex flex-col gap-1">
+              {group.tabs.map((mt) => {
+                const Icon = mt.icon;
+                const active = moduleTab === mt.key;
+                return (
+                  <button
+                    key={mt.key}
+                    onClick={() => setModuleTab(mt.key)}
+                    className={cn(
+                      "py-2 px-3 rounded-[10px] text-[12.5px] font-bold cursor-pointer inline-flex items-center gap-2 transition-all text-right w-full",
+                      active
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-card text-muted-foreground border border-border hover:bg-accent hover:text-accent-foreground",
+                    )}
+                  >
+                    <Icon size={15} />
+                    <span className="flex-1 text-right">{mt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* ─── Module content ─────────────────────────────────────────────── */}
