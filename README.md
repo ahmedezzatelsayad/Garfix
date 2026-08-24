@@ -7,7 +7,9 @@
 [![Security Scan](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/security.yml/badge.svg)](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/security.yml)
 [![Performance](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/performance.yml/badge.svg)](https://github.com/ahmedezzatelsayad/Garfix/actions/workflows/performance.yml)
 
-**Version:** 12.1.0 · **Runtime:** Next.js 16 (App Router) + Bun 1.3.14 + Node.js 22 · **Database:** PostgreSQL 17 · **License:** Proprietary (no LICENSE file present in repository — see Known Limitations)
+**Version:** 12.2.0 · **Runtime:** Next.js 16 (App Router) + Bun 1.3.14 + Node.js 22 · **Database:** PostgreSQL 17 (RLS-enforced) · **License:** Proprietary (no LICENSE file present in repository — see Known Limitations)
+
+> **2026-08-25 — Security Hardening Release:** full external review (5 domains: security, database, API, frontend, DevOps) completed and all Critical/High findings fixed & verified in production. See [Security Posture](#security-posture).
 
 ---
 
@@ -17,9 +19,9 @@ GarfiX is an enterprise-grade ERP designed for Gulf and MENA markets. It combine
 
 ### Key Highlights
 
-- **257 API routes** across accounting, AI, auth, e-invoicing, HR, inventory, and platform admin
-- **106 Prisma models** with PostgreSQL Row-Level Security (RLS) for tenant isolation
-- **48 migrations** — schema is PostgreSQL-only (SQLite was removed; `db:push` is not used in production)
+- **269 API routes** across accounting, AI, auth, e-invoicing, HR, inventory, and platform admin
+- **106 Prisma models** with PostgreSQL Row-Level Security (RLS) on **all 81 tenant tables** — enforced at the connection level (non-BYPASSRLS app role)
+- **57 migrations** — schema is PostgreSQL-only (SQLite was removed; `db:push` is not used in production)
 - **6-stage AI cost-optimization cascade** (Cache → Pattern → Rule → Memory → Budget → LLM) with per-tenant budget gates
 - **7 e-invoicing authorities** (SA ZATCA, EG ETA, AE FTA, BH NBR, OM OTA, KW, QA) — 4 with live submission, 3 stubbed pending government API availability
 - **14 external integrations** (Stripe, MyFatoorah, Paymob, WhatsApp, Twilio, SendGrid, AWS S3, Meta Ads, + 7 e-invoicing adapters)
@@ -32,15 +34,16 @@ GarfiX is an enterprise-grade ERP designed for Gulf and MENA markets. It combine
 
 | Metric | Value | Evidence | Last Verified |
 |--------|------:|----------|---------------|
-| API routes | 257 | `find src/app/api -name 'route.ts' \| wc -l` | 2026-08-15 |
-| OpenAPI paths | 257 | `docs/api/openapi.yaml` (generated, validated 1:1 with route files) | 2026-08-15 |
-| Prisma models | 106 | `grep -c '^model ' prisma/schema.prisma` | 2026-08-15 |
-| Migrations | 48 | `ls -d prisma/migrations/*/ \| wc -l` | 2026-08-15 |
-| Test files | 1,736 | `find . -name '*.test.ts' -not -path './node_modules/*'` | 2026-08-15 |
-| E2E specs | 12 | `find e2e -name '*.spec.ts' \| wc -l` | 2026-08-15 |
-| CI/CD workflows | 8 | `ls .github/workflows/*.yml` | 2026-08-15 |
-| src/lib files | 1,948 | `find src/lib -name '*.ts' \| wc -l` | 2026-08-15 |
-| npm dependencies | 63 + 17 dev | `package.json` dependencies + devDependencies | 2026-08-15 |
+| API routes | 269 | `find src/app/api -name 'route.ts' \| wc -l` | 2026-08-25 |
+| Prisma models | 106 | `grep -c '^model ' prisma/schema.prisma` | 2026-08-25 |
+| Migrations | 57 | `ls -d prisma/migrations/*/ \| wc -l` | 2026-08-25 |
+| RLS-covered tenant tables | 81/81 | `app.rls_coverage` view (strict policy + admin bypass, zero gaps) | 2026-08-25 |
+| Unit tests passing | 2,580 / 0 fail | `bun test --isolate --preload ./test.preload.ts src/lib/__tests__/ src/lib/accounting/` | 2026-08-25 |
+| Test files | 1,736 | `find . -name '*.test.ts' -not -path './node_modules/*'` | 2026-08-25 |
+| E2E specs | 12 | `find e2e -name '*.spec.ts' \| wc -l` | 2026-08-25 |
+| CI/CD workflows | 8 | `ls .github/workflows/*.yml` | 2026-08-25 |
+| src/lib files | 1,950 | `find src/lib -name '*.ts' \| wc -l` | 2026-08-25 |
+| Schema column drift | 0 / 106 models | `node scripts/column_drift_scan.cjs` | 2026-08-25 |
 | E-invoicing countries | 7 | `src/lib/e-invoicing/router.ts` authority map | 2026-08-15 |
 
 ---
@@ -102,10 +105,10 @@ graph TB
 | Layer | Technology | Notes |
 |-------|-----------|-------|
 | **Presentation** | Next.js 16 App Router + React 19 | RSC with client-side hydration; `output: "standalone"` for Docker |
-| **API** | 257 Route Handlers | Node.js runtime (pinned via `export const runtime = "nodejs"`) |
+| **API** | 269 Route Handlers | Node.js runtime (pinned via `export const runtime = "nodejs"`) |
 | **Middleware** | Edge-safe (no Prisma/JWT/Redis) | CSRF double-submit + CSP nonce + security headers only |
 | **Business Logic** | `src/lib/` (1,949 files) | Domain modules: accounting, AI, e-invoicing, integrations |
-| **Database** | PostgreSQL 17 + Prisma 6.11 | 106 models, 48 migrations, RLS via Prisma `$extends` + AsyncLocalStorage |
+| **Database** | PostgreSQL 17 + Prisma 6.11 | 106 models, 57 migrations, RLS via Prisma `$extends` + AsyncLocalStorage |
 | **Cache/Queue** | Valkey 8 (Redis-compatible) | BullMQ queues, L1+L2 cache with pub/sub invalidation, rate limiting |
 | **Instrumentation** | `src/instrumentation.ts` | Two-tier startup: blocking DB init + background workers (BullMQ, outbox relay, crons) |
 
@@ -116,10 +119,12 @@ Tenant isolation is enforced at the PostgreSQL level via Row-Level Security (RLS
 1. **Tenant resolution:** JWT claim `companies[]` → selected `companySlug` per request
 2. **Context propagation:** `AsyncLocalStorage` (`src/lib/tenant-context.ts`) carries the slug through the request lifecycle
 3. **Query interception:** Prisma `$extends` interceptor (`src/lib/db.ts`) wraps every query in a `$transaction` that calls `set_config('app.current_company_slug', slug, true)` before execution
-4. **Platform admin bypass:** Founder/admin queries set `app.is_platform='on'` to bypass RLS policies
-5. **Re-entrancy guard:** `markInTransaction()` prevents nested `$transaction` wrapping (preserves outer atomicity)
+4. **Platform founder bypass:** the platform founder (by `FOUNDER_EMAIL`) sets `app.is_platform='on'` to read across tenants; company admins are tenant-scoped like regular members (C1 hardening)
+5. **Atomic tenant transactions:** the extended client's interactive `$transaction` is patched to `set_config` the RLS vars **once on the transaction's own connection** and run the callback under the `inTransaction` ALS flag — every multi-write financial operation (invoice + inventory + journal entry) commits or rolls back as one unit
+6. **Connection role:** production connects as a **non-BYPASSRLS** role (`garfix_app`, created by migration `20260824120000`) so the policies above are actually enforced at the PostgreSQL level
+7. **Membership-checked tenant slug:** client-supplied `?companySlug` is validated against the JWT `companies[]` claim in both `withErrorHandler` and `withTenantScope` — a foreign slug is rejected with 403
 
-**Confidence: High** — verified in `src/lib/db.ts` (Layer 2: `tenantRls` interceptor), `src/lib/tenant-context.ts`, and migration `20260813130000_p1_rls_strict_policies`.
+**Confidence: High** — live-verified on production: tenant tables return **0 rows without a tenant context** (fail-closed), rows flow with the correct context, and platform bypass works only for the founder. See `src/lib/db.ts`, `src/lib/tenant-context.ts`, migrations `20260813130000_p1_rls_strict_policies` + `20260824120000_review_c2_h4_rls_and_app_role`.
 
 ### Authentication & Authorization
 
@@ -278,9 +283,20 @@ cd Garfix
 bun install
 cp .env.example .env
 # Edit .env: DATABASE_URL, JWT_SECRET, JWT_REFRESH_SECRET, PAYMENTS_ENC_KEY, FOUNDER_EMAIL
-bunx prisma migrate deploy
+# SECURITY: connect the app as a NON-BYPASSRLS role so tenant isolation is
+# enforced (migration 20260824120000 creates `garfix_app` — see DEPLOYMENT.md).
+# Keep the database OWNER role for migrations only.
+bunx prisma migrate deploy   # run ONCE with the owner role (migrations need DDL rights)
 bunx prisma generate
 bun run dev
+```
+
+**Verify your deployment hardening:**
+```bash
+node scripts/verify-env.mjs                       # critical env vars are real, not placeholders
+node scripts/column_drift_scan.cjs                # 0/106 models with column drift
+bun run schema:drift                              # 0 orphan/missing tables
+bash scripts/final_compliance_check.sh            # (against a deployed URL) 33 live checks
 ```
 
 ---
@@ -370,7 +386,7 @@ bunx prisma studio                              # GUI for database
 
 | Control | Implementation | Evidence |
 |---------|---------------|----------|
-| **CSRF** | Double-submit cookie (`inv_csrf`) + header (`x-csrf-token`), SameSite=strict | `middleware.ts` |
+| **CSRF** | Double-submit cookie (`inv_csrf`) + header (`x-csrf-token`), constant-time comparison; authority webhooks exempt (HMAC-verified per-route) | `middleware.ts`, `src/lib/csrf-fetch.ts` |
 | **CSP** | Per-request nonce, no `unsafe-eval` in production | `middleware.ts` |
 | **SSRF** | `validateBaseUrl()` + `fetchSafe()` with DNS pinning (13 CIDR ranges blocked) | `src/lib/ssrf.ts` |
 | **SQL injection** | Prisma parameterized queries + RLS policies | `src/lib/db.ts` |
@@ -381,7 +397,7 @@ bunx prisma studio                              # GUI for database
 | **Rate limiting** | Valkey-backed sliding window, 10 limit tiers, spoofing-resistant IP | `src/lib/rateLimit.ts` |
 | **Webhook security** | HMAC-SHA256 (timing-safe), signs raw body string (not re-serialized JSON), SSRF validation, 10s timeout. Receivers MUST verify the raw request body — see `verifyWebhookSignature()` JSDoc in `src/lib/webhooks.ts` | `src/lib/webhooks.ts` |
 | **Anti-enumeration** | Identical 401 for all login failures (SEC-06) | `src/app/api/auth/login/route.ts` |
-| **Tenant isolation** | PostgreSQL RLS via Prisma `$extends` + AsyncLocalStorage | `src/lib/db.ts`, `src/lib/tenant-context.ts` |
+| **Tenant isolation** | PostgreSQL RLS via Prisma `$extends` + AsyncLocalStorage; non-BYPASSRLS app role; membership-checked `?companySlug` | `src/lib/db.ts`, `src/lib/tenant-context.ts`, `src/lib/api.ts` |
 | **Audit logging** | All mutations logged + tamper-evident hash chain + PII redaction | `src/lib/audit.ts` |
 | **Input validation** | Zod schemas on all API routes + 1 MiB body size limit | `src/lib/api.ts` |
 | **Security headers** | HSTS, X-Frame-Options: DENY, COOP/COEP, X-Content-Type-Options | `middleware.ts` |
@@ -391,6 +407,23 @@ bunx prisma studio                              # GUI for database
 - **In-memory rate-limit fallback** does not protect multi-instance deployments without `VALKEY_URL` — verify it is set in all production deploys
 - **S3 uploads** use simplified SigV4 via plain `fetch` (not `@aws-sdk/s3-client`) — falls back to local disk on failure
 - **Kuwait/ZATCA/UAE e-invoicing submission** is stubbed (returns `ok:false`) — real submissions require cert onboarding
+
+### Security Posture — 2026-08 Hardening Release
+
+A full external review (five domains: security, database, API surface, frontend, DevOps) was completed on 2026-08-24. **All Critical and High findings were fixed, deployed, and re-verified live in production** (33/33 automated compliance checks passing — `scripts/final_compliance_check.sh`).
+
+| ID | Finding (before) | Fix (after) | Live Verification |
+|----|------------------|-------------|-------------------|
+| **C1** | Any `role:"admin"` (auto-granted on company creation) got unrestricted cross-tenant scope in ~30 list endpoints | Unrestricted scope reserved for the platform founder only; company admins are membership-scoped | Tenant-scope unit tests updated & passing |
+| **C2** | Production connected as a BYPASSRLS role — all 93 RLS policies silently ineffective | New non-BYPASSRLS `garfix_app` role (migration `20260824120000`); app connects through it | `SELECT` without tenant context → 0 rows (fail-closed) |
+| **C3** | `db.$transaction` callbacks ran each inner operation in its own transaction (no rollback of partial financial writes) | Interactive `$transaction` patched: RLS `set_config` once on the tx connection + `inTransaction` ALS flag | Rollback/commit atomicity tests 4/4 |
+| **C4** | ~29 browser `fetch()` calls missed `X-CSRF-Token` → 403 on founder panel, ZATCA/ETA submit, AI copilot | Central `csrfFetch` helper (`src/lib/csrf-fetch.ts`) + all call sites migrated | Founder panel POSTs return 200 from the browser |
+| **C5** | No background work ran on Vercel; `/api/metrics` returned `Math.random()` values | Vercel Cron → `/api/cron/maintenance` (outbox relay, session sweep, outbox purge, queue recovery) + real `MetricsRegistry` snapshot | Cron executes 4 tasks; metrics render real counters |
+| **H1** | Self-registering with the founder e-mail granted an admin account | Registration with the founder e-mail is silently rejected (generic response, no enumeration) | Attack attempt → founder password unchanged (401) |
+| **H4** | 10 tables on a lenient legacy policy + ~29 tenant tables with no RLS at all | Dynamic migration installs strict policies on **every** `companySlug` table | `app.rls_coverage`: 81/81 tables, zero gaps |
+| **H5** | Inbound authority webhooks (ZATCA/ETA/…) died at the CSRF gate before their own HMAC check | Webhook family exempted from CSRF (they carry no browser session; HMAC verification is stronger) | Webhook reaches signature check (401 without valid HMAC, not 403 CSRF) |
+
+Additional hardening shipped in the same release: constant-time token comparisons (`src/lib/timing-safe.ts`) for CSRF/METRICS_TOKEN/cron secrets, seed scripts refuse to run without `FOUNDER_PASSWORD` (no more `admin123`), founder e-mail fallback removed (fail-closed without `FOUNDER_EMAIL`), API-key pool duplicate check rewritten (AES-GCM IVs made the old ciphertext comparison never match), invoice-number race mapped to a clean 409, `ErrorBoundary` stack traces gated to development, and the CI gate that asserted a removed health field was corrected.
 
 ---
 
@@ -501,7 +534,7 @@ docker compose -f docker-compose.prod.yml run --rm app bunx prisma migrate deplo
 | **Docker Compose** | ✅ | ✅ | Self-contained: postgres + valkey + app |
 | **AWS EC2** | ✅ | ✅ | GitHub Actions workflow (`deploy-aws.yml`) |
 | **Hetzner VPS** | ✅ | ✅ | Documented in `CHEAP-DEPLOYMENT.md` |
-| **Vercel** | ✅ | ✅ | Production-verified (Neon Postgres + Vercel Cron every 5 min via `/api/cron/maintenance`) |
+| **Vercel** | ✅ | ✅ | Production-verified (Neon Postgres via non-BYPASSRLS role + daily Vercel Cron via `/api/cron/maintenance`; raise the frequency by upgrading to Pro) |
 | **Replit** | ✅ | ✅ | Documented in `AWS-REPLIT-DEPLOYMENT.md` |
 
 See `AWS-REPLIT-DEPLOYMENT.md` and `CHEAP-DEPLOYMENT.md` for detailed deployment guides.
@@ -526,20 +559,24 @@ See `AWS-REPLIT-DEPLOYMENT.md` and `CHEAP-DEPLOYMENT.md` for detailed deployment
 ## Testing
 
 ```bash
-# Unit tests (1,736 test files — not individual test cases)
-bun test --isolate
+# Core unit + accounting suite (2,580 tests — 0 failures as of 2026-08-25)
+bun test --isolate --preload ./test.preload.ts src/lib/__tests__/ src/lib/accounting/
+
+# Full non-founder suite (same glob CI uses)
+bun run test:ci
 
 # E2E tests (12 specs, ~30 test blocks)
 bunx playwright test
-
-# Security suite (13 files, 356 tests)
-bun test --isolate src/lib/__tests__/
 
 # Founder validation suite (1,628 files — excluded from CI)
 bun run test:founder
 
 # Accessibility scan (axe-core, WCAG AAA)
 node scripts/axe-core-scan.mjs
+
+# Schema drift — table level + column level
+bun run schema:drift
+node scripts/column_drift_scan.cjs
 
 # Load testing (k6, 10 routes)
 k6 run scripts/k6/top10-routes.js
@@ -555,7 +592,7 @@ k6 run scripts/k6/top10-routes.js
 | **Structured logging** | ✅ | `src/lib/logger.ts` (JSON to stdout, browser-safe) |
 | **Audit trail** | ✅ | `AuditLog` + `TamperEvidenceChain` (hash-chained) |
 | **OpenTelemetry** | ✅ | OTLP/HTTP exporter, auto-instrumentation (http, pg, ioredis) |
-| **Prometheus metrics** | ✅ | `/metrics` endpoint (request count, latency, AI tokens/cost) |
+| **Prometheus metrics** | ✅ | `/api/metrics` — real `MetricsRegistry` snapshot (counters/gauges/histograms), METRICS_TOKEN-protected, per-instance scope marker on serverless |
 | **Circuit breaker dashboard** | ✅ | `/api/health/circuit-breakers` (12 services) |
 | **Grafana dashboards** | ✅ | 4 JSON dashboards in `scripts/grafana/` |
 
@@ -565,7 +602,8 @@ k6 run scripts/k6/top10-routes.js
 
 ### Confirmed
 - **No `LICENSE` file** — README states Proprietary but no LICENSE file exists in the repository
-- **Vercel** — now production-verified: app + middleware run on Node.js runtime, Neon Postgres via a non-BYPASSRLS `garfix_app` role (RLS enforced), and lightweight background maintenance runs via Vercel Cron (`vercel.json` → `/api/cron/maintenance` every 5 minutes). Heavy BullMQ workers (bulk email/WhatsApp) still need a long-running worker — see `DEPLOYMENT.md`.
+- **Background workers on Vercel** — lightweight maintenance (outbox relay, session sweep, purge, queue recovery) runs via a **daily** Vercel Cron (`vercel.json` → `/api/cron/maintenance`; Hobby-plan limit). Heavier BullMQ workers (bulk email/WhatsApp) and sub-daily cadence need a long-running worker or a Pro plan — see `DEPLOYMENT.md`
+- **No error tracking in production** — Sentry SDK is not wired; OTel is Tier-2 and skipped on Vercel. Logs go to stdout only
 - **ZATCA/UAE/Kuwait e-invoicing** — submission is stubbed pending government API availability
 - **S3 uploads** — simplified SigV4 (not `@aws-sdk/s3-client`); falls back to local disk
 - **In-process queue tier** — single-instance only, not production-safe without Valkey
@@ -590,6 +628,8 @@ k6 run scripts/k6/top10-routes.js
 | [docs/adr/](docs/adr/) | 9 Architecture Decision Records (001–009) |
 | [e2e/README.md](e2e/README.md) | E2E test suite documentation |
 | [prisma/README.md](prisma/README.md) | Database schema + migrations |
+| [scripts/final_compliance_check.sh](scripts/final_compliance_check.sh) | Live production compliance suite — 33 checks across auth, CSRF, RLS, cron, metrics, AI endpoints |
+| [scripts/column_drift_scan.cjs](scripts/column_drift_scan.cjs) | Column-level schema drift detector (complements table-level `schema:drift`) |
 | [.env.example](.env.example) | Full environment variable reference (331 lines) |
 
 ---
@@ -602,4 +642,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines. The project 
 
 ## Documentation Status
 
-This README is derived from the current repository state (commit `3b26aa0`). For implementation-specific details, the source code and linked project documentation remain authoritative.
+This README reflects the repository state at commit `3fb53554` (2026-08-25, post-hardening release). All metrics in the table above were re-measured from that commit; the security-posture findings were re-verified live against the production deployment the same day. For implementation-specific details, the source code and linked project documentation remain authoritative.
