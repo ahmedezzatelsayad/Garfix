@@ -152,8 +152,10 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         overview: {
-          totalTokensUsed: config.tokensUsedThisMonth,
-          totalRequests: config.requestsThisMonth,
+          // REVIEW-2 FIX (2026-08-24): BigInt is not JSON-serializable — these
+          // two fields crashed the whole /usage endpoint with a 500.
+          totalTokensUsed: Number(config.tokensUsedThisMonth),
+          totalRequests: Number(config.requestsThisMonth),
           monthlyQuota,
           usagePercent,
           remainingTokens: Math.max(0, monthlyQuota - Number(config.tokensUsedThisMonth)),
@@ -206,7 +208,7 @@ function generateRecommendations(
     });
   }
   
-  if (!config.enableMemory && Number(config.requestsThisMonth as number | string) > 100) {
+  if (!(config as { memoryEnabled?: boolean }).memoryEnabled && Number(config.requestsThisMonth ?? 0) > 100) {
     recommendations.push({
       type: 'enable_memory',
       message: 'تفعيل الذاكرة يمكن أن يحسن استجابات AI ويقلل من استخدام التوكنات.',
