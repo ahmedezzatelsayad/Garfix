@@ -244,17 +244,34 @@ NODE_ENV=production node .next/standalone/server.js
 
 ### Vercel Configuration
 
-The project includes `vercel.json` with optimal settings:
+The project includes `vercel.json` (DOCS FIX 2026-08-24 — this section
+previously documented settings that were never in the file; the checked-in
+file was `{}`):
 
 ```json
 {
-  "buildCommand": "bunx prisma generate && next build --webpack",
-  "installCommand": "bun install",
-  "functions": {
-    "src/app/api/**/*.ts": { "maxDuration": 60 },
-    "src/app/api/ai/**/*.ts": { "maxDuration": 120 }
-  }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    { "path": "/api/cron/maintenance", "schedule": "*/5 * * * *" }
+  ]
 }
+```
+
+- **Cron**: `/api/cron/maintenance` runs the outbox relay, session sweep,
+  outbox purge, and pg-boss recovery every 5 minutes (C5 fix — previously
+  NO background work ran on Vercel). It authenticates via `CRON_SECRET`
+  (falls back to `METRICS_TOKEN`) sent as a Bearer token by Vercel Cron.
+- **Build/install commands**: defaults are fine (`postinstall` runs
+  `prisma generate`); override only if you know why.
+- **maxDuration**: route handlers declare their own `export const maxDuration`.
+
+**Database role (C2 fix)**: connect the app as the `garfix_app` role
+(created by migration `20260824120000`, NO BYPASSRLS) so Row-Level Security
+actually applies. Keep the Neon owner role for migrations only:
+
+```
+DATABASE_URL=postgresql://garfix_app:<pw>@<pooler-host>/neondb?sslmode=require
+DATABASE_DIRECT_URL=postgresql://garfix_app:<pw>@<direct-host>/neondb?sslmode=require
 ```
 
 ### Deployment Steps

@@ -531,7 +531,7 @@ export function useAIChatHistory(companySlug?: string) {
       const url = params.toString() ? `/api/ai/chat?${params.toString()}` : "/api/ai/chat";
       return apiGet<ChatHistoryResponse>(url);
     },
-    enabled: !!companySlug || true, // always enabled; companySlug is optional
+    enabled: true, // companySlug is optional for this query (server scopes to the user context)
     staleTime: 0, // always fresh — chat history can change quickly
   });
 }

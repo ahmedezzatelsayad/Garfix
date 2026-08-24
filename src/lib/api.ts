@@ -210,11 +210,24 @@ export function withErrorHandler<T extends unknown[]>(
     const user = authResult?.ok ? authResult.user : null;
     const isPlatformAdmin = user ? hasUnrestrictedScope(user) : false;
     const sp = req && typeof req === 'object' && 'nextUrl' in req ? req.nextUrl.searchParams : undefined;
-    const companySlug = user
-      ? (isPlatformAdmin && !sp?.get("companySlug")
-          ? "__ALL__"
-          : sp?.get("companySlug") || user.companies[0] || "__ALL__")
-      : "__ALL__";
+    // SECURITY FIX (Review F2/C2 / 2026-08-24): a client-supplied ?companySlug
+    // is only honored if the user is actually a MEMBER of that company (or is
+    // the platform founder). Previously the raw param was fed directly into
+    // the RLS session var app.current_company_slug without any membership
+    // check, so any authenticated user could point the tenant scope at an
+    // arbitrary company. Unauthenticated requests get no tenant context.
+    let companySlug: string | null = null;
+    if (user) {
+      const requested = sp?.get("companySlug");
+      if (isPlatformAdmin) {
+        companySlug = requested || "__ALL__";
+      } else if (requested && user.companies.includes(requested)) {
+        companySlug = requested;
+      } else {
+        // fall back to the user's own membership — never to a foreign slug
+        companySlug = user.companies[0] || "__ALL__";
+      }
+    }
 
     // Run the handler inside the tenant context
     const runHandler = async (): Promise<NextResponse> => {
@@ -240,7 +253,10 @@ export function withErrorHandler<T extends unknown[]>(
       return runWithTenantContext(companySlug, isPlatformAdmin, runHandler);
     }
 
-    // No auth/tenant context — run without ALS (public routes)
+    // No auth/tenant context — run without ALS (public routes). Note: for
+    // unauthenticated requests we deliberately do NOT set a tenant context,
+    // so strict RLS policies fail closed (0 rows) rather than trusting a
+    // client-supplied slug.
     return runHandler();
   };
 }

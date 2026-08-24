@@ -30,6 +30,10 @@ export interface TenantContextValue {
   isPlatformAdmin: boolean;
   /** T0-A: true when inside a db.$transaction — extension skips wrapping */
   inTransaction?: boolean;
+  /** C3 FIX: the active interactive-transaction client. Operations issued
+   * on the OUTER extended client while a transaction is open are re-routed
+   * to this client so they join the SAME transaction (true atomicity). */
+  txClient?: unknown;
 }
 
 const tenantStorage = new AsyncLocalStorage<TenantContextValue>();
@@ -64,6 +68,27 @@ export function markInTransaction<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /**
+ * C3 FIX (Review / 2026-08-24): run a callback flagged as "inside a
+ * transaction" AND bind the active transaction client into the ALS context.
+ * The tenantRls interceptor re-routes any operation issued on the OUTER
+ * client (db.*) to ctx.txClient so it joins the SAME transaction instead of
+ * silently committing on a separate connection.
+ */
+export function runInTransactionWith<T>(
+  fn: () => Promise<T>,
+  txClient: unknown,
+): Promise<T> {
+  const current = tenantStorage.getStore();
+  if (!current) {
+    return fn();
+  }
+  return tenantStorage.run(
+    { ...current, inTransaction: true, txClient },
+    fn,
+  );
+}
+
+/**
  * Get the current tenant context from ALS. Returns undefined if called
  * outside a tenant context (e.g. in a public route or background job).
  */
@@ -76,4 +101,24 @@ export function getTenantContext(): TenantContextValue | undefined {
  */
 export function hasTenantContext(): boolean {
   return tenantStorage.getStore() !== undefined;
+}
+
+/**
+ * C2 FIX (Review / 2026-08-24): run a callback with the PLATFORM-ADMIN RLS
+ * context (app.is_platform='on' is set by the db interceptor for every
+ * query inside the callback).
+ *
+ * Use this for trusted server-to-server paths that legitimately need
+ * cross-tenant access and have NO authenticated user to derive a tenant
+ * from — e.g. inbound provider webhooks (ZATCA/ETA/WhatsApp) that resolve
+ * the target company FROM the payload itself, and background system jobs.
+ * Now that production connects as a non-BYPASSRLS role, any tenant-table
+ * query outside a tenant context returns 0 rows (fail-closed) — those
+ * paths MUST wrap their DB work in this helper.
+ */
+export function runAsPlatform<T>(fn: () => Promise<T>): Promise<T> {
+  return tenantStorage.run(
+    { slug: "__SYSTEM__", isPlatformAdmin: true, inTransaction: false },
+    fn,
+  );
 }

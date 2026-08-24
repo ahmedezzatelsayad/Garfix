@@ -91,6 +91,16 @@ let lastConnectionError: { code: string; message: string; at: Date } | null = nu
 // deferred via `setTimeout(..., 0)` to avoid re-entering Prisma while the
 // error event is still being dispatched.
 let _reconnecting = false;
+
+/**
+ * C3 FIX: synchronous re-route guard for the tenantRls interceptor.
+ * True only during the brief synchronous window in which an operation issued
+ * on the outer client is being forwarded onto the active transaction client.
+ * The tx client's own interceptor observes the flag and forwards the call
+ * directly instead of re-routing it (prevents infinite recursion).
+ */
+let _reroutingToTx = false;
+
 function scheduleReconnect(): void {
   if (_reconnecting) return;
   _reconnecting = true;
@@ -212,7 +222,7 @@ function createExtendedPrisma() {
     //
     // T0-A FIX (Nested Transaction Atomicity): The extension has a
     // re-entrancy guard. When code calls db.$transaction(async (tx) => {...}),
-    // the $transaction interceptor (below) sets the ALS `inTransaction` flag.
+    // the patched $transaction (below) sets the ALS `inTransaction` flag.
     // The $allOperations interceptor checks this flag:
     //   - If inTransaction=true: calls set_config on the tx client directly
     //     (NO new $transaction wrapper — preserves atomicity of the outer tx)
@@ -234,30 +244,79 @@ function createExtendedPrisma() {
           return query(args);
         }
 
-        // T0-A: If inside a $transaction, DON'T wrap in a new one.
-        // The outer $transaction interceptor already called set_config on
-        // the tx client. We just run the query directly — it inherits
-        // the set_config from the outer transaction.
+        // T0-A + C3 FIX: If inside a $transaction, DON'T wrap in a new one.
+        // The patched $transaction (see below) already called set_config on
+        // the tx client. Model operations issued on the OUTER client (db.*)
+        // are re-routed to the active transaction client so they join the
+        // SAME transaction (true atomicity) — previously they silently
+        // committed on a separate connection, so a mid-callback failure left
+        // partial writes behind.
         if (ctx.inTransaction) {
+          if (model && ctx.txClient && !_reroutingToTx) {
+            // Re-route OUTER-client ops onto the active transaction client.
+            // The guard flag is released synchronously right after invocation
+            // so concurrent parallel queries can also re-route safely.
+            _reroutingToTx = true;
+            let rerouted: Promise<unknown> | undefined;
+            try {
+              const txAny = ctx.txClient as Record<string, Record<string, (a: unknown) => Promise<unknown>>>;
+              const fn = txAny[model]?.[operation];
+              if (fn) rerouted = fn(args);
+            } finally {
+              _reroutingToTx = false;
+            }
+            if (rerouted) return rerouted;
+          }
           return query(args);
         }
 
-        // Cold path: not inside a transaction → wrap in a new one
-        // Founder/admin bypass → set app.is_platform = 'on'
+        // Cold path: not inside a transaction → wrap in a new one.
+        // C2/Raw-op FIX (Review / 2026-08-24): the set_config calls above
+        // apply to the TRANSACTION's connection. Model operations were
+        // already forwarded onto that connection via tx[model][operation].
+        // RAW operations ($queryRaw/$executeRaw) used to fall through to
+        // `query(args)`, which executes on the OUTER client's pooled
+        // connection — silently losing the RLS scope and returning 0 rows
+        // for tenant tables once the app connects as a non-BYPASSRLS role.
+        // They are now forwarded onto the tx connection too.
+        const runScopedOnTx = async (tx: Parameters<Parameters<typeof basePrisma.$transaction>[0]>[0]) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const txAny = tx as any;
+          if (model) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return (txAny as any)[model]?.[operation]?.(args) ?? query(args);
+          }
+          // Raw operation forwarding. Empirically (verified against Prisma
+          // 6.x): tagged-template raw ops pass { strings, values }; the
+          // Unsafe variants pass positional arguments as an array.
+          if (Array.isArray(args)) {
+            return txAny[operation](...(args as unknown[]));
+          }
+          const rawArgs = args as { strings?: unknown[]; values?: unknown[] } | null;
+          if (rawArgs && Array.isArray(rawArgs.strings) && Array.isArray(rawArgs.values)) {
+            // Tagged-template form: fn(strings, ...values). Prisma validates
+            // that `strings` carries the TemplateStringsArray `raw` property —
+            // the extension plumbing strips it, so re-attach before calling.
+            const strings = rawArgs.strings as string[] & { raw?: string[] };
+            if (!strings.raw) strings.raw = strings;
+            return txAny[operation](strings, ...rawArgs.values);
+          }
+          return query(args);
+        };
+
+        // Founder bypass → set app.is_platform = 'on'
         if (ctx.isPlatformAdmin) {
           return basePrisma.$transaction(async (tx) => {
             await tx.$executeRaw`SELECT set_config('app.is_platform', 'on', true)`;
             await tx.$executeRaw`SELECT set_config('app.current_company_slug', ${ctx.slug}, true)`;
-            // @ts-expect-error — tx has the same model/operation as the outer client
-            return tx[model]?.[operation]?.(args) ?? query(args);
+            return runScopedOnTx(tx);
           });
         }
 
         // Regular tenant → set app.current_company_slug
         return basePrisma.$transaction(async (tx) => {
           await tx.$executeRaw`SELECT set_config('app.current_company_slug', ${ctx.slug}, true)`;
-          // @ts-expect-error — tx has the same model/operation as the outer client
-          return tx[model]?.[operation]?.(args) ?? query(args);
+          return runScopedOnTx(tx);
         });
       },
       // T0-A: We need to intercept $transaction but Prisma's $extends
@@ -386,6 +445,70 @@ export async function initDb(): Promise<void> {
 }
 
 if (isDev) globalForPrisma.prisma = db;
+
+/**
+ * C3 FIX (Review / 2026-08-24) — Atomic tenant-aware $transaction for EVERY
+ * call site.
+ *
+ * PROBLEM: the `tenantRls` extension's `$allOperations` interceptor only
+ * skips its per-operation `$transaction` wrapper when the ALS
+ * `inTransaction` flag is set — and that flag was only set by the (rarely
+ * used) `withTenantTx` helper. Any route calling
+ * `db.$transaction(async (tx) => { ... })` directly (~20 financial
+ * call-sites: invoice + inventory + journal-entry writes) ran EVERY inner
+ * operation in its OWN nested transaction on a SEPARATE connection, so a
+ * mid-callback failure left partial writes committed (no rollback).
+ *
+ * FIX: override the extended client's interactive `$transaction` so that
+ * every callback execution:
+ *   1. opens on the real transaction client (single connection),
+ *   2. sets `app.current_company_slug` (+ `app.is_platform` for founder)
+ *      ONCE on that tx client,
+ *   3. runs the user callback under the `inTransaction` ALS flag so the
+ *      interceptor runs operations directly on the tx client.
+ * → True atomicity + correct RLS scope for ALL existing call sites,
+ *   with zero changes required at the call sites themselves.
+ *
+ * Array/sequential $transaction forms are passed through unchanged (each
+ * element is a single op — per-op wrapping preserves their semantics).
+ */
+{
+  type InteractiveTx = Parameters<Parameters<typeof extendedPrisma.$transaction>[0]>[0];
+  const origTransaction = extendedPrisma.$transaction.bind(extendedPrisma);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (extendedPrisma as any).$transaction = function patchedTransaction(
+    fnOrArray: unknown,
+    options?: unknown,
+  ) {
+    if (typeof fnOrArray !== "function") {
+      // Array form / sequential operations — no ALS wrapping needed.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (origTransaction as any)(fnOrArray, options);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (origTransaction as any)(
+      async (tx: InteractiveTx) => {
+        const { getTenantContext, runInTransactionWith } = await import("./tenant-context");
+        const ctx = getTenantContext();
+        if (!ctx) {
+          // No tenant context (background job / public route) — run as-is.
+          return (fnOrArray as (t: InteractiveTx) => Promise<unknown>)(tx);
+        }
+        // Bind the tx client into ALS so outer-client (db.*) operations
+        // issued inside the callback are re-routed onto THIS transaction,
+        // and set_config on the tx connection exactly once.
+        return runInTransactionWith(async () => {
+          if (ctx.isPlatformAdmin) {
+            await tx.$executeRaw`SELECT set_config('app.is_platform', 'on', true)`;
+          }
+          await tx.$executeRaw`SELECT set_config('app.current_company_slug', ${ctx.slug}, true)`;
+          return (fnOrArray as (t: InteractiveTx) => Promise<unknown>)(tx);
+        }, tx);
+      },
+      options,
+    );
+  };
+}
 
 /**
  * P1-4 ESCAPE HATCH — use ONLY when you have a genuine type-safety escape

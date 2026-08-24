@@ -9,21 +9,29 @@
  * - ai_cost_usd_total
  * - db_query_count_total
  * - valkey_hit_rate
+ *
+ * C5 FIX (Review / 2026-08-24): this endpoint used to return Math.random()
+ * PLACEHOLDER values — random numbers on every scrape are worse than no
+ * metrics at all (they poison dashboards and alerting). It now renders the
+ * REAL accumulated values from the in-process MetricsRegistry (populated by
+ * trackApiRequest / AI fabric instrumentation / DB wrapper). On serverless,
+ * counters are per-instance since the last cold start — documented in the
+ * output via the garfix_metrics_scope gauge.
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { metrics } from "@/lib/observability";
+import { timingSafeEqualStr } from "@/lib/timing-safe";
+import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   // SEC-004 FIX: Enforce METRICS_TOKEN auth as documented in .env.example.
-  // Previously this endpoint was unauthenticated — returning placeholder
-  // metrics to anyone. When real metrics are wired in, this would leak
-  // operational data (request counts, AI costs, DB query volume).
+  // Fail-closed: if METRICS_TOKEN is not set, return 503.
   const metricsToken = process.env.METRICS_TOKEN;
   if (!metricsToken) {
-    // Fail-closed: if METRICS_TOKEN is not set, return 503
     return new NextResponse("Service Unavailable: METRICS_TOKEN not configured", {
       status: 503,
       headers: { "Content-Type": "text/plain" },
@@ -33,43 +41,70 @@ export async function GET(req: NextRequest) {
   const providedToken = authHeader?.startsWith("Bearer ")
     ? authHeader.slice(7)
     : req.headers.get("x-metrics-token");
-  if (providedToken !== metricsToken) {
+  // L2 FIX: constant-time comparison — no timing leak of the secret.
+  if (!providedToken || !timingSafeEqualStr(providedToken, metricsToken)) {
     return new NextResponse("Unauthorized", {
       status: 401,
       headers: { "Content-Type": "text/plain" },
     });
   }
 
-  const lines: string[] = [
-    "# HELP garfix_request_count_total Total HTTP requests",
-    "# TYPE garfix_request_count_total counter",
-    `garfix_request_count_total{method="GET"} ${Math.floor(Math.random() * 10000)}`,
-    `garfix_request_count_total{method="POST"} ${Math.floor(Math.random() * 5000)}`,
-    "",
-    "# HELP garfix_request_duration_ms Histogram of request durations",
-    "# TYPE garfix_request_duration_ms histogram",
-    `garfix_request_duration_ms_bucket{le="50"} ${Math.floor(Math.random() * 8000)}`,
-    `garfix_request_duration_ms_bucket{le="200"} ${Math.floor(Math.random() * 9000)}`,
-    `garfix_request_duration_ms_bucket{le="500"} ${Math.floor(Math.random() * 9500)}`,
-    `garfix_request_duration_ms_bucket{le="+Inf"} ${Math.floor(Math.random() * 10000)}`,
-    "",
-    "# HELP garfix_ai_tokens_total Total AI tokens consumed",
-    "# TYPE garfix_ai_tokens_total counter",
-    `garfix_ai_tokens_total{provider="deepseek"} ${Math.floor(Math.random() * 100000)}`,
-    `garfix_ai_tokens_total{provider="z-ai-glm"} ${Math.floor(Math.random() * 50000)}`,
-    "",
-    "# HELP garfix_ai_cost_usd_total Total AI cost in USD",
-    "# TYPE garfix_ai_cost_usd_total counter",
-    `garfix_ai_cost_usd_total ${Math.random() * 100}`,
-    "",
-    "# HELP garfix_db_query_count_total Total DB queries",
-    "# TYPE garfix_db_query_count_total counter",
-    `garfix_db_query_count_total ${Math.floor(Math.random() * 100000)}`,
-    "",
-    "# HELP garfix_valkey_hit_rate Valkey cache hit rate",
-    "# TYPE garfix_valkey_hit_rate gauge",
-    `garfix_valkey_hit_rate ${0.85 + Math.random() * 0.1}`,
-  ];
+  const lines: string[] = [];
+  const labelStr = (labels: Record<string, string>) => {
+    const entries = Object.entries(labels ?? {});
+    if (entries.length === 0) return "";
+    return `{${entries.map(([k, v]) => `${k}="${String(v).replace(/"/g, "'")}"`).join(",")}}`;
+  };
+
+  try {
+    const snap = metrics.snapshot();
+
+    // ── Counters ────────────────────────────────────────────────────────
+    lines.push("# HELP garfix_counter Accumulated counter metrics (per instance, since cold start)");
+    lines.push("# TYPE garfix_counter counter");
+    for (const c of snap.counters) {
+      lines.push(`garfix_counter{metric="${c.name}",${Object.entries(c.labels).map(([k, v]) => `${k}="${String(v).replace(/"/g, "'")}"`).join(",")}} ${c.value}`);
+    }
+
+    // ── Gauges ──────────────────────────────────────────────────────────
+    lines.push("");
+    lines.push("# HELP garfix_gauge Current gauge values");
+    lines.push("# TYPE garfix_gauge gauge");
+    for (const g of snap.gauges) {
+      lines.push(`garfix_gauge{metric="${g.name}"${Object.keys(g.labels).length ? "," + Object.entries(g.labels).map(([k, v]) => `${k}="${String(v).replace(/"/g, "'")}"`).join(",") : ""}} ${g.value}`);
+    }
+
+    // ── Histograms ──────────────────────────────────────────────────────
+    lines.push("");
+    lines.push("# HELP garfix_histogram Latency/size histograms: count, sum, avg, p50, p95, p99");
+    lines.push("# TYPE garfix_histogram summary");
+    for (const h of snap.histograms) {
+      const lbl = labelStr(h.labels);
+      lines.push(`garfix_histogram{metric="${h.name}",stat="count"${lbl ? "," + lbl.slice(1, -1) : ""}} ${h.count}`);
+      lines.push(`garfix_histogram{metric="${h.name}",stat="sum"${lbl ? "," + lbl.slice(1, -1) : ""}} ${h.sum}`);
+      lines.push(`garfix_histogram{metric="${h.name}",stat="avg"${lbl ? "," + lbl.slice(1, -1) : ""}} ${h.avg.toFixed(2)}`);
+      lines.push(`garfix_histogram{metric="${h.name}",stat="p50"${lbl ? "," + lbl.slice(1, -1) : ""}} ${h.p50}`);
+      lines.push(`garfix_histogram{metric="${h.name}",stat="p95"${lbl ? "," + lbl.slice(1, -1) : ""}} ${h.p95}`);
+      lines.push(`garfix_histogram{metric="${h.name}",stat="p99"${lbl ? "," + lbl.slice(1, -1) : ""}} ${h.p99}`);
+    }
+
+    // ── Scope marker ────────────────────────────────────────────────────
+    lines.push("");
+    lines.push("# HELP garfix_metrics_scope 0 = process-local (serverless instance since cold start), 1 = global aggregator");
+    lines.push("# TYPE garfix_metrics_scope gauge");
+    lines.push(`garfix_metrics_scope ${process.env.VERCEL === "1" ? 0 : 1}`);
+
+    lines.push("");
+    lines.push("# HELP garfix_up Liveness marker");
+    lines.push("# TYPE garfix_up gauge");
+    lines.push("garfix_up 1");
+  } catch (err) {
+    logger.error("[metrics] failed to render snapshot", {
+      err: err instanceof Error ? err.message : String(err),
+    });
+    lines.push("# registry snapshot failed");
+    lines.push("garfix_up 0");
+  }
 
   return new NextResponse(lines.join("\n"), {
     headers: {

@@ -15,6 +15,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { AIMessage, AIResponse, AIContext } from '@/lib/ai/types';
+import { csrfFetch } from '@/lib/csrf-fetch';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -101,7 +102,7 @@ export function useGarfiXAI(options: UseGarfiXAIOptions = {}): UseGarfiXAIReturn
 
     try {
       // Call API
-      const response = await fetch('/api/ai/chat', {
+      const response = await csrfFetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -247,7 +248,7 @@ export function useAIThinking(): UseAIThinkingReturn {
     setThoughtProcess(['🔍 جارٍ تحليل الاستعلام...', '🧠 دعني أفكر في هذا...']);
 
     try {
-      const response = await fetch('/api/ai/think', {
+      const response = await csrfFetch('/api/ai/think', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
@@ -300,7 +301,7 @@ export function useAISuggestions(): UseAISuggestionsReturn {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/ai/suggest', {
+      const response = await csrfFetch('/api/ai/suggest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ context, type }),
@@ -352,7 +353,7 @@ export function useAIAnalyze(): UseAIAnalyzeReturn {
     setAnalysis(null);
 
     try {
-      const response = await fetch('/api/ai/analyze', {
+      const response = await csrfFetch('/api/ai/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data, type, insights: true, recommendations: true }),

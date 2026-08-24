@@ -36,14 +36,29 @@ async function main() {
   console.log(`✅ Company: ${company.nameAr} (${company.slug})`);
 
   // 2. Founder user
+  // H6 FIX (Review / 2026-08-24): the seed previously hardcoded "admin123"
+  // and the upsert RESET the founder password to it on every run — a
+  // well-known credential silently replacing the real one. The password
+  // now MUST come from FOUNDER_PASSWORD (min 12 chars); the seed refuses
+  // to run otherwise.
   const bcrypt = await import("bcryptjs");
-  const passwordHash = bcrypt.hashSync("admin123", 12);
+  const founderPassword = process.env.FOUNDER_PASSWORD;
+  if (!founderPassword || founderPassword.length < 12) {
+    throw new Error(
+      "[seed-minimal] FOUNDER_PASSWORD env var is required (min 12 chars). " +
+      "Refusing to seed with a hardcoded default. Set it and re-run."
+    );
+  }
+  const founderEmail = (process.env.FOUNDER_EMAIL || "admin@garfix.com").toLowerCase();
+  const passwordHash = bcrypt.hashSync(founderPassword, 12);
   const user = await db.appUser.upsert({
-    where: { email: "admin@garfix.com" },
-    update: { passwordHash },
+    where: { email: founderEmail },
+    // NOTE: update intentionally does NOT touch passwordHash — re-running the
+    // seed must never silently reset the founder's real password.
+    update: {},
     create: {
       uid: "founder-001",
-      email: "admin@garfix.com",
+      email: founderEmail,
       passwordHash,
       displayName: "Founder Admin",
       role: "founder",
@@ -51,7 +66,7 @@ async function main() {
       emailVerified: true,
     },
   });
-  console.log(`✅ User: ${user.email} (founder) — password: admin123`);
+  console.log(`✅ User: ${user.email} (founder) — password from FOUNDER_PASSWORD env`);
 
   // 3. A second user (employee) for the same company
   const empHash = bcrypt.hashSync("emp123", 12);
@@ -154,7 +169,7 @@ async function main() {
 
   console.log("\n═══════════════════════════════════════════════════");
   console.log("  Minimal seed complete!");
-  console.log("  Login: admin@garfix.com / admin123 (founder)");
+  console.log("  Login: $FOUNDER_EMAIL / $FOUNDER_PASSWORD (from env)");
   console.log("  Or:    employee@garfix.com / emp123 (employee)");
   console.log("  Company slug: sa-demo (country=SA)");
   console.log("═══════════════════════════════════════════════════");

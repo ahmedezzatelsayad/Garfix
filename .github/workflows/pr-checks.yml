@@ -208,9 +208,13 @@ jobs:
             exit 1
           fi
 
-          # Verify response contains commitSha (proves build-time injection works)
-          if ! echo "$HEALTH_RESPONSE" | grep -q "commitSha"; then
-            echo "❌ /api/health missing commitSha field — build-time env injection failed"
+          # H7 FIX (Review / 2026-08-24): the health route deliberately
+          # stripped commitSha (AUDIT FIX — reduces build fingerprinting
+          # surface), but this gate still required it → the PR smoke check
+          # has been failing on every PR since. Assert on the fields that
+          # /api/health actually guarantees instead.
+          if ! echo "$HEALTH_RESPONSE" | grep -q '"status"'; then
+            echo "❌ /api/health missing status field — health payload malformed"
             kill $SERVER_PID 2>/dev/null || true
             exit 1
           fi

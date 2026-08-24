@@ -27,6 +27,7 @@ import {
   Link2, MapPin, Copy, Webhook, Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { csrfFetch } from '@/lib/csrf-fetch';
 
 // ─── Types ─────────────────────────────────────────────────────
 
@@ -132,7 +133,7 @@ function ZatcaSettings({
 
     try {
       // Step 1: Request CSID
-      const csidRes = await fetch("/api/e-invoicing/zatca/onboard", {
+      const csidRes = await csrfFetch("/api/e-invoicing/zatca/onboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -156,7 +157,7 @@ function ZatcaSettings({
       setOnboardingStep("requesting_ccd");
 
       // Step 2: Request CCD
-      const ccdRes = await fetch("/api/e-invoicing/zatca/onboard", {
+      const ccdRes = await csrfFetch("/api/e-invoicing/zatca/onboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -325,7 +326,7 @@ function CountryEInvoiceSettings({
     setLoading(true);
     setTestResult(null);
     try {
-      const res = await fetch("/api/platform-admin/integrations", {
+      const res = await csrfFetch("/api/platform-admin/integrations", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -353,7 +354,7 @@ function CountryEInvoiceSettings({
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch("/api/platform-admin/integrations/test", {
+      const res = await csrfFetch("/api/platform-admin/integrations/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -381,7 +382,7 @@ function CountryEInvoiceSettings({
     if (!confirm("هل أنت متأكد من إلغاء ربط الفوترة الإلكترونية؟")) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/platform-admin/integrations", {
+      const res = await csrfFetch("/api/platform-admin/integrations", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -941,7 +942,7 @@ function WebhookUrlHelper({ country, companySlug }: { country: string; companySl
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch("/api/e-invoicing/test-webhook", {
+      const res = await csrfFetch("/api/e-invoicing/test-webhook", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

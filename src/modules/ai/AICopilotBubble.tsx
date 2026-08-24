@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { LazyReviewQueueModal } from "@/modules/common/LazyModals";
 import { logger } from "@/lib/logger";
+import { csrfFetch } from '@/lib/csrf-fetch';
 
 interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -368,7 +369,10 @@ export function AICopilotBubble() {
   const sendFeedback = (answer: string, rating: "up" | "down") => {
     const slug = activeCompany?.slug;
     if (!slug) return;
-    fetch("/api/ai/feedback", {
+    // FIX (Review C4 / frontend 🟠): check res.ok before showing a success
+    // toast — previously a 403/4xx/5xx response still showed "شكرًا" which
+    // silently killed the AI learning loop with false-positive feedback.
+    csrfFetch("/api/ai/feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -378,8 +382,11 @@ export function AICopilotBubble() {
         answer: answer.slice(0, 4000),
         rating,
       }),
-    }).then(() => {
-      toast.success(rating === "up" ? "شكرًا — سيساعد هذا تحسين المساعد" : "تم تسجيل الملاحظة — سنركز على تحسين هذا النوع من الردود");
+    }).then((res) => {
+      if (res.ok) {
+        toast.success(rating === "up" ? "شكرًا — سيساعد هذا تحسين المساعد" : "تم تسجيل الملاحظة — سنركز على تحسين هذا النوع من الردود");
+      }
+      // non-ok: silent — don't nag the user with feedback failures
     }).catch(() => { /* silent */ });
   };
 

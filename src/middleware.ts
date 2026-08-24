@@ -62,9 +62,40 @@ const CSRF_EXEMPT_ROUTES = [
   "/api/setup/create-founder",
   "/api/setup/save-integrations",
   "/api/setup/complete",
+  // SECURITY FIX (Review H5 / 2026-08-24): inbound server-to-server webhooks
+  // are called by external authorities (ZATCA/ETA/FTA/payment providers) with
+  // NO browser session and therefore no CSRF cookie. Each of these routes
+  // performs its own cryptographic verification (HMAC signature + timing-safe
+  // compare, see src/lib/e-invoicing/webhooks.ts) which is far stronger than
+  // a double-submit cookie. Excluding them unblocks e-invoicing on production
+  // (previously every webhook died with 403 before reaching its own signature
+  // check).
+  "/api/webhooks/whatsapp",
 ];
 
+// Inbound e-invoicing authority webhooks (server-to-server, HMAC-verified
+// inside each route). NOTE: only the /webhooks/ subpaths are exempt —
+// /api/webhooks/endpoints, /events and /deliveries are authenticated
+// browser-facing CRUD routes and still REQUIRE CSRF.
+const E_INVOICING_WEBHOOK_COUNTRIES = ["sa", "qa", "kw", "om", "ae", "bh"];
+const E_INVOICING_WEBHOOK_PROVIDERS = ["zatca", "eta", "fta", "nbr"];
+
 const MUTATING_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
+
+/**
+ * Constant-time string comparison (Review L1 fix): avoids short-circuit
+ * string equality which leaks length/prefix timing information. Compares
+ * byte-by-byte over the max length; length mismatch also fails closed.
+ * Runs on the Edge runtime (no Node crypto.timingSafeEqual there).
+ */
+function timingSafeEqualStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
 
 // ── Security headers ────────────────────────────────────────────────────────
 //
@@ -233,14 +264,23 @@ export function middleware(req: NextRequest): NextResponse {
   // X-CSRF-Token header. The double-submit pattern works because an
   // attacker on another origin cannot read the cookie (same-origin policy)
   // and therefore cannot forge the header.
-  if (
-    MUTATING_METHODS.includes(req.method) &&
-    !CSRF_EXEMPT_ROUTES.includes(pathname)
-  ) {
+  // Build the full exemption test for this request (exact matches + the
+  // e-invoicing webhook family, which is HMAC-verified per-route).
+  const isCsrfExempt =
+    CSRF_EXEMPT_ROUTES.includes(pathname) ||
+    (pathname.startsWith("/api/e-invoicing/webhooks/") &&
+      (E_INVOICING_WEBHOOK_COUNTRIES.includes(
+        pathname.split("/")[4] || ""
+      ) ||
+        E_INVOICING_WEBHOOK_PROVIDERS.includes(
+          pathname.split("/")[4] || ""
+        )));
+
+  if (MUTATING_METHODS.includes(req.method) && !isCsrfExempt) {
     const csrfCookie = req.cookies.get(CSRF_COOKIE)?.value;
     const csrfHeader = req.headers.get("x-csrf-token");
 
-    if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+    if (!csrfCookie || !csrfHeader || !timingSafeEqualStr(csrfCookie, csrfHeader)) {
       const response = NextResponse.json(
         { error: "رمز حماية CSRF غير صالح أو مفقود" },
         { status: 403 },

@@ -18,6 +18,7 @@ import { useState } from "react";
 import { useBrand } from "@/context/BrandContext";
 import { Check, Loader2, Crown, Zap, Infinity as InfinityIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { csrfFetch } from '@/lib/csrf-fetch';
 
 interface PlanInfo {
   key: string;
@@ -100,7 +101,7 @@ export function BillingView() {
     setError(null);
     setLoadingPlan(planKey);
     try {
-      const response = await fetch("/api/saas/payments/initiate", {
+      const response = await csrfFetch("/api/saas/payments/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

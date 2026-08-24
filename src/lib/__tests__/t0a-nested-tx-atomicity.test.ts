@@ -24,7 +24,10 @@ describe.skipIf(!isPostgres)("T0-A: Nested Transaction Atomicity", () => {
 
   beforeAll(async () => {
     // Seed a test company (using platform bypass)
-    await db.$executeRaw`INSERT INTO companies (id, name, slug, plan, "subscriptionStatus", currency, "updatedAt") VALUES (88888, 'T0A Test Co', ${TEST_SLUG}, 'trial', 'active', 'USD', NOW()) ON CONFLICT (slug) DO NOTHING`;
+    // REVIEW FIX: include a unique `code` — the column has a UNIQUE
+    // constraint and raw INSERTs bypass Prisma's app-level cuid default,
+    // so an empty code collides with any other code-less row.
+    await db.$executeRaw`INSERT INTO companies (id, name, slug, code, plan, "subscriptionStatus", currency, "updatedAt") VALUES (88888, 'T0A Test Co', ${TEST_SLUG}, 't0a-test-co-code', 'trial', 'active', 'USD', NOW()) ON CONFLICT (slug) DO NOTHING`;
   });
 
   afterAll(async () => {

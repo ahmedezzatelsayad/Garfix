@@ -55,6 +55,7 @@ import {
   MotionCard,
   GarfixPageTransition,
 } from '@/components/garfix-ds/animations';
+import { csrfFetch } from '@/lib/csrf-fetch';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -335,7 +336,7 @@ export default function CompaniesPerFeatureAIPage() {
     try {
       setIsSaving(true);
       
-      const response = await fetch('/api/founder-panel/ai-config', {
+      const response = await csrfFetch('/api/founder-panel/ai-config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -406,7 +407,7 @@ export default function CompaniesPerFeatureAIPage() {
       const feature = FEATURES.find(f => f.key === featureKey);
       const model = aiConfig?.[featureKey as 'chat' | 'invoice' | 'parse' | 'memory']?.model || 'gemini-2.0-flash';
       
-      const response = await fetch('/api/founder-panel/ai-config/test', {
+      const response = await csrfFetch('/api/founder-panel/ai-config/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -533,7 +534,7 @@ export default function CompaniesPerFeatureAIPage() {
     if (!confirm(`هل أنت متأكد من ${actionLabels[action]} لـ ${selectedCompanyIds.size} شركة؟`)) return;
 
     try {
-      const response = await fetch('/api/founder-panel/companies/bulk-ai-config', {
+      const response = await csrfFetch('/api/founder-panel/companies/bulk-ai-config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -854,7 +855,7 @@ export default function CompaniesPerFeatureAIPage() {
                               onChange={async (e) => {
                                 const newPlan = e.target.value;
                                 try {
-                                  const res = await fetch(`/api/founder-panel/companies/${company.slug}/plan`, {
+                                  const res = await csrfFetch(`/api/founder-panel/companies/${company.slug}/plan`, {
                                     method: "PATCH",
                                     headers: { "Content-Type": "application/json" },
                                     credentials: "include",

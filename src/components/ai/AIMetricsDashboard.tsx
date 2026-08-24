@@ -40,6 +40,7 @@ import {
   Users,
   Key
 } from 'lucide-react';
+import { csrfFetch } from '@/lib/csrf-fetch';
 
 // ============== Types ==============
 interface KeyHealthStatus {
@@ -570,7 +571,7 @@ export function AIMetricsDashboard() {
   // Reset quotas handler
   const handleResetQuotas = async () => {
     try {
-      const response = await fetch('/api/ai/metrics', {
+      const response = await csrfFetch('/api/ai/metrics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'reset-quotas' })

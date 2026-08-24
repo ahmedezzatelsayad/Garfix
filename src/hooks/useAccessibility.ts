@@ -54,6 +54,14 @@ export function useFocusTrap(
   const cleanupRef = useRef<(() => void) | null>(null);
 
   const { active = true } = options;
+  // FRONTEND FIX (Review / 2026-08-24): `options` is an object literal at
+  // nearly every call site — a NEW reference every render — so the effect
+  // deps [active, options] tore down and rebuilt the focus trap on every
+  // render (focus flicker + churn). Serialize the individual sub-options as
+  // deps instead of the object identity.
+  const { initialFocus, returnFocus, onEscape } = options;
+  const onEscapeRef = useRef(onEscape);
+  onEscapeRef.current = onEscape;
 
   useEffect(() => {
     if (!containerRef.current || !active) {
@@ -62,17 +70,21 @@ export function useFocusTrap(
       return;
     }
 
-    // Create focus trap
+    // Create focus trap (read callbacks through refs so identity changes
+    // never re-trigger the effect)
     cleanupRef.current = createFocusTrap(containerRef.current, {
       active: true,
-      ...options,
+      initialFocus,
+      returnFocus,
+      onEscape: onEscapeRef.current,
     });
 
     return () => {
       cleanupRef.current?.();
       cleanupRef.current = null;
     };
-  }, [active, options]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- scalar deps only
+  }, [active, initialFocus, returnFocus]);
 
   return containerRef;
 }

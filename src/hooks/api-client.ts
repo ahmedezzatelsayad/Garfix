@@ -120,6 +120,18 @@ const DEFAULT_TIMEOUT_MS = 30_000;
  * load to avoid a redirect loop when multiple in-flight requests all 401.
  */
 let isRedirectingToLogin = false;
+/**
+ * FRONTEND FIX (Review / 2026-08-24): once handle401 fired, the
+ * isRedirectingToLogin latch was NEVER reset — but the redirect target is
+ * /login?...&reason=expired, which the SPA login page renders WITHOUT a
+ * full page reload. After a successful in-place login every subsequent 401
+ * (e.g. an expired access token during normal usage) was silently ignored:
+ * requests failed, no redirect happened, the UI just hung.
+ * AuthContext now calls reset401Guard() after a successful login.
+ */
+export function reset401Guard(): void {
+  isRedirectingToLogin = false;
+}
 function handle401(): void {
   if (isRedirectingToLogin) return;
   // VERCEL FIX: don't redirect on public pages — /, /login, /signup

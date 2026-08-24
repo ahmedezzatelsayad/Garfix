@@ -46,18 +46,24 @@ const multiCompanyUser: User = { uid: "m1", email: "multi@co.com", role: "editor
 const noCompanyUser: User = { uid: "n1", email: "none@x.com", role: "employee", companies: [], permissions: {}, tv: 1 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 1. buildTenantScope — admin (unrestricted)
+// 1. buildTenantScope — admin (TENANT-SCOPED since the C1 review fix)
+//
+// SECURITY FIX (2026-08-24): role:"admin" used to grant unrestricted
+// cross-tenant scope, but every user who creates their first company is
+// auto-promoted to admin — so ANY tenant admin could read every other
+// tenant's data. Unrestricted scope now belongs to the platform founder
+// ONLY; company admins are scoped like regular members.
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe("buildTenantScope — admin unrestricted", () => {
-  it("returns empty where for admin with no companySlug", () => {
+describe("buildTenantScope — admin is tenant-scoped (C1 fix)", () => {
+  it("returns membership IN filter for admin with no companySlug", () => {
     const scope = buildTenantScope(adminUser);
-    expect(scope.where).toEqual({});
+    expect(scope.where).toEqual({ companySlug: { in: ["co-a", "co-b"] } });
   });
 
-  it("sets unrestricted=true for admin with no companySlug", () => {
+  it("sets unrestricted=false for admin with no companySlug", () => {
     const scope = buildTenantScope(adminUser);
-    expect(scope.unrestricted).toBe(true);
+    expect(scope.unrestricted).toBe(false);
   });
 
   it("sets forbidden=false for admin with no companySlug", () => {
@@ -65,20 +71,19 @@ describe("buildTenantScope — admin unrestricted", () => {
     expect(scope.forbidden).toBe(false);
   });
 
-  it("returns companyId filter for admin requesting specific company", () => {
+  it("returns companyId filter for admin requesting member company", () => {
     const scope = buildTenantScope(adminUser, "co-a");
     expect(scope.where).toEqual({ companySlug: "co-a" });
   });
 
-  it("sets effectiveSlug for admin requesting specific company", () => {
+  it("sets effectiveSlug for admin requesting member company", () => {
     const scope = buildTenantScope(adminUser, "co-a");
     expect(scope.effectiveSlug).toBe("co-a");
   });
 
-  it("admin requesting non-member company still gets it (unrestricted)", () => {
+  it("admin requesting NON-member company is FORBIDDEN (C1 fix)", () => {
     const scope = buildTenantScope(adminUser, "co-z");
-    expect(scope.forbidden).toBe(false);
-    expect(scope.where).toEqual({ companySlug: "co-z" });
+    expect(scope.forbidden).toBe(true);
   });
 
   it("admin unrestricted=false when specific company requested", () => {
@@ -212,9 +217,9 @@ describe("buildTenantScope — custom slugField", () => {
     expect(scope.where).toEqual({ tenantId: "__NO_COMPANIES_ASSIGNED__" });
   });
 
-  it("custom slugField with unrestricted admin returns empty", () => {
+  it("custom slugField with admin (tenant-scoped) uses IN filter", () => {
     const scope = buildTenantScope(adminUser, undefined, "tenantId");
-    expect(scope.where).toEqual({});
+    expect(scope.where).toEqual({ tenantId: { in: ["co-a", "co-b"] } });
   });
 });
 
@@ -227,8 +232,8 @@ describe("canAccessCompany", () => {
     expect(canAccessCompany(adminUser, "co-a")).toBe(true);
   });
 
-  it("admin can access company not in their list", () => {
-    expect(canAccessCompany(adminUser, "co-z")).toBe(true);
+  it("admin CANNOT access company not in their list (C1 fix)", () => {
+    expect(canAccessCompany(adminUser, "co-z")).toBe(false);
   });
 
   it("founder can access any company", () => {
@@ -405,15 +410,17 @@ describe("Audit log isolation", () => {
     expect(filtered[0].action).toBe("create");
   });
 
-  it("admin sees all audit logs (unrestricted scope)", () => {
+  it("admin audit scope is membership-filtered, not unrestricted (C1 fix)", () => {
     const logs = [
       { id: 1, companySlug: "co-a", action: "create" },
       { id: 2, companySlug: "co-b", action: "delete" },
+      { id: 3, companySlug: "co-z", action: "steal" },
     ];
     const scope = buildTenantScope(adminUser);
-    // unrestricted means no filter applied — all logs visible
-    expect(scope.unrestricted).toBe(true);
-    expect(logs).toHaveLength(2);
+    // admin is tenant-scoped: only their member companies are visible
+    expect(scope.unrestricted).toBe(false);
+    const visible = logs.filter((l) => (scope.where.companySlug as { in?: string[] }).in?.includes(l.companySlug));
+    expect(visible).toHaveLength(2);
   });
 
   it("audit log query for restricted user uses company filter", () => {
@@ -522,9 +529,9 @@ describe("API route isolation", () => {
     expect(Object.keys(scope.where).length).toBeGreaterThan(0);
   });
 
-  it("list query for admin has no mandatory filter", () => {
+  it("list query for admin is membership-filtered (C1 fix)", () => {
     const scope = buildTenantScope(adminUser);
-    expect(Object.keys(scope.where).length).toBe(0);
+    expect(Object.keys(scope.where).length).toBeGreaterThan(0);
   });
 
   it("forbidden scope should block the request", () => {

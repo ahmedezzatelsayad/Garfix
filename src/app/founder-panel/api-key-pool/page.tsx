@@ -50,6 +50,7 @@ import {
   MotionCard,
   GarfixPageTransition,
 } from '@/components/garfix-ds/animations';
+import { csrfFetch } from '@/lib/csrf-fetch';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -196,7 +197,7 @@ export default function FounderApiKeyPoolPage() {
     try {
       setIsAdding(true);
       
-      const response = await fetch('/api/founder-panel/api-key-pool', {
+      const response = await csrfFetch('/api/founder-panel/api-key-pool', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -236,7 +237,7 @@ export default function FounderApiKeyPoolPage() {
     if (!confirm('هل أنت متأكد من إلغاء هذا المفتاح؟')) return;
 
     try {
-      const response = await fetch(`/api/founder-panel/api-key-pool/${keyId}`, {
+      const response = await csrfFetch(`/api/founder-panel/api-key-pool/${keyId}`, {
         method: 'DELETE',
       });
 
@@ -325,7 +326,7 @@ export default function FounderApiKeyPoolPage() {
     try {
       const results = await Promise.allSettled(
         keyIds.map(async (keyId) => {
-          const response = await fetch(`/api/founder-panel/api-key-pool/${keyId}`, {
+          const response = await csrfFetch(`/api/founder-panel/api-key-pool/${keyId}`, {
             method: 'DELETE',
           });
           const data = await response.json();

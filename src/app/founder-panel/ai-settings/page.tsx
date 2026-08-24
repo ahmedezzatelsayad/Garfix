@@ -54,6 +54,7 @@ import {
   GarfixPageTransition,
   GarfixAnimatedCounter,
 } from '@/components/garfix-ds/animations';
+import { csrfFetch } from '@/lib/csrf-fetch';
 
 
 // ── Types ───────────────────────────────────────────────────
@@ -243,7 +244,7 @@ export default function AISettingsPage() {
         usageNotificationThreshold: 80,
       };
       
-      const response = await fetch('/api/founder-panel/ai-config', {
+      const response = await csrfFetch('/api/founder-panel/ai-config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -286,7 +287,7 @@ export default function AISettingsPage() {
         return;
       }
       
-      const response = await fetch('/api/founder-panel/ai-config/test', {
+      const response = await csrfFetch('/api/founder-panel/ai-config/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

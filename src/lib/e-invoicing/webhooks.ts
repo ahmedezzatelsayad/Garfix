@@ -102,7 +102,7 @@ export function verifyHmacSignature(
  * still recorded for audit but the EInvoice row is NOT mutated — this
  * prevents forged webhooks from marking invoices as "cleared" or "rejected".
  */
-export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord> {
+async function recordReceiptImpl(input: ReceiptInput): Promise<ReceiptRecord> {
   // ── 1. Idempotency check ─────────────────────────────────────────────
   if (input.externalUuid) {
     const existing = await db.eInvoiceReceipt.findFirst({
@@ -178,7 +178,7 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
       const { logAudit } = await import("@/lib/audit");
       const { getFounderEmail } = await import("@/lib/founder");
       void logAudit({
-        userEmail: getFounderEmail(),
+        userEmail: getFounderEmail() || "unconfigured-founder",
         userUid: "system",
         action: "einvoice_webhook_unknown_tenant",
         entity: "einvoice_receipt",
@@ -369,6 +369,18 @@ export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord>
   }
 
   return { id: receipt.id, receivedAt: receipt.receivedAt };
+}
+
+/**
+ * C2 FIX (Review / 2026-08-24): inbound authority webhooks (ZATCA/ETA/FTA...)
+ * have NO authenticated user, so there is no tenant ALS context. Production
+ * now connects as a non-BYPASSRLS role, so tenant-table queries without a
+ * context return 0 rows. The webhook resolves the target company FROM the
+ * signed payload itself — wrap all its DB work in the platform RLS context.
+ */
+export async function recordReceipt(input: ReceiptInput): Promise<ReceiptRecord> {
+  const { runAsPlatform } = await import("@/lib/tenant-context");
+  return runAsPlatform(() => recordReceiptImpl(input));
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────

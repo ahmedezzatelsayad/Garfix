@@ -294,11 +294,27 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       invoiceNumber: data.invoiceNumber,
       companySlug: data.companySlug,
     });
+    // P2 FIX (Review TOCTOU): a concurrent request can win the
+    // invoice-number unique race BETWEEN the pre-check (line ~190) and this
+    // INSERT. Prisma surfaces that as P2002 — map it to a clean 409 instead
+    // of a 500 that leaked the raw driver message via `detail`.
+    const isUniqueViolation =
+      (txErr as { code?: string })?.code === "P2002" ||
+      /unique constraint|duplicate key/i.test(txErr instanceof Error ? txErr.message : "");
+    if (isUniqueViolation) {
+      return NextResponse.json(
+        {
+          error: "رقم الفاتورة مستخدم مسبقاً في هذه الشركة — أعِد المحاولة برقم جديد",
+          code: "INVOICE_NUMBER_TAKEN",
+        },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(
       {
         error: "Invoice creation failed — inventory sync error. No invoice was created. Please retry.",
         code: "INVOICE_ATOMIC_CREATE_FAILED",
-        detail: txErr instanceof Error ? txErr.message : String(txErr),
+        // P2 FIX: do NOT echo the raw driver message to the client.
       },
       { status: 500 },
     );

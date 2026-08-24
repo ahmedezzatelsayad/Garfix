@@ -190,6 +190,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // After login, the server has set the inv_csrf cookie — fetchMe will now work with CSRF
     const me = await fetchMe();
     setUser(me);
+    // FRONTEND FIX (Review / 2026-08-24): a previous session-expiry 401 may
+    // have latched the api-client's redirect guard. Since the SPA login
+    // doesn't reload the page, reset it so future 401s are handled properly.
+    try {
+      const { reset401Guard } = await import("@/hooks/api-client");
+      reset401Guard();
+    } catch { /* non-fatal */ }
   }, []);
 
   const logout = useCallback(async () => {

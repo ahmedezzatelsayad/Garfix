@@ -51,7 +51,10 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-[13px] text-emerald-100/70 max-w-[400px] leading-relaxed">
               {this.state.error?.message || "نعتذر عن هذا الإزعاج. يرجى تحديث الصفحة أو المحاولة مرة أخرى، وإذا استمرت المشكلة تواصل مع فريق الدعم."}
             </p>
-            {this.state.error && (
+            {/* SECURITY FIX (Review / 2026-08-24): stack traces leak source
+                structure, internal paths and dependency versions to end
+                users. Show them in development only. */}
+            {this.state.error && process.env.NODE_ENV !== "production" && (
               <details className="mt-3 text-right">
                 <summary className="text-xs text-emerald-400/60 cursor-pointer hover:text-emerald-300 transition-colors">
                   عرض تفاصيل الخطأ التقنية

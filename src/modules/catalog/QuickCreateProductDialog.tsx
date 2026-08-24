@@ -125,7 +125,7 @@ export function QuickCreateProductDialog({
     setError(null);
 
     try {
-      const res = await fetch("/api/catalog", {
+      const res = await csrfFetch("/api/catalog", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -357,3 +357,4 @@ export function QuickCreateProductDialog({
 // ─── Export Types ───────────────────────────────────────────────────────
 
 export type { QuickCreateProductDialogProps };
+import { csrfFetch } from '@/lib/csrf-fetch';

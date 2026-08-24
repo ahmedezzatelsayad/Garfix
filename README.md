@@ -501,7 +501,7 @@ docker compose -f docker-compose.prod.yml run --rm app bunx prisma migrate deplo
 | **Docker Compose** | ✅ | ✅ | Self-contained: postgres + valkey + app |
 | **AWS EC2** | ✅ | ✅ | GitHub Actions workflow (`deploy-aws.yml`) |
 | **Hetzner VPS** | ✅ | ✅ | Documented in `CHEAP-DEPLOYMENT.md` |
-| **Vercel** | ⚠️ | ❌ | Middleware uses Edge-incompatible modules; use VPS instead |
+| **Vercel** | ✅ | ✅ | Production-verified (Neon Postgres + Vercel Cron every 5 min via `/api/cron/maintenance`) |
 | **Replit** | ✅ | ✅ | Documented in `AWS-REPLIT-DEPLOYMENT.md` |
 
 See `AWS-REPLIT-DEPLOYMENT.md` and `CHEAP-DEPLOYMENT.md` for detailed deployment guides.
@@ -565,7 +565,7 @@ k6 run scripts/k6/top10-routes.js
 
 ### Confirmed
 - **No `LICENSE` file** — README states Proprietary but no LICENSE file exists in the repository
-- **Vercel deployment not currently supported/validated for production** — the Edge middleware imports Node-only modules that may be rejected by Vercel's Edge Runtime. The project has not been tested on Vercel; use VPS/Docker deployment instead (AWS EC2, Hetzner, Oracle Cloud — see `CHEAP-DEPLOYMENT.md`)
+- **Vercel** — now production-verified: app + middleware run on Node.js runtime, Neon Postgres via a non-BYPASSRLS `garfix_app` role (RLS enforced), and lightweight background maintenance runs via Vercel Cron (`vercel.json` → `/api/cron/maintenance` every 5 minutes). Heavy BullMQ workers (bulk email/WhatsApp) still need a long-running worker — see `DEPLOYMENT.md`.
 - **ZATCA/UAE/Kuwait e-invoicing** — submission is stubbed pending government API availability
 - **S3 uploads** — simplified SigV4 (not `@aws-sdk/s3-client`); falls back to local disk
 - **In-process queue tier** — single-instance only, not production-safe without Valkey

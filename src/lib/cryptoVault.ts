@@ -28,15 +28,18 @@ import { logger } from "./logger";
 // During build, the module is imported for type analysis only — no secrets needed.
 function resolveEncryptionKey(): string {
   const val = process.env.PAYMENTS_ENC_KEY || process.env.VAULT_ENCRYPTION_KEY;
+  // M4 FIX (Review / 2026-08-24): the old heuristic OR-ed
+  // `!process.env.RUNTIME_STARTUP` into the build-phase test — on Vercel the
+  // runtime NEVER sets RUNTIME_STARTUP, so production requests silently took
+  // the build branch: a missing key produced a RANDOM placeholder instead of
+  // a fatal error, and short keys were accepted. The ONLY reliable build
+  // signal is Next.js' NEXT_PHASE — trust nothing else.
+  const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
   if (!val) {
-    // P0 FIX: During `next build`, do NOT throw — secrets are not needed for
-    // static page compilation. Next.js sets NEXT_PHASE during build phases.
-    const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build"
-      || (process.env.NODE_ENV === "production" && typeof window === "undefined" && !process.env.RUNTIME_STARTUP);
     if (isBuildPhase) {
       console.warn("⚠️  PAYMENTS_ENC_KEY not set during build — will be validated at runtime. DO NOT deploy without setting this.");
-      // Phase 9 P1 fix: random placeholder instead of deterministic string.
-      // randomBytes is from top-level crypto import
+      // Random placeholder (never deterministic) so a leak into runtime would
+      // fail loudly: values encrypted with it are undecryptable after restart.
       return `build-placeholder-${crypto.randomBytes(32).toString("hex")}`;
     }
     if (process.env.NODE_ENV === "production") {
@@ -46,9 +49,6 @@ function resolveEncryptionKey(): string {
     return "dev-only-encryption-key-not-for-production-use-32chars!";
   }
   if (val.length < 32) {
-    // During build phase, allow short keys with a warning
-    const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build"
-      || (process.env.NODE_ENV === "production" && typeof window === "undefined" && !process.env.RUNTIME_STARTUP);
     if (isBuildPhase) {
       console.warn(`⚠️  PAYMENTS_ENC_KEY is ${val.length} chars (< 32) during build — will be validated at runtime.`);
       return val;

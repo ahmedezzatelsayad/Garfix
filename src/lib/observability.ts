@@ -282,6 +282,49 @@ class MetricsRegistry {
     this.histograms.clear();
   }
 
+  /**
+   * C5 FIX (Review / 2026-08-24): expose a read-only snapshot so the
+   * /api/metrics Prometheus endpoint can render REAL accumulated values
+   * instead of the fake Math.random() placeholders it used to return.
+   */
+  snapshot(): {
+    counters: Array<{ name: string; labels: Record<string, string>; value: number }>;
+    gauges: Array<{ name: string; labels: Record<string, string>; value: number }>;
+    histograms: Array<{ name: string; labels: Record<string, string>; count: number; sum: number; avg: number; p50: number; p95: number; p99: number }>;
+  } {
+    const pct = (sorted: number[], q: number) => {
+      if (sorted.length === 0) return 0;
+      const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil(q * sorted.length) - 1));
+      return sorted[idx];
+    };
+    return {
+      counters: Array.from(this.counters.entries()).map(([key, m]) => ({
+        name: key.split("|")[0],
+        labels: m.labels,
+        value: m.value,
+      })),
+      gauges: Array.from(this.gauges.entries()).map(([key, m]) => ({
+        name: key.split("|")[0],
+        labels: m.labels,
+        value: m.value,
+      })),
+      histograms: Array.from(this.histograms.entries()).map(([key, h]) => {
+        const sorted = [...h.values].sort((a, b) => a - b);
+        const sum = sorted.reduce((s, v) => s + v, 0);
+        return {
+          name: key.split("|")[0],
+          labels: h.labels,
+          count: sorted.length,
+          sum,
+          avg: sorted.length ? sum / sorted.length : 0,
+          p50: pct(sorted, 0.5),
+          p95: pct(sorted, 0.95),
+          p99: pct(sorted, 0.99),
+        };
+      }),
+    };
+  }
+
   /** Get metric counts for monitoring dashboard */
   stats(): { counters: number; gauges: number; histograms: number; totalObservations: number } {
     const histogramObservations = Array.from(this.histograms.values()).reduce((sum, h) => sum + h.values.length, 0);

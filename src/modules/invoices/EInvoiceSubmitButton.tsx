@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBrand } from "@/context/BrandContext";
+import { csrfFetch } from '@/lib/csrf-fetch';
 
 // ─── Country config ────────────────────────────────────────────────────────
 
@@ -81,7 +82,7 @@ export function EInvoiceSubmitButton({
     setResult(null);
     setShowErrors(false);
     try {
-      const res = await fetch(cfg.endpoint, {
+      const res = await csrfFetch(cfg.endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

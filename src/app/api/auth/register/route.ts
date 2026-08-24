@@ -95,6 +95,25 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   const founder = isFounderEmail(normalizedEmail);
+  // SECURITY FIX (Review H1 / 2026-08-24): self-registration with the founder
+  // e-mail must be rejected outright. Previously it silently created an
+  // admin-role account (and, combined with the founder bypass, a full
+  // account takeover of a fresh deployment). The founder account is created
+  // exclusively via the setup wizard / seed script.
+  if (founder) {
+    await logAudit({
+      userEmail: normalizedEmail,
+      userUid: "",
+      action: "register_founder_blocked",
+      entity: "auth",
+      entityId: null,
+      companySlug: null,
+      details: { ip: getClientIp(req) },
+    });
+    // Return the generic response to avoid revealing that this e-mail is special
+    return NextResponse.json(GENERIC_REGISTER_RESPONSE, { status: 200 });
+  }
+
   const passwordHash = await hashPassword(password);
   const uid = randomUUID();
 
@@ -104,7 +123,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       email: normalizedEmail,
       passwordHash,
       displayName: displayName.trim(),
-      role: founder ? "admin" : "employee",
+      role: "employee",
       companies: JSON.stringify([]),
       permissions: JSON.stringify({}),
       emailVerified: false,

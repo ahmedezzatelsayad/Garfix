@@ -561,8 +561,11 @@ describe("assertCompanyAccess", () => {
 // ─── hasUnrestrictedScope ──────────────────────────────────────────────────
 
 describe("hasUnrestrictedScope", () => {
-  it("admin=true", () => {
-    expect(hasUnrestrictedScope({ uid: "a", email: "a@t.com", role: "admin", companies: [], permissions: {}, tv: 1 })).toBe(true);
+  // C1 FIX (2026-08-24): company admins are NO LONGER unrestricted — that
+  // auto-granted cross-tenant access to every user who created a company.
+  // Only the platform founder (by e-mail) is unrestricted now.
+  it("admin=false (C1 fix — admins are tenant-scoped)", () => {
+    expect(hasUnrestrictedScope({ uid: "a", email: "a@t.com", role: "admin", companies: [], permissions: {}, tv: 1 })).toBe(false);
   });
 
   it("founder=true", () => {

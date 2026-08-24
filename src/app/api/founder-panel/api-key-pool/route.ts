@@ -233,18 +233,29 @@ export async function POST(request: NextRequest) {
 
     const { keys, provider, model, notes } = validated.data;
 
-    // P0 FIX: Check for duplicates by encrypting input keys and comparing.
-    // Since keys are now stored encrypted, we must encrypt the input keys
-    // with the same algorithm to find duplicates.
-    const { encryptSecret: encryptForDupCheck } = await import('@/lib/cryptoVault');
-    const encryptedInputKeys = keys.map(k => encryptForDupCheck(k));
-    const existingKeys = await db.apiKeyPool.findMany({
-      where: { keyValue: { in: encryptedInputKeys } },
+    // P2 FIX (Review): the previous duplicate check encrypted each input key
+    // and compared ciphertexts — but AES-256-GCM uses a RANDOM IV per
+    // encryption, so the same key encrypts to different ciphertext every
+    // time and the `in` query could NEVER match. Duplicates were silently
+    // inserted on every call. Correct approach: decrypt the stored pool
+    // (bounded — the pool holds at most a few hundred keys) and compare
+    // PLAINTEXT values in memory.
+    const { decryptSecret } = await import('@/lib/cryptoVault');
+    const storedKeys = await db.apiKeyPool.findMany({
       select: { keyValue: true },
+      // never load revoked keys for dup purposes? Keep them — a revoked key
+      // re-added is still a duplicate we should report.
     });
-    
-    const existingKeyValues = new Set(existingKeys.map(k => k.keyValue));
-    const newKeys = keys.filter((k, i) => !existingKeyValues.has(encryptedInputKeys[i]));
+    const storedPlaintexts = new Set<string>();
+    for (const row of storedKeys) {
+      try {
+        storedPlaintexts.add(decryptSecret(row.keyValue));
+      } catch {
+        // legacy/corrupt rows — skip rather than block the whole operation
+      }
+    }
+    const inputSet = new Set(keys.map(k => k.trim()));
+    const newKeys = [...inputSet].filter(k => !storedPlaintexts.has(k));
 
     if (newKeys.length === 0) {
       return apiError('All keys already exist in pool', 409);

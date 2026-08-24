@@ -14,7 +14,7 @@ import {
   type SessionUser,
   buildUserProfile,
 } from "@/lib/auth";
-import { withErrorHandler } from "@/lib/api";
+import { withErrorHandler, parseJsonField } from "@/lib/api";
 
 // SEC-M2 FIX (Cycle 1): pin to Node.js runtime.
 export const runtime = "nodejs";
@@ -43,8 +43,8 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     email: dbUser.email,
     displayName: dbUser.displayName ?? "",
     role: dbUser.role,
-    companies: parseJson<string[]>(dbUser.companies, []),
-    permissions: parseJson<Record<string, number>>(dbUser.permissions, {}),
+    companies: parseJsonArray(dbUser.companies, []),
+    permissions: parseJsonField<Record<string, number>>(dbUser.permissions, {}),
     emailVerified: dbUser.emailVerified,
     tokenVersion: dbUser.tokenVersion,
   };
@@ -52,20 +52,33 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   return NextResponse.json(await buildUserProfile(sessionUser));
 });
 
-function parseJson<T>(s: string | null, fallback: T): T {
+// FRONTEND-REVIEW FIX (2026-08-24): this local copy diverged from the
+// canonical parseJsonField in @/lib/api — it cast `as unknown as T`, could
+// return a string[] where a Record was expected, didn't handle
+// single-element corruption, and never logged. Now we use the canonical
+// parser for object fields and a purpose-typed repair path ONLY for
+// string[] fields (company slugs), which logs what it repaired.
+function parseJsonArray(s: string | null, fallback: string[]): string[] {
   if (!s) return fallback;
   try {
-    return JSON.parse(s) as T;
+    const parsed = JSON.parse(s);
+    if (Array.isArray(parsed)) return parsed.filter((x): x is string => typeof x === "string");
+    console.warn("[auth/me] companies field is valid JSON but not an array — using fallback", { preview: s.slice(0, 100) });
+    return fallback;
   } catch {
-    // P0 HARDENING: سطور مثل [slug1,slug2] بدون علامات اقتباس كانت تفشل
-    // بصمت → جلسات بلا شركات → كل الشاشات تفتح المعالج. نحاول إصلاحها
-    // تلقائيًا (split على الفواصل) قبل الاستسلام للقيمة الفارغة.
-    try {
-      const cleaned = s.replace(/^[\[\]]|[[\]]$/g, "").trim();
-      if (cleaned.includes(",")) {
-        return (cleaned.split(",").map((x) => x.trim().replace(/^["']|["']$/g, "")).filter(Boolean)) as unknown as T;
-      }
-    } catch { /* غير قابل للإصلاح */ }
+    // P0 HARDENING: rows like [slug1,slug2] without quotes previously failed
+    // silently → sessions with no companies → every screen opened the setup
+    // wizard. Try to repair (split on commas) before giving up.
+    const cleaned = s.replace(/^[\[\]]|[\[\]]$/g, "").trim();
+    const parts = cleaned
+      .split(",")
+      .map((x) => x.trim().replace(/^["']|["']$/g, ""))
+      .filter(Boolean);
+    if (parts.length > 0) {
+      console.warn("[auth/me] repaired unquoted companies JSON", { count: parts.length });
+      return parts;
+    }
+    console.warn("[auth/me] malformed companies JSON — using fallback", { preview: s.slice(0, 100) });
     return fallback;
   }
 }

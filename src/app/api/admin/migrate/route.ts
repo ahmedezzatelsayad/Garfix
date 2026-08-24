@@ -26,11 +26,16 @@ export const POST = async (req: NextRequest) => {
   const rl = await rateLimitResponse(req, "admin-migrate", { ...LIMITS.API_WRITE, maxAttempts: 5 });
   if (rl) return rl;
 
-  // SEC: نفس توكن القياس السري (fail-closed)
+  // SEC + L2 FIX (Review): constant-time comparison (no timing leak of the
+  // token). Missing config → 503 (fail-closed); wrong token → 401.
   const token = process.env.METRICS_TOKEN;
   const provided = req.headers.get("x-metrics-token");
-  if (!token || !provided || provided !== token) {
+  if (!token) {
     return NextResponse.json({ error: "Service Unavailable: token not configured" }, { status: 503 });
+  }
+  const { timingSafeEqualStr } = await import("@/lib/timing-safe");
+  if (!provided || !timingSafeEqualStr(provided, token)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {

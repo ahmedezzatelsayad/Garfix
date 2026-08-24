@@ -409,13 +409,16 @@ jobs:
 
       - name: Run unit tests (all test files)
         run: |
-          echo "Running ALL unit tests in src/lib/__tests__/..."
+          echo "Running ALL unit tests across src/ and __tests__/ (founder-validation excluded)..."
           PASS=true
-          # Phase 13 P1 fix: run ALL test files in src/lib/__tests__, not just 3.
-          # Previously only secretsManager + rateLimit-advanced + cryptoVault-advanced
-          # ran in CI — 99% of tests never executed. Now we glob the entire directory.
-          # Tests that use vitest imports were migrated to bun:test in Sprint 8.
-          bun test src/lib/__tests__/ 2>&1 | tee test-results.txt || PASS=false
+          # H7 FIX (Review / 2026-08-24): CI previously ran ONLY
+          # src/lib/__tests__/ — ~56% of the test suite (accounting,
+          # e-invoicing, ai-fabric, integrations, modules) never executed in
+          # CI. Use the same glob as the `test:ci` npm script so every
+          # non-founder test file runs on every push.
+          TEST_FILES=$(find src __tests__ -type f \( -name '*.test.ts' -o -name '*.test.tsx' \) -not -path '*/founder-validation/__tests__/*' 2>/dev/null | tr '\n' ' ')
+          echo "Discovered $(echo $TEST_FILES | wc -w) test files"
+          bun test --isolate $TEST_FILES 2>&1 | tee test-results.txt || PASS=false
           echo ""
           if [ "$PASS" = "false" ]; then
             echo "❌ Some unit tests failed — review test-results.txt"

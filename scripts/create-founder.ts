@@ -7,7 +7,12 @@ import { hashPassword } from '@/lib/auth'
 async function createFounder() {
   try {
     const email = process.env.FOUNDER_EMAIL || 'founder@garfix.app'
-    const password = process.env.FOUNDER_PASSWORD || 'DefaultPass123'
+    // H6 FIX (Review): no default password fallback — refuse to create a
+    // founder with a well-known credential.
+    const password = process.env.FOUNDER_PASSWORD
+    if (!password || password.length < 12) {
+      throw new Error('[create-founder] FOUNDER_PASSWORD env var is required (min 12 chars)')
+    }
 
     console.log(`🌱 Creating founder account: ${email}`)
 

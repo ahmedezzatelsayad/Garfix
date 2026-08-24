@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBrand } from "@/context/BrandContext";
+import { csrfFetch } from '@/lib/csrf-fetch';
 
 interface ZatcaSubmitButtonProps {
   invoiceId: number;
@@ -63,7 +64,7 @@ export function ZatcaSubmitButton({
     setResult(null);
     setShowErrors(false);
     try {
-      const res = await fetch("/api/e-invoicing/zatca/submit", {
+      const res = await csrfFetch("/api/e-invoicing/zatca/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

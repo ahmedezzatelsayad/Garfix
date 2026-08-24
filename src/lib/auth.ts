@@ -547,7 +547,13 @@ export async function resolveAuth(req: NextRequest): Promise<AuthResult> {
 }
 
 export function hasUnrestrictedScope(user: AuthPayload): boolean {
-  return user.role === "admin" || isFounderEmail(user.email);
+  // SECURITY FIX (Review C1 / 2026-08-24): unrestricted cross-tenant scope is
+  // reserved for the PLATFORM FOUNDER only. Previously any role:"admin"
+  // (auto-granted to every user who creates their first company via
+  // /api/companies) received unrestricted scope in ~30 list endpoints,
+  // letting a tenant admin read every other tenant's invoices, payroll and
+  // bank data. A company admin must be scoped by their own companies list.
+  return isFounderEmail(user.email);
 }
 
 // Tenant-isolation policy (see docs/security/idor-audit.md):

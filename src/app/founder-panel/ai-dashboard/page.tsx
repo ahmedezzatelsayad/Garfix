@@ -17,6 +17,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { csrfFetch } from '@/lib/csrf-fetch';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -425,7 +426,7 @@ export default function AIDashboardPage() {
     if (!confirm('هل أنت متأكد من إعادة تعيين الحصص اليومية؟')) return;
     
     try {
-      const response = await fetch('/api/ai/metrics?action=reset-quotas', { method: 'POST' });
+      const response = await csrfFetch('/api/ai/metrics?action=reset-quotas', { method: 'POST' });
       const result = await response.json();
       
       if (result.success) {

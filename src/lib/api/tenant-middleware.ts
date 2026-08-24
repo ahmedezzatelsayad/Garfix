@@ -80,10 +80,22 @@ export function withTenantScope<T extends unknown[]>(
     let companySlug: string;
 
     if (isPlatformAdmin && !sp.get("companySlug")) {
-      // Founder/admin without explicit companySlug → see all tenants
+      // Founder without explicit companySlug → see all tenants
       companySlug = "__ALL__";
     } else {
       companySlug = sp.get("companySlug") || user.companies[0] || "";
+      // SECURITY FIX (Review F2/C2 / 2026-08-24): a client-supplied
+      // ?companySlug must be validated against the user's memberships.
+      // Previously the raw query param was fed straight into the RLS
+      // session var (app.current_company_slug), letting any user point
+      // the tenant scope at another company. Only the platform founder
+      // may address a company they are not a member of.
+      if (companySlug && !isPlatformAdmin && !user.companies.includes(companySlug)) {
+        return NextResponse.json(
+          { error: "ليس لديك صلاحية الوصول لهذه الشركة" },
+          { status: 403 },
+        );
+      }
       if (!companySlug) {
         return NextResponse.json(
           { error: "No company context — user has no company membership" },

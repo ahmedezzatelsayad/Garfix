@@ -18,6 +18,7 @@ import {
   Loader2, Play, ThumbsUp, ThumbsDown, Link2, Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { csrfFetch } from '@/lib/csrf-fetch';
 
 type Tab = "status" | "knowledge" | "n8n" | "feedback";
 
@@ -97,7 +98,7 @@ export function CompanyAgentView() {
     if (!companySlug) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/ai/company-agent", {
+      const res = await csrfFetch("/api/ai/company-agent", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -115,7 +116,7 @@ export function CompanyAgentView() {
     if (!n8nUrl.startsWith("http")) { toast.error("أدخل رابط Webhook صحيح (https://...)"); return; }
     setTesting(true);
     try {
-      const res = await fetch("/api/ai/company-agent/n8n-test", {
+      const res = await csrfFetch("/api/ai/company-agent/n8n-test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -139,7 +140,7 @@ export function CompanyAgentView() {
       fd.append("companySlug", companySlug);
       fd.append("kind", kind);
       fd.append("title", title || file.name);
-      const res = await fetch("/api/ai/knowledge-base", { method: "POST", credentials: "include", body: fd });
+      const res = await csrfFetch("/api/ai/knowledge-base", { method: "POST", credentials: "include", body: fd });
       if (!res.ok) throw new Error((await res.json()).error || "تعذّر الرفع");
       toast.success("أُضيف المستند لقاعدة معرفة الشركة");
       await load();

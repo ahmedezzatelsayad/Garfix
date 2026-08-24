@@ -25,6 +25,7 @@ import {
   Crown, UserCog, Users, Eye, Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { csrfFetch } from '@/lib/csrf-fetch';
 
 interface RoleDefinition {
   id: string;
@@ -99,7 +100,7 @@ export function RolesView() {
   const handleDelete = async (roleId: string) => {
     if (!confirm("هل أنت متأكد من حذف هذا الدور؟")) return;
     try {
-      const res = await fetch("/api/permissions/roles", {
+      const res = await csrfFetch("/api/permissions/roles", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -357,7 +358,7 @@ function CreateRoleModal({
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/permissions/roles", {
+      const res = await csrfFetch("/api/permissions/roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

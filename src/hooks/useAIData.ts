@@ -15,6 +15,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { csrfFetch } from '@/lib/csrf-fetch';
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -318,7 +319,7 @@ export function useAIChat(conversationId?: string) {
       setMessages(prev => [...prev, userMessage]);
       
       // Call chat API
-      const response = await fetch('/api/ai/chat', {
+      const response = await csrfFetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -390,7 +391,7 @@ export function useAITestConnection() {
       setIsTesting(true);
       setLastResult(null);
       
-      const response = await fetch('/api/founder-panel/ai-config/test', {
+      const response = await csrfFetch('/api/founder-panel/ai-config/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider, apiKey, model }),

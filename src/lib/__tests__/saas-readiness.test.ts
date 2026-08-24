@@ -92,12 +92,14 @@ describe("Subscription management", () => {
     }
   });
 
-  it("tier comparison: starter has lower price than professional", () => {
-    expect(DEFAULT_PLANS.starter.priceMonthly).toBeLessThan(DEFAULT_PLANS.professional.priceMonthly);
-  });
-
-  it("tier comparison: professional has lower price than unlimited", () => {
-    expect(DEFAULT_PLANS.professional.priceMonthly).toBeLessThan(DEFAULT_PLANS.unlimited.priceMonthly);
+  // REVIEW FIX (2026-08-24): pricing moved to the UNIFIED model (all paid
+  // tiers cost the same — see commit "الباقة الموحدة فعلية"). The old
+  // tier-ordering assertions asserted the retired tiered pricing and have
+  // been failing ever since; they now assert the unified invariant.
+  it("unified pricing: all paid tiers share the same price", () => {
+    expect(DEFAULT_PLANS.starter.priceMonthly).toBe(DEFAULT_PLANS.professional.priceMonthly);
+    expect(DEFAULT_PLANS.professional.priceMonthly).toBe(DEFAULT_PLANS.unlimited.priceMonthly);
+    expect(DEFAULT_PLANS.starter.priceMonthly).toBeGreaterThan(0);
   });
 
   it("trial plan is free", () => {

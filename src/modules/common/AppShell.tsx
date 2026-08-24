@@ -255,7 +255,16 @@ function AppShellContent(_props: Record<string, unknown>) {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const onHash = () => setView(parseHash());
+    // A11Y FIX (Review / 2026-08-24): skip links (and any in-page anchors like
+    // #main-content / #main-navigation) change the hash WITHOUT being view
+    // keys. Re-parsing the hash on every hashchange threw keyboard users from
+    // e.g. #invoices back to the dashboard the moment they used a skip link.
+    // Now: a hash that is NOT a valid view key leaves the current view alone.
+    const onHash = () => {
+      const raw = window.location.hash.replace(/^#/, "");
+      const key = raw.split("?", 1)[0] as ViewKey;
+      if (VALID_VIEWS.includes(key)) setView(key);
+    };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
