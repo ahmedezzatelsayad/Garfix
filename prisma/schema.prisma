@@ -1798,6 +1798,7 @@ model MFASecret {
   user          AppUser   @relation(fields: [userId], references: [uid], onDelete: Cascade)
 
   @@unique([userId])
+  @@map("MFASecret")
 }
 
 // ─── Session Registry (matches db.sessionRegistry) ───
@@ -1843,6 +1844,7 @@ model SessionRegistry {
   @@index([userUid])
   // P1-2: index on expiresAt — maintenance cron sweeps expired sessions.
   @@index([expiresAt])
+  @@map("SessionRegistry")
 }
 
 // ─── Role Permission (matches db.rolePermission) ───
@@ -2094,6 +2096,7 @@ model TamperEvidenceChain {
   updatedAt    DateTime  @updatedAt
 
   @@index([companySlug])
+  @@map("TamperEvidenceChain")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2507,6 +2510,7 @@ model WebhookEndpoint {
 
   @@index([companySlug])
   @@index([companyId])
+  @@map("WebhookEndpoint")
 }
 
 model WebhookDelivery {
@@ -2533,6 +2537,7 @@ model WebhookDelivery {
   responseBody String?
 
   @@index([status, nextRetryAt])
+  @@map("WebhookDelivery")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2779,6 +2784,7 @@ model OutboxEvent {
 
   @@index([status, createdAt])
   @@index([aggregateType, aggregateId])
+  @@map("OutboxEvent")
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

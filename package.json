@@ -25,7 +25,7 @@
     "db:reset": "prisma migrate reset",
     "seed": "bun prisma/seed.ts",
     "verify:env": "node scripts/verify-env.mjs",
-    "schema:drift": "node scripts/drift-scan.mjs",
+    "schema:drift": "node scripts/drift-scan.cjs",
     "db:backup": "node scripts/dump-backup.mjs",
     "test:founder:chaos": "bun test --isolate --preload ./test.preload.ts src/lib/founder-validation/__tests__/failure-injection-*.test.ts",
     "test:founder:load": "for f in src/lib/founder-validation/__tests__/load-test-*.test.ts; do echo \"== $f\"; bun test --isolate --preload ./test.preload.ts \"$f\" || exit 1; done"

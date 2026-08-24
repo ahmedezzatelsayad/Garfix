@@ -74,4 +74,6 @@ upload/
 .*.swp
 *.swp
 *.swo
-scripts/
+# Keep scripts/ tracked — many scripts are referenced by package.json
+# (e.g. schema:drift → scripts/drift-scan.cjs). Temp/debug files use _ prefix.
+scripts/_*
