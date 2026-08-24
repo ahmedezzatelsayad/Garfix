@@ -117,8 +117,14 @@ export interface AssetDisposalData {
  * Resolve `companyId` from `companySlug`. JournalEntry.companyId is required
  * in the Prisma schema, so every JE create must pass it.
  */
-async function resolveCompanyId(companySlug: string): Promise<string> {
-  const company = await db.company.findUnique({ where: { slug: companySlug } });
+async function resolveCompanyId(
+  companySlug: string,
+  // C3 FIX: pass the transaction client when resolving INSIDE a $transaction
+  // — using the outer db client there runs the read on a separate connection
+  // with no RLS session vars (returns no rows under strict RLS).
+  client: typeof db = db,
+): Promise<string> {
+  const company = await client.company.findUnique({ where: { slug: companySlug } });
   if (!company) {
     throw new Error(`Company not found for slug: ${companySlug}`);
   }
@@ -334,7 +340,7 @@ export async function createInvoicePaymentJE(
     const created = await tx.journalEntry.create({
       data: {
         number: generateJeNumber("INVPAY"),
-        companyId: await resolveCompanyId(companySlug),
+        companyId: await resolveCompanyId(companySlug, tx as typeof db),
         companySlug,
         date: new Date(),
         description: `Payment received for Invoice #${invoice.id}`,
@@ -735,7 +741,7 @@ export async function createVATReturnJE(
     const created = await tx.journalEntry.create({
       data: {
         number: generateJeNumber("VAT"),
-        companyId: await resolveCompanyId(companySlug),
+        companyId: await resolveCompanyId(companySlug, tx as typeof db),
         companySlug,
         date: new Date(vatData.date),
         description: `VAT return — ${vatData.period}`,

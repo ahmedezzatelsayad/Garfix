@@ -92,14 +92,7 @@ let lastConnectionError: { code: string; message: string; at: Date } | null = nu
 // error event is still being dispatched.
 let _reconnecting = false;
 
-/**
- * C3 FIX: synchronous re-route guard for the tenantRls interceptor.
- * True only during the brief synchronous window in which an operation issued
- * on the outer client is being forwarded onto the active transaction client.
- * The tx client's own interceptor observes the flag and forwards the call
- * directly instead of re-routing it (prevents infinite recursion).
- */
-let _reroutingToTx = false;
+
 
 function scheduleReconnect(): void {
   if (_reconnecting) return;
@@ -252,21 +245,21 @@ function createExtendedPrisma() {
         // committed on a separate connection, so a mid-callback failure left
         // partial writes behind.
         if (ctx.inTransaction) {
-          if (model && ctx.txClient && !_reroutingToTx) {
-            // Re-route OUTER-client ops onto the active transaction client.
-            // The guard flag is released synchronously right after invocation
-            // so concurrent parallel queries can also re-route safely.
-            _reroutingToTx = true;
-            let rerouted: Promise<unknown> | undefined;
-            try {
-              const txAny = ctx.txClient as Record<string, Record<string, (a: unknown) => Promise<unknown>>>;
-              const fn = txAny[model]?.[operation];
-              if (fn) rerouted = fn(args);
-            } finally {
-              _reroutingToTx = false;
-            }
-            if (rerouted) return rerouted;
-          }
+          // C3 FIX (v2 — recursion bug): operations issued via the TX CLIENT
+          // (tx.*) execute directly on the transaction's connection, which
+          // already carries the set_config RLS vars — atomic and correctly
+          // scoped. (The previous re-route through ctx.txClient[model][op]
+          // recursed infinitely: Prisma lazily evaluates operations, so the
+          // inner interceptor fired AFTER any synchronous guard was released,
+          // and args objects are cloned between extension layers so marker-
+          // based guards can't work either.)
+          //
+          // NOTE for call sites: NEVER use the outer client (db.*) for WRITES
+          // inside a $transaction callback — the write would silently commit
+          // on a separate connection. All in-tx writes must go through the
+          // provided `tx` client (all existing call sites already do).
+          // Outer-client READS inside a callback run unscoped on the pool
+          // connection; use tx for those too when tenant scoping matters.
           return query(args);
         }
 
