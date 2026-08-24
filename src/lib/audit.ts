@@ -49,6 +49,27 @@ function redactSensitive(value: unknown, depth = 0): unknown {
 
 export async function logAudit(input: AuditInput): Promise<void> {
   try {
+    // C2 FIX (Review / 2026-08-24): the audit log is written BY THE SYSTEM on
+    // behalf of users — including cross-tenant / pre-auth events (login
+    // attempts, register blocks, webhook receipts) that carry a null
+    // companySlug and run OUTSIDE any tenant context. Since production now
+    // connects as a non-BYPASSRLS role, a bare insert into the RLS-protected
+    // audit_log table was rejected with a 500 (observed on failed-login).
+    // Audit writes always run with the platform RLS context.
+    const { runAsPlatform } = await import("./tenant-context");
+    return await runAsPlatform(() => logAuditInner(input));
+  } catch (err) {
+    // Keep the original fail-open behaviour: an audit failure must never
+    // break the business operation that triggered it.
+    logger.warn("[audit] logAudit failed (fail-open)", {
+      action: input.action,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+async function logAuditInner(input: AuditInput): Promise<void> {
+  try {
     // SEC-M4C4 (Cycle 4): redact sensitive fields before persisting
     const redactedDetails = input.details
       ? (redactSensitive(input.details) as Record<string, unknown>)

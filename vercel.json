@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/cron/maintenance",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }
