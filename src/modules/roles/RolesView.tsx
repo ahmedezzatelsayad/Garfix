@@ -84,7 +84,35 @@ export function RolesView() {
       const res = await fetch("/api/permissions/roles", { credentials: "include" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: ApiResponse = await res.json();
-      setRoles([...data.builtIn, ...data.custom]);
+      // REVIEW-2 FIX (2026-08-24): the API returns roles as
+      // { label/labelAr, resourcePermissions: [{resource, level}] } while
+      // this view expects { name/nameAr, permissions: Record<string,number> }.
+      // The mismatch made Object.keys(role.permissions) throw (null →
+      // "Cannot convert undefined or null to object") and crashed the whole
+      // #roles view into the ErrorBoundary.
+      const normalize = (r: Partial<RoleDefinition> & {
+        label?: string; labelAr?: string;
+        resourcePermissions?: Array<{ resource: string; level: number }>;
+        inheritedPermissions?: Array<{ resource: string; level: number }>;
+      }): RoleDefinition => ({
+        id: r.id ?? "",
+        name: r.name ?? r.label ?? r.id ?? "",
+        nameAr: r.nameAr ?? r.labelAr ?? r.label ?? r.id ?? "",
+        description: r.description ?? "",
+        level: r.level ?? 0,
+        isBuiltIn: r.isBuiltIn ?? false,
+        inheritsFrom: r.inheritsFrom,
+        permissions: Object.fromEntries(
+          (r.resourcePermissions ?? []).map((rp) => [rp.resource, rp.level])
+        ),
+        inheritedPermissions: Object.fromEntries(
+          (r.inheritedPermissions ?? []).map((rp) => [rp.resource, rp.level])
+        ),
+      });
+      setRoles([
+        ...(data.builtIn ?? []).map((r) => normalize(r as Parameters<typeof normalize>[0])),
+        ...(data.custom ?? []).map((r) => normalize(r as Parameters<typeof normalize>[0])),
+      ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "فشل تحميل الأدوار");
     } finally {
