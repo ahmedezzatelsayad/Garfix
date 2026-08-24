@@ -28,12 +28,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from '@/lib/auth';
+import { isFounderEmail } from '@/lib/founder';
 import { z } from 'zod';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { logAudit } from '@/lib/audit';
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { maskApiKeyForDisplay, hasRealApiKey, resolveKeyForUpdate } from '@/lib/ai/keyVault';
+
+// ── REVIEW-2 FIX helpers ─────────────────────────────────────
+
+/**
+ * Parse the legacy `companies` JSON string on AppUser rows
+ * (e.g. '["gfx-founder"]') into a string[].
+ */
+function parseCompanies(raw: string | string[] | null | undefined): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter((x): x is string => typeof x === 'string');
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -274,7 +292,15 @@ export async function GET(request: NextRequest) {
         },
       });
       
-      if (!membership) {
+      // REVIEW-2 FIX (2026-08-24): the PLATFORM FOUNDER (configured via
+      // FOUNDER_EMAIL) must always pass this check — the companyMembership
+      // table is only populated for tenant-level memberships, and the
+      // platform founder's company association lives in the legacy
+      // appUser.companies JSON field. Without this, /founder-panel/ai-settings
+      // 403'd for the actual platform founder.
+      const isPlatformFounder = isFounderEmail(auth.user.email);
+      
+      if (!membership && !isPlatformFounder) {
         // Audit the access attempt
         await logAudit({
           userEmail: auth.user.email,
@@ -286,7 +312,11 @@ export async function GET(request: NextRequest) {
         return apiError('Access denied — founder role required for this company', 403);
       }
       
-      companyId = company.id;
+      // REVIEW-2 FIX: store/query configs by company SLUG consistently —
+      // the no-slug branch and the PUT handler both key configs by slug;
+      // this branch previously used company.id, splitting the config
+      // namespace in two.
+      companyId = company.slug;
     } else {
       // Use user's primary company
       // DB-04 FIX (Audit v2): Use correct Prisma model `companyMembership`.
@@ -297,11 +327,22 @@ export async function GET(request: NextRequest) {
         },
       });
 
+      // REVIEW-2 FIX (2026-08-24): platform founder falls back to their own
+      // companies list (appUser.companies JSON) when no membership row exists.
       if (!membership) {
-        return apiError('No founder role found. Access denied.', 403);
+        if (isFounderEmail(auth.user.email)) {
+          const companies = parseCompanies(auth.user.companies);
+          if (companies.length > 0) {
+            companyId = companies[0];
+          } else {
+            return apiError('لم يتم ربط أي شركة بحسابك', 404);
+          }
+        } else {
+          return apiError('No founder role found. Access denied.', 403);
+        }
+      } else {
+        companyId = membership.companySlug;
       }
-
-      companyId = membership.companySlug;
     }
     
     // Get or create config
@@ -414,12 +455,21 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    if (!membership) {
-      return apiError('Only founders can modify AI configuration', 403);
+    // REVIEW-2 FIX (2026-08-24): the platform founder may modify AI config
+    // even without a companyMembership row (see GET handler note).
+    let targetCompanySlug: string | null = membership?.companySlug ?? null;
+    if (!targetCompanySlug) {
+      if (isFounderEmail(auth.user.email)) {
+        const companies = parseCompanies(auth.user.companies);
+        targetCompanySlug = companies[0] ?? null;
+      }
+      if (!targetCompanySlug) {
+        return apiError('Only founders can modify AI configuration', 403);
+      }
     }
 
     // Get existing config
-    const existingConfig = await getOrCreateCompanyAIConfig(membership.companySlug);
+    const existingConfig = await getOrCreateCompanyAIConfig(targetCompanySlug);
     
     // Helper to handle masked keys (don't overwrite with ••••••••)
     // P2-SPRINT6 FIX: routes through `resolveKeyForUpdate()` from keyVault.ts
@@ -473,7 +523,7 @@ export async function PUT(request: NextRequest) {
       action: 'update_ai_config_per_feature',
       entity: 'company_ai_config',
       details: {
-        companyId: membership.companySlug,
+        companyId: targetCompanySlug,
         featuresUpdated: {
           chat: !!configData.chat.apiKey && configData.chat.apiKey !== '••••••••',
           invoice: !!configData.invoice.apiKey && configData.invoice.apiKey !== '••••••••',
@@ -483,7 +533,7 @@ export async function PUT(request: NextRequest) {
       },
     });
     
-    logger.info(`Per-feature AI config updated by founder ${auth.user.email} for company ${membership.companySlug}`);
+    logger.info(`Per-feature AI config updated by founder ${auth.user.email} for company ${targetCompanySlug}`);
     
     return NextResponse.json({
       success: true,

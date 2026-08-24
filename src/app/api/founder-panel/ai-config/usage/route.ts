@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbTyped as db } from "@/lib/db";
 import { resolveAuth } from '@/lib/auth';
+import { isFounderEmail } from '@/lib/founder';
 import { apiError, withErrorHandler } from '@/lib/api';
 import { subDays, format } from 'date-fns';
 
@@ -48,9 +49,15 @@ export async function GET(request: NextRequest) {
       const membership = await db.companyMembership.findFirst({
         where: { userUid: auth.user.uid, companySlug: company.slug },
       });
-      if (!membership) return apiError('Company not found or access denied', 404);
+      // REVIEW-2 FIX (2026-08-24): platform founder always has access (their
+      // company association lives in appUser.companies JSON, not in the
+      // company_memberships table).
+      if (!membership && !isFounderEmail(auth.user.email)) {
+        return apiError('Company not found or access denied', 404);
+      }
       
-      companyId = company.id;
+      // REVIEW-2 FIX: configs are keyed by SLUG across the codebase.
+      companyId = company.slug;
     } else {
       // DB-04 FIX (Audit v2): Same fix — use `companyMembership` model.
       const membership = await db.companyMembership.findFirst({
@@ -58,8 +65,26 @@ export async function GET(request: NextRequest) {
         include: { company: true },
       });
       
-      if (!membership) return apiError('No company membership found', 403);
-      companyId = membership.companySlug;
+      if (!membership) {
+        // REVIEW-2 FIX: platform founder fallback to their companies list.
+        if (isFounderEmail(auth.user.email)) {
+          const raw = (auth.user as { companies?: unknown }).companies;
+          let companies: string[] = [];
+          if (Array.isArray(raw)) companies = raw.filter((x): x is string => typeof x === 'string');
+          else if (typeof raw === 'string') {
+            try {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) companies = parsed.filter((x): x is string => typeof x === 'string');
+            } catch { /* empty */ }
+          }
+          if (companies.length === 0) return apiError('No company membership found', 403);
+          companyId = companies[0];
+        } else {
+          return apiError('No company membership found', 403);
+        }
+      } else {
+        companyId = membership.companySlug;
+      }
     }
     
     // Get AI config with usage
