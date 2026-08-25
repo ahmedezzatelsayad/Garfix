@@ -2404,49 +2404,86 @@ html.light {
    - زر الأوامر مخفي (.no-print)
    - الأرقام تُطبع LTR سليمة داخل السياق العربي RTL
    - مقاس A4 بهوامش مناسبة للطباعة العربية */
+/* ═══════════════════════════════════════════════════════════════════
+   PRINT SYSTEM v2 (2026-08-25) — إصلاح "٣ صفحات بيضاء + فاتورة صغيرة"
+
+   المشاكل القديمة وسببها:
+   1) صفحات بيضاء: `visibility: hidden` على body* يخفي العناصر لكنها
+      تُبقي مساحتها → المتصفح يُنتج صفحات فارغة. الحل: display:none.
+   2) فاتورة صغيرة: `position:absolute` + width:100% كانت تُقلّص
+      الصندوق إلى أول نقطة بداية. الحل: نقل الفاتورة إلى body مباشرة
+      (position:fixed; inset:0) بحجم A4 كامل.
+   3) padding:0 كان يلصق المحتوى بحواف الورقة — @page margin يتكفل بالهوامش.
+   ═══════════════════════════════════════════════════════════════════ */
 @media print {
-  @page { size: A4; margin: 12mm; }
+  @page { size: A4 portrait; margin: 14mm 12mm; }
 
-  /* أخفِ كل شيء افتراضيًا */
+  /* 1) اطرد كل شيء من مجرى الطباعة (بدون مساحات مخفية) —
+        portal الفاتورة (invoice-print-root) هو الاستثناء الوحيد */
+  body > *:not(.invoice-print-root) { display: none !important; }
+  .invoice-print-root { display: block !important; visibility: visible !important; }
+
+  /* الحاويات القديمة (app shell/modal) تختفي كليًا */
   body * { visibility: hidden !important; }
+  html, body {
+    background: #fff !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
 
-  /* وأظهر منطقة الفاتورة فقط (مع احتوائها الكامل) */
-  .invoice-print-area,
-  .invoice-print-area * { visibility: visible !important; }
-
-  /* ثبّت صندوق الفاتورة أعلى الصفحة الأولى */
+  /* 2) الفاتورة تحتل الصفحة كاملة (A4) */
   .invoice-print-area {
-    position: absolute !important;
-    inset: 0 auto auto 0 !important;
+    visibility: visible !important;
+    position: fixed !important;
+    inset: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
+    min-height: 100vh !important;
     max-height: none !important;
     overflow: visible !important;
     box-shadow: none !important;
+    border: none !important;
     border-radius: 0 !important;
-    padding: 0 !important;
     background: #fff !important;
     color: #111 !important;
+    padding: 0 !important; /* الهوامش من @page */
+    margin: 0 !important;
+    font-size: 11.5pt !important; /* حجم قراءة مطبوع مريح */
+    line-height: 1.65 !important;
+    z-index: 9999 !important;
+    display: block !important;
   }
+  .invoice-print-area,
+  .invoice-print-area * { visibility: visible !important; }
 
-  /* إخفاء عناصر التحكم (أزرار الطباعة/الدفع/الإغلاق) */
+  /* 3) أزرار التحكم تختفي */
   .no-print { display: none !important; }
 
-  /* منع كسر صفوف الجدول عبر الصفحات */
+  /* 4) الجداول: ترويسة مكررة + صفوف غير قابلة للكسر */
+  .invoice-print-area table { width: 100% !important; border-collapse: collapse !important; }
   .invoice-print-area table tr { page-break-inside: avoid !important; }
-
-  /* ترويسة الجدول تتكرر على كل صفحة */
   .invoice-print-area thead { display: table-header-group !important; }
 
-  /* الأرقام والعملات دائمًا LTR داخل RTL */
+  /* 5) الأرقام LTR داخل RTL */
   .invoice-print-area [direction="ltr"],
   .invoice-print-area .num { direction: ltr !important; unicode-bidi: embed !important; }
 
-  /* خلفيات الألوان تُطبع (رؤوس الجداول/الإجمالي) */
+  /* 6) اطبع الخلفيات المهمة (رؤوس الجداول/شعار الإجمالي) */
   .invoice-print-area * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
+  /* 7) الفواصل الذكية للطباعة */
+  .print-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; }
+  .print-page-break { page-break-before: always !important; break-before: page !important; }
+
+  /* 8) حجم أنسب للمحتوى المطبوع */
+  .invoice-print-area h1 { font-size: 20pt !important; }
+  .invoice-print-area table th { font-size: 10pt !important; }
+  .invoice-print-area table td { font-size: 10.5pt !important; }
 }
 
 /* ═══ لمسة الإغراء — micro-interactions بجودة Enterprise ═══ */

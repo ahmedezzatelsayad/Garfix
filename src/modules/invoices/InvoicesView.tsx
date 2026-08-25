@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useBrand } from "@/context/BrandContext";
 import { useInvoices as useInvoicesQuery, useDeleteInvoice, useRecordPayment, useUpdateInvoiceStatus, useCreateInvoice, useUpdateInvoice } from "@/hooks/queries";
 import type { CreateInvoicePayload } from "@/hooks/queries";
@@ -476,24 +477,39 @@ export function InvoicesView() {
             AI
           </span>
         </div>
+        {/* FILTER CHIPS v2 (2026-08-25): عدّاد حي لكل حالة — يوضح حجم كل
+            مجموعة قبل الفلترة (تحسين تجربة العرض الذي طُلب) */}
         <div className="flex gap-1.5 overflow-x-auto garfix-scroll">
-          {(["all", "paid", "pending", "overdue"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setStatusFilter(f)}
-              className={cn(
-                "inline-flex items-center gap-1 py-2 px-3.5 rounded-xl border text-[12px] font-bold cursor-pointer whitespace-nowrap transition-all duration-120 active-press focus-ring",
-                statusFilter === f
-                  ? "bg-primary text-white border-primary shadow-sm"
-                  : "bg-card text-muted-foreground border-border hover:text-primary hover:border-primary/30 hover-lift"
-              )}
-            >
-              {f === "all" && <><ListChecks size={13} /> الكل</>}
-              {f === "paid" && <><CheckCircle2 size={13} /> مدفوعة</>}
-              {f === "pending" && <><Clock size={13} /> قيد الانتظار</>}
-              {f === "overdue" && <><AlertTriangle size={13} /> متأخرة</>}
-            </button>
-          ))}
+          {(["all", "paid", "pending", "overdue"] as const).map((f) => {
+            const count =
+              f === "all" ? invoices.length
+              : f === "paid" ? invoices.filter(i => i.status === "paid").length
+              : f === "pending" ? invoices.filter(i => i.status === "sent" || i.status === "partial" || i.status === "draft").length
+              : invoices.filter(i => i.status === "overdue").length;
+            return (
+              <button
+                key={f}
+                onClick={() => setStatusFilter(f)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 py-2 px-3.5 rounded-xl border text-[12px] font-bold cursor-pointer whitespace-nowrap transition-all duration-120 active-press focus-ring",
+                  statusFilter === f
+                    ? "bg-primary text-white border-primary shadow-sm"
+                    : "bg-card text-muted-foreground border-border hover:text-primary hover:border-primary/30 hover-lift"
+                )}
+              >
+                {f === "all" && <><ListChecks size={13} /> الكل</>}
+                {f === "paid" && <><CheckCircle2 size={13} /> مدفوعة</>}
+                {f === "pending" && <><Clock size={13} /> قيد الانتظار</>}
+                {f === "overdue" && <><AlertTriangle size={13} /> متأخرة</>}
+                <span className={cn(
+                  "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-black tabular-nums",
+                  statusFilter === f ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                )}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* ── Display mode toggle: table / cards ── */}
@@ -618,11 +634,25 @@ export function InvoicesView() {
                   key: 'total',
                   label: 'المبلغ',
                   sortable: true,
-                  render: (value) => (
-                    <span className="font-bold [direction:ltr] text-end block">
-                      {Number(value).toLocaleString("ar-EG", { maximumFractionDigits: 2 })}
-                    </span>
-                  ),
+                  render: (value, row) => {
+                    const inv = row as Invoice;
+                    const cur = (inv as { currency?: string }).currency || activeCompany?.currency || "";
+                    // شريط تحصيل مصغّر: يوضح نسبة المدفوع من الإجمالي بلمحة
+                    const paidPct = Number(value) > 0 ? Math.min(100, Math.round(((inv.paid || 0) / Number(value)) * 100)) : 0;
+                    return (
+                      <div className="text-end">
+                        <span className="font-bold [direction:ltr] block tabular-nums">
+                          {Number(value).toLocaleString("ar-EG", { maximumFractionDigits: 2 })}
+                          {cur && <span className="text-[10px] text-muted-foreground font-normal ms-1">{cur}</span>}
+                        </span>
+                        {(inv.paid || 0) > 0 && Number(value) > (inv.paid || 0) && (
+                          <div className="mt-1 h-1 w-16 ms-auto rounded-full bg-muted overflow-hidden" title={`محصّل ${paidPct}%`}>
+                            <div className="h-full bg-primary" style={{ width: `${paidPct}%` }} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  },
                 },
                 {
                   key: 'paid',
@@ -1240,15 +1270,23 @@ const inputStyle = "w-full py-2 px-3 rounded-sm bg-white border border-border te
 
 // ─── Invoice Preview / Print ───────────────────────────────────────────────
 
+/**
+ * PRINT v2 (2026-08-25): the preview is rendered through a React PORTAL
+ * directly on <body>, OUTSIDE the app shell. Previously the modal lived
+ * inside deeply-nested containers; the old print CSS (`visibility:hidden`
+ * on body*) then reserved the hidden containers' space → 3 blank pages,
+ * and `position:absolute` shrank the invoice to a tiny box. At print time
+ * the portal element is the ONLY thing the print stylesheet keeps.
+ */
 function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoice: Invoice; company: { name: string; nameAr?: string | null; email?: string | null; phone?: string | null; address?: string | null; vatNumber?: string | null; currency: string }; onClose: () => void; onRecordPayment?: () => void }) {
-  return (
+  const content = (
     <div
-      className="fixed inset-0 bg-black/60 z-[300] flex items-center justify-center p-5"
+      className="fixed inset-0 bg-black/60 z-[300] flex items-center justify-center p-3 md:p-5 print:!static print:!bg-transparent print:!p-0"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="invoice-print-area bg-white text-[#111] rounded-lg p-6 md:p-10 max-w-[95vw] md:max-w-[800px] w-full max-h-[90vh] overflow-y-auto [direction:rtl] [font-family:var(--font-cairo),sans-serif]"
+        className="invoice-print-area bg-white text-[#111] rounded-lg p-6 md:p-10 max-w-[95vw] md:max-w-[860px] w-full max-h-[90vh] overflow-y-auto [direction:rtl] [font-family:var(--font-cairo),sans-serif] shadow-2xl"
       >
         <div className="flex justify-between items-start mb-8 pb-5 border-b-2 border-[#047857]">
           <div>
@@ -1349,11 +1387,34 @@ function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoic
         </div>
 
         {invoice.notes && (
-          <div className="mt-8 pt-4 border-t border-[#e5e7eb]">
+          <div className="print-avoid-break mt-8 pt-4 border-t border-[#e5e7eb]">
             <div className="text-[11px] text-[#999] mb-1">ملاحظات</div>
             <div className="text-[13px] text-[#444]">{invoice.notes}</div>
           </div>
         )}
+
+        {/* PRINT v2: شريط الحالة + شكر — يظهر في الطباعة أيضًا */}
+        <div className="print-avoid-break mt-6 flex items-center justify-between rounded-lg px-4 py-3 text-[13px] font-bold"
+          style={{ background: invoice.paid >= Number(invoice.total) ? "#ecfdf5" : "#fffbeb", color: invoice.paid >= Number(invoice.total) ? "#047857" : "#b45309" }}>
+          <span>
+            {invoice.paid >= Number(invoice.total) ? "✓ فاتورة مدفوعة بالكامل — شكرًا لتعاملكم معنا"
+              : Number(invoice.paid) > 0 ? `مدفوع جزئيًا (${invoice.paid.toLocaleString("ar-EG", { maximumFractionDigits: 2 })} من ${invoice.total.toLocaleString("ar-EG", { maximumFractionDigits: 2 })})`
+              : "فاتورة مستحقة الدفع"}
+          </span>
+          <span className="text-[11px] font-normal opacity-80">{arDate(new Date().toISOString())}</span>
+        </div>
+
+        {/* PRINT v2: توقيعات — عنصر أساسي في الفواتير الرسمية العربية */}
+        <div className="print-avoid-break grid grid-cols-2 gap-10 mt-12 pt-6 border-t border-dashed border-[#d1d5db]">
+          <div className="text-center">
+            <div className="h-14 border-b border-[#9ca3af]" />
+            <div className="text-[12px] text-[#666] mt-2">توقيع المستلم</div>
+          </div>
+          <div className="text-center">
+            <div className="h-14 border-b border-[#9ca3af]" />
+            <div className="text-[12px] text-[#666] mt-2">توقيع وختم الشركة</div>
+          </div>
+        </div>
 
         <div className="no-print flex flex-wrap gap-2.5 justify-end mt-8 pt-5 border-t border-[#e5e7eb]">
           <EInvoiceSubmitButton
@@ -1375,6 +1436,14 @@ function InvoicePreview({ invoice, company, onClose, onRecordPayment }: { invoic
         </div>
       </div>
     </div>
+  );
+
+  // PRINT v2: render on <body> via portal — the print CSS hides everything
+  // except this node, so the invoice prints full-A4 with ZERO blank pages.
+  if (typeof document === "undefined") return content;
+  return createPortal(
+    <div className="invoice-print-root">{content}</div>,
+    document.body,
   );
 }
 
