@@ -207,7 +207,7 @@ export const GET = async (req: NextRequest) => {
                   scheduleId: activation.scheduleId,
                 });
               }
-            });
+            } // end activation block
           } catch (actErr) {
             logger.error("[payments:callback] activation threw", {
               err: actErr instanceof Error ? actErr.message : String(actErr),
