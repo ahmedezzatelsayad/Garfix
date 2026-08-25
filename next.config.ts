@@ -59,6 +59,25 @@ const nextConfig: NextConfig = {
   ...(process.env.VERCEL !== "1" ? { output: "standalone" as const } : {}),
   reactStrictMode: true,
   images: { remotePatterns: [] }, // Phase 6 P3: explicit empty — no remote image optimization
+  // LOGIN/CSRF FIX (2026-08-25): the service worker MUST never be cached by
+  // the browser or a CDN — a stale sw.js keeps serving dead JS chunks from
+  // old deployments (the root cause of "Internal server error" + CSRF 403s
+  // reported after deploys). Same for the manifest.
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+      {
+        source: "/manifest.json",
+        headers: [{ key: "Cache-Control", value: "public, max-age=0, must-revalidate" }],
+      },
+    ];
+  },
   // Expose build metadata to both server and client runtime.
   env: {
     COMMIT_SHA: commitSha,

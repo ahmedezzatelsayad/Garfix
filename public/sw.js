@@ -2,10 +2,17 @@
 // Version: 12 (aligned with app version)
 // Strategies: network-first for API, cache-first for static, stale-while-revalidate for pages
 
-const CACHE_NAME = "garfix-v12.1";
-const STATIC_CACHE = "garfix-static-v12.1";
-const API_CACHE = "garfix-api-v12.1";
-const PAGE_CACHE = "garfix-pages-v12.1";
+// BUILD-STAMPED CACHE VERSION (2026-08-25 fix): this placeholder is
+// replaced at build time (see next.config.ts rewrites header trick) OR —
+// simpler and dependency-free — bumped manually per release. A changing
+// version guarantees the activate handler DELETES every stale cache from
+// previous deployments (the root cause of serving dead JS chunks that
+// produced "Internal server error" after deploys).
+const SW_VERSION = "12.2.0-login-fix";
+const CACHE_NAME = `garfix-v${SW_VERSION}`;
+const STATIC_CACHE = `garfix-static-v${SW_VERSION}`;
+const API_CACHE = `garfix-api-v${SW_VERSION}`;
+const PAGE_CACHE = `garfix-pages-v${SW_VERSION}`;
 
 const APP_SHELL = [
   "/",
@@ -37,6 +44,8 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
+        // Delete EVERY cache that isn't part of the current SW version —
+        // including old garfix-v* caches from previous releases.
         keys
           .filter((k) => k !== CACHE_NAME && k !== STATIC_CACHE && k !== API_CACHE && k !== PAGE_CACHE)
           .map((k) => caches.delete(k))
@@ -145,6 +154,29 @@ self.addEventListener("fetch", (event) => {
   // Static assets: cache-first (JS, CSS, fonts, images in _next/static)
   if (url.pathname.startsWith("/_next/static/") || url.pathname.match(/\.(js|css|woff2?|ttf|png|jpg|jpeg|gif|svg|webp|ico)$/i)) {
     event.respondWith(cacheFirst(event.request, STATIC_CACHE));
+    return;
+  }
+
+  // ── LOGIN/CSRF FIX (2026-08-25) ────────────────────────────────────────
+  // Auth-critical pages MUST always come from the network: a cached LOGIN
+  // page referencing deleted JS chunks (after a deploy) breaks the login
+  // flow with "Internal server error" and stale CSRF cookies → CSRF 403s
+  // on other pages. Same for the app shell root — always fresh.
+  const AUTH_CRITICAL = url.pathname === "/login" || url.pathname === "/signup" || url.pathname === "/";
+  if (event.request.mode === "navigate" && AUTH_CRITICAL) {
+    event.respondWith(
+      fetch(event.request)
+        .then((res) => {
+          if (res.ok) {
+            const cache = caches.open(PAGE_CACHE).then((c) => c.put(event.request, res.clone()));
+            event.waitUntil(cache);
+          }
+          return res;
+        })
+        .catch(() =>
+          caches.open(PAGE_CACHE).then((c) => c.match(event.request).then((r) => r || offlineFallbackPage()))
+        )
+    );
     return;
   }
 
