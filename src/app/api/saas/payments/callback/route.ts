@@ -100,6 +100,14 @@ export const GET = async (req: NextRequest) => {
       );
     }
 
+    // RLS FIX v2 (2026-08-25): wrap the ENTIRE payment-verification +
+    // transaction-update + subscription-activation sequence in ONE platform
+    // context. Running runAsPlatform around individual calls was not
+    // sufficient on serverless — the outbound GetPaymentStatus fetch in
+    // between created a new async context that dropped the ALS store,
+    // so the subsequent findFirst ran unscoped under strict RLS → 0 rows
+    // → the transaction stayed "pending" and activation never happened.
+    return await runAsPlatform(async () => {
     // Verify payment status with MyFatoorah
     const res = await fetchSafe(
       `${cfg.base_url.replace(/\/+$/, "")}/api/v2/GetPaymentStatus`,
@@ -169,7 +177,7 @@ export const GET = async (req: NextRequest) => {
             (existingMeta.billingPeriod === "yearly" ? "yearly" : "monthly") as
               "monthly" | "yearly";
           try {
-            await runAsPlatform(async () => {
+            {
               const activation = await createSubscription({
                 companySlug: txn.companySlug,
                 // txn.plan is nullable in the schema — default to the unified
@@ -215,6 +223,7 @@ export const GET = async (req: NextRequest) => {
     return NextResponse.redirect(
       new URL(`/?payment=${redirectStatus}#settings`, url.origin),
     );
+    }); // end runAsPlatform
   } catch (err) {
     logger.error("[payments:callback] error", {
       err: err instanceof Error ? err.message : String(err),
