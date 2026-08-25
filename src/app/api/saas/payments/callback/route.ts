@@ -120,25 +120,34 @@ export const GET = async (req: NextRequest) => {
     const isPaid = invoiceStatus === "Paid";
 
     // Update the transaction — use providerPaymentId field
+    // RLS FIX (2026-08-25): payment callbacks arrive with NO user tenant
+    // context (cross-tenant by design) — every DB access below must run
+    // inside the platform context or strict RLS silently returns 0 rows
+    // (which is exactly why the first sandbox test left the transaction
+    // "pending" and never created the subscription schedule).
     if (invoiceId) {
-      const txn = await db.paymentTransaction.findFirst({
-        where: { providerPaymentId: invoiceId, provider: "myfatoorah" },
-      });
+      const txn = await runAsPlatform(() =>
+        db.paymentTransaction.findFirst({
+          where: { providerPaymentId: invoiceId, provider: "myfatoorah" },
+        }),
+      );
 
       if (txn) {
         const existingMeta = (() => { try { return JSON.parse(txn.metadata || "{}"); } catch { return {}; } })();
-        await db.paymentTransaction.update({
-          where: { id: txn.id },
-          data: {
-            status: isPaid ? "paid" : "failed",
-            metadata: JSON.stringify({
-              ...existingMeta,
-              paymentId,
-              invoiceStatus,
-              callbackAt: new Date().toISOString(),
-            }),
-          },
-        });
+        await runAsPlatform(() =>
+          db.paymentTransaction.update({
+            where: { id: txn.id },
+            data: {
+              status: isPaid ? "paid" : "failed",
+              metadata: JSON.stringify({
+                ...existingMeta,
+                paymentId,
+                invoiceStatus,
+                callbackAt: new Date().toISOString(),
+              }),
+            },
+          }),
+        );
 
         // P5-H5: Audit log for successful payment status update.
         logger.info("[payments:callback] payment status updated", {
