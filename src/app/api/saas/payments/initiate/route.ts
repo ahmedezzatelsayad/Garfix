@@ -271,6 +271,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   // 3. Initiate Payment — get available payment methods
+  // SANDBOX DEBUG (temporary)
+  logger.info("[payments:initiate] calling gateway", { base_url: cfg.base_url });
   const initiateResult = await callMyFatoorah(
     cfg.base_url,
     cfg.api_key,
