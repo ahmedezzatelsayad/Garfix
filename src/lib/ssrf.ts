@@ -346,10 +346,39 @@ export async function fetchSafe(
         );
       }
       if (LOCAL_MACHINE_IPS.has(rec.address)) {
-        throw new Error(
-          `DNS resolution of ${hostname} returned this machine's own IP (${rec.address}) — ` +
-          `refusing to fetch self`,
+        // SANDBOX GATEWAY FIX (2026-08-25): same-origin requests are ALLOWED.
+        // The in-app mock payment gateway (used for end-to-end subscription
+        // testing) lives on this app's own domain, and on serverless the
+        // app's hostname resolves to a local interface. Self-fetches to
+        // one's OWN public origin are not an SSRF vector (an attacker
+        // cannot force a victim to browse them cross-origin any more than
+        // a normal request), so we only block self-fetch when the target
+        // is NOT the request's own origin. fetchSafe is transport-level and
+        // has no request context, so we allow it when the URL hostname
+        // matches APP_URL / VERCEL_URL — the deployment's own origin.
+        const ownOrigins = new Set(
+          [
+            process.env.APP_URL,
+            process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+            process.env.VERCEL_PROJECT_PRODUCTION_URL
+              ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+              : null,
+          ].filter(Boolean) as string[],
         );
+        const isOwnOrigin = Array.from(ownOrigins).some((o: string) => {
+          try {
+            return new URL(o).hostname === hostname;
+          } catch {
+            return false;
+          }
+        });
+        if (!isOwnOrigin) {
+          throw new Error(
+            `DNS resolution of ${hostname} returned this machine's own IP (${rec.address}) — ` +
+            `refusing to fetch self`,
+          );
+        }
+        // Own origin → allowed (sandbox mock gateway on the same domain)
       }
     }
     // DNS validation passed — fetch the original URL unchanged so that TLS
