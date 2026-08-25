@@ -71,6 +71,14 @@ function Row({ label, pct }: { label: string; pct: number | undefined }) {
 export default function AIFabricFounderPanel() {
   const { data, isLoading, error, refetch } = useAIFabric();
 
+  // P1: Stage Metrics — توزيع المراحل واتجاه التعلم (من AIRequestLog)
+  const [metrics, setMetrics] = useState<Record<string, unknown> | null>(null);
+  useEffect(() => {
+    fetch("/api/founder-panel/ai-fabric-metrics", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setMetrics)
+      .catch(() => {});
+  }, []);
   // Loading state
   if (isLoading && !data) {
     return (
@@ -82,15 +90,6 @@ export default function AIFabricFounderPanel() {
       </main>
     );
   }
-
-  // P1: Stage Metrics — توزيع المراحل واتجاه التعلم (من AIRequestLog)
-  const [metrics, setMetrics] = useState<Record<string, unknown> | null>(null);
-  useEffect(() => {
-    fetch("/api/founder-panel/ai-fabric-metrics", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setMetrics)
-      .catch(() => {});
-  }, []);
 
   // Error state
   if (error && !data) {

@@ -150,7 +150,14 @@ export async function startPgBoss(): Promise<boolean> {
       connectionString,
       schema: "pgboss", // separate schema to avoid conflicts with app tables
       supervise: true,
-      migrate: true,
+      // QUEUE PERMISSIONS FIX (2026-08-25): the app connects as the
+      // NON-SUPERUSER `garfix_app` role — it cannot CREATE SCHEMA at the
+      // database level. The pgboss schema was installed ONCE by the database
+      // owner (see DEPLOYMENT.md "pg-boss bootstrap"); the runtime must not
+      // try to re-run migrations it lacks rights for. `migrate: true` made
+      // every start fail with "permission denied for database" which silently
+      // disabled ALL background jobs (subscription charges, outbox, emails).
+      migrate: false,
       // pg-boss manages its own pool; use a reasonable size
       max: 10,
       // Maintenance intervals (reasonable for production)

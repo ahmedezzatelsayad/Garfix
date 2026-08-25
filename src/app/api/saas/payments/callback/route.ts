@@ -19,6 +19,12 @@ import { getIntegrationConfig } from "@/lib/integrations/registry";
 import { logger } from "@/lib/logger";
 import { rateLimitResponse, LIMITS } from "@/lib/rateLimit";
 import { requireAuth } from "@/lib/middleware";
+// SUBSCRIPTION ACTIVATION FIX (2026-08-25): the callback used to update the
+// PaymentTransaction to "paid" but NEVER activated the plan — the customer
+// paid and the company stayed on trial. We now provision the subscription
+// via the subscription engine on verified successful payments.
+import { createSubscription } from "@/lib/billing/subscription-engine";
+import { runAsPlatform } from "@/lib/tenant-context";
 
 export const GET = async (req: NextRequest) => {
   // P5-H5: Rate limit (10/min per IP). A legitimate user only hits this
@@ -141,6 +147,56 @@ export const GET = async (req: NextRequest) => {
           amount: invoiceAmount,
           user: userEmail || "anonymous",
         });
+
+        // ── SUBSCRIPTION ACTIVATION FIX (2026-08-25) ─────────────────────
+        // A VERIFIED successful payment must actually provision the plan:
+        // create/activate the subscription schedule + flip the company to
+        // the paid plan. Runs once (guarded by the transaction's own status
+        // so retries of this callback don't double-activate). Wrapped in
+        // runAsPlatform — callbacks arrive cross-tenant with no user tenant
+        // context (RLS fail-closed otherwise).
+        if (isPaid && txn.status !== "paid") {
+          const billingPeriod =
+            (existingMeta.billingPeriod === "yearly" ? "yearly" : "monthly") as
+              "monthly" | "yearly";
+          try {
+            await runAsPlatform(async () => {
+              const activation = await createSubscription({
+                companySlug: txn.companySlug,
+                // txn.plan is nullable in the schema — default to the unified
+                // invoicing plan when the transaction row lacks one.
+                plan: txn.plan || "invoicing",
+                billingPeriod,
+                provider: "myfatoorah",
+                paymentMethod: txn.method,
+                createdBy: txn.createdBy ?? "payment-callback",
+              });
+              if (!activation.ok && activation.error?.includes("نشط")) {
+                // An active schedule already exists — refresh its plan/period
+                logger.info("[payments:callback] existing schedule kept", {
+                  companySlug: txn.companySlug,
+                  plan: txn.plan,
+                });
+              } else if (!activation.ok) {
+                logger.error("[payments:callback] activation failed", {
+                  companySlug: txn.companySlug,
+                  error: activation.error,
+                });
+              } else {
+                logger.info("[payments:callback] subscription ACTIVATED", {
+                  companySlug: txn.companySlug,
+                  plan: txn.plan,
+                  billingPeriod,
+                  scheduleId: activation.scheduleId,
+                });
+              }
+            });
+          } catch (actErr) {
+            logger.error("[payments:callback] activation threw", {
+              err: actErr instanceof Error ? actErr.message : String(actErr),
+            });
+          }
+        }
       }
     }
 
