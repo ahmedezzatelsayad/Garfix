@@ -63,6 +63,12 @@ const CSRF_EXEMPT_ROUTES = [
   // (previously every webhook died with 403 before reaching its own signature
   // check).
   "/api/webhooks/whatsapp",
+  // SANDBOX MOCK GATEWAY (2026-08-25): server-to-server calls from the
+  // payments initiate route to the in-app mock MyFatoorah — no browser
+  // session involved (same exemption logic as admin/migrate above).
+  "/api/mock-pay/InitiatePayment",
+  "/api/mock-pay/ExecutePayment",
+  "/api/mock-pay/GetPaymentStatus",
 ];
 
 // Inbound e-invoicing authority webhooks (server-to-server, HMAC-verified
