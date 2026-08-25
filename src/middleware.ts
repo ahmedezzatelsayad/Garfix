@@ -66,9 +66,9 @@ const CSRF_EXEMPT_ROUTES = [
   // SANDBOX MOCK GATEWAY (2026-08-25): server-to-server calls from the
   // payments initiate route to the in-app mock MyFatoorah — no browser
   // session involved (same exemption logic as admin/migrate above).
-  "/api/mock-pay/InitiatePayment",
-  "/api/mock-pay/ExecutePayment",
-  "/api/mock-pay/GetPaymentStatus",
+  "/api/mock-pay/api/v2/InitiatePayment",
+  "/api/mock-pay/api/v2/ExecutePayment",
+  "/api/mock-pay/api/v2/GetPaymentStatus",
 ];
 
 // Inbound e-invoicing authority webhooks (server-to-server, HMAC-verified

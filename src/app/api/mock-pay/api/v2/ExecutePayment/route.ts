@@ -1,7 +1,6 @@
 /**
- * MOCK PAYMENT GATEWAY (DEV/TEST ONLY)
- * يحاكي MyFatoorah ExecutePayment — يرجع PaymentURL لصفحة الدفع الوهمية
- * (mock-checkout) التي توجّه للـ callback الحقيقي بالحالة المطلوبة.
+ * MOCK PAYMENT GATEWAY (DEV/TEST ONLY) — MyFatoorah-compatible path
+ * /api/mock-pay/api/v2/ExecutePayment
  */
 import { NextRequest, NextResponse } from "next/server";
 

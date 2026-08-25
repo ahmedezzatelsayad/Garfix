@@ -1,8 +1,6 @@
 /**
- * MOCK PAYMENT GATEWAY (DEV/TEST ONLY)
- * يحاكي MyFatoorah InitiatePayment — لمسار اختبار الاشتراك الكامل
- * بدون مفاتيح حقيقية. لا يُستخدم في الإنتاج (BASE_URL يوجه إليه فقط
- * من إعداد integration تجريبي).
+ * MOCK PAYMENT GATEWAY (DEV/TEST ONLY) — MyFatoorah-compatible path
+ * /api/mock-pay/api/v2/InitiatePayment
  */
 import { NextRequest, NextResponse } from "next/server";
 

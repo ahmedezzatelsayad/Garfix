@@ -1,7 +1,6 @@
 /**
- * MOCK PAYMENT GATEWAY (DEV/TEST ONLY)
- * يحاكي MyFatoorah GetPaymentStatus — الـ checkout الوهمي يوجّه للـ callback
- * ومعرّف الدفع هنا يبدأ بـ ok_ (نجاح) أو fail_ (فشل)، والاستعلام يعكسها.
+ * MOCK PAYMENT GATEWAY (DEV/TEST ONLY) — MyFatoorah-compatible path
+ * /api/mock-pay/api/v2/GetPaymentStatus
  */
 import { NextRequest, NextResponse } from "next/server";
 
