@@ -258,7 +258,7 @@ jobs:
           fetch-depth: 0  # Full history for thorough scan
 
       - name: TruffleHog Secret Scan
-        uses: trufflesecurity/trufflehog@v3.96.0
+        uses: trufflesecurity/trufflehog@v3.97.1
         with:
           extra_args: --only-verified
         # Phase 13 P1 fix: removed continue-on-error. Verified secrets MUST
