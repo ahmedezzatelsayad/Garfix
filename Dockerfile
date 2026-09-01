@@ -16,7 +16,7 @@
 # NOTE: In production, replace the tag with the actual digest from your registry:
 #   docker pull oven/bun:1.3.14 && docker inspect --format='{{.RepoDigests}}' oven/bun:1.3.14
 # Then update the FROM line to: oven/bun@sha256:<actual-digest>
-FROM oven/bun:1.3.14 AS deps
+FROM oven/bun:1.4.0 AS deps
 WORKDIR /app
 
 # Copy package files AND prisma schema (needed by postinstall → prisma generate)
@@ -28,7 +28,7 @@ COPY prisma ./prisma
 RUN bun install --frozen-lockfile --no-cache
 
 # ── Stage 2: Build ──────────────────────────────────────────────────────
-FROM oven/bun:1.3.14 AS builder
+FROM oven/bun:1.4.0 AS builder
 WORKDIR /app
 
 # Build-time environment variables (needed for `next build` to succeed)
