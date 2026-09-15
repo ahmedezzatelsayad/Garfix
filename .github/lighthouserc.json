@@ -2,7 +2,28 @@
   "ci": {
     "collect": {
       "url": ["http://localhost:3000/"],
-      "numberOfRuns": 3
+      "numberOfRuns": 3,
+      "chromeFlags": [
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--disable-extensions",
+        "--disable-background-networking",
+        "--disable-default-apps",
+        "--no-first-run",
+        "--headless=new"
+      ],
+      "settings": {
+        "maxWaitForLoad": 60000,
+        "formFactor": "desktop",
+        "screenEmulation": {
+          "mobile": false,
+          "width": 1350,
+          "height": 940,
+          "deviceScaleFactor": 1,
+          "disabled": false
+        }
+      }
     },
     "assert": {
       "assertions": {
